@@ -1,0 +1,391 @@
+{
+  "runFinishedAt": "2026-08-15T08:35:21.756Z",
+  "profile": "large-estate",
+  "host": "https://example.cloud.databricks.com",
+  "warehouse": "9d8a677b3c55b8a7",
+  "lookbackDays": 30,
+  "retentionDays": 400,
+  "rateCutsMib": [
+    1,
+    10,
+    100,
+    1000
+  ],
+  "readings": {
+    "pairsWithANetworkRate": {
+      "share": 1,
+      "of": 10488,
+      "unknown": null
+    },
+    "pairsAboveTheLowestCut": {
+      "share": 0.621,
+      "of": 10488,
+      "unknown": null
+    },
+    "pairsAboveTheHighestCut": {
+      "share": 0.021,
+      "of": 10488,
+      "unknown": null
+    },
+    "classicJobClustersWithADataVolume": {
+      "share": 0,
+      "of": 5445,
+      "unknown": null
+    },
+    "configurationRecordsSpellingPhoton": {
+      "share": 0.608,
+      "of": 5559,
+      "unknown": null
+    },
+    "jobUsageStatingPhoton": {
+      "share": 1,
+      "of": 7695,
+      "unknown": null
+    },
+    "ruleClustersStatingPhoton": {
+      "share": 0.966,
+      "of": 5445,
+      "unknown": null
+    },
+    "ruleClustersWithPhotonOff": {
+      "share": 0.374,
+      "of": 5258,
+      "unknown": null
+    }
+  },
+  "probes": [
+    {
+      "label": "which columns the node timeline carries",
+      "ok": true,
+      "rows": [
+        {
+          "column_name": "account_id",
+          "data_type": "STRING"
+        },
+        {
+          "column_name": "workspace_id",
+          "data_type": "STRING"
+        },
+        {
+          "column_name": "cluster_id",
+          "data_type": "STRING"
+        },
+        {
+          "column_name": "instance_id",
+          "data_type": "STRING"
+        },
+        {
+          "column_name": "start_time",
+          "data_type": "TIMESTAMP"
+        },
+        {
+          "column_name": "end_time",
+          "data_type": "TIMESTAMP"
+        },
+        {
+          "column_name": "driver",
+          "data_type": "BOOLEAN"
+        },
+        {
+          "column_name": "cpu_user_percent",
+          "data_type": "DOUBLE"
+        },
+        {
+          "column_name": "cpu_system_percent",
+          "data_type": "DOUBLE"
+        },
+        {
+          "column_name": "cpu_wait_percent",
+          "data_type": "DOUBLE"
+        },
+        {
+          "column_name": "mem_used_percent",
+          "data_type": "DOUBLE"
+        },
+        {
+          "column_name": "mem_swap_percent",
+          "data_type": "DOUBLE"
+        },
+        {
+          "column_name": "network_sent_bytes",
+          "data_type": "LONG"
+        },
+        {
+          "column_name": "network_received_bytes",
+          "data_type": "LONG"
+        },
+        {
+          "column_name": "disk_free_bytes_per_mount_point",
+          "data_type": "MAP"
+        },
+        {
+          "column_name": "node_type",
+          "data_type": "STRING"
+        },
+        {
+          "column_name": "private_ip",
+          "data_type": "STRING"
+        }
+      ]
+    },
+    {
+      "label": "whether any readable system table carries shuffle, spill or byte volumes",
+      "ok": true,
+      "rows": [
+        {
+          "table_schema": "compute",
+          "table_name": "node_timeline",
+          "column_name": "disk_free_bytes_per_mount_point",
+          "data_type": "MAP"
+        },
+        {
+          "table_schema": "compute",
+          "table_name": "node_timeline",
+          "column_name": "network_received_bytes",
+          "data_type": "LONG"
+        },
+        {
+          "table_schema": "compute",
+          "table_name": "node_timeline",
+          "column_name": "network_sent_bytes",
+          "data_type": "LONG"
+        },
+        {
+          "table_schema": "lakeflow",
+          "table_name": "zerobus_ingest",
+          "column_name": "committed_bytes",
+          "data_type": "LONG"
+        },
+        {
+          "table_schema": "query",
+          "table_name": "history",
+          "column_name": "pruned_files_bytes",
+          "data_type": "LONG"
+        },
+        {
+          "table_schema": "query",
+          "table_name": "history",
+          "column_name": "read_bytes",
+          "data_type": "LONG"
+        },
+        {
+          "table_schema": "query",
+          "table_name": "history",
+          "column_name": "read_files_bytes",
+          "data_type": "LONG"
+        },
+        {
+          "table_schema": "query",
+          "table_name": "history",
+          "column_name": "shuffle_read_bytes",
+          "data_type": "LONG"
+        },
+        {
+          "table_schema": "query",
+          "table_name": "history",
+          "column_name": "spilled_local_bytes",
+          "data_type": "LONG"
+        },
+        {
+          "table_schema": "query",
+          "table_name": "history",
+          "column_name": "written_bytes",
+          "data_type": "LONG"
+        }
+      ]
+    },
+    {
+      "label": "the network and CPU-wait distributions at the rule’s own grain",
+      "ok": true,
+      "rows": [
+        {
+          "classic_pairs_with_worker_samples": "10488",
+          "pairs_with_a_rate": "10488",
+          "samples_stating_no_network": "5",
+          "worker_samples": "338046",
+          "rate_p50": "3097508.2625",
+          "rate_p90": "4.502468115000014E7",
+          "rate_p95": "1.429119255374996E8",
+          "rate_max": "19917737169.958333333333",
+          "cpu_wait_p50": "0.04333633447359313",
+          "cpu_wait_p90": "0.4971918476655694",
+          "cpu_wait_p95": "1.279149632756953",
+          "cpu_wait_max": "23.641245506907428",
+          "pairs_under_40_cpu": "10321"
+        }
+      ]
+    },
+    {
+      "label": "what a rate threshold would select, at four magnitudes",
+      "ok": true,
+      "rows": [
+        {
+          "pairs_with_a_rate": "10488",
+          "above_1_mib_per_node_minute": "6515",
+          "above_10_mib_per_node_minute": "2034",
+          "above_100_mib_per_node_minute": "606",
+          "above_1000_mib_per_node_minute": "224",
+          "above_the_lowest_cut_and_low_cpu": "6350"
+        }
+      ]
+    },
+    {
+      "label": "whether data processed is readable for classic job compute",
+      "ok": true,
+      "rows": [
+        {
+          "classic_pairs": "13163",
+          "classic_clusters": "5445",
+          "history_rows_in_window": "4106493",
+          "rows_stating_read_bytes": "4097953",
+          "rows_naming_a_cluster": "0",
+          "classic_job_clusters_in_history": "0"
+        }
+      ]
+    },
+    {
+      "label": "which columns the cluster configuration record carries",
+      "ok": true,
+      "rows": [
+        {
+          "column_name": "account_id",
+          "data_type": "STRING"
+        },
+        {
+          "column_name": "workspace_id",
+          "data_type": "STRING"
+        },
+        {
+          "column_name": "cluster_id",
+          "data_type": "STRING"
+        },
+        {
+          "column_name": "cluster_name",
+          "data_type": "STRING"
+        },
+        {
+          "column_name": "owned_by",
+          "data_type": "STRING"
+        },
+        {
+          "column_name": "create_time",
+          "data_type": "TIMESTAMP"
+        },
+        {
+          "column_name": "delete_time",
+          "data_type": "TIMESTAMP"
+        },
+        {
+          "column_name": "driver_node_type",
+          "data_type": "STRING"
+        },
+        {
+          "column_name": "worker_node_type",
+          "data_type": "STRING"
+        },
+        {
+          "column_name": "worker_count",
+          "data_type": "LONG"
+        },
+        {
+          "column_name": "min_autoscale_workers",
+          "data_type": "LONG"
+        },
+        {
+          "column_name": "max_autoscale_workers",
+          "data_type": "LONG"
+        },
+        {
+          "column_name": "auto_termination_minutes",
+          "data_type": "LONG"
+        },
+        {
+          "column_name": "enable_elastic_disk",
+          "data_type": "BOOLEAN"
+        },
+        {
+          "column_name": "tags",
+          "data_type": "MAP"
+        },
+        {
+          "column_name": "cluster_source",
+          "data_type": "STRING"
+        },
+        {
+          "column_name": "init_scripts",
+          "data_type": "ARRAY"
+        },
+        {
+          "column_name": "aws_attributes",
+          "data_type": "STRUCT"
+        },
+        {
+          "column_name": "azure_attributes",
+          "data_type": "STRUCT"
+        },
+        {
+          "column_name": "gcp_attributes",
+          "data_type": "STRUCT"
+        },
+        {
+          "column_name": "driver_instance_pool_id",
+          "data_type": "STRING"
+        },
+        {
+          "column_name": "worker_instance_pool_id",
+          "data_type": "STRING"
+        },
+        {
+          "column_name": "dbr_version",
+          "data_type": "STRING"
+        },
+        {
+          "column_name": "change_time",
+          "data_type": "TIMESTAMP"
+        },
+        {
+          "column_name": "change_date",
+          "data_type": "DATE"
+        },
+        {
+          "column_name": "data_security_mode",
+          "data_type": "STRING"
+        },
+        {
+          "column_name": "policy_id",
+          "data_type": "STRING"
+        }
+      ]
+    },
+    {
+      "label": "whether the runtime version spells Photon on classic job clusters",
+      "ok": true,
+      "rows": [
+        {
+          "configuration_records": "5559",
+          "clusters": "5437",
+          "records_stating_a_version": "5559",
+          "records_spelling_photon": "3381",
+          "versions": "[\"12.2.x-scala2.12\",\"13.3.x-photon-scala2.12\",\"13.3.x-scala2.12\",\"14.3.x-gpu-ml-scala2.12\",\"14.3.x-scala2.12\",\"15.3.x-scala2.12\",\"15.4.x-cpu-ml-scala2.12\",\"15.4.x-gpu-ml-scala2.12\",\"15.4.x-photon-scala2.12\",\"15.4.x-scala2.12\",\"16.2.x-cpu-ml-scala2.12\",\"16.4.x-aarch64-cpu-ml-photon-scala2.13\"]"
+        }
+      ]
+    },
+    {
+      "label": "whether billing usage states Photon for the classic job compute the rule is about",
+      "ok": true,
+      "rows": [
+        {
+          "classic_pairs": "13163",
+          "classic_clusters": "5445",
+          "classic_job_usage_records": "7695",
+          "records_stating_photon": "7695",
+          "records_with_photon_off": "3261",
+          "clusters": "5290",
+          "clusters_with_photon_off": "1997",
+          "rule_clusters_stating_photon": "5258",
+          "rule_clusters_with_photon_off": "1965"
+        }
+      ]
+    }
+  ]
+}

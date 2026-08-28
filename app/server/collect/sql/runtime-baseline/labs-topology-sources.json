@@ -1,0 +1,338 @@
+{
+  "what": "Which relations between the five estate object kinds are readable, for 32h's scope question.",
+  "profile": "labs",
+  "host": "https://dbc-example.cloud.databricks.com",
+  "warehouse": "0123456789abcdef",
+  "lookbackDays": 30,
+  "takenAt": "2026-08-16T12:57:40.331Z",
+  "probesAsked": 10,
+  "probesHeld": 10,
+  "kinds": [
+    "job",
+    "cluster",
+    "warehouse",
+    "pipeline",
+    "table"
+  ],
+  "limit": "Counts are this estate in this window. A zero is only a fact about the platform where the columns are present and the read was not refused, which each probe states separately.",
+  "probes": [
+    {
+      "id": "table-to-table",
+      "label": "table → table, from lineage",
+      "from": "table",
+      "to": "table",
+      "source": "system.access.table_lineage",
+      "scalesWith": "one per source and target pair",
+      "columns": [
+        {
+          "table": "system.access.table_lineage",
+          "wanted": [
+            "source_table_full_name",
+            "target_table_full_name",
+            "event_date"
+          ],
+          "absent": []
+        }
+      ],
+      "reading": {
+        "rows_scanned": 18096,
+        "rows_naming_both_ends": 445,
+        "edges": 90,
+        "from_ends": 34,
+        "to_ends": 41
+      },
+      "refusalToRead": null,
+      "endpoints": null,
+      "diagnostic": null
+    },
+    {
+      "id": "job-to-table",
+      "label": "job → table, from lineage",
+      "from": "job",
+      "to": "table",
+      "source": "system.access.table_lineage",
+      "scalesWith": "one per job and table pair",
+      "columns": [
+        {
+          "table": "system.access.table_lineage",
+          "wanted": [
+            "entity_type",
+            "entity_id"
+          ],
+          "absent": []
+        }
+      ],
+      "reading": {
+        "rows_scanned": 21,
+        "rows_naming_both_ends": 21,
+        "edges": 3,
+        "from_ends": 1,
+        "to_ends": 3
+      },
+      "refusalToRead": null,
+      "endpoints": null,
+      "diagnostic": null
+    },
+    {
+      "id": "pipeline-to-table",
+      "label": "pipeline → table, from lineage",
+      "from": "pipeline",
+      "to": "table",
+      "source": "system.access.table_lineage",
+      "scalesWith": "one per pipeline and table pair",
+      "columns": [
+        {
+          "table": "system.access.table_lineage",
+          "wanted": [
+            "entity_type",
+            "entity_id"
+          ],
+          "absent": []
+        }
+      ],
+      "reading": {
+        "rows_scanned": 2536,
+        "rows_naming_both_ends": 2536,
+        "edges": 7,
+        "from_ends": 3,
+        "to_ends": 5
+      },
+      "refusalToRead": null,
+      "endpoints": null,
+      "diagnostic": null
+    },
+    {
+      "id": "job-to-cluster",
+      "label": "job → cluster, from the task run timeline",
+      "from": "job",
+      "to": "cluster",
+      "source": "system.lakeflow.job_task_run_timeline",
+      "scalesWith": "one per job and cluster pair",
+      "columns": [
+        {
+          "table": "system.lakeflow.job_task_run_timeline",
+          "wanted": [
+            "job_id",
+            "compute"
+          ],
+          "absent": []
+        }
+      ],
+      "reading": {
+        "rows_scanned": 76,
+        "rows_naming_both_ends": 0,
+        "edges": 0,
+        "from_ends": 0,
+        "to_ends": 0
+      },
+      "refusalToRead": null,
+      "endpoints": {
+        "what": "cluster ids that are rows in system.compute.clusters",
+        "ends": 0,
+        "resolved": 0
+      },
+      "diagnostic": null
+    },
+    {
+      "id": "job-to-warehouse",
+      "label": "job → warehouse, from the task run timeline",
+      "from": "job",
+      "to": "warehouse",
+      "source": "system.lakeflow.job_task_run_timeline",
+      "scalesWith": "one per job and warehouse pair",
+      "columns": [
+        {
+          "table": "system.lakeflow.job_task_run_timeline",
+          "wanted": [
+            "job_id",
+            "compute"
+          ],
+          "absent": []
+        }
+      ],
+      "reading": {
+        "rows_scanned": 76,
+        "rows_naming_both_ends": 0,
+        "edges": 0,
+        "from_ends": 0,
+        "to_ends": 0
+      },
+      "refusalToRead": null,
+      "endpoints": null,
+      "diagnostic": null
+    },
+    {
+      "id": "pipeline-to-cluster",
+      "label": "pipeline → cluster, from the update timeline",
+      "from": "pipeline",
+      "to": "cluster",
+      "source": "system.lakeflow.pipeline_update_timeline",
+      "scalesWith": "one per pipeline and cluster pair",
+      "columns": [
+        {
+          "table": "system.lakeflow.pipeline_update_timeline",
+          "wanted": [
+            "pipeline_id",
+            "compute"
+          ],
+          "absent": []
+        }
+      ],
+      "reading": {
+        "rows_scanned": 5,
+        "rows_naming_both_ends": 0,
+        "edges": 0,
+        "from_ends": 0,
+        "to_ends": 0
+      },
+      "refusalToRead": null,
+      "endpoints": {
+        "what": "cluster ids that are rows in system.compute.clusters",
+        "ends": 0,
+        "resolved": 0
+      },
+      "diagnostic": null
+    },
+    {
+      "id": "warehouse-to-table",
+      "label": "warehouse → table, lineage joined to query history by statement",
+      "from": "warehouse",
+      "to": "table",
+      "source": "system.access.table_lineage ⋈ system.query.history",
+      "scalesWith": "one per warehouse and table pair",
+      "columns": [
+        {
+          "table": "system.access.table_lineage",
+          "wanted": [
+            "statement_id"
+          ],
+          "absent": []
+        },
+        {
+          "table": "system.query.history",
+          "wanted": [
+            "statement_id",
+            "compute"
+          ],
+          "absent": []
+        }
+      ],
+      "reading": {
+        "rows_scanned": 15560,
+        "rows_naming_both_ends": 15463,
+        "edges": 206,
+        "from_ends": 13,
+        "to_ends": 137
+      },
+      "refusalToRead": null,
+      "endpoints": null,
+      "diagnostic": null
+    },
+    {
+      "id": "cluster-to-table",
+      "label": "cluster → table, lineage joined to query history by statement",
+      "from": "cluster",
+      "to": "table",
+      "source": "system.access.table_lineage ⋈ system.query.history",
+      "scalesWith": "one per cluster and table pair",
+      "columns": [
+        {
+          "table": "system.access.table_lineage",
+          "wanted": [
+            "statement_id"
+          ],
+          "absent": []
+        },
+        {
+          "table": "system.query.history",
+          "wanted": [
+            "statement_id",
+            "compute"
+          ],
+          "absent": []
+        }
+      ],
+      "reading": {
+        "rows_scanned": 15560,
+        "rows_naming_both_ends": 0,
+        "edges": 0,
+        "from_ends": 0,
+        "to_ends": 0
+      },
+      "refusalToRead": null,
+      "endpoints": null,
+      "diagnostic": {
+        "what": "where the lineage-to-query-history join goes",
+        "statements_in_lineage": 10360,
+        "not_in_query_history": 0,
+        "ran_on_a_warehouse": 10309,
+        "ran_on_a_cluster": 0,
+        "matched_naming_neither": 51
+      }
+    },
+    {
+      "id": "job-to-job",
+      "label": "job → job, from a run that another run started",
+      "from": "job",
+      "to": "job",
+      "source": "system.lakeflow.job_run_timeline ⋈ system.lakeflow.job_task_run_timeline",
+      "scalesWith": "one per triggering and triggered job pair",
+      "columns": [
+        {
+          "table": "system.lakeflow.job_run_timeline",
+          "wanted": [
+            "job_id",
+            "source_task_run_id"
+          ],
+          "absent": []
+        },
+        {
+          "table": "system.lakeflow.job_task_run_timeline",
+          "wanted": [
+            "job_id",
+            "run_id"
+          ],
+          "absent": []
+        }
+      ],
+      "reading": {
+        "rows_scanned": 0,
+        "rows_naming_both_ends": 0,
+        "edges": 0,
+        "from_ends": 0,
+        "to_ends": 0
+      },
+      "refusalToRead": null,
+      "endpoints": null,
+      "diagnostic": null
+    },
+    {
+      "id": "bill-derived-pairs",
+      "label": "job → cluster, from one usage record naming both",
+      "from": "job",
+      "to": "cluster",
+      "source": "system.billing.usage",
+      "scalesWith": "one per job and cluster pair",
+      "refused": "32i's rule declines an edge drawn from a bill",
+      "columns": [
+        {
+          "table": "system.billing.usage",
+          "wanted": [
+            "usage_metadata"
+          ],
+          "absent": []
+        }
+      ],
+      "reading": {
+        "rows_scanned": 60698,
+        "rows_naming_both_ends": 1,
+        "edges": 1,
+        "from_ends": 1,
+        "to_ends": 1
+      },
+      "refusalToRead": null,
+      "endpoints": null,
+      "diagnostic": null
+    }
+  ]
+}

@@ -1,0 +1,1692 @@
+# Answering guidance for the questions in this pillar.
+#
+# Keyed by control id, flat rather than nested by principle: the catalogue owns that structure.
+# Scaffolded by scripts/scaffold-guidance.mjs, which never edits an entry that already exists.
+# Held to config/guidance/guidance.schema.json by scripts/check-guidance.mjs.
+#
+# docs/design/guidance-authoring.md fixes the voice and works one entry through end to end.
+pillar: interoperability-and-usability
+entries:
+  # Use standard and reusable integration patterns for external integration
+  # Q: When a new external system needs to be integrated, is there a pattern to follow — or does each integration get designed from scratch?
+  IU-01-01:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: Data platform architect or integration lead
+    means: >-
+      Bringing a new source in, or publishing data out, follows a small number of agreed patterns —
+      which connector, where it lands, how credentials are held, how failures are handled — rather than
+      being designed by whoever picks up the request.
+    matters: >-
+      Every bespoke integration is a separate thing to operate. They fail in different ways, hold
+      credentials in different places, and each one is understood by one person. The cost does not show
+      up while they are being built; it shows up when four of them break in the same week.
+    good:
+      - A named set of supported patterns exists — managed ingestion, streaming, batch file drop — and a new source is placed into one.
+      - Credentials for integrations are held in one mechanism, not per integration.
+      - A new integration reuses an existing job template or bundle rather than starting from an empty notebook.
+      - Somebody can name what happens when an integration fails, without looking at its code.
+      - Retiring a source is a known procedure rather than an archaeology exercise.
+    examples:
+      strong: >-
+        Three patterns are documented and each new source is assigned to one. Ingestion uses managed
+        connectors where they exist and a shared bundle template where they do not. Secrets are in one
+        scope, and every integration job carries the same alerting.
+      partial: >-
+        New sources follow the pattern the platform team set up, but the eight integrations built before
+        it are each different, hold credentials three ways, and nobody has moved them.
+      weak: >-
+        Each integration is a notebook written by whoever needed the data, on a schedule, with a token
+        in a widget default. There is no pattern and no inventory of what exists.
+    verify:
+      - how: ui
+        where: >-
+          Jobs & Pipelines, the jobs that ingest data, comparing two of the most recent to two of the oldest
+        expect: A recognisable shape in common rather than four unrelated designs
+      - how: cli
+        where: databricks secrets list-scopes
+        expect: A small number of scopes with a clear ownership story, rather than one per integration
+      - how: by-hand
+        where: Ask what the last new source integration reused, and from where
+        expect: A named template or connector, rather than "we copied the previous notebook"
+    pitfalls:
+      - >-
+        A pattern that exists on the wiki and is applied only by the team that wrote it, so the estate
+        still holds one design per integration and a document that says otherwise.
+      - >-
+        Copying the previous notebook, which looks like reuse and is duplication: a fix to one copy
+        reaches none of the others.
+      - >-
+        Standardising the happy path and leaving failure handling to each integration, which is where
+        the operational cost actually lives.
+    partial_when: >-
+      New integrations follow a pattern and the older ones were each designed separately, or a pattern
+      exists for ingestion but publishing data out is still ad hoc.
+    references:
+      - https://docs.databricks.com/aws/en/ingestion/
+      - https://docs.databricks.com/aws/en/dev-tools/bundles/
+    advice:
+      start_from: >-
+        Three named patterns — a managed connector, Auto Loader for files, and one bundle template
+        for everything else — with secrets in a single scope and the same failure path on every job.
+      depends_on:
+        - >-
+          A source the managed catalogue does not cover stays on the bundle template, not a one-off
+          notebook, so the exception is still a pattern.
+        - >-
+          Publishing out to a partner that cannot consume Delta Sharing needs its own pattern, written
+          down, rather than being treated as the leftover of ingestion.
+        - >-
+          An estate with fewer than five integrations can defer the inventory, but the next one still
+          has to land in a named pattern or the deferral has already failed.
+      path:
+        - >-
+          Write the patterns down and put the next source into one of them. The older ones stay as they
+          are until something forces a rewrite; converting them first is how the work never starts.
+        - >-
+          Move secrets into one scope and put the same alerting on every integration job, so the
+          operational half is shared even while the older designs remain.
+        - >-
+          Convert an older integration only when it next breaks or changes source, and retire the
+          copies that accumulated around it.
+      costs:
+        - >-
+          The first team to follow the pattern is slower than they were with a notebook, which is why
+          the pattern has to be a working template and not a wiki page.
+        - >-
+          Converting an old integration is a week of someone who still understands it, and that person
+          is usually the one the next incident cannot spare.
+      retain: >-
+        The written pattern list, the bundle template, and a dated inventory of integrations that
+        names which pattern each is on. The inventory is what the next review starts from.
+      revisit: >-
+        A new source system, a partner that needs data out, or an integration failure that took more
+        than one person to diagnose. Failing those, twice a year.
+
+  # Use certified partner tools
+  # Q: Are the third-party tools in your data path ones with a supported Databricks integration, or do some rely on generic JDBC and goodwill?
+  IU-01-03:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: Data platform lead
+    means: >-
+      The tools in the production data path — ingestion, transformation, BI, orchestration — connect
+      through integrations their vendor supports and tests against Databricks, rather than through a
+      generic driver nobody has validated at your scale.
+    matters: >-
+      An unsupported connection has nobody to escalate to. When it breaks after a runtime upgrade, or
+      when a query that worked at ten thousand rows times out at ten million, the answer is your team
+      reading someone else's driver rather than a vendor with a fix.
+    good:
+      - The tools in the production path appear in the Databricks partner ecosystem, or the vendor documents Databricks support explicitly.
+      - Connections use the current Databricks drivers or SDKs rather than a driver pinned years ago.
+      - Somebody knows which tools would need attention at the next runtime or driver upgrade.
+      - Where an unsupported tool is in the path, that is a known and accepted decision rather than an oversight.
+      - Service principals rather than personal tokens are used for tool connections.
+    examples:
+      strong: >-
+        BI, ingestion and orchestration are all certified partner integrations connecting over
+        Databricks SQL with current drivers and service principals. One legacy internal tool uses JDBC,
+        and that is recorded as accepted risk with an owner.
+      partial: >-
+        The BI tool and the warehouse connection are supported, but two ingestion tools use a generic
+        JDBC driver pinned to a version from three years ago, and one connects with a personal access
+        token belonging to somebody who has changed team.
+      weak: >-
+        Most tools connect over generic JDBC or ODBC with drivers nobody can name the version of, using
+        personal tokens.
+    verify:
+      - how: ui
+        where: SQL Warehouses > your warehouse > Connection details, and the query history's source column
+        expect: Recognisable client applications rather than unattributed generic driver sessions
+      - how: sql
+        where: |-
+          select client_application, count(*) as queries from system.query.history
+          where end_time > current_timestamp() - interval 30 days group by all order by queries desc
+        expect: >-
+          A short list of named tools, rather than a long tail of unidentified drivers
+        caveat: >-
+          Only warehouse traffic is here. A partner tool connecting through classic compute leaves no row,
+          so a short tidy list can mean the untidy half of the estate is invisible rather than absent.
+      - how: by-hand
+        where: Ask which of the tools in the data path the vendor supports on Databricks, in writing
+        expect: An answer per tool, and a named exception where there is one
+    pitfalls:
+      - >-
+        A supported tool connecting through an unsupported route — the vendor certifies its Databricks
+        connector and your deployment uses its generic SQL one, which is the configuration nobody tested.
+      - >-
+        Drivers pinned during a migration and never moved, so the tool is certified and the version in
+        use is two major releases behind the certification.
+      - >-
+        Personal access tokens behind tool connections, which works until the person leaves and then
+        fails as a data problem rather than an identity one.
+    partial_when: >-
+      The main tools are supported and one or two in the path are not, or the integrations are certified
+      and the drivers or the identities behind them are not maintained.
+    references:
+      - https://docs.databricks.com/aws/en/integrations/
+      - https://docs.databricks.com/aws/en/integrations/jdbc-odbc-bi
+    advice:
+      start_from: >-
+        Every tool in the production data path uses a Databricks-supported connector or the current
+        Databricks JDBC/ODBC driver, authenticating as a service principal, with one written exception
+        for anything that cannot.
+      depends_on:
+        - >-
+          An internal tool with no vendor behind it stays on JDBC, and that is the exception to write
+          down rather than a reason to skip the rest.
+        - >-
+          A BI tool whose Databricks connector is certified and whose deployment uses the generic SQL
+          one has to be moved, because the certification does not cover the route you are on.
+        - >-
+          A driver pinned during a migration is upgraded with the next runtime change, not left as a
+          second project.
+      path:
+        - >-
+          List the tools that actually run queries, from `system.query.history` and from the people
+          who own the path, and mark each as supported, unsupported, or unknown.
+        - >-
+          Move the supported ones onto the vendor's Databricks connector and a service principal.
+          Leave the unsupported ones as named exceptions with an owner.
+        - >-
+          Then upgrade the pinned drivers. Doing this first, before you know which tools matter,
+          is how an upgrade weekend gets spent on a tool nobody uses.
+      costs:
+        - >-
+          Changing a BI tool's connection string is a half-day and a regression pass on the
+          dashboards that break only at the volumes they see in production.
+        - >-
+          Replacing a personal token with a service principal needs someone who can create one, which
+          is often a different team from the one that owns the tool.
+      retain: >-
+        The dated tool list with support status, connector or driver version, and identity type on
+        each row. A short tidy query-history result is not this list.
+      revisit: >-
+        A runtime or warehouse upgrade, a new tool entering the path, or the person behind a
+        personal token leaving. Failing those, twice a year.
+
+  # Reduce complexity of data engineering pipelines
+  # Q: Has anyone deliberately reduced the number of hops and tools a dataset passes through, or has the pipeline only ever accreted?
+  IU-01-04:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: Data engineering lead
+    means: >-
+      Somebody has looked at how data actually gets from source to consumer, counted the hops and the
+      tools, and removed some. Not that the pipeline is simple, but that simplifying it is work somebody
+      has done on purpose.
+    matters: >-
+      Pipelines only accrete unless something pushes back. Each extra hop adds latency, a place for the
+      data to be wrong, and a component that has to be understood during an incident at three in the
+      morning — and the person who added it is often no longer the person maintaining it.
+    good:
+      - Somebody can draw the path from a source to a consumed table and name why each hop exists.
+      - A hop or a tool has been removed in the last year, and somebody can name which.
+      - Intermediate tables that nothing reads have been dropped rather than left in place.
+      - The number of distinct orchestration or transformation tools in the path is small and shrinking.
+      - New requirements are met by changing an existing stage more often than by adding one.
+    examples:
+      strong: >-
+        The path is documented per domain, and last year's consolidation removed two external
+        orchestrators and four intermediate tables nothing was reading. Lineage in Catalog Explorer
+        matches the drawing.
+      partial: >-
+        The team knows the pipeline is more complicated than it needs to be, has identified the
+        redundant staging layer, and has not had the room to remove it. Nothing has been removed in two
+        years.
+      weak: >-
+        Nobody can draw the whole path. There are three orchestrators, several staging tables of unknown
+        purpose, and the standard response to a new requirement is another job.
+    verify:
+      - how: ui
+        where: Catalog Explorer > lineage for one consumed table, walked upstream to a source
+        expect: A path somebody can explain, rather than hops nobody can account for
+      - how: sql
+        where: |-
+          select target_table_full_name, count(distinct source_table_full_name) as upstreams
+          from system.access.table_lineage
+          where event_time > current_timestamp() - interval 30 days
+          and target_table_full_name is not null
+          group by all order by upstreams desc
+        expect: >-
+          Fan-in that matches the design, and staging tables that feed something
+        caveat: >-
+          A read leaves a lineage row with no target, and on one estate those were nineteen rows in twenty.
+          Without the filter the top of this result is a single null bucket counting every table anyone
+          read, which is not fan-in and is where the eye lands first.
+      - how: by-hand
+        where: Ask the pipeline's owner what they would remove, and what stops them
+        expect: A specific answer, which is the evidence that somebody has looked
+    pitfalls:
+      - >-
+        A simplification project that added an abstraction over the complexity instead of removing it,
+        so the number of components went up and the diagram got tidier.
+      - >-
+        Deleting the jobs and leaving the tables, so the estate keeps the storage, the permissions and
+        the confusion about which table is current.
+      - >-
+        Counting tools rather than hops. Consolidating three orchestrators into one changes nothing if
+        the data still passes through nine stages.
+    partial_when: >-
+      The complexity is understood and documented but nothing has been removed, or one domain has been
+      simplified and the others have not.
+    references:
+      - https://docs.databricks.com/aws/en/lakehouse-architecture/interoperability-and-usability/best-practices
+      - https://docs.databricks.com/aws/en/ldp/
+    advice:
+      start_from: >-
+        One orchestration tool and one transformation framework per domain, with intermediate tables
+        that nothing reads dropped rather than kept "in case", and a new requirement met by changing
+        a stage that already exists.
+      depends_on:
+        - >-
+          Two domains that genuinely need different tools keep them, and the requirement is that
+          each domain can be drawn, not that the estate has one stack.
+        - >-
+          A hop that exists for an audit or a regulatory hold is not complexity to remove — it is
+          named as a reason, so the next review does not rediscover it.
+        - >-
+          An estate still landing sources cannot remove hops it has not finished adding; the work
+          then is to stop adding a staging table for every new source.
+      path:
+        - >-
+          Draw one consumed table back to its source and mark every hop nobody can account for.
+          That drawing is the backlog; a tool count is not.
+        - >-
+          Drop the unread intermediates first. They cost storage and confusion and nobody defends
+          them once they are named.
+        - >-
+          Then collapse two adjacent stages that do the same transform, and only then argue about
+          retiring a second orchestrator.
+      costs:
+        - >-
+          Removing a hop that something still reads, silently, is an incident. Lineage is the check,
+          and it misses jobs that run off a no-isolation cluster.
+        - >-
+          The simplification project that adds a framework on top of the existing path makes the
+          diagram tidier and the runtime longer, which is the failure mode to watch for.
+      retain: >-
+        The dated path drawing for one consumed table per domain, and a note of the last hop or
+        table actually removed. Intent without a removal is the partial example.
+      revisit: >-
+        A new source, a second orchestrator arriving, or an incident whose first hour was spent
+        finding the path. Failing those, annually.
+
+  # Use open standards for developing agents, LLMs, and ML models
+  # Q: Are models and agents built against portable interfaces, or tied to one vendor’s SDK in a way that would be costly to change?
+  IU-02-03:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: ML platform or AI engineering lead
+    means: >-
+      Models and agents are packaged and called through interfaces that are not specific to one
+      provider — MLflow for packaging and tracking, an OpenAI-compatible or provider-neutral calling
+      convention — so changing the model behind a use case is a configuration change.
+    matters: >-
+      Model providers change price, availability and quality faster than any other component in the
+      estate. Code that calls one vendor's SDK directly, in twenty places, turns a commercial decision
+      into an engineering project, and the decision then gets made by whichever is cheaper to avoid.
+    good:
+      - Models are logged and versioned in MLflow rather than pickled into a repository.
+      - Application code calls one internal interface or an endpoint, not a provider SDK scattered through the codebase.
+      - The provider or model behind an endpoint can be changed without redeploying the application.
+      - Prompts, tools and evaluation live with the model version rather than in application code.
+      - Somebody has actually swapped a model behind a use case, or can say what it would take.
+    examples:
+      strong: >-
+        Every model and agent is registered in Unity Catalog through MLflow and served behind a
+        Databricks serving endpoint. Applications call the endpoint by name, so switching the model
+        underneath is a configuration change with an evaluation run behind it.
+      partial: >-
+        Production models are in MLflow and served behind endpoints, but the two agent applications
+        call a vendor SDK directly with prompts in application code, so changing provider means
+        changing both.
+      weak: >-
+        Models are files in a repository, and provider SDK calls with inline prompts are spread across
+        the applications that use them. Nobody can say what changing provider would cost.
+    verify:
+      - how: ui
+        where: Serving, and the models registered in Unity Catalog under Catalog Explorer > a schema > Models
+        expect: Versioned registered models behind endpoints, rather than models absent from the registry
+      - how: cli
+        where: databricks serving-endpoints list
+        expect: Endpoints applications call by name, rather than none
+      - how: by-hand
+        where: Ask what it would take to move one production use case to a different model
+        expect: A configuration change and an evaluation run, rather than a code change in several repositories
+    pitfalls:
+      - >-
+        Using MLflow to track experiments and not to serve, so the packaging is portable and the thing
+        in production is a script with a vendor SDK in it.
+      - >-
+        An abstraction layer written once and then bypassed under deadline, so half the calls are
+        portable and the half added most recently are not.
+      - >-
+        Prompts in application code. The model is swappable and the behaviour is not, because the prompt
+        was tuned for the model it is no longer using.
+    partial_when: >-
+      Models are registered and served portably but the applications calling them are tied to a
+      provider, or some use cases go through an endpoint and others call an SDK directly.
+    references:
+      - https://docs.databricks.com/aws/en/machine-learning/manage-model-lifecycle/
+      - https://docs.databricks.com/aws/en/agents/custom-agents/build-agents
+    advice:
+      start_from: >-
+        Every production model and agent is registered in Unity Catalog through MLflow and served
+        behind a named endpoint. Applications call the endpoint, not a vendor SDK, and prompts live
+        with the model version.
+      depends_on:
+        - >-
+          A use case that has to call a provider the serving layer does not yet wrap stays behind
+          one internal interface, so the rest of the application does not learn that vendor.
+        - >-
+          Evaluation that only exists in a notebook is not enough: the swap is a configuration
+          change only if the evaluation run is attached to the model version being served.
+        - >-
+          An estate still in experiment-tracking-only MLflow can defer serving, but the first
+          application that ships has to go through an endpoint or the deferral has already failed.
+      path:
+        - >-
+          Register the models that are already in production, even if the applications still call
+          them the old way. The registry is what makes the next step possible.
+        - >-
+          Put a serving endpoint in front of each one and point one application at it. Leave the
+          others until that path has been used for a real swap or a real evaluation.
+        - >-
+          Then move prompts and tools out of application code, so changing the model does not also
+          mean changing the behaviour it was tuned against.
+      costs:
+        - >-
+          An endpoint has a running cost even when unused, unless scale-to-zero is on, and
+          scale-to-zero adds a cold start the first caller notices.
+        - >-
+          Rewriting the application calls is the week of work people defer, which is why the
+          endpoint exists and nobody uses it.
+      retain: >-
+        The list of production use cases with the endpoint each calls, and a note of the last time
+        a model behind one of them was changed without an application deploy.
+      revisit: >-
+        A provider price or quality change, a new agent application, or a prompt that had to be
+        edited in application code. Failing those, twice a year.
+
+  # Provide a self-service experience across the platform
+  # Q: Can a team start a new use case — get compute, a catalogue location and access — without a ticket to a central team?
+  IU-03-01:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: Platform owner
+    means: >-
+      A team with a new use case can get what it needs to start — compute within a policy, a place in
+      the catalogue, access to the data it is entitled to — through a route that does not require a
+      person on a central team to do the work.
+    matters: >-
+      Where every start needs a ticket, the platform team becomes the bottleneck for everybody's
+      delivery and spends its time on provisioning rather than on the platform. The teams that cannot
+      wait build outside it, which is how a governed estate acquires an ungoverned half.
+    good:
+      - Cluster policies let a team create compute itself, within bounds the platform sets.
+      - A team can be granted a schema or catalog of its own without an account admin doing it each time.
+      - Group membership drives access, and group membership is managed in the identity provider rather than by request.
+      - Common starting points exist — a template bundle, a starter job — so self-service does not mean starting from nothing.
+      - The platform team can name what it no longer does by hand.
+    examples:
+      strong: >-
+        Teams create compute from policies scoped to their group, own a schema each with a catalog
+        owner group, and get data access through identity provider groups. A template bundle gives them
+        a working job on day one. The platform team handles exceptions, not provisioning.
+      partial: >-
+        Compute is self-service through policies, but a new catalog or schema still needs a ticket to
+        the platform team, and access requests are handled by hand with a two-day turnaround.
+      weak: >-
+        Every cluster, catalog and grant is created by the platform team on request. There are no
+        policies and no delegated ownership.
+    verify:
+      - how: ui
+        where: Compute > Policies, and the permissions on two of them
+        expect: Policies granted to team groups, rather than policies only admins can use
+      - how: sql
+        where: |-
+          select catalog_name, catalog_owner from system.information_schema.catalogs order by 1
+        expect: >-
+          Ownership spread across team groups, rather than every catalog owned by one admin group
+      - how: by-hand
+        where: Ask a team that started a use case recently what they needed a ticket for
+        expect: Nothing, or one thing that is deliberately gated
+    pitfalls:
+      - >-
+        Self-service without guardrails, which is not self-service but an unbounded estate: the platform
+        team stops provisioning and starts firefighting cost and configuration instead.
+      - >-
+        A policy every team can use that is so restrictive nobody can, so the real route is still a
+        ticket asking for an exception.
+      - >-
+        Delegating creation and not ownership, so a team can make a schema and still cannot grant access
+        to it.
+    partial_when: >-
+      Compute is self-service and catalogue or access provisioning is not, or self-service exists for
+      the teams that were onboarded onto it and new teams still start with a ticket.
+    references:
+      - https://docs.databricks.com/aws/en/admin/clusters/policies
+      - https://docs.databricks.com/aws/en/admin/users-groups/best-practices
+    advice:
+      start_from: >-
+        Cluster policies granted to team groups, a schema each team owns, and access through
+        identity-provider groups — so a new use case starts without a ticket, and the platform
+        team handles exceptions rather than provisioning.
+      depends_on:
+        - >-
+          A use case that needs a catalog of its own, not a schema, still goes through a request,
+          and that request is the one deliberately gated thing rather than the default path.
+        - >-
+          An organisation whose identity provider cannot drive Databricks groups has to keep a
+          group-management step, and self-service then starts after that step, not before it.
+        - >-
+          A tightly regulated domain can keep grant approval as a ticket and still offer compute
+          and a schema without one; blocking all three because one must be gated is how teams
+          leave.
+      path:
+        - >-
+          Publish policies the teams can actually use, granted to their groups. A policy only
+          admins can attach is not self-service, and a policy nobody can work under is a ticket
+          with extra steps.
+        - >-
+          Delegate schema ownership to the same groups, and move data access onto identity-provider
+          groups so a new joiner inherits both.
+        - >-
+          Add a template bundle so day one is a working job, not an empty workspace. Then stop
+          doing the provisioning the policies now cover.
+      costs:
+        - >-
+          Policies are somebody's ongoing job: a new team needs one, and a policy that blocks
+          legitimate work grows an exception that is never removed.
+        - >-
+          Delegated ownership means a team can grant access badly, and the platform team finds
+          out from an audit rather than from a request they used to see.
+      retain: >-
+        The policy list with the groups that can use each one, and a note of the last use case
+        that started without a ticket — or the ticket it still needed, and why.
+      revisit: >-
+        A new team onboarding, a policy exception that became the common path, or a use case
+        that was built outside the platform to avoid a wait. Failing those, quarterly.
+
+  # Use optimized connectors to ingest data sources into Databricks
+  # Never put to a person when federation exists. Empty is unmeasured, not a fail.
+  IU-01-02:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: Data platform architect or integration lead
+    means: >-
+      External systems are reached through a connector the platform governs — Lakehouse Federation,
+      a managed ingestion connector, Auto Loader, or a certified partner — rather than a scheduled
+      extract this team wrote and now has to reconcile.
+    matters: >-
+      A hand-written extract is a second copy of the source. It drifts, it fails in a way the source
+      owner cannot see, and the person who wrote the pull is usually not the person who is paged
+      when it stops.
+    good:
+      - Sources that support federation are queried in place, with Unity Catalog permissions, rather than landed as files on a schedule.
+      - File drops use Auto Loader or a managed connector, not a notebook that lists a path.
+      - Credentials for those connections live in a secret, not in the statement that created them.
+      - Somebody can name, for each significant source, which of those mechanisms brings it in.
+      - A scheduled extract that remains is a named exception with an owner, not the default.
+    examples:
+      strong: >-
+        Operational databases are federated connections, SaaS tools use managed connectors, and
+        files land through Auto Loader. There is no nightly extract job left to maintain.
+      partial: >-
+        Two Postgres sources are federated and the rest still arrive as a warehouse dump a contractor
+        wrote three years ago, which nobody wants to touch because the downstream jobs expect those
+        file names.
+      weak: >-
+        Every source is a Python notebook on a schedule, with a password in a widget, landing CSV
+        that a second job converts. There is no connection object in the metastore and no inventory
+        of what pulls what.
+    verify:
+      - how: sql
+        where: |-
+          select connection_name, connection_type from system.information_schema.connections
+          order by 1
+        expect: >-
+          Named connections to the sources you federate, or an empty result you do not read as "no
+          ingestion"
+        caveat: >-
+          This view needs `USE CONNECTION` on the metastore. An empty result is also what a missing
+          grant looks like, and what every estate that uses only managed connectors, Auto Loader or
+          a partner tool looks like — none of those register a connection. The app treats zero as
+          unmeasured and asks which of them you use.
+      - how: ui
+        where: >-
+          Catalog Explorer > External Data > Connections, then Data Ingestion for managed connectors
+        expect: >-
+          The sources you consider production, present as one of those two, rather than only as jobs
+      - how: by-hand
+        where: >-
+          For each significant source, name the mechanism that brings it in
+        expect: >-
+          Federation, a managed connector, Auto Loader or a certified partner — not "a notebook we
+          inherited"
+    pitfalls:
+      - >-
+        Reading an empty connections list as a failing estate. The finding is unmeasured, and the
+        well-connected estate that never federated looks identical to the one that extracts everything.
+      - >-
+        A federated connection whose password was pasted into `CREATE CONNECTION`, which stores it
+        in the metastore for anyone who can describe the connection.
+      - >-
+        Federating a source and then running heavy queries against it, so the "optimized" path is
+        an unplanned load on a database somebody else depends on.
+    partial_when: >-
+      Some sources are federated or on a managed connector and others are still a scheduled extract,
+      or the connections exist and the extracts were never retired.
+    not_applicable_when: >-
+      The estate has no external sources to ingest — every table is produced here.
+    references:
+      - https://docs.databricks.com/aws/en/query-federation/
+      - https://docs.databricks.com/aws/en/ingestion/
+    advice:
+      start_from: >-
+        Federate the operational databases you query in place, use a managed connector for the SaaS
+        tools that have one, and Auto Loader for files. Keep a scheduled extract only where none of
+        those can reach the source.
+      depends_on:
+        - >-
+          A source that cannot take the query load should be federated first and then materialised
+          for the parts that are read often — still smaller than maintaining the extract.
+        - >-
+          A partner tool already certified for Databricks stays; replacing it with federation to
+          satisfy this finding is the wrong move.
+        - >-
+          An estate whose sources are all files has no federation work. Auto Loader is the pattern,
+          and an empty connections list is expected.
+      path:
+        - >-
+          Inventory the sources and mark each as federate, managed connector, Auto Loader, or
+          extract-with-a-reason. The empty connections list does not do this for you.
+        - >-
+          Stand up the connections and connectors for the ones that have a path, using secrets,
+          and point new work at them.
+        - >-
+          Retire an extract only when the downstream jobs have moved. Leaving both running is how
+          the copy and the source disagree.
+      costs:
+        - >-
+          A federated query runs on the source. A wide scan that was cheap as a file read can lock
+          or slow the system the business still runs on.
+        - >-
+          Replacing an extract means changing every job that expected those files, which is usually
+          more than one team.
+      retain: >-
+        The source inventory with the mechanism on each row, and the connection list from
+        `information_schema.connections` dated. The inventory is the half the scan cannot see.
+      revisit: >-
+        A new source system, a source owner complaining about load, or an extract job that failed
+        over a weekend. Failing those, twice a year.
+
+  # Use infrastructure as code (IaC) for deployments and maintenance
+  # Never put to a person when a bundle marker exists. Absence is unmeasured: Terraform leaves none.
+  IU-01-05:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: Platform owner, with the data engineering lead
+    means: >-
+      Jobs, pipelines and compute are defined in a repository and applied by a pipeline, so the same
+      definition can be deployed to another workspace without being rebuilt from the UI.
+    matters: >-
+      A job that exists only in the workspace cannot be reproduced. The next workspace, the next
+      region, or the next person reconstructs it from memory, and the two copies diverge on the
+      first edit nobody made in both places.
+    good:
+      - Production jobs are deployed from a repository, not created and edited in the workspace UI.
+      - A second workspace can be stood up from the same definitions, and somebody has done that or can say what it would take.
+      - Compute and pipeline settings live in the same definitions as the jobs, not as one-off UI clicks beside them.
+      - A change to a job goes through a pull request, so the history of what changed is the repository.
+      - The unmarked jobs are classified as Terraform, a one-off, or still to move — not an unexplained remainder.
+    examples:
+      strong: >-
+        Every production job and pipeline is in a bundle or a Terraform root, deployed by CI. A new
+        workspace is a target in the same repository. The UI is used to inspect, not to edit.
+      partial: >-
+        New jobs come from a bundle and the twenty that predate it are still clicked together in the
+        UI, or the estate is in Terraform and the scan cannot see it, so the finding is unmeasured
+        until somebody answers.
+      weak: >-
+        Jobs are created in the workspace as they are needed, edited there when they break, and
+        copied between environments by hand. There is no repository that could recreate them.
+    verify:
+      - how: sql
+        where: |-
+          with latest as (
+            select deployment.kind as deployment_kind, delete_time,
+            row_number() over (partition by workspace_id, job_id order by change_time desc) as rn
+            from system.lakeflow.jobs
+          )
+          select deployment_kind, count(*) as jobs from latest
+          where rn = 1 and delete_time is null group by all
+        expect: >-
+          Some rows with `BUNDLE`, which is the only marker this table carries — or none, which is
+          not a fail
+        caveat: >-
+          Databricks records `deployment.kind = BUNDLE` for asset bundles and nothing for Terraform,
+          which writes the same API a person uses. Zero markers is unmeasured, not "built by hand".
+          The window has to pick the latest row per job first: filtering live jobs before that
+          ranking was how one account reported five times as many jobs as it had.
+      - how: ui
+        where: >-
+          Jobs & Pipelines, a production job, whether a source or deployment field names a bundle
+        expect: >-
+          A bundle source on the jobs created recently, rather than only on a demo
+      - how: by-hand
+        where: >-
+          Ask where the job definitions live and what deploys them, including Terraform
+        expect: >-
+          A repository and a pipeline, named. "We use Terraform" is the answer the scan cannot see.
+    pitfalls:
+      - >-
+        Treating an unmeasured finding as a fail. An estate managed entirely in Terraform looks
+        exactly like an estate clicked together in the UI, and the app says so.
+      - >-
+        A bundle that deploys once and is then edited in the UI, so the repository is a snapshot of
+        last quarter and the workspace is the source of truth.
+      - >-
+        Counting jobs that billed recently. The jobs this requirement exists to find are the ones
+        nobody scheduled — they are the ones a spend window drops.
+    partial_when: >-
+      Some jobs carry a bundle marker and others do not, and the unmarked ones have not been
+      classified as Terraform, a one-off, or still to move. The app itself never passes this
+      control: even a fully bundled estate caps at partial, because the remainder cannot be told
+      from Terraform.
+    references:
+      - https://docs.databricks.com/aws/en/dev-tools/bundles/
+      - https://docs.databricks.com/aws/en/dev-tools/terraform/
+    advice:
+      start_from: >-
+        Databricks Asset Bundles for jobs and pipelines, deployed by CI, with the workspace UI
+        used to inspect. Terraform is as valid and invisible to this scan — if that is the
+        choice, answer the attestation and keep the state backend named.
+      depends_on:
+        - >-
+          An organisation already standardised on Terraform stays there. Switching to bundles to
+          make this finding turn partial is a worse interoperability move than leaving it
+          unmeasured.
+        - >-
+          A one-off job for a single analysis can stay in the UI, written down as one, so it does
+          not become the pattern for the next ten.
+        - >-
+          Compute that serverless already defines — no instance type, no runtime — does not need
+          a template in the same file; the job definition is enough.
+      path:
+        - >-
+          Put the next job in a bundle or the Terraform root, not the last twenty. Converting first
+          is how the work never starts.
+        - >-
+          Add CI so a merge is what deploys, and stop editing the deployed jobs in the UI.
+        - >-
+          Classify the unmarked remainder. Terraform, retired, or still to move — an unexplained
+          remainder is the next review's whole conversation.
+      costs:
+        - >-
+          The first bundle is slower than clicking a job together, which is why the template has
+          to already run.
+        - >-
+          Terraform state is a thing to host and to lock, and a lost state file is a rebuild from
+          the workspace — the situation this requirement exists to prevent.
+      retain: >-
+        The repository URL, the CI job that deploys, and — if Terraform — the state backend.
+        Those are what the attestation asks for when the scan cannot see a marker.
+      revisit: >-
+        A second workspace or region, a job edited in the UI after deploy, or a new team that
+        starts from a screenshot. Failing those, twice a year.
+
+  # Use open data formats
+  # Never put to a person. Same measurement as CO-01-01 / DG-03-03, read as portability.
+  IU-02-01:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: Data platform lead
+    means: >-
+      Tables another engine will read are stored as Delta or Iceberg, so that engine opens them
+      in place. CSV, JSON or bare Parquet stay in the drop that produced them, and are converted
+      before anything else is allowed to query them.
+    matters: >-
+      A closed or raw format turns every new consumer into an export job. The copy then drifts,
+      the original stays the source of truth for one team, and the organisation argues about
+      whose number is current.
+    good:
+      - Effectively every table another engine might read is Delta or Iceberg.
+      - Raw file drops are a landing zone, not a source that dashboards query.
+      - A new table gets an open format from the pipeline template, not from whoever wrote it.
+      - Exceptions are listed, each with the engine or partner that forces them.
+      - Somebody has pointed a second engine at a table without exporting it first.
+    examples:
+      strong: >-
+        Production tables are Delta. A handful of Iceberg tables exist because a Trino cluster
+        reads them directly, and that is written down. The CSV drop is a volume nothing else
+        queries.
+      partial: >-
+        Most tables are Delta after a migration, and a Parquet zone remains because a partner
+        delivers files there — which is reasonable, and is the zone two dashboards have started
+        reading.
+      weak: >-
+        A mixture of CSV, JSON and Parquet with a Delta table where someone knew to ask. A
+        second engine reads a nightly export, and the two numbers have not matched this quarter.
+    verify:
+      - how: sql
+        where: |-
+          select data_source_format, count(*) as tables
+          from system.information_schema.tables
+          where table_schema <> 'information_schema'
+            and table_type not in ('VIEW', 'METRIC_VIEW', 'FOREIGN')
+          group by all order by tables desc
+        expect: >-
+          Delta and Iceberg carrying nearly all of it, with any other format small enough to
+          name as a landing zone or an external reader
+        caveat: >-
+          Views, metric views and foreign tables report no choosable format and are not
+          exceptions. The app's denominator is tables less those three, less the Databricks-owned
+          catalogs. The query above already drops them, so a hand-run share should match the
+          finding. This is the same count `DG-03-03` uses; the difference is what you do with
+          it — here, whether another engine can read without a copy.
+      - how: ui
+        where: >-
+          Catalog Explorer, a table in a non-Delta format from the query above
+        expect: >-
+          A reason it is that way — a partner drop, an external reader — rather than nobody
+          knowing
+      - how: by-hand
+        where: >-
+          Ask how the last non-Databricks engine got at a table it needed
+        expect: >-
+          It read the table, or a listed Iceberg exception — not a nightly export
+    pitfalls:
+      - >-
+        Converting the format and leaving the export jobs running, so the second engine still
+        reads a copy and the requirement looks met from the catalogue.
+      - >-
+        Calling a Parquet landing zone a failure. The failure is querying it. The format of
+        the drop is not the format of the estate.
+      - >-
+        Standardising on Delta and then sharing by file, which throws away the reason to have
+        standardised.
+    partial_when: >-
+      Most tables are Delta or Iceberg and a known landing zone is not, or the tables are open
+      and consumers still take a copy because nobody pointed them at the table.
+    references:
+      - https://docs.databricks.com/aws/en/delta/
+      - https://docs.databricks.com/aws/en/opensharing
+    advice:
+      start_from: >-
+        Delta for tables the platform owns, Iceberg where a non-Databricks engine reads the
+        files directly, and raw formats only in a landing zone that nothing else is allowed
+        to query.
+      depends_on:
+        - >-
+          An external reader that cannot use Delta Sharing or Iceberg still needs an export,
+          and that export is a listed exception, not a reason to keep the estate in CSV.
+        - >-
+          A partner drop in a raw format is converted before it is published. The drop itself
+          is not the thing this control scores.
+        - >-
+          Where two engines already share through Delta Sharing, the format work is already
+          doing the interoperability job; do not add a second copy "for safety".
+      path:
+        - >-
+          Stop new tables landing in a raw format: set Delta or Iceberg in the pipeline
+          template so the list stops growing.
+        - >-
+          Convert the tables a second engine already reads, or point that engine at the
+          table and retire the export.
+        - >-
+          Write down what remains and why. An exception with a reason is finished work.
+      costs:
+        - >-
+          Converting a large table rewrites it. Both copies exist while it runs, and anything
+          reading the old path breaks without telling you.
+        - >-
+          Iceberg for an external reader is a second format to operate, and worth it only
+          when that reader is real, not anticipated.
+      retain: >-
+        The format count by table, dated, and the list of landing zones and external readers
+        that justify anything else. The list is what stops the next review starting over.
+      revisit: >-
+        A new engine that needs to read these tables, a partner drop changing format, or an
+        export job that was supposed to have been retired. Failing those, annually.
+
+  # Enable secure data and AI sharing for all data assets
+  # Never put to a person. No sharing is not-applicable, not a fail.
+  IU-02-02:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: Data platform lead, with the data governance lead
+    means: >-
+      Where data leaves or enters the account, it travels through Delta Sharing — a share
+      actually granted to a recipient, or an inbound provider — rather than as a file copy
+      somebody emailed or dropped on a bucket.
+    matters: >-
+      A copy that left the account is a copy you no longer govern. Revoking access means
+      hoping they deleted it, the audit log does not describe who still has it, and the next
+      share is another copy because that is the path people know.
+    good:
+      - Outbound datasets are shares granted to named recipients, not exports.
+      - Inbound data arrives as a provider in the metastore, not as files this team reloads.
+      - Recipients that authenticate with a token have an IP allowlist, or a reason they do not.
+      - A share with no recipient is treated as unfinished work, not as sharing.
+      - Whether to share at all is a decision somebody has made, including the decision not to.
+    examples:
+      strong: >-
+        Partner datasets are shares. Recipients are Databricks-to-Databricks where the other
+        side has an account, and the one token recipient has an IP allowlist. Inbound data
+        arrives through a provider, not a dump.
+      partial: >-
+        Shares exist and nobody has been granted them yet — the objects are defined, the
+        consumers are not onboarded — or the outbound path is Delta Sharing and inbound is
+        still a weekly file.
+      weak: >-
+        Data leaves as a CSV on a ticket, or a bucket with a shared key. There is no share
+        object, and the last time someone asked for a dataset the answer was an export job.
+    verify:
+      - how: sql
+        where: |-
+          select
+            (select count(*) from system.information_schema.shares) as shares,
+            (select count(*) from system.information_schema.recipients) as recipients,
+            (select count(*) from system.information_schema.providers) as providers
+        expect: >-
+          Shares with recipients, or providers without outbound, or three zeroes — which is
+          not a fail
+        caveat: >-
+          Each count needs its own grant: `USE SHARE`, `USE RECIPIENT`, `USE PROVIDER`. A
+          principal holding one and not the others reads a half-finished setup that is fully
+          finished. On labs, a scheduled identity read "receives none" in the same hour an
+          admin read an inbound provider. Three genuine zeroes is `not-applicable`: the app
+          does not mark an estate down for choosing not to share.
+      - how: ui
+        where: >-
+          Catalog Explorer > Delta Sharing, the shares and the recipients granted each one
+        expect: >-
+          Recipients on the shares you intend to publish, rather than shares sitting empty
+      - how: by-hand
+        where: >-
+          Ask how the last dataset that left the account was delivered
+        expect: >-
+          A share, or a written decision that this one could not be — not a file
+    pitfalls:
+      - >-
+        Reading three zeroes as a gap. Sharing is a business decision, and the control is
+        about how it is done when it is done.
+      - >-
+        A share defined and never granted, which the scan correctly calls partial: nothing
+        is being shared, and the work looks finished in the UI.
+      - >-
+        A token recipient without an allowlist, which is the open protocol the security
+        pillar measures. This control only asks whether sharing is the path.
+    partial_when: >-
+      Shares exist and have no recipients, or outbound is Delta Sharing and inbound is still
+      a file copy. An estate that shares nothing is not this case — it is not applicable.
+    not_applicable_when: >-
+      The metastore publishes no shares and receives none, and that is a decision rather
+      than a setup nobody started.
+    references:
+      - https://docs.databricks.com/aws/en/opensharing
+      - https://docs.databricks.com/aws/en/opensharing/create-share
+    advice:
+      start_from: >-
+        Delta Sharing for any dataset that crosses the account boundary, Databricks-to-Databricks
+        recipients where the other side has an account, and no share left without a recipient.
+        Not sharing is a valid position and needs no object in the metastore.
+      depends_on:
+        - >-
+          A recipient without a Databricks account uses the open protocol and a token you
+          deliver and rotate. Prefer the Databricks-to-Databricks form when you can.
+        - >-
+          A regulator or contract that forbids the data leaving still forbids it as a share.
+          The control does not ask you to share; it asks you not to copy when you do.
+        - >-
+          Inbound-only is already the behaviour this asks for. Do not create an outbound
+          share to make the finding look busier.
+      path:
+        - >-
+          Decide whether anything should leave the account. If not, stop: the finding is
+          not-applicable and that is the answer.
+        - >-
+          For each dataset that should, create the share and the recipient in the same
+          change. A share without a recipient is the partial the scan already names.
+        - >-
+          Retire the export jobs that the share replaced, or the copy continues and the
+          share is theatre.
+      costs:
+        - >-
+          Onboarding a recipient is a conversation about what they may see, which is why
+          shares sit empty: the objects were easy and the grant was not.
+        - >-
+          The open protocol means holding a token. Losing it is a revocation and a rotation,
+          not an undo of a file that already left.
+      retain: >-
+        The share and recipient list, dated, and the written decision for any dataset that
+        still leaves as a file. Three zeroes with that decision is the artefact, not a gap.
+      revisit: >-
+        A new partner, a recipient that stopped reading, or a request that was answered
+        with an export. Failing those, annually.
+
+  # Use serverless compute
+  # Never put to a person. Same measurement as CO-01-06, read as time-to-a-working-workload.
+  IU-03-02:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: Platform owner
+    means: >-
+      Work that has a serverless form runs on it, so a team starts a job, a warehouse or a
+      notebook without sizing a cluster. The scan measures this as spend, not as a count of
+      resources: a stopped classic cluster and a busy one look the same in an inventory.
+    matters: >-
+      Classic compute is a sizing decision between the team and a working workload. The wait
+      is why people copy last week's cluster, and last week's cluster is how every new use
+      case inherits a shape nobody chose for it.
+    good:
+      - Jobs, SQL and notebooks that can be serverless are, for most of the spend that had the choice.
+      - A new use case starts on serverless unless somebody can name why it cannot.
+      - Classic clusters that remain have a reason — a library, a GPU, a policy the region does not offer.
+      - The share is of spend someone could have put on serverless, not of the whole bill.
+      - Price coverage is known, so a gap in the price list is not reported as zero adoption.
+    examples:
+      strong: >-
+        Jobs, SQL warehouses and notebooks are serverless. The classic clusters that remain
+        are a GPU training job and a library a warehouse cannot load, both written down.
+        Serving and Apps are not in the share: they have no classic form.
+      partial: >-
+        SQL is serverless and the jobs still run on classic clusters sized three years ago,
+        or serverless is the default for new work and the existing jobs were never moved.
+      weak: >-
+        Everything that can be a cluster is a cluster. A new analyst waits for one to start,
+        copies the last configuration they were shown, and leaves it running.
+    verify:
+      - how: sql
+        where: |-
+          select billing_origin_product,
+          coalesce(product_features.is_serverless, false) as serverless,
+          round(sum(usage_quantity), 1) as dbus
+          from system.billing.usage
+          where usage_date > current_date() - 30 and usage_unit = 'DBU'
+          and billing_origin_product in ('JOBS', 'ALL_PURPOSE', 'INTERACTIVE', 'SQL', 'DLT')
+          group by all order by dbus desc
+        expect: >-
+          Serverless carrying most of the DBU in those five products, which are the ones
+          that have a classic form to leave
+        caveat: >-
+          The app scores priced cost, not DBU quantity, and only the spend that had a
+          serverless option. Serving, Lakebase, Apps and storage are left out of both
+          sides — they have no classic form, and counting them would credit an estate
+          for products it could not have run another way. A missing SKU on the price
+          list makes the finding unmeasured, not zero.
+      - how: ui
+        where: >-
+          Compute and Jobs, whether new work defaults to serverless
+        expect: >-
+          Serverless as the path a team hits first, with classic as a named exception
+      - how: by-hand
+        where: >-
+          Ask the last team that started a use case what they had to size
+        expect: >-
+          Nothing, or a reason that is a library or a GPU rather than a habit
+    pitfalls:
+      - >-
+        Scoring serverless against the whole bill. An estate heavy on model serving then
+        looks adopted while every job still waits for a cluster.
+      - >-
+        Counting clusters. A stopped classic cluster and a busy one count the same, which
+        is why this measurement is spend.
+      - >-
+        Moving SQL and leaving jobs, which is the visible half and not the wait a team
+        still hits.
+    partial_when: >-
+      Some of the spend that could be serverless is, and a known class — usually jobs, or
+      one team — is still on classic compute with no reason written down.
+    not_applicable_when: >-
+      Nothing in the window was billed on jobs, all-purpose, SQL or pipelines, so there
+      was no serverless decision to take.
+    references:
+      - https://docs.databricks.com/aws/en/compute/serverless/
+      - https://docs.databricks.com/aws/en/jobs/run-serverless-jobs
+    advice:
+      start_from: >-
+        Serverless for jobs, SQL warehouses and notebooks, with classic compute only where
+        a library, a GPU or a regional gap makes it necessary — and that exception written
+        down.
+      depends_on:
+        - >-
+          A workload that needs a custom container or a GPU stays classic, and the
+          requirement is that everything else does not follow it.
+        - >-
+          A region without serverless keeps classic and a short auto-stop, because the
+          idle cost is now yours.
+        - >-
+          Long, continuous jobs can cost more on serverless per DBU. Measure that job
+          before moving it; the default is still serverless for the ones that start and
+          stop.
+      path:
+        - >-
+          Move SQL first. Nobody defends a dashboard's cluster, and it is most of the
+          wait an analyst hits.
+        - >-
+          Then new jobs, by making serverless the job-compute default, so the list of
+          classic jobs stops growing.
+        - >-
+          Then the existing jobs, starting with the ones that start often and sit idle,
+          and leave the GPU and custom-image ones as the exception list.
+      costs:
+        - >-
+          Serverless bills higher per DBU than a well-sized classic cluster that runs
+          continuously. A lift-and-shift of those jobs can raise the bill.
+        - >-
+          Cold start on the first query after a pause is what people mention, and it is
+          why a warehouse that serves an interactive dashboard may want a different
+          setting than a notebook.
+      retain: >-
+        The dated share of choice-spend that is serverless, and the list of classic
+        exceptions with a reason each. The share without the list is a number that will
+        be argued.
+      revisit: >-
+        A new region, a GPU or custom-image workload arriving, or the classic share
+        rising two months running. Failing those, quarterly.
+
+  # Use predefined compute templates
+  # Never put to a person. Same measurement as OE-02-02, read as a starting template.
+  IU-03-03:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: Platform owner
+    means: >-
+      A team that still needs classic compute starts from a policy — instance family, runtime,
+      size bounds — rather than from an empty cluster form. Serverless estates have nothing
+      here to template: there is no instance type to choose.
+    matters: >-
+      An empty form is how every team picks a different runtime and a different node type,
+      and how the next person to debug a job has to learn that team's choices before they
+      can learn the job. The wait is not the start time; it is the configuration.
+    good:
+      - Classic all-purpose clusters are created from a policy, not from the unrestricted form.
+      - The policies a team can use are granted to the team, not only to admins.
+      - A policy is wide enough to work under, so the real path is not an exception ticket.
+      - Serverless is the default where it exists, and the policies cover what remains.
+      - Somebody can name the policies and which team each is for.
+    examples:
+      strong: >-
+        The few classic clusters that remain were created from policies scoped to the groups
+        that still need them. Everyone else is on serverless and never sees the form.
+      partial: >-
+        Policies exist and half the all-purpose clusters were created from them. The rest
+        are unrestricted clusters from before the policies, still running.
+      weak: >-
+        Anyone who can create a cluster gets the empty form. There are no policies, or the
+        only policy is one nobody is allowed to use.
+    verify:
+      - how: ui
+        where: >-
+          Compute, the all-purpose clusters, the Policy column, then Compute > Policies and
+          who may use each
+        expect: >-
+          A policy on the clusters that exist, granted to the teams that create them — or
+          no all-purpose clusters at all
+        caveat: >-
+          Serverless compute has no policy to attach. An estate with no classic all-purpose
+          clusters is satisfied by architecture, not scored as 100% policy adoption. The
+          app's population is all-purpose only; job clusters are a different question.
+      - how: cli
+        where: databricks clusters list --output json
+        expect: >-
+          `policy_id` set on the all-purpose clusters, rather than null on the ones people
+          actually use
+      - how: by-hand
+        where: >-
+          Ask a team that last created classic compute whether they picked a policy or
+          filled in the form
+        expect: >-
+          A policy, or "we do not create classic compute"
+    pitfalls:
+      - >-
+        A policy that exists and that only admins can attach, which is the empty form with
+        a document beside it.
+      - >-
+        A policy so tight that every real workload needs an exception, so the exceptions
+        are the estate.
+      - >-
+        Counting job clusters or serverless as ungoverned. They are not in this
+        population, and including them makes a well-templated estate look worse.
+    partial_when: >-
+      Policies cover some of the all-purpose clusters and the rest were created freehand,
+      or the policies exist for the teams that were onboarded and a new team still gets
+      the empty form.
+    not_applicable_when: >-
+      There are no classic all-purpose clusters, so there is no configuration a template
+      would settle.
+    references:
+      - https://docs.databricks.com/aws/en/admin/clusters/policies
+      - https://docs.databricks.com/aws/en/compute/configure
+    advice:
+      start_from: >-
+        Serverless as the default, and one policy per team that still needs classic
+        compute, granted to that team's group, wide enough that they do not immediately
+        ask for an exception.
+      depends_on:
+        - >-
+          An estate already on serverless for everything that can be does not need more
+          policies. The work is to keep classic from coming back as the empty form.
+        - >-
+          A GPU or a custom image needs its own policy, not an exception on the general
+          one, so the exception does not become the template.
+        - >-
+          Job compute is configured on the job, not by this policy. Folding it in here
+          mixes two populations the scan keeps apart.
+      path:
+        - >-
+          Publish one usable policy and grant it to the group that creates the most
+          classic clusters. An unused policy is not a start.
+        - >-
+          Attach it to the clusters that group already runs, or recreate them from it,
+          so the freehand remainder stops being the working set.
+        - >-
+          Then add a policy for the next group, and remove the unrestricted create
+          permission once the groups that need classic have a policy.
+      costs:
+        - >-
+          A policy is a living object. A runtime upgrade or a new instance family is an
+          edit, and an unmaintained policy is how people learn to request exceptions.
+        - >-
+          Recreating a cluster from a policy is a restart and a chance to get the
+          attached libraries wrong.
+      retain: >-
+        The policy list with the groups that may use each one, and a dated count of
+        all-purpose clusters with and without a policy. That count is what the scan
+        reports.
+      revisit: >-
+        A new team that needs classic compute, a policy exception that became common,
+        or serverless becoming available where it was not. Failing those, twice a year.
+
+  # Use AI capabilities to increase productivity
+  # Never put to a person when an endpoint exists. Empty is unmeasured: most AI leaves none.
+  IU-03-04:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: ML platform or AI engineering lead
+    means: >-
+      The team uses Databricks AI to shorten delivery — a serving endpoint, vector search,
+      SQL AI functions, Genie or the assistant — rather than rebuilding the same capability
+      in a notebook or a vendor SDK beside the platform.
+    matters: >-
+      Rebuilding a classifier, a search index or an assistant outside the platform is a
+      second thing to authenticate, to evaluate and to keep current, and it is the thing
+      that will not see the data the catalogue already governs.
+    good:
+      - At least one production path uses a platform AI capability rather than a side-built equivalent.
+      - Serving endpoints, where they exist, are what applications call, not a model file in a repo.
+      - SQL AI functions are used for classification and extraction inside queries that already run here.
+      - Somebody can name which capabilities are in use and which teams use them.
+      - An estate using only Genie or `ai_query` is recorded as such, not treated as unused.
+    examples:
+      strong: >-
+        Applications call a serving endpoint, analysts use Genie on governed tables, and
+        classification runs as `ai_extract` in the pipeline that already writes the table.
+        Nothing equivalent was built beside it.
+      partial: >-
+        One team calls a serving endpoint and two others still call a vendor SDK from a
+        notebook, or Genie is in use and nobody has told the scan, so the finding is
+        unmeasured until they answer.
+      weak: >-
+        Every classification is a notebook with a vendor SDK, vector search is a service
+        beside the warehouse, and the assistant is switched off. The platform's AI is
+        unused on purpose or by omission, and nobody can say which.
+    verify:
+      - how: cli
+        where: databricks serving-endpoints list
+        expect: >-
+          Endpoints the applications call, or none — which is not a fail
+        caveat: >-
+          This is one of two surfaces the app can read. Zero endpoints is unmeasured, not
+          "no AI". SQL AI functions, Genie, the assistant and pay-per-token foundation
+          model calls leave no endpoint behind, and an estate using those heavily looks
+          identical to one using none. The criteria used to call that a failure; the
+          resolver does not, and the attestation is what records the rest.
+      - how: cli
+        where: databricks vector-search-endpoints list
+        expect: >-
+          Vector search endpoints if retrieval is in production, or none
+      - how: by-hand
+        where: >-
+          Ask which of SQL AI functions, Genie, the assistant, serving or vector search
+          anyone used this month
+        expect: >-
+          Named capabilities and who used them, including "none yet" if that is true
+    pitfalls:
+      - >-
+        Reading no endpoints as no AI. That is the limit of the evidence, and the app
+        reports it as unmeasured so a reader does not have to discover it.
+      - >-
+        Standing up an endpoint to make the finding pass, while the applications still
+        call a vendor SDK. The capability is present and unused.
+      - >-
+        Building a classifier in a notebook that `ai_classify` already does, because
+        nobody knew the function existed.
+    partial_when: >-
+      One team uses a platform capability and others rebuild the equivalent, or serving
+      is in use and the SQL-side functions that would have removed a notebook have not
+      been tried. An estate with no endpoints and no other AI is not this case — it is
+      a question, not a partial.
+    references:
+      - https://docs.databricks.com/aws/en/machine-learning/model-serving/
+      - https://docs.databricks.com/aws/en/large-language-models/ai-functions
+    advice:
+      start_from: >-
+        SQL AI functions for classification, extraction and summarisation inside
+        existing queries, Genie for analyst self-service on governed tables, and a
+        pay-per-token serving endpoint only when an application needs to call a model.
+      depends_on:
+        - >-
+          Retrieval over a corpus needs vector search; the functions will not do that,
+          and an external index is the thing this requirement is trying to avoid.
+        - >-
+          A custom model already trained here is served from the registry, not called
+          from a notebook, so the next application does not learn a file path.
+        - >-
+          A policy that forbids sending data to a foundation model is a reason to stay
+          on the functions you can run in-workspace, not a reason to rebuild them.
+      path:
+        - >-
+          Name what is already in use. If it is Genie or `ai_query` and the scan is
+          unmeasured, answer the attestation — that is the record, not an endpoint.
+        - >-
+          Replace one notebook classifier or extractor with the matching SQL function,
+          on a pipeline that already runs, so the saving is visible.
+        - >-
+          Add an endpoint when an application needs one, scale-to-zero, and point the
+          application at it. Do not add one to clear a finding.
+      costs:
+        - >-
+          Foundation-model calls are billed per token. A classification run over a
+          large table is a real bill, and a local function you already have may be
+          cheaper and sufficient.
+        - >-
+          An endpoint that is not scale-to-zero costs while idle, which is how a
+          "quick trial" becomes a line item.
+      retain: >-
+        The list of AI capabilities in use, which team uses each, and whether the scan
+        can see them. For Genie and SQL functions the attestation is the artefact.
+      revisit: >-
+        A new application that needs a model, a policy change about foundation models,
+        or a notebook that reinvented a function. Failing those, twice a year.
+
+  # Offer reusable data-as-products that the business can trust
+  # Never put to a person. Caps at partial: trust is not in the metastore.
+  IU-04-01:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: Data governance lead, with the owning data teams
+    means: >-
+      Published tables carry a tag that says what they are for — certified, deprecated,
+      restricted — so a consumer can tell a product from a working table without asking
+      the team that owns it.
+    matters: >-
+      Without a status mark, every table looks equally finished. A consumer picks the
+      one they found first, builds on a staging table, and the number they ship is the
+      one the owning team would have told them not to use — if anyone had asked.
+    good:
+      - Published tables carry a status tag, and staging tables do not carry the same one.
+      - The tag convention is written down, so two teams do not invent two words for "use this".
+      - A consumer can filter to the certified set in Catalog Explorer without knowing schema names.
+      - Ownership is a group, so the product still has an owner when a person leaves.
+      - Descriptions exist, but they are not the thing that marks a product — a tag is.
+    examples:
+      strong: >-
+        Each domain has a published schema tagged at the schema, and certified tables
+        tagged at the table where the layer is mixed. A consumer looking for customer
+        data finds the gold table and not the three staging copies.
+      partial: >-
+        The finance tables are tagged and the rest are not, or descriptions are thorough
+        and nothing says which table to build on, so the scan correctly stops at partial.
+      weak: >-
+        No table carries a tag. A consumer finds four candidates with similar names and
+        picks one. The owning team finds out when the number is already in a report.
+    verify:
+      - how: sql
+        where: |-
+          select count(distinct concat_ws('.', catalog_name, schema_name, table_name)) as tagged
+          from system.information_schema.table_tags
+        expect: >-
+          A non-zero count, against the tables consumers actually read — not one tagged
+          demo table
+        caveat: >-
+          Distinct tables, not tag rows: ten tags on one table are not ten products. The
+          app excludes Databricks-owned catalogs, so a hand count over the whole view
+          reads higher. Zero tags and few descriptions is a fail; zero tags and many
+          descriptions is partial. Any tags at all still cap at partial, because whether
+          the business trusts the product is not in the metastore.
+      - how: ui
+        where: >-
+          Catalog Explorer search or a published schema, the tags on the tables a
+          consumer would pick
+        expect: >-
+          A status tag that distinguishes the product from the working tables beside it
+      - how: by-hand
+        where: >-
+          Ask a consumer how they tell which table to build on
+        expect: >-
+          A tag or a published schema, not a person
+    pitfalls:
+      - >-
+        Tagging every table individually with the same status, which is how a convention
+        dies: the next table is created without one and nobody notices.
+      - >-
+        A description that says "the customer table" on four tables, which satisfies a
+        comment count and answers nothing about which to use.
+      - >-
+        Treating a pass as available. This control cannot pass. Tags and descriptions
+        are the measurable half; trust is the other half.
+    partial_when: >-
+      Tags are in use on some domains and not others, or descriptions are widespread and
+      tags are not, so a consumer can understand a table and still not know whether to
+      build on it. The measured half never reaches a pass.
+    references:
+      - https://docs.databricks.com/aws/en/database-objects/tags
+      - https://docs.databricks.com/aws/en/discover/
+    advice:
+      start_from: >-
+        One status tag — certified, deprecated, or working — applied at the schema where
+        a whole layer shares it, and at the table where it does not. Descriptions come
+        after the tag, because choosing is the consumer's first problem.
+      depends_on:
+        - >-
+          An estate with one table per concept can defer tags and still be honest: the
+          consumer's problem is understanding, not choosing, and that is comments.
+        - >-
+          A domain with four copies of the same data needs the tag before it needs more
+          comments, or the comments describe four candidates equally well.
+        - >-
+          A certification that needs a steward's sign-off is a process on top of the
+          tag, not a reason to skip the tag until the process exists.
+      path:
+        - >-
+          Agree the two or three status words and write them down. Two teams using
+          "gold" and "certified" for the same thing is how the filter fails.
+        - >-
+          Tag the published schema in each domain first. A consumer who can restrict
+          to that schema is most of the way there.
+        - >-
+          Then tag the exceptions at the table, and stop. Tagging the working tables
+          as working is optional and usually not maintained.
+      costs:
+        - >-
+          The certified mark is a decision somebody has to defend, which is why
+          estates have four candidates and no tag.
+        - >-
+          A schema-level tag is wrong the first time one table in it should not be
+          built on, and moving to per-table tags is the maintenance this starting
+          position is trying to avoid.
+      retain: >-
+        The tag convention, the tagged-table count dated, and the list of published
+        schemas. The convention is the artefact the next team will ignore if it lives
+        only in someone's head.
+      revisit: >-
+        A second copy of an important dataset, a consumer who built on a staging
+        table, or a new domain. Failing those, annually.
+
+  # Publish data products semantically consistent across the enterprise
+  # Never put to a person. Same measurement as IU-04-01, read as shared meaning.
+  IU-04-02:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: Data governance lead, with the owning data teams
+    means: >-
+      A field that crosses team boundaries means one thing, or it has two names. The
+      scan cannot read that: it sees tags and descriptions, and caps at partial
+      because whether "customer" is the same customer in two schemas is not a
+      metastore property.
+    matters: >-
+      The same name with two meanings produces a join that returns a number. The
+      number looks like an answer, it ships, and the first time anyone notices is
+      when two reports disagree by a population nobody can explain.
+    good:
+      - Shared fields — customer, account, region — have a written definition, and the same name is used only where the definition matches.
+      - Where two units genuinely mean different things, the names differ too.
+      - Tags mark the published tables those definitions apply to, so a consumer knows which schema is in the contract.
+      - A new table that reuses a shared name is checked against the definition, not against whoever wrote it.
+      - Somebody has asked two teams what a shared field means and recorded both answers.
+    examples:
+      strong: >-
+        A one-page glossary defines the fields that appear in more than one team's
+        joins. Billing-customer and login-customer are two names. The published
+        tables are tagged, so a join across domains uses the tagged side.
+      partial: >-
+        Tags and descriptions are in place — the scan's measurable half — and nobody
+        has compared what two teams mean by the same column, so the semantic half is
+        still a conversation that has not happened.
+      weak: >-
+        `customer_id` is the billing account in finance and the login in marketing.
+        There are no tags, no glossary, and the join between them is in a dashboard
+        that has been wrong for months.
+    verify:
+      - how: sql
+        where: |-
+          select count(distinct concat_ws('.', catalog_name, schema_name, table_name)) as tagged,
+          (select count(*) from system.information_schema.column_tags) as column_tags
+          from system.information_schema.table_tags
+        expect: >-
+          Tags on the published tables, and column tags only if you chose to mark
+          shared fields that way — neither proves two teams agree
+        caveat: >-
+          This is the same measurement as `IU-04-01`. Tags and descriptions are all
+          the metastore holds. A clean result here means the metadata half is present;
+          it does not mean "customer" is consistent. The app never passes this
+          control. The by-hand step is the half that decides.
+      - how: by-hand
+        where: >-
+          Take one field name that appears in two teams' schemas and ask each team
+          what it means
+        expect: >-
+          The same answer, or two different names — not the same name with two
+          meanings
+      - how: ui
+        where: >-
+          Catalog Explorer, the two tables you just asked about, their column
+          comments and tags
+        expect: >-
+          Comments that would have predicted the answers you heard, or a gap that
+          explains why they differed
+    pitfalls:
+      - >-
+        Treating the finding as a pass on meaning. It cannot be. The score is about
+        tags; the requirement is about words.
+      - >-
+        A glossary in a wiki that nobody updates when a pipeline reuses a name, which
+        is accurate on the day of the meeting and wrong the first time someone is
+        in a hurry.
+      - >-
+        Forcing two business units to one definition they will both ignore. Two named
+        fields is the honest outcome of a real disagreement.
+    partial_when: >-
+      The metadata is tagged and described — which is as far as the scan goes — and
+      the shared-field conversation has not happened, or it happened for finance and
+      not for the teams that joined later. There is no pass on this control.
+    references:
+      - https://docs.databricks.com/aws/en/database-objects/tags
+      - https://docs.databricks.com/aws/en/discover/
+    advice:
+      start_from: >-
+        One page of definitions for the fields that appear in more than one team's
+        joins, and two names wherever two meanings are real. Tags mark the published
+        tables those definitions apply to, so the contract has a place.
+      depends_on:
+        - >-
+          Two units that will not agree keep two names. A forced single definition
+          is ignored, and the join goes back to being tribal knowledge.
+        - >-
+          An estate with no cross-team joins yet can defer the glossary and still
+          tag the published tables; the conversation starts the first time a join
+          crosses a boundary.
+        - >-
+          A semantic layer in the BI tool is where analysts see the names, and the
+          glossary has to match what that layer exposes or it will be unused.
+      path:
+        - >-
+          List the field names that appear in more than one team's joins. That is a
+          smaller set than a full glossary, and it is where the wrong numbers come
+          from.
+        - >-
+          Ask both teams what each name means, in the same week, and write both
+          answers down. Split the name where they differ.
+        - >-
+          Point the joins at the tagged published tables, so the next dashboard
+          does not bind to a working copy that used the old meaning.
+      costs:
+        - >-
+          The conversations need the business, not the platform team, and they stall
+          for calendar reasons rather than technical ones.
+        - >-
+          Renaming a column that already has two meanings breaks the dashboards that
+          depended on the ambiguity.
+      retain: >-
+        The definitions page, dated, with the two-team answers that produced it, and
+        the tagged published tables it applies to. The answers are the evidence the
+        scan will never hold.
+      revisit: >-
+        A join across domains that produced a number nobody could explain, a merger,
+        a new team reusing a shared name, or a semantic layer arriving. Failing
+        those, annually.
+
+  # Provide a central catalog for discovery and lineage
+  # Never put to a person. Weaker of description and lineage; registration is not scored.
+  IU-04-03:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: Data platform lead, with the owning data teams
+    means: >-
+      A table in this metastore can be found from what it is for, and its flow can be
+      seen, without asking the team that owns it. The scan scores the weaker of those
+      two — description coverage and lineage coverage — because discovery fails at
+      whichever is missing.
+    matters: >-
+      A catalogue nobody described is a list of names. A well-described table with no
+      lineage cannot be traced to a source. Either way a consumer builds a second copy,
+      and the two numbers disagree.
+    good:
+      - Most tables consumers use carry a comment that says what a row is and what the table is for.
+      - Lineage is visible for the tables that were read or written in the window, counted once per table.
+      - The finding's weaker share is the one being worked, not the one that already looks fine.
+      - Registration is not treated as a third score — every table counted here is already in Unity Catalog.
+      - A quiet window is not read as a lineage gap.
+    examples:
+      strong: >-
+        Production tables are described, and the ones that ran this month show lineage
+        from the writing job to the dashboard. The weaker of the two shares is still
+        above the pass band.
+      partial: >-
+        Descriptions are thorough and lineage is thin, or the other way around, so the
+        weaker share sits in the middle. Working the stronger one will not move the
+        finding.
+      weak: >-
+        Comments are empty and lineage is empty. Discovery is a Slack message, and the
+        answer is a notebook link.
+    verify:
+      - how: sql
+        where: |-
+          select count(*) as tables, count(comment) as documented,
+          round(100.0 * count(comment) / count(*), 0) as pct
+          from system.information_schema.tables
+          where table_schema <> 'information_schema'
+        expect: >-
+          Coverage on the tables consumers use, not one curated schema at a hundred
+          per cent and the rest at nothing
+        caveat: >-
+          `count(comment)` skips nulls, which is what makes the ratio the coverage.
+          The app also drops Databricks-owned catalogs, so a hand-run share reads
+          slightly higher than the finding. This is one of two inputs; the score is
+          the weaker of this and lineage, not the average.
+      - how: sql
+        where: |-
+          with sides as (
+            select named_struct('c', source_table_catalog, 's', source_table_schema,
+                                't', source_table_name) as id
+            from system.access.table_lineage
+            where event_date >= current_date() - interval 30 days and source_table_name is not null
+            union all
+            select named_struct('c', target_table_catalog, 's', target_table_schema,
+                                't', target_table_name)
+            from system.access.table_lineage
+            where event_date >= current_date() - interval 30 days and target_table_name is not null
+          )
+          select count(distinct id) as tables_with_lineage from sides
+        expect: >-
+          A count to hold against the managed and external tables, which is the
+          denominator the app divides by
+        caveat: >-
+          Counted once per table across both sides. One side alone misses a table
+          only ever written; adding the two double-counts — 7 of 26 tables on one
+          estate, 21% of the sum. An empty window drops lineage out of the verdict
+          rather than scoring zero. Absence is inactive, or activity outside Unity
+          Catalog, and this cannot tell them apart.
+      - how: ui
+        where: >-
+          Catalog Explorer search for a business term, then the Lineage tab on the
+          table you found
+        expect: >-
+          The canonical table among the first results, and a writing job or a
+          reading dashboard on the tab — or an empty tab you do not read as a gap
+          if nothing ran
+    pitfalls:
+      - >-
+        Reading a 100% registration sentence as the score. Registration is not
+        scored: the census cannot see `hive_metastore`, and every table it can see
+        is already registered. The criteria used to name it as a third factor;
+        the resolver no longer does.
+      - >-
+        Improving the stronger of the two shares. The finding is the weaker one,
+        and the other does not move it.
+      - >-
+        Treating an empty lineage window as missing coverage. That is a quiet
+        estate or a newly enabled audit table, and the app says so.
+    partial_when: >-
+      One of description and lineage is in good shape and the other is not, so the
+      weaker share sits in the partial band, or both are mid-way. A quiet window
+      that leaves lineage out can still partial on descriptions alone.
+    references:
+      - https://docs.databricks.com/aws/en/discover/
+      - https://docs.databricks.com/aws/en/data-governance/unity-catalog/data-lineage
+    advice:
+      start_from: >-
+        Comments set by the pipeline that creates the table, workloads on compute
+        that emits lineage, and work aimed at whichever of those two shares is
+        weaker on the finding — not at an average, and not at registration.
+      depends_on:
+        - >-
+          A quiet estate with no table access in the window is scored on
+          descriptions only. Do not invent lineage work to fill a window nothing
+          ran in.
+        - >-
+          Jobs on a no-isolation cluster will never appear in lineage. The fix
+          for that share is the compute, then waiting, not a comment pass.
+        - >-
+          An estate whose consumers search a BI tool still needs the comments in
+          Unity Catalog if that tool reads them; if it does not, the requirement
+          is what the semantic layer exposes.
+      path:
+        - >-
+          Read the finding and start with the weaker share. Descriptions you can
+          change today; lineage you can only enable and wait for.
+        - >-
+          Set comments in the creating pipeline for the tables something actually
+          reads, not in catalogue order.
+        - >-
+          Move production jobs onto compute that emits lineage, then give the
+          window a month. Drawing a diagram by hand beside it is not a substitute.
+      costs:
+        - >-
+          Comments in pipeline code are slower to change than comments in the UI,
+          and that is the trade that keeps them accurate.
+        - >-
+          Changing a job's access mode to emit lineage can change what the job is
+          allowed to read, which is a permission exercise, not a toggle.
+      retain: >-
+        The two shares from the finding, dated, and a note of which one was weaker
+        and what was done about it. A registration percentage is not this artefact
+        and is not a number the scan produces.
+      revisit: >-
+        A new consumer group, a week with no lineage events after one with many, or
+        a discovery question that reached a person. Failing those, annually.

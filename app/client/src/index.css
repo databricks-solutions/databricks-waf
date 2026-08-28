@@ -1,0 +1,25 @@
+/*
+ * Style entry. Order is load-bearing and enforced by `npm run check:design-system`.
+ *
+ * 1. AppKit's stylesheet imports Tailwind and declares the semantic variables its own
+ *    components consume.
+ * 2. @xyflow/react's stylesheet, imported from the package, not copied. ADR 0098.
+ * 3. wa-theme.css redeclares those same variables against the customer semantic palette,
+ *    winning on source order, which is how AppKit and xyflow adopt the design system without
+ *    being wrapped.
+ * 4. wa-tailwind.css maps tokens onto Tailwind and owns shared controls and domain utilities.
+ * 5. customer-system.css owns the role-based composition every customer page consumes.
+ * 6. wa-print.css turns the application into a document. Last, and outside @layer, so its
+ *    structural overrides beat the layered component rules they have to undo.
+ *
+ * The previous contents of this file were two fully commented-out oklch token blocks left by
+ * the AppKit template. They were inert and are replaced rather than kept, since a dead token
+ * set next to a live one invites edits to the wrong one.
+ */
+
+@import '@databricks/appkit-ui/styles.css';
+@import '@xyflow/react/dist/style.css';
+@import './styles/wa-theme.css';
+@import './styles/wa-tailwind.css';
+@import './styles/customer-system.css';
+@import './styles/wa-print.css';

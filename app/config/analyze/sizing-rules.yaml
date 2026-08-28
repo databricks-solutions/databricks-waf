@@ -1,0 +1,199 @@
+# What the advisor says about the size and shape of a SQL warehouse.
+#
+# Data rather than code for the reason ADR 0002 gives and the one the advisor document gives at line 606:
+# every number below is a claim about a distribution, meant to be fitted from measured outcomes rather
+# than compiled into a binary. The conditions that read them are in `server/advise/sizing.ts`, where they
+# can be typed against what `system.query.history` and `system.compute.warehouse_events` actually record.
+#
+# ## These five rules answer different questions, and the separation is the whole design
+#
+# A warehouse that is slow, a warehouse that is idle and a warehouse that is too small look identical in
+# a bill and take opposite actions. So:
+#
+#   queueing        statements waited for a cluster. Concurrency, not size. Add clusters.
+#   spill           statements ran out of memory. Size, not concurrency. Go one size up.
+#   idle uptime     the warehouse was up and not executing. Auto-stop, neither size nor concurrency.
+#   cold starts     a classic warehouse spent the week starting. Serverless, or a longer auto-stop.
+#   headroom        nothing was slow, nothing queued, nothing spilled. A smaller size might do.
+#
+# The last is the only one that suggests spending less, and it is the only one whose confidence is `low`.
+# That is deliberate: the four above measure something that happened, and this one measures the absence of
+# it. "Nothing went wrong at this size" is evidence that a smaller size is worth *testing*, and it is not
+# evidence that a smaller size would hold — a week without month-end in it is a week that never asked.
+#
+# ## Sustained means days, and every rule here counts them
+#
+# Each rule requires a day count as well as a total, because a warehouse is resized on a pattern and a
+# statement can spill on one bad afternoon. The counts come from the statement, which flags a day on the
+# lowest bar there is — any queueing at all, any spill at all — so the tunable part of "sustained" is the
+# `days_*` threshold here and the objective part is in SQL. See the statement's header.
+version: 1
+
+# There is no suppression share here, and that is the point of its absence.
+#
+# There was one: above 50% of a warehouse's query time being the assessment's own, no advice was offered on
+# it. The failure it guarded against was real and measured — 75% of one labs warehouse's query time was
+# this app, and every threshold below would have been describing the assessment. But the guard put a
+# warehouse in the customer's list with a share named on it and no advice, which asks the reader to
+# discount a number rather than showing them one that is about them.
+#
+# The statement now excludes our statements in a `WHERE` clause, so nothing below reads a figure with us in
+# it and there is no share to threshold. See `workload_warehouse_pressure.sql` and ADR 0070.
+
+rules:
+  # ---------------------------------------------------------------------------
+  # Concurrency. The one thing a bigger warehouse does not fix.
+  # ---------------------------------------------------------------------------
+  - id: WAREHOUSE_QUEUEING
+    provenance: extension
+    severity: high
+    action: Increase this warehouse's maximum cluster count
+    headline: Statements waited for a cluster
+    detail: >-
+      Statements on this warehouse spent a measurable share of their elapsed time queued rather than
+      running, on several separate days. Queueing is a concurrency limit rather than a speed limit: the
+      statements themselves were not slow, there was nowhere for them to run. A larger warehouse size
+      makes each statement faster and does nothing about this, because size buys a bigger cluster and
+      what is missing is a second one. The lever is the cluster maximum — scale-out — and on serverless
+      it is what bounds how much concurrency the warehouse will add for itself.
+    rationale: >-
+      Not one of the query advisor's thirteen, which are all per-statement: this is the same measurement
+      aggregated to the thing a reader configures. The pair matters, because `CAPACITY_WAIT` on a query
+      shape tells a reader that one statement waited and this tells them which warehouse to change. The
+      day count is what keeps it honest — labs measured a warehouse queueing on 1 day of 8 at 0.3% of
+      elapsed time, which is a Tuesday rather than a size.
+    doc_url: https://docs.databricks.com/aws/en/compute/sql-warehouse/warehouse-behavior
+    thresholds:
+      # Share of elapsed time spent queued across the window's statements.
+      queue_percent: 5
+      # Above this the finding is critical rather than high: a warehouse spending a fifth of its elapsed
+      # time queued is one where the reader's own experience is waiting rather than querying.
+      critical_queue_percent: 20
+      # Days on which anything queued at all. Four, so it is a working pattern rather than a bad day.
+      days_queued: 4
+      # Statements in the window, so a warehouse that ran twice is not sized from two data points.
+      min_runs: 50
+
+  # ---------------------------------------------------------------------------
+  # Memory. The one thing more clusters do not fix.
+  # ---------------------------------------------------------------------------
+  - id: WAREHOUSE_SPILL
+    provenance: extension
+    severity: high
+    action: Inspect the spilling query, then test this warehouse one size larger
+    headline: Statements ran out of memory and spilled to disk
+    detail: >-
+      Statements on this warehouse wrote intermediate data to local disk because it did not fit in
+      memory, on several separate days. Spill is the clearest size signal there is: a warehouse one size
+      up has more memory per cluster, and unlike a concurrency problem it cannot be solved by adding
+      clusters — each cluster would hit the same ceiling. Before resizing, it is worth checking whether
+      one statement is responsible, because a single query with an exploding join will spill on any size
+      and the query profile names it.
+    rationale: >-
+      The warehouse-level counterpart to the advisor document's own `DATA_SPILL`, which fires per query
+      shape. Both are needed and they are read in opposite directions: the shape rule says which query to
+      look at, and this says whether the whole warehouse is undersized for what it is asked to do. On the
+      estate this was calibrated against, all but 0.4% of spill came from materialised-view refreshes,
+      which the shape statement excludes and this does not — so this is also the only place a reader sees
+      that spill at all.
+    doc_url: https://docs.databricks.com/aws/en/sql/user/queries/query-profile
+    thresholds:
+      # A gigabyte across the window. Below this the spill is incidental and resizing a warehouse for it
+      # would cost more than it saves.
+      spill_bytes: 1073741824
+      critical_spill_bytes: 107374182400
+      days_spilled: 3
+      min_runs: 20
+
+  # ---------------------------------------------------------------------------
+  # Uptime that produced nothing. Neither a size nor a concurrency problem.
+  # ---------------------------------------------------------------------------
+  - id: WAREHOUSE_IDLE_UPTIME
+    provenance: extension
+    severity: medium
+    action: Consolidate this warehouse's work into fewer active windows
+    headline: The warehouse was up without running anything
+    detail: >-
+      For most of the time this warehouse was running, no statement was executing on it. Uptime is billed
+      whether or not anything is asked of it, so the figure here is the share of what the account paid
+      for that produced query execution. The usual cause is an auto-stop long enough that the warehouse
+      idles through the gaps between bursts of work, and the fix is to shorten it rather than to change
+      the size — a smaller warehouse idles just as expensively per hour of nothing.
+    rationale: >-
+      Not in either design document, and the reason to add it is that it is the largest and most
+      common finding this pair of tables can produce. Labs measured two active warehouses at 5.7% and
+      9.5% of paid cluster time spent executing statements, which is the difference between a warehouse
+      that is the wrong size and a warehouse that is simply awake. Kept separate from the headroom rule
+      below because they read the same ratio and recommend different things, and a single rule would have
+      to guess which.
+    doc_url: https://docs.databricks.com/aws/en/compute/sql-warehouse/create
+    thresholds:
+      # Statement execution per cluster-millisecond of uptime, as a percentage. Below this most of the
+      # uptime produced nothing.
+      execution_percent: 25
+      # An hour of uptime, so a warehouse that came up once for a minute is not a cost finding.
+      min_up_ms: 3600000
+      # Days on which anything ran, so an unused warehouse falls to the surface's own "not used" state
+      # rather than being told to shorten its auto-stop.
+      min_days: 2
+
+  # ---------------------------------------------------------------------------
+  # Starting, over and over, on compute that takes minutes to start.
+  # ---------------------------------------------------------------------------
+  - id: WAREHOUSE_COLD_STARTS
+    provenance: extension
+    severity: medium
+    action: Move this warehouse to serverless or lengthen its auto-stop interval
+    headline: A classic warehouse spent the window starting up
+    detail: >-
+      This warehouse started many times over the window. On a classic SQL warehouse each of those starts
+      is minutes of cluster provisioning that somebody waited through and the account paid for, and the
+      pattern usually means an auto-stop shorter than the gaps between queries. There are two answers and
+      they pull in opposite directions: a longer auto-stop trades idle cost for fewer waits, and a
+      serverless warehouse removes the trade because it starts in seconds. The second is why this rule
+      does not fire on serverless warehouses at all, however often they start.
+    rationale: >-
+      An extension, and the one whose absence would be most misleading: the same start count means a
+      real cost on classic and nothing at all on serverless, so a rule that ignored the type would fire
+      on the wrong estates. Labs measured a serverless warehouse starting 456 times in seven days with a
+      five-minute auto-stop, which is exactly the behaviour serverless is for and exactly what this rule
+      must not report.
+    doc_url: https://docs.databricks.com/aws/en/compute/sql-warehouse/serverless
+    thresholds:
+      # Starts per day on which the warehouse was seen at all.
+      starts_per_day: 8
+      # And an absolute floor, so three starts across two days is not a rate.
+      min_starts: 20
+      min_days: 2
+
+  # ---------------------------------------------------------------------------
+  # Nothing went wrong. The only rule here that suggests spending less.
+  # ---------------------------------------------------------------------------
+  - id: WAREHOUSE_HEADROOM
+    provenance: extension
+    severity: medium
+    action: Test the same workload on the next warehouse size down
+    headline: Nothing this warehouse ran needed its current size
+    detail: >-
+      Across the window, the slowest statements on this warehouse were quick, none of them queued and
+      none of them spilled. That is the profile of a warehouse with room to spare, and the next size down
+      is worth testing. Worth testing rather than worth doing: this measures the absence of a problem
+      over one week, and a week without a month-end close or a quarterly report in it is a week that
+      never asked the warehouse for its capacity. Change the size, keep the same workload, and compare
+      the same statements before deciding.
+    rationale: >-
+      An extension, and the only rule of the five that recommends removing capacity — which is why its
+      confidence is the lowest and its wording is a test rather than an action. The design documents both
+      warn against exactly this kind of advice: the jobs audit asks for confidence tiers and the query
+      advisor forbids reporting a cause from weak evidence. A downsize recommendation from a quiet week
+      is a weak inference that costs a customer a production incident if it is wrong, so the finding
+      carries the evidence and the reader makes the call.
+    doc_url: https://docs.databricks.com/aws/en/compute/sql-warehouse/monitor
+    thresholds:
+      # The 95th-percentile statement, in milliseconds. Under ten seconds the tail is interactive and the
+      # size is not what is holding it up.
+      p95_ms: 10000
+      # And the warehouse has to have been asked something. Both floors are higher than the other rules'
+      # because this recommendation is the one that carries a risk if it is wrong.
+      min_runs: 100
+      min_days: 4

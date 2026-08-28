@@ -1,0 +1,1910 @@
+# Answering guidance for the questions in this pillar.
+#
+# Keyed by control id, flat rather than nested by principle: the catalogue owns that structure.
+# Scaffolded by scripts/scaffold-guidance.mjs, which never edits an entry that already exists.
+# Held to config/guidance/guidance.schema.json by scripts/check-guidance.mjs.
+#
+# docs/design/guidance-authoring.md fixes the voice and works one entry through end to end.
+pillar: reliability
+entries:
+  # Use a resilient distributed data engine for all workloads
+  # Q: Do all production workloads run on a distributed engine that recovers from node loss, or do some depend on a single machine?
+  REL-01-02:
+    status: authored
+    last_reviewed: '2026-08-03'
+    owner_role: Data engineering lead
+    means: >-
+      Production work runs on Spark, on Lakeflow Declarative Pipelines or on a SQL warehouse, so a lost node is
+      retried rather than fatal. No production output depends on a single process on a single machine
+      holding until it finishes.
+    matters: >-
+      Single-machine work fails whole rather than partly, and cloud instances are reclaimed routinely.
+      A pandas job that has run for three hours loses three hours to one spot reclamation, and the
+      person who reruns it is the person who happens to notice the output is missing.
+    good:
+      - Production transformations are Spark, SQL or a declarative pipeline, not a single-node script.
+      - Where single-node work exists, it is bounded work on bounded data and somebody chose it.
+      - Driver-only patterns — `collect()` into pandas, then process — are known and not on the critical path.
+      - Retries are configured, so a reclaimed node is a delay rather than a failed output.
+      - Nothing production depends on a notebook a person has to be present to restart.
+    examples:
+      strong: >-
+        All production transformations run as Spark or declarative pipelines under jobs with retries. Two single-node
+        tasks exist for small model scoring, both on data bounded by design, and both are documented as
+        deliberate.
+      partial: >-
+        The main pipelines are Spark, but one nightly reconciliation collects a table into pandas
+        because it was quicker to write, and it fails whenever the driver is reclaimed.
+      weak: >-
+        Several production outputs come from single-node notebooks that a person reruns when somebody
+        downstream complains.
+    verify:
+      - how: sql
+        where: |-
+          with current as (
+            select * from system.compute.clusters
+            qualify row_number() over (
+              partition by workspace_id, cluster_id order by change_time desc) = 1)
+          select cluster_id, cluster_name, cluster_source, worker_count, owned_by
+          from current
+          where delete_time is null
+          and coalesce(max_autoscale_workers, worker_count) = 0
+          order by case when cluster_source in ('JOB', 'PIPELINE') then 0 else 1 end, cluster_name
+        expect: >-
+          Single-node compute only where somebody can name the reason, rather than behind a production
+          load that depends on that one machine
+        caveat: >-
+          Classic compute only, so a serverless estate returns nothing and that is not a finding — read
+          the task list below instead. `qualify` because this table keeps a row per edit and leaves
+          deleted clusters in place. Single-node is a zero worker count or an autoscale maximum of
+          zero. `JOB` and `PIPELINE` sort first: those are the rows scored, and a single-node `UI`
+          cluster is normal interactive work.
+      - how: ui
+        where: A production job's task list, and whether any task uses single-node compute
+        expect: Single-node only where somebody can say why, rather than wherever it was convenient
+      - how: by-hand
+        where: Search the production repository for `toPandas`, `collect()` and `pd.read_`
+        expect: >-
+          Hits on bounded data or in tests, rather than on the table the nightly load reads
+    pitfalls:
+      - >-
+        Running single-node work on a large driver, which makes it fail later rather than not fail. The
+        failure mode is the machine, and a bigger machine is still one machine.
+      - >-
+        Counting a job as distributed because it runs on a cluster, when the code inside it collects
+        everything to the driver and does the work there.
+      - >-
+        Retries on a task that is not idempotent, which turns one failure into a duplicate rather than
+        into a recovery.
+    partial_when: >-
+      The main pipelines are distributed and one or two production paths run single-node by accident
+      rather than by decision, or the engine is distributed and no retries are configured.
+    references:
+      - https://docs.databricks.com/aws/en/jobs/configure-job
+      - https://docs.databricks.com/aws/en/lakehouse-architecture/reliability/best-practices
+    advice:
+      start_from: >-
+        Spark, SQL warehouses or Lakeflow Declarative Pipelines for every production transformation,
+        with retries on the job and single-node work only where somebody can name the bound that makes
+        a second worker pointless.
+      depends_on:
+        - >-
+          A scoring or enrichment step that genuinely needs a single process stays single-node, and
+          that choice is written beside the task so the next reviewer does not "fix" it.
+        - >-
+          Serverless jobs and warehouses already distribute work under the platform; there is no
+          cluster worker count to raise, and the check is whether anything still depends on a classic
+          single-node job cluster.
+        - >-
+          A notebook a person reruns by hand is not a resilient engine even if the cluster under it
+          has workers — move it to a job before arguing about node count.
+      path:
+        - >-
+          List the production outputs that fail when one machine dies. Those are the ones to move,
+          not every interactive notebook.
+        - >-
+          Convert those paths to Spark, SQL or a declarative pipeline under a job with retries, and
+          leave any remaining single-node tasks with a documented bound.
+        - >-
+          Search the repository for `toPandas` and `collect()` on the critical path and either bound
+          them or remove them from production.
+      costs:
+        - >-
+          Rewriting a pandas path into Spark is days of engineering for one pipeline, and the first
+          cut is often slower until partitioning is right.
+        - >-
+          Adding workers to a job that was single-node on purpose raises the bill for no resilience
+          that job needed.
+      retain: >-
+        The list of production tasks still on single-node compute, each with the reason, and the date
+        the last critical-path `collect()` was reviewed.
+      revisit: >-
+        A new production notebook that "just needs pandas", a spot-reclamation outage on a job
+        cluster, or a driver OOM on a path that used to be fine. Failing those, quarterly.
+
+  # Automatically rescue invalid or nonconforming data
+  # Q: When a record arrives malformed, is it captured for inspection — or does it fail the job, or silently vanish?
+  REL-01-03:
+    status: authored
+    last_reviewed: '2026-08-03'
+    owner_role: Data engineering lead
+    means: >-
+      A record that does not fit the expected shape ends up somewhere a person can look at it — a
+      rescued-data column, a quarantine table, a dead-letter path — rather than stopping the load or
+      disappearing from it.
+    matters: >-
+      The two defaults are both bad in different ways. Failing the job on one bad record makes a
+      malformed row an outage. Dropping it silently means the row count is wrong and nothing says so,
+      so the number a report shows is confidently short and nobody can tell by looking.
+    good:
+      - Ingestion captures unparseable input rather than failing or discarding it — Auto Loader's rescued data column, or an explicit quarantine path.
+      - Somebody looks at what is captured, on a cadence, rather than it accumulating unread.
+      - The volume of rescued records is monitored, so a schema change upstream shows as a spike.
+      - Malformed records are counted, so a consumer can tell a short table from a complete one.
+      - Handling is consistent across pipelines rather than decided per pipeline by whoever wrote it.
+    examples:
+      strong: >-
+        Auto Loader writes `_rescued_data` on every bronze table, a pipeline expectation routes violating
+        rows to a quarantine table, and a weekly check reports rescued volumes per source. A spike last
+        month found a vendor adding a field.
+      partial: >-
+        Rescued data is captured on ingestion and nobody has ever read it, so a schema change would be
+        recorded and unnoticed.
+      weak: >-
+        Malformed rows either fail the job — which is how the team finds out — or are dropped by a
+        permissive parser, and the row count difference has never been checked.
+    verify:
+      - how: sql
+        where: |-
+          select table_catalog, table_schema, table_name, column_name
+          from system.information_schema.columns where column_name ilike '%rescued%'
+          order by 1, 2, 3
+        expect: >-
+          A rescued-data column on the tables that ingest external input, rather than none anywhere
+        caveat: >-
+          An empty result means the column is named differently or ingestion is not Auto Loader, not that
+          malformed input is handled — and legacy ingestion often lands in `hive_metastore`, which this
+          view cannot see at all.
+      - how: ui
+        where: A pipeline's expectations, and where violating records go
+        expect: A quarantine destination, rather than a warning nobody routes
+      - how: by-hand
+        where: Ask what was in the rescued or quarantine table last week, and who looked
+        expect: A person and a finding, rather than a table nobody has queried
+    pitfalls:
+      - >-
+        Capturing rescued data and never reading it, which is the same as dropping it except that it
+        costs storage and looks like a control.
+      - >-
+        A permissive parser that coerces rather than rescues — a malformed number becoming null is a
+        silently wrong value, which is worse than a rejected row.
+      - >-
+        Quarantining without counting, so a consumer cannot tell whether the table they are reading is
+        complete or missing a tenth of yesterday.
+    partial_when: >-
+      Bad records are captured rather than dropped or fatal, and nobody reviews what is captured or
+      monitors its volume.
+    references:
+      - https://docs.databricks.com/aws/en/ingestion/cloud-object-storage/auto-loader/schema
+      - https://docs.databricks.com/aws/en/ldp/expectations
+    advice:
+      start_from: >-
+        Auto Loader with a rescued-data column on every external ingestion, and pipeline expectations
+        that quarantine violating rows rather than only warning — with a weekly look at what landed.
+      depends_on:
+        - >-
+          A feed that must be complete-or-nothing fails the load on violation instead of quarantining;
+          the rescue path is for feeds where a short table is better than an outage.
+        - >-
+          Partner files that arrive already clean still need a rescue column once, because the day they
+          are not clean is the day nobody is watching the parser.
+        - >-
+          Hand-written notebook ingestion without Auto Loader needs an explicit quarantine table; the
+          column name this scan looks for will not invent itself.
+      path:
+        - >-
+          Turn on rescued data (or an equivalent quarantine) on the bronze tables that ingest outside
+          the account, so new bad rows stop vanishing.
+        - >-
+          Route expectation failures to a table somebody owns, and put a volume or row-count check on
+          a schedule.
+        - >-
+          Review what was rescued last week and either fix the source, widen the schema, or accept the
+          drop with a count a consumer can see.
+      costs:
+        - >-
+          Rescued columns and quarantine tables cost storage, and an unread quarantine costs attention
+          that looks like a control.
+        - >-
+          Failing the job on every bad row trades silent incompleteness for outages; pick deliberately
+          per feed rather than once for the estate.
+      retain: >-
+        The weekly rescued-volume report (or the ticket trail from the last spike) and the list of
+        ingestion paths that still have neither a rescue column nor a quarantine table.
+      revisit: >-
+        A new external source, a schema change that spiked rescued volume, or a consumer reporting a
+        short table the platform did not. Failing those, monthly for the review cadence.
+
+  # Design for high availability and scalability in model serving
+  # Q: Is model serving able to survive an instance failure and a traffic spike without manual intervention?
+  REL-01-05:
+    status: authored
+    last_reviewed: '2026-08-03'
+    owner_role: ML platform lead
+    means: >-
+      A served model keeps answering when one instance dies and when traffic doubles, without somebody
+      being paged to scale it or restart it.
+    matters: >-
+      A serving endpoint is usually in a synchronous request path, so its failure is somebody else's
+      failure — a checkout that cannot score a transaction, an application that cannot answer. Batch
+      work can be late; a serving endpoint cannot, and the outage is measured in requests refused.
+    good:
+      - Serving scales on load rather than being fixed at whatever was set on the first day.
+      - Concurrency limits were set from a measurement, so the endpoint's capacity is known rather than assumed.
+      - Endpoint health and latency are monitored, and somebody is alerted when they degrade.
+      - The endpoint has been tested at a multiple of expected traffic, and the result is recorded.
+      - A failed instance is replaced without intervention, and somebody has seen that happen.
+    examples:
+      strong: >-
+        Endpoints run with scale-to-zero off for the latency-sensitive ones, provisioned concurrency set
+        from a load test at three times peak, latency and error-rate alerts to the owning team, and a
+        recorded test of instance failure during the last release.
+      partial: >-
+        Endpoints autoscale and are monitored, but no load test has been run, so the concurrency ceiling
+        is a default nobody has held against real traffic.
+      weak: >-
+        A single endpoint at fixed size, no alerting. Failures are reported by the application team.
+    verify:
+      - how: ui
+        where: Serving > each endpoint, its scaling configuration and concurrency
+        expect: Autoscaling within bounds chosen from a measurement, rather than a fixed size
+      - how: api
+        where: GET /api/2.0/serving-endpoints, and the config on each
+        expect: Scaling configuration present, rather than defaults everywhere
+      - how: by-hand
+        where: Ask for the last load test on a production endpoint, and what it found
+        expect: A date and a number, rather than "it has been fine so far"
+    pitfalls:
+      - >-
+        Scale-to-zero on a latency-sensitive endpoint, which trades an outage for a cold start that the
+        caller experiences as one.
+      - >-
+        Testing throughput without testing failure. An endpoint that scales and cannot survive losing an
+        instance fails on the day the cloud reclaims one.
+      - >-
+        Monitoring the endpoint's uptime rather than its latency, which reports success while callers
+        are timing out.
+    partial_when: >-
+      Serving autoscales and is monitored without having been load-tested, or it has been tested for
+      throughput and not for instance failure.
+    not_applicable_when: >-
+      Nothing is served for online inference — models are used in batch scoring only, with no endpoint
+      in a request path.
+    references:
+      - https://docs.databricks.com/aws/en/machine-learning/model-serving/production-optimization
+      - https://docs.databricks.com/aws/en/machine-learning/model-serving/monitor-diagnose-endpoints
+    advice:
+      start_from: >-
+        Autoscaling endpoints with concurrency set from a load test at a multiple of expected peak,
+        scale-to-zero off for anything in a synchronous request path, and latency plus error-rate
+        alerts to the owning team.
+      depends_on:
+        - >-
+          Batch scoring with no online endpoint is out of scope; do not stand up serving to satisfy
+          this requirement.
+        - >-
+          A latency-sensitive path cannot use scale-to-zero; a batch or overnight scoring endpoint
+          can, and should, to avoid paying for idle capacity.
+        - >-
+          Provisioned concurrency is worth the cost only where cold start is worse than the bill;
+          measure before locking it on.
+      path:
+        - >-
+          Turn on autoscaling and alerts on every production endpoint, so a failure is visible before
+          a caller files a ticket.
+        - >-
+          Run a load test at a stated multiple of peak and record the concurrency that held latency.
+        - >-
+          Kill an instance in staging during traffic and confirm replacement without a person, then
+          write that into the release checklist.
+      costs:
+        - >-
+          Keeping scale-to-zero off pays for idle capacity on quiet endpoints.
+        - >-
+          A proper load test needs a staging twin and a day of engineering; skipping it leaves the
+          concurrency ceiling as a guess.
+      retain: >-
+        The dated load-test result (peak QPS, concurrency, latency) and the alert destination for
+        each production endpoint.
+      revisit: >-
+        A new model on the critical path, a traffic shape change, or an incident where callers timed
+        out while the endpoint reported healthy. Failing those, each major model release.
+
+  # Use a layered storage architecture
+  # Q: Is there a deliberate layering — raw, refined, serving — such that a bad transformation can be rerun from retained source data?
+  REL-02-01:
+    status: authored
+    last_reviewed: '2026-08-03'
+    owner_role: Data architect, with the data engineering lead
+    means: >-
+      Source data is retained as it arrived, transformations build on it in named layers, and a
+      transformation found to be wrong can be fixed and rerun without going back to the source system.
+    matters: >-
+      Without a retained raw layer, a bug in a transformation is unrecoverable: the only copy of the
+      data has the bug applied to it. Re-extraction is sometimes possible and often not — the source
+      system may have moved on, may not retain history, or may be a vendor feed that cannot be replayed.
+    good:
+      - Raw data is kept as received, including the fields nothing currently reads.
+      - Layers are named and a reader can tell which layer a table belongs to.
+      - A transformation can be corrected and rerun from raw without contacting the source system.
+      - Raw retention is a stated period somebody chose, rather than however long nobody has deleted.
+      - Reprocessing has actually been done, so the path is known to work.
+    examples:
+      strong: >-
+        Bronze holds source data unmodified with ingestion metadata, silver and gold are derived and
+        rebuildable, and a full silver rebuild was run last quarter after a join was found wrong. Raw
+        retention is two years by policy.
+      partial: >-
+        Layers exist and raw is retained, but the gold tables were built incrementally over years and
+        nobody has verified they could be rebuilt from bronze.
+      weak: >-
+        Transformations write over their input. Fixing a bug means asking the source system for a
+        re-extract, which for two of the sources is not possible.
+    verify:
+      - how: sql
+        where: |-
+          select table_catalog, table_schema, count(*) as tables
+          from system.information_schema.tables where table_schema not in ('information_schema')
+          group by all order by 1, 2
+        expect: >-
+          Schemas whose names or catalogs distinguish layers, rather than one schema holding everything
+      - how: ui
+        where: Catalog Explorer, and whether a raw or bronze layer holds source-shaped data
+        expect: A retained landing layer, rather than only the tables consumers read
+      - how: by-hand
+        where: Ask what would happen if a transformation from six months ago were found to be wrong
+        expect: A rerun from raw, rather than a conversation with the source system's owner
+    pitfalls:
+      - >-
+        A bronze layer that applies "harmless" cleaning — trimming, casting, renaming — which makes it a
+        transformed layer with no raw beneath it, and the harmless step is the one that turns out to be wrong.
+      - >-
+        Layers that exist as a naming convention while pipelines read across them arbitrarily, so the
+        dependency graph does not match the layering and a rebuild order cannot be derived.
+      - >-
+        Raw retention set by storage cost rather than by how far back a correction might need to reach.
+    partial_when: >-
+      Layers exist and raw is retained, but a rebuild has never been exercised, or the raw layer applies
+      transformations that would have to be redone to correct them.
+    references:
+      - https://docs.databricks.com/aws/en/lakehouse/medallion
+      - https://docs.databricks.com/aws/en/lakehouse-architecture/reliability/best-practices
+    advice:
+      start_from: >-
+        A bronze layer that keeps source-shaped data unmodified, silver and gold derived and
+        rebuildable from it, and a stated raw retention long enough to cover how late a bug is
+        usually found.
+      depends_on:
+        - >-
+          A source that cannot be re-extracted needs longer bronze retention than one that can; set
+          the window from the harder source, not the average.
+        - >-
+          Streaming bronze still needs a retained landing; a checkpoint is not a raw copy you can
+          rebuild silver from after a bad transform.
+        - >-
+          Domains that already share a clean bronze can share it; inventing a second landing "for
+          safety" is the duplication problem under another name.
+      path:
+        - >-
+          Name the layers in catalogs or schemas so a reader can tell which table is raw without
+          asking, and stop writing transforms that overwrite their input.
+        - >-
+          Set bronze retention as a number somebody chose, then rebuild one silver table from bronze
+          in staging to prove the path works.
+        - >-
+          Record that rebuild — what broke, how long it took — so the next incident is not the first
+          exercise.
+      costs:
+        - >-
+          Keeping raw doubles storage for the retention window, which is the price of being able to
+          rerun.
+        - >-
+          A full rebuild of a large silver layer is compute and calendar time; discovering you cannot
+          during an incident costs more.
+      retain: >-
+        The dated rebuild record for at least one critical path, and the written bronze retention
+        period with the reason it is that long.
+      revisit: >-
+        A source system changing retention, a transformation bug found older than the bronze window,
+        or a new domain that writes over its inputs. Failing those, annually.
+
+  # Reduce data duplication
+  # Q: Is the same fact stored once and derived from, or copied into several tables that can now disagree?
+  REL-02-02:
+    status: authored
+    last_reviewed: '2026-08-03'
+    owner_role: Data architect
+    means: >-
+      A fact has one authoritative table, and everything else that needs it derives from that table
+      rather than holding its own copy maintained by its own pipeline.
+    matters: >-
+      Two copies of a fact maintained separately will diverge, and the divergence is found by a person
+      comparing two reports in a meeting. The cost is not the storage: it is that neither number can be
+      called wrong, so both are distrusted and somebody builds a third table to settle it.
+    good:
+      - Each significant entity has a table that is understood to be the authoritative one.
+      - Derived tables are derived — views, or pipelines with declared lineage — rather than independently loaded.
+      - Where a copy exists for performance, it is generated from the authority rather than maintained beside it.
+      - Somebody can name the authoritative table for the metrics that matter, and two people give the same answer.
+      - Lineage shows derived tables tracing back to a single source rather than to parallel loads.
+    examples:
+      strong: >-
+        Every core entity has one authoritative table. Consumers read views or materialisations derived
+        from it, and a metric view defines the shared measures so two dashboards cannot compute revenue
+        differently.
+      partial: >-
+        Core entities are single-sourced, but three teams maintain their own customer dimension because
+        each needed a field the shared one lacked, and the three disagree on row count.
+      weak: >-
+        Several tables hold the same facts, loaded by different pipelines from different extracts.
+        Reconciling two reports is a recurring task.
+    verify:
+      - how: sql
+        where: |-
+          select table_catalog, table_schema, table_name
+          from system.information_schema.tables
+          where table_schema <> 'information_schema'
+          and concat_ws('.', table_catalog, table_schema, table_name) not in (
+            select target_table_full_name from system.access.table_lineage
+            where event_time > current_timestamp() - interval 90 days
+            and target_table_full_name is not null)
+          order by 1, 2, 3
+        expect: >-
+          The tables with no upstream lineage, as the list to work through and account for one at a time.
+        caveat: >-
+          An anti-join, because ranking tables by upstream count excludes the ones with none — the tables
+          being looked for. No upstream in the window is not evidence of independence: the table may last
+          have been written before it, or by something outside lineage capture. On one estate this returned
+          130 of 141 tables, so treat each row as a question rather than a finding.
+      - how: sql
+        where: |-
+          select table_catalog, table_schema, table_name from system.information_schema.tables
+          where table_name ilike '%customer%' or table_name ilike '%_dim%' order by 1, 2, 3
+        expect: >-
+          One table per entity, rather than several similarly named ones in different schemas. Adjust
+          the patterns to your own naming convention — an empty result means the convention differs,
+          not that the practice is sound
+      - how: by-hand
+        where: Ask two teams which table is authoritative for your most-used entity
+        expect: The same answer from both
+    pitfalls:
+      - >-
+        Treating a copy as acceptable because it is read-only, when the pipeline that refreshes it is
+        what makes it a second source of truth.
+      - >-
+        Solving duplication by declaring one table authoritative without migrating the consumers of the
+        others, which adds a table rather than removing one.
+      - >-
+        Confusing duplication with materialisation. A derived copy generated from the authority is not a
+        second source; one maintained beside it is.
+    partial_when: >-
+      Core entities are single-sourced and some domains maintain parallel copies, usually because the
+      shared table lacked a field somebody needed.
+    references:
+      - https://docs.databricks.com/aws/en/lakehouse-architecture/reliability/best-practices
+      - https://docs.databricks.com/aws/en/uc-semantics/metric-views
+    advice:
+      start_from: >-
+        One authoritative table per significant entity, with consumers on views or materialisations
+        derived from it, and shared measures defined once in a metric view so two dashboards cannot
+        invent different revenue.
+      depends_on:
+        - >-
+          A performance copy is fine when it is generated from the authority on a schedule; it is not
+          fine when a second pipeline loads the same extract.
+        - >-
+          A team that needs one extra attribute extends the shared table or a thin view over it —
+          forking the dimension for one field is how the three disagree later.
+        - >-
+          External systems that must keep their own copy are listed exceptions, with a reconciliation
+          job, not a silent second source.
+      path:
+        - >-
+          Pick the entity that causes the most report arguments and name its authoritative table in
+          writing both teams will see.
+        - >-
+          Point the second and third copies at that table (view or rebuild), and retire the parallel
+          loads.
+        - >-
+          Put the shared measures in a metric view so new dashboards start from one definition.
+      costs:
+        - >-
+          Migrating consumers off a fork takes coordination across teams, which is why the forks
+          survive.
+        - >-
+          Materialising a derived copy for performance costs storage and a refresh job; skipping it
+          and letting every dashboard hit the authority can cost warehouse concurrency instead.
+      retain: >-
+        The written map of entity to authoritative table, dated, and the list of approved performance
+        copies with their refresh source.
+      revisit: >-
+        A new team asking for "their own" customer table, a reconciliation that found a row-count
+        gap, or a metric two dashboards disagree on. Failing those, annually.
+
+  # Handle schema evolution and data changes
+  # Q: When an upstream schema changes, is it detected and handled — or does it break a pipeline or silently drop a column?
+  REL-02-03:
+    status: authored
+    last_reviewed: '2026-08-03'
+    owner_role: Data engineering lead
+    means: >-
+      A change to an upstream schema is noticed by the platform rather than by a consumer. A new column
+      is either picked up or explicitly ignored, and an incompatible change stops the load rather than
+      being coerced.
+    matters: >-
+      The dangerous case is not the pipeline that breaks — that gets fixed. It is the one that keeps
+      running: a renamed column becomes a column of nulls, a widened type gets truncated, and the table
+      stays available and wrong for however long it takes a human to notice a number looking off.
+    good:
+      - Schema evolution is configured deliberately, and somebody can say which mode each pipeline uses.
+      - A new upstream column is either ingested or recorded as skipped, not silently absent.
+      - An incompatible change fails the load rather than being coerced into the existing type.
+      - Schema changes are visible — in a pipeline event, an alert, or a log somebody reads.
+      - Downstream consumers are told, so a new field reaches the people who would use it.
+    examples:
+      strong: >-
+        Auto Loader runs with schema evolution and a rescued-data column, so a new field is picked up
+        and an unparseable one is captured. Schema-change events raise an alert to the owning team, and
+        the last one led to a silver-layer change the same week.
+      partial: >-
+        Evolution is configured and works, but changes are recorded only in pipeline logs nobody reads,
+        so new upstream fields sit unused for months.
+      weak: >-
+        Schemas are fixed in the pipeline code. A rename produces a column of nulls, and the last one
+        was found by a consumer three weeks later.
+    verify:
+      - how: ui
+        where: A pipeline's configuration, and its schema evolution mode
+        expect: A mode chosen deliberately, rather than whatever the default was
+      - how: sql
+        where: |-
+          select table_catalog, table_schema, table_name, count(*) as columns
+          from system.information_schema.columns
+          where table_schema not in ('information_schema') group by all order by columns asc
+        expect: >-
+          Column counts consistent with the source. A table narrower than its source is where a column
+          has been silently dropped
+        caveat: >-
+          Ascending, because the finding is a table narrower than its source and descending buries it under
+          the wide ones. The source width is not here — this counts what arrived, and the by-hand step is
+          where the two are held against each other.
+      - how: by-hand
+        where: Ask when an upstream schema last changed and how the team learned about it
+        expect: A platform signal, rather than a consumer noticing a null column
+    pitfalls:
+      - >-
+        Permissive mode with no rescued column, which turns every schema change into silent data loss
+        and reports nothing.
+      - >-
+        Evolution configured on ingestion and nowhere downstream, so bronze gains the column and the
+        table anybody reads does not.
+      - >-
+        Treating a type widening as compatible. Reading a widened source into the narrow existing type
+        truncates values, and the load succeeds.
+    partial_when: >-
+      Evolution is handled at ingestion and the change never propagates downstream, or it is handled
+      correctly and nobody is told, so new fields go unused.
+    references:
+      - https://docs.databricks.com/aws/en/ingestion/cloud-object-storage/auto-loader/schema
+      - https://docs.databricks.com/aws/en/tables/update-schema
+    advice:
+      start_from: >-
+        Schema evolution on with a rescued-data column at ingestion, incompatible changes failing the
+        load rather than coercing, and a schema-change alert the owning team actually reads.
+      depends_on:
+        - >-
+          A regulated feed that must not gain columns without review uses a stricter mode and a
+          human gate; evolution without that gate is the wrong default there.
+        - >-
+          Downstream silver that selects explicit columns needs a change process when bronze gains a
+          field, or the new column never reaches a consumer.
+        - >-
+          Type widenings that look compatible still truncate when the target stays narrow — treat
+          them as breaking until proven otherwise.
+      path:
+        - >-
+          Set a deliberate evolution mode on every external ingestion and add a rescued column where
+          Auto Loader is in use.
+        - >-
+          Alert on schema-change events (or on rescued-volume spikes that often mean the same thing).
+        - >-
+          Propagate useful new fields downstream on a stated cadence, rather than leaving them in
+          bronze unread.
+      costs:
+        - >-
+          Permissive evolution without rescue looks cheap and produces silent null columns that take
+          weeks to notice.
+        - >-
+          Failing every upstream change is operational noise; quarantine plus alert is usually the
+          cheaper middle.
+      retain: >-
+        The evolution mode per ingestion pipeline, and the last schema-change alert with what the
+        team did about it.
+      revisit: >-
+        A new upstream vendor, a rename that produced nulls, or a type change that truncated values.
+        Failing those, each major source onboarding.
+
+  # Use data validation and quality constraints
+  # Q: Are constraints and expectations declared on production tables, so violations are caught by the platform rather than by a consumer?
+  REL-02-04:
+    status: authored
+    last_reviewed: '2026-08-03'
+    owner_role: Data engineering lead, with the data owners
+    means: >-
+      The rules a table's data must satisfy are declared to the platform — as Delta constraints, as
+      pipeline expectations — so a violation is caught where it is written rather than where it is read.
+    matters: >-
+      Undeclared rules are still rules; they are just enforced by whoever notices. A null in a column
+      nothing declared non-null propagates into every downstream table and every report, and the cost of
+      correcting it grows with how far it travelled before somebody looked.
+    good:
+      - Critical columns carry NOT NULL or CHECK constraints, so a violating write fails at the write — rather than a primary key, which Unity Catalog records without enforcing.
+      - Pipelines declare expectations, and the action on violation — drop, fail, quarantine — was chosen per expectation.
+      - Expectation results are visible, so a rising violation rate is a signal rather than a statistic.
+      - Rules exist for the columns consumers depend on, not only the ones easy to express.
+      - Somebody can name a violation that was caught and what happened next.
+    examples:
+      strong: >-
+        Keys and critical measures carry constraints. Pipeline expectations cover row-level rules with
+        explicit actions, results are reported per run, and a rising violation rate last month found an
+        upstream change before any consumer saw it.
+      partial: >-
+        Primary keys are declared, which documents the intent without enforcing it, and the row-level
+        rules everybody knows about live in documentation and in reviewers' heads rather than in the
+        pipeline.
+      weak: >-
+        No constraints and no expectations. Data quality problems are reported by consumers.
+    verify:
+      - how: sql
+        where: |-
+          select table_catalog, table_schema, table_name, count(*) as not_null_columns
+          from system.information_schema.columns
+          where is_nullable = 'NO' and table_schema <> 'information_schema'
+          group by all order by not_null_columns desc
+        expect: >-
+          NOT NULL on the keys and critical measures of the tables consumers depend on.
+        caveat: >-
+          Deliberately not `table_constraints` — that view holds primary, foreign and unique keys, which
+          Unity Catalog records as informational and never enforces, so a row there is a declaration and not
+          a guarantee. CHECK constraints are not in the information schema either; read them with SHOW
+          TBLPROPERTIES on a critical table and look for `delta.constraints.*`
+      - how: ui
+        where: A pipeline's expectations, and the action configured on each
+        expect: Expectations with deliberate actions, rather than warnings nobody routes
+      - how: by-hand
+        where: Ask for the last data quality problem a consumer found rather than the platform
+        expect: A rule that has since been declared, rather than a recurring pattern
+    pitfalls:
+      - >-
+        Expectations that only warn. A logged violation with no action is a metric, and the bad row is
+        in the table either way.
+      - >-
+        Declaring the rules that are easy to express rather than the ones consumers depend on, which
+        produces coverage that looks broad and misses the failure that will happen.
+      - >-
+        Adding a NOT NULL constraint to a table that already contains nulls, which fails the next write
+        for a reason unrelated to it and gets removed rather than fixed.
+    partial_when: >-
+      Structural constraints exist on keys while the row-level rules live in documentation, or
+      expectations are declared and all of them only warn.
+    references:
+      - https://docs.databricks.com/aws/en/tables/constraints
+      - https://docs.databricks.com/aws/en/ldp/expectations
+    advice:
+      start_from: >-
+        NOT NULL or CHECK constraints on the keys and measures consumers depend on, plus pipeline
+        expectations with an explicit drop, fail or quarantine action — not warn-only — on the same
+        tables.
+      depends_on:
+        - >-
+          Unity Catalog primary-key declarations document intent and do not enforce; they are not a
+          substitute for NOT NULL or CHECK where the write must fail.
+        - >-
+          A table that already contains violating rows needs a clean-up before the constraint, or the
+          next good write fails for an old reason.
+        - >-
+          Pipeline expectations cover row rules that constraints cannot express; use both rather than
+          picking one for the whole estate.
+      path:
+        - >-
+          List the columns a wrong null or out-of-range value would break a report on, and put
+          enforceable constraints there first.
+        - >-
+          Add expectations on the pipelines that write those tables, with actions that match how bad
+          a violation is.
+        - >-
+          Surface expectation results where the owning team looks weekly, so a rising rate is a
+          signal.
+      costs:
+        - >-
+          A constraint that rejects writes stops pipelines until the data is fixed — that is the
+          point, and it needs an owner on call for it.
+        - >-
+          Warn-only expectations cost almost nothing and catch almost nothing; they look like
+          coverage in a review.
+      retain: >-
+        The list of enforced constraints on critical tables (from SHOW TBLPROPERTIES /
+        delta.constraints.*) and one dated incident where a violation was caught before a consumer
+        saw it.
+      revisit: >-
+        A consumer-found data bug, a new critical measure, or an expectation that has only ever
+        warned. Failing those, quarterly.
+
+  # Focus on data quality before model tuning
+  # Q: When a model underperforms, is the data investigated first — or does tuning start with the model?
+  REL-02-05:
+    status: authored
+    last_reviewed: '2026-08-03'
+    owner_role: ML lead, with the data engineering lead
+    means: >-
+      When a model performs worse than expected, the first thing examined is its input — coverage,
+      labels, leakage, drift — rather than its architecture or its hyperparameters.
+    matters: >-
+      Tuning a model on bad data produces a model tuned to the badness. The effort is spent where the
+      returns are smallest, and the outcome is worse than no tuning: the model now fits an artefact of
+      the pipeline, so it degrades the moment the pipeline is fixed.
+    good:
+      - Input data is profiled before training, and the profile is kept with the model.
+      - Label quality and provenance are examined rather than assumed.
+      - Leakage is checked for explicitly, because it looks like accuracy until production.
+      - Training input is monitored for drift against what the model was trained on.
+      - When a model underperforms, somebody can point at the data investigation that preceded the tuning.
+    examples:
+      strong: >-
+        Every training run records an input profile and the checks run against it — null rates, class
+        balance, leakage tests, drift against the last run. The last accuracy drop was traced to a
+        changed upstream join before any hyperparameter was touched.
+      partial: >-
+        Data is profiled at the start of a project and not per run, so drift between training runs is
+        not visible and a degradation is attributed to the model by default.
+      weak: >-
+        Underperformance is met with more tuning. Nobody has checked whether the features have changed
+        since the model was trained.
+    verify:
+      - how: ui
+        where: An MLflow run for a production model, and whether input data is characterised in it
+        expect: Input statistics or a data version, rather than only metrics and parameters
+      - how: by-hand
+        where: Ask what was investigated the last time a model underperformed, in order
+        expect: Data first, rather than a tuning sweep
+      - how: ui
+        where: Data quality monitoring on the inference table, if one exists
+        expect: Drift and quality monitored on the features being served
+    pitfalls:
+      - >-
+        Profiling training data once and never comparing runs, so drift between the data the model was
+        trained on and today's is invisible.
+      - >-
+        Treating high validation accuracy as evidence the data is fine, when leakage is the most common
+        cause of accuracy that does not survive production.
+      - >-
+        Investigating the data and not writing it down, so the next person to see the same degradation
+        starts the same investigation from the beginning.
+    partial_when: >-
+      Data is examined at project start and not per training run, or the investigation happens and is
+      not recorded anywhere the next person will find it.
+    not_applicable_when: >-
+      No models are trained on this platform — it holds analytics workloads only, with no training or
+      inference.
+    references:
+      - https://docs.databricks.com/aws/en/data-governance/unity-catalog/data-quality-monitoring/data-profiling
+      - https://docs.databricks.com/aws/en/mlflow/
+    advice:
+      start_from: >-
+        Every training run records an input profile — null rates, class balance, leakage checks, drift
+        against the last run — and a degradation investigation starts there before any hyperparameter
+        sweep.
+      depends_on:
+        - >-
+          Analytics-only estates with no training skip this control entirely.
+        - >-
+          Transfer learning on a frozen backbone still needs the input profile; the weights are not
+          where leakage usually hides.
+        - >-
+          Online features need the same discipline on the inference table, or training looked fine
+          and serving drifted.
+      path:
+        - >-
+          Add input statistics and a data version to the MLflow run template so a run without them
+          cannot be marked production.
+        - >-
+          When accuracy drops, require a short data note before a tuning ticket is opened.
+        - >-
+          Turn on monitoring for the features the endpoint actually serves, not only the training
+          snapshot.
+      costs:
+        - >-
+          Profiling every run adds a few minutes and storage for artefacts; skipping it spends days
+          tuning the wrong problem.
+        - >-
+          Leakage tests need someone who understands the join graph, which is scarcer than someone
+          who can launch a sweep.
+      retain: >-
+        The MLflow run (or ticket) that shows the data investigation preceding the last production
+        retune, including what was checked.
+      revisit: >-
+        A production accuracy drop, a changed upstream join, or a new label source. Failing those,
+        each model promotion.
+
+  # Recover from Structured Streaming query failures
+  # Q: Have you tested that a killed streaming query resumes from its checkpoint without loss or duplication?
+  REL-04-01:
+    status: authored
+    last_reviewed: '2026-08-03'
+    owner_role: Streaming pipeline owner
+    means: >-
+      Somebody has killed a running streaming query and restarted it, and checked that the output has
+      every record once — not reasoned that checkpointing guarantees it.
+    matters: >-
+      Checkpointing gives exactly-once only when the sink cooperates and the checkpoint location is
+      stable. Both are easy to get wrong in ways nothing reports: a checkpoint under a path that gets
+      cleaned, a sink that is not idempotent, a query restarted with changed options. The result is
+      silent duplication or a gap, discovered by a reconciliation weeks later.
+    good:
+      - A restart has been tested on a production-equivalent query, and the output was compared before and after.
+      - Checkpoint locations are stable, owned, and not under a path anything cleans up.
+      - Each query has its own checkpoint location, so restarting one cannot disturb another.
+      - The sink is idempotent or the write is transactional, so a replayed batch does not double.
+      - Restart behaviour is retested when the query changes, since a changed plan can invalidate a checkpoint.
+    examples:
+      strong: >-
+        Each streaming query has a dedicated checkpoint path outside any managed cleanup, writes to
+        Delta, and restart is tested in staging as part of the release — the last test killed the query
+        mid-batch and confirmed the row count matched the source exactly.
+      partial: >-
+        Checkpoints are configured correctly and a restart happened during an incident and appeared
+        fine, but nothing was compared, so "appeared fine" is the whole evidence.
+      weak: >-
+        Streaming queries restart automatically and nobody has verified the output. A reconciliation
+        found duplicates last quarter and the cause was never established.
+    verify:
+      - how: by-hand
+        where: >-
+          Kill a query in staging mid-batch, restart it, and compare source and sink counts and keys
+        expect: Every record once, with the comparison recorded
+      - how: ui
+        where: A streaming query's configuration, and where its checkpoint location points
+        expect: A stable dedicated path, rather than a temp path or one shared between queries
+      - how: sql
+        where: |-
+          select table_catalog, table_schema, table_name from system.information_schema.tables
+          where table_name ilike '%stream%' or table_name ilike '%_raw' order by 1, 2, 3
+        expect: >-
+          Streaming sinks you can name and check, as the starting point for the comparison above
+        caveat: >-
+          A naming convention, not an inventory: an empty result means this estate names them differently,
+          not that there is no streaming. Ask for the sinks by name if it returns nothing.
+    pitfalls:
+      - >-
+        A checkpoint under a path something cleans up, which turns a restart into a replay from the
+        beginning or from nothing, depending on the source.
+      - >-
+        Sharing a checkpoint location between queries, where one restart corrupts the other's progress
+        and neither reports why.
+      - >-
+        Testing a graceful stop rather than a kill. A clean shutdown commits its batch; the failure mode
+        that matters is the one that does not.
+    partial_when: >-
+      Checkpointing is configured correctly and a restart has happened without being verified against
+      the source, or it was verified once and the query has changed since.
+    not_applicable_when: >-
+      No Structured Streaming queries run on this platform — ingestion and transformation are batch
+      only.
+    references:
+      - https://docs.databricks.com/aws/en/structured-streaming/production
+      - https://docs.databricks.com/aws/en/structured-streaming/delta-lake
+    advice:
+      start_from: >-
+        One dedicated checkpoint path per query outside any managed cleanup, a Delta (or otherwise
+        idempotent) sink, and a kill-mid-batch restart test in staging recorded as part of release.
+      depends_on:
+        - >-
+          Batch-only estates skip this; do not invent a streaming query to have something to test.
+        - >-
+          A sink that cannot be made idempotent needs transactional writes or a dedupe key; retries
+          without that are how duplicates arrive.
+        - >-
+          Changing the query plan can invalidate a checkpoint — retest after structural changes, not
+          only after the first go-live.
+      path:
+        - >-
+          Inventory streaming queries and their checkpoint locations; fix shared or temporary paths
+          first.
+        - >-
+          Kill one production-equivalent query mid-batch in staging, restart it, and compare source
+          and sink counts and keys.
+        - >-
+          Put that comparison into the release checklist so the next change re-runs it.
+      costs:
+        - >-
+          A dedicated checkpoint location costs little storage and a naming convention somebody has
+          to keep.
+        - >-
+          The kill test takes an engineer and a quiet window in staging; skipping it means the first
+          proof is an incident.
+      retain: >-
+        The dated restart test result (query name, row-count comparison, who ran it) and the map of
+        query to checkpoint path.
+      revisit: >-
+        A query plan change, a new streaming sink, or a reconciliation that found duplicates or a
+        gap. Failing those, each release that touches the query.
+
+  # Leverage Delta Lake time travel and versioning
+  # Q: Have you actually restored a table to an earlier version after a bad write, rather than assuming time travel will work?
+  REL-04-02:
+    status: authored
+    last_reviewed: '2026-08-03'
+    owner_role: Data engineering lead
+    means: >-
+      Somebody has run a restore on a real table and confirmed the result, and the retention window is
+      long enough that a bad write would still be recoverable when it is noticed.
+    matters: >-
+      Time travel is bounded by retention, and the default window is shorter than the time it takes to
+      notice a subtle corruption. A restore that is possible in principle and has never been run also
+      hits its problems during the incident: which version, whether downstream tables need the same
+      treatment, whether the streaming reader's checkpoint now points past the restored data.
+    good:
+      - A restore has been performed on a real table, in staging or production, and the outcome recorded.
+      - Retention on critical tables is set from how long a corruption might go unnoticed, not left at the default.
+      - 'The `VACUUM` interval is known to be compatible with the retention the restore depends on.'
+      - Somebody knows how to pick the version to restore to, from the history rather than by guessing.
+      - The downstream consequence of a restore is understood, particularly for streaming readers.
+    examples:
+      strong: >-
+        Critical tables retain thirty days of history with VACUUM aligned to it. A restore was exercised
+        last quarter on a copy of a production table; the runbook records how the version was chosen and
+        what had to be done about the streaming consumer.
+      partial: >-
+        Retention is configured deliberately on the important tables and no restore has been run, so the
+        procedure is documented rather than tested.
+      weak: >-
+        Defaults everywhere. Nobody has looked at whether a week-old bad write could still be recovered,
+        and a `VACUUM` job runs nightly with a short retention.
+    verify:
+      - how: sql
+        where: describe history <a critical production table>
+        expect: >-
+          Versions reaching back far enough to cover the time a bad write might go unnoticed
+      - how: sql
+        where: show tblproperties <a critical production table>
+        expect: >-
+          `delta.deletedFileRetentionDuration` and `delta.logRetentionDuration` set deliberately, rather than
+          absent and therefore defaulted
+      - how: by-hand
+        where: Ask when a table was last restored, and what the restore had to account for downstream
+        expect: A date and a consequence, rather than "we could if we needed to"
+    pitfalls:
+      - >-
+        A `VACUUM` retention shorter than the log retention, which leaves history that names files that
+        have been deleted — so the version is listed and cannot be read.
+      - >-
+        Restoring the table and leaving its downstream tables built from the bad version, which turns
+        one corruption into an inconsistency between layers.
+      - >-
+        Assuming the default retention is enough. It is measured in days, and a subtle corruption is
+        usually noticed in weeks.
+    partial_when: >-
+      Retention is set deliberately and no restore has ever been exercised, or a restore has been done
+      without considering what it means for downstream tables and streaming readers.
+    references:
+      - https://docs.databricks.com/aws/en/tables/history
+      - https://docs.databricks.com/aws/en/tables/operations/vacuum
+    advice:
+      start_from: >-
+        Critical tables with retention set from how long a bad write usually goes unnoticed, VACUUM
+        aligned to that window, and one restore exercised on a real copy with the downstream steps
+        written down.
+      depends_on:
+        - >-
+          Retention settings alone are REL-04-05; this control is whether somebody has actually
+          restored and knows what follows for consumers.
+        - >-
+          Streaming readers past the restored version need a plan before you run RESTORE in
+          production, or you trade one corruption for a stuck checkpoint.
+        - >-
+          Tables nobody would restore (throwaway sandboxes) need neither the exercise nor long
+          retention.
+      path:
+        - >-
+          Pick one critical table, confirm history reaches far enough, and restore a copy in staging
+          to a chosen version.
+        - >-
+          Document how the version was picked and what had to happen for downstream tables and
+          streams.
+        - >-
+          Align VACUUM with the retention you depend on so history does not name deleted files.
+      costs:
+        - >-
+          Longer retention and delayed VACUUM cost storage; that is the recovery window's price.
+        - >-
+          A restore exercise needs a quiet window and someone who owns the downstream jobs.
+      retain: >-
+        The dated restore runbook entry — table, version chosen, downstream actions — not only the
+        retention properties.
+      revisit: >-
+        A production bad write, a VACUUM that removed needed files, or a new critical table without
+        a tested restore path. Failing those, annually.
+
+  # Automate job recovery and retries
+  # Q: When a job fails part way through, does the framework retry and resume safely — or does someone work out by hand what to rerun?
+  REL-04-03:
+    status: authored
+    last_reviewed: '2026-08-03'
+    owner_role: Data engineering lead
+    means: >-
+      A failed job is retried by the platform, and a retry is safe to run — tasks are idempotent, so
+      repeating one produces the same result rather than a duplicate.
+    matters: >-
+      Without automated recovery, every transient failure needs a person, and the person has to
+      determine which tasks completed before rerunning. That reasoning happens under time pressure,
+      usually by whoever is available, and it is where partial reruns produce duplicated or missing data.
+    good:
+      - Production jobs configure retries, with a count and interval that suit the failure they are for.
+      - Tasks are idempotent, so a retry cannot duplicate output — usually a MERGE or an overwrite of a partition.
+      - Repair-and-rerun is used rather than rerunning whole jobs, so completed tasks are not repeated.
+      - Failures notify somebody, so a job that exhausts its retries is not discovered by a consumer.
+      - Somebody can name a failure that recovered without intervention.
+    examples:
+      strong: >-
+        Production jobs retry twice with backoff. Every write is a MERGE or a partition overwrite, so a
+        retry is safe. Failures alert the owning team, and last month's transient cloud error recovered
+        on the second attempt with nobody involved.
+      partial: >-
+        Retries are configured on the main jobs, but two tasks append rather than merge, so a retry
+        duplicates rows and the team has learned to cancel rather than let it retry.
+      weak: >-
+        No retries. A failure pages somebody, who works out which tasks ran and reruns the rest by hand.
+    verify:
+      - how: sql
+        where: |-
+          select job_id, count(distinct run_id) as runs,
+          count(distinct case when result_state <> 'SUCCEEDED' then run_id end) as failed,
+          round(100.0 * count(distinct case when result_state <> 'SUCCEEDED' then run_id end)
+          / count(distinct run_id), 1) as failure_pct
+          from system.lakeflow.job_run_timeline
+          where period_start_time > current_timestamp() - interval 30 days
+          and result_state is not null group by all having runs >= 5 order by failure_pct desc
+        expect: >-
+          The jobs that fail often enough for retry policy to matter, as the list for the next step
+        caveat: >-
+          A rate, not a ranking: ordering by run count puts the busiest jobs on top and usually their
+          successes with them. It still cannot tell you a failure was retried and then succeeded, which is
+          why the next step exists. `<> 'SUCCEEDED'` catches `ERROR`, `TIMED_OUT`, `CANCELLED` and
+          `BLOCKED`; a check for `FAILED` alone misses every one of them.
+      - how: ui
+        where: >-
+          The settings of the jobs the query put at the top: the retry policy, and where a failure
+          notifies
+        expect: Retries configured and a notification destination, rather than defaults
+      - how: by-hand
+        where: Ask whether rerunning any task twice would duplicate its output
+        expect: >-
+          A confident no with a mechanism named — MERGE, partition overwrite — rather than "it probably
+          would"
+    pitfalls:
+      - >-
+        Retries on a task that appends, which converts a recoverable failure into duplicated data and
+        teaches the team to disable retries.
+      - >-
+        Rerunning the whole job rather than repairing the failed run, which repeats completed work and
+        multiplies the window in which a downstream consumer reads a partial result.
+      - >-
+        Retries configured with no notification, so a job that exhausts them fails silently and is found
+        by whoever depended on it.
+    partial_when: >-
+      Retries are configured while some tasks are not idempotent, so retrying is unsafe for part of the
+      estate, or retries work and nobody is notified when they are exhausted.
+    references:
+      - https://docs.databricks.com/aws/en/jobs/configure-job
+      - https://docs.databricks.com/aws/en/jobs/repair-job-failures
+    advice:
+      start_from: >-
+        Production jobs with task retries and backoff, writes that are MERGE or partition overwrites
+        so a retry cannot duplicate, repair-and-rerun instead of whole-job reruns, and a notification
+        when retries are exhausted.
+      depends_on:
+        - >-
+          A task that appends without a merge key must not retry automatically; fix the write shape
+          before enabling retries, or the team will disable them after the first duplicate.
+        - >-
+          REL-01-04 scores job timeouts; this practice is about safe recovery after a failure, which
+          the timeout alone does not provide.
+        - >-
+          Continuous streaming jobs need backlog and checkpoint discipline more than batch-style
+          task retries — do not copy a batch retry policy onto them blindly.
+      path:
+        - >-
+          From the jobs that fail most often, set retries where the write is already idempotent, and
+          alert on exhaustion.
+        - >-
+          Convert remaining append-only tasks to MERGE or partition overwrite before turning retries
+          on.
+        - >-
+          Train the on-call path on repair-and-rerun so completed tasks are not repeated by habit.
+      costs:
+        - >-
+          Idempotent writes are usually a one-time rewrite per task; retries without that rewrite
+          cost cleanup after every transient failure.
+        - >-
+          Notification channels that nobody watches waste the last line of defence.
+      retain: >-
+        A dated example of a failure that recovered without intervention, and the list of tasks that
+        still must not retry because their writes are not idempotent.
+      revisit: >-
+        A duplicate caused by a retry, a job that exhausted retries unnoticed, or a new production
+        job shipped without a retry policy. Failing those, quarterly.
+
+  # Configure high availability and disaster recovery
+  # Q: Is there a disaster recovery plan with a stated recovery objective, and has it been exercised rather than written?
+  REL-04-04:
+    status: authored
+    last_reviewed: '2026-08-02'
+    owner_role: Platform owner, with the business owner of the affected workloads
+    means: >-
+      There is a written plan for losing a region or a workspace, it states how much data may be lost
+      and how long recovery may take, and somebody has run it rather than only agreed to it.
+    matters: >-
+      An unexercised plan is a document, not a capability. The failures it omits are found during the
+      outage, when the people who would find them are the people recovering.
+    good:
+      - A recovery point objective and a recovery time objective, stated as numbers the business agreed to.
+      - Critical tables replicated to a second region, by a mechanism somebody can name.
+      - The secondary path can run the critical workloads, not merely hold their data.
+      - A dated exercise within the last twelve months, with what it found written down.
+      - Identity, secrets and network access work in the secondary — the part exercises usually break on.
+    examples:
+      strong: >-
+        A four-hour RTO and a fifteen-minute RPO, Delta tables replicated by scheduled deep clone,
+        jobs defined in a bundle that deploys to either region, and a failover exercise last quarter
+        that found an unreplicated secret scope and fixed it.
+      partial: >-
+        Tables are replicated and the objectives are written down, but no exercise has been run, so
+        whether the jobs can be brought up in the second region is an assumption.
+      weak: >-
+        Backups exist because cloud storage is durable. There is no stated objective, no second
+        workspace, and no test.
+    verify:
+      - how: by-hand
+        where: The DR runbook for this platform, and the date and findings of the last exercise
+        expect: An RTO, an RPO, and an exercise inside the last year
+      - how: ui
+        where: Catalog > the critical catalogs, and their external locations
+        expect: A replication mechanism, or a second region holding the same data
+      - how: cli
+        where: >-
+          databricks account workspaces list, and the targets named in the bundle your production jobs
+          deploy from. Not `databricks workspace list`, which takes a path and lists the notebooks and
+          files inside one workspace — it cannot answer whether a second workspace exists
+        expect: >-
+          A workspace in a second region that the same bundle definitions already name as a target,
+          rather than one somebody would create during the incident
+    pitfalls:
+      - >-
+        Treating cloud storage durability as disaster recovery. It survives hardware, not a deleted
+        table, a bad deployment or a regional control-plane outage.
+      - >-
+        Replicating data without replicating the things that read it — jobs, permissions, secrets,
+        service principals — so the recovery is a data restore and a rebuild.
+      - >-
+        An objective nobody outside the platform team has agreed to, which is discovered to be wrong
+        during the first real incident.
+    partial_when: >-
+      Objectives are stated and replication exists, but the plan has never been exercised, or the
+      exercise covered data and not the workloads.
+    not_applicable_when: >-
+      The workspace holds no production workload and no data whose loss would matter — a sandbox or a
+      training environment that is rebuilt rather than recovered.
+    references:
+      - https://docs.databricks.com/aws/en/admin/disaster-recovery
+      - https://docs.databricks.com/aws/en/tables/operations/clone
+    advice:
+      start_from: >-
+        A 24-hour recovery time and a 24-hour recovery point for the tables the business would notice
+        losing, met by scheduled deep clone into a second region and a workspace defined in the same
+        bundle as production. Slow, cheap, and a real capability — which is the order to acquire them in.
+      depends_on:
+        - >-
+          A workload somebody is paged for out of hours needs an RTO inside the paging window, or the
+          objective and the rota disagree and the rota wins.
+        - >-
+          Data that can be replayed from a source system needs a recovery point no tighter than the
+          source's retention. Replication buys nothing the replay does not already give you.
+        - >-
+          A regulated workload usually has the objective set for it, in which case this is a question
+          about evidence rather than about the number.
+        - >-
+          Streaming ingestion moves the recovery point to the checkpoint, so the objective belongs on
+          the checkpoint's storage rather than on the table's.
+      path:
+        - >-
+          Write down what the current objective actually is — the honest answer is usually "however
+          long a rebuild takes, and back to the last backup" — and get the business owner to say
+          whether that is acceptable. Half of these decisions end here.
+        - >-
+          Replicate the critical tables and the things that read them: jobs, permissions, secret
+          scopes, service principals. Deploy the same bundle to a second region so the target exists
+          before it is needed.
+        - >-
+          Exercise it against the objective, with the platform team not touching the keyboard, and
+          write down what broke. Then repeat annually, which is what turns the plan into a capability.
+      costs:
+        - >-
+          A second region roughly doubles storage for the replicated tables and adds the compute the
+          clone schedule uses, which is small but recurring and nobody budgets for it.
+        - >-
+          A day or two per exercise, from the people who can least be spared, and an exercise that
+          finds nothing still costs it.
+        - >-
+          Tightening the recovery point below an hour usually means continuous replication rather than
+          a schedule, which is a different mechanism and a larger operational surface.
+      retain: >-
+        The dated exercise record — what was failed over, how long it took against the objective, what
+        broke and what was changed as a result. A runbook with no exercise record behind it evidences
+        the intention rather than the capability.
+      revisit: >-
+        A new critical workload, a region change, or a business owner changing what an outage costs.
+        Failing those, annually, because the estate the plan was written against has moved even when
+        nothing about the plan has.
+
+  # Use a data format that supports ACID transactions
+  # Never put to a person. Guidance here explains a finding rather than enabling an answer.
+  # Alias open-table-formats with CO-01-01, DG-03-03, IU-02-01 — reliability angle: ACID, concurrent writers, recoverable versions.
+  REL-01-01:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: Data engineering lead
+    means: >-
+      Production tables use Delta or Iceberg, so a write either commits or does not, concurrent writers
+      do not corrupt each other, and an earlier version remains readable after a bad one lands.
+    matters: >-
+      A format without transactions turns a failed mid-write into a half-written table, and a second
+      writer into a race. There is then no version to restore to — only a repair that guesses which
+      files are complete.
+    good:
+      - Effectively every table is Delta or Iceberg, with exceptions listed and explained.
+      - Writers rely on ACID commits rather than "stop all jobs before replacing files".
+      - Concurrent pipelines writing the same table do not need an external lock.
+      - A bad write leaves earlier versions intact long enough to recover from.
+      - New tables get Delta or Iceberg from the pipeline template, not from whoever wrote them.
+    examples:
+      strong: >-
+        Production tables are Delta. Two jobs can merge into the same table without coordinating a
+        lock, and last quarter's bad overwrite was undone by restoring a prior version.
+      partial: >-
+        Most tables are Delta after a migration, and a Parquet landing zone remains for a partner
+        drop — reasonable as a drop, and two pipelines still replace files there in place.
+      weak: >-
+        CSV and bare Parquet in place of tables. A failed job leaves partial files, and the fix is
+        deleting a path by hand.
+    verify:
+      - how: sql
+        where: |-
+          select data_source_format, count(*) as tables
+          from system.information_schema.tables
+          where table_schema <> 'information_schema'
+            and table_type not in ('VIEW', 'METRIC_VIEW', 'FOREIGN')
+          group by all order by tables desc
+        expect: >-
+          Delta and Iceberg carrying nearly all of it, with any other format small enough to name
+        caveat: >-
+          Views, metric views and foreign tables report no choosable format and are not failures.
+          The query above already drops them. Same census as DG-03-03 and IU-02-01; here the
+          question is whether a write is recoverable. `hive_metastore` tables are invisible to
+          this view.
+      - how: ui
+        where: >-
+          Catalog Explorer, a non-Delta table from the query above
+        expect: >-
+          A reason it is that way — partner drop, external writer — rather than nobody knowing
+      - how: by-hand
+        where: >-
+          Ask what happens when two jobs write the same table, and whether anyone has restored a version
+        expect: >-
+          Concurrent commits without an external lock, and a restore that has actually been done
+    pitfalls:
+      - >-
+        Keeping a Parquet path as the table consumers read, so ACID only exists on a copy nobody
+        fails over to.
+      - >-
+        Counting the format conversion done while writers still replace directories of files with a
+        job that can stop halfway.
+      - >-
+        Treating Iceberg or Delta as enough without retention — a format that supports versions still
+        needs history long enough to use them (see REL-04-05).
+    partial_when: >-
+      Delta or Iceberg covers most tables but some production writers still replace directories
+      of files without an atomic commit, or a raw landing zone is queried by two jobs that
+      overwrite it in place.
+    references:
+      - https://docs.databricks.com/aws/en/delta/
+      - https://docs.databricks.com/aws/en/lakehouse-architecture/reliability/best-practices
+    advice:
+      start_from: >-
+        Put every production table on a format that commits atomically and keeps prior versions —
+        Delta for platform-owned tables, Iceberg only where an external engine must read the files —
+        so a failed write and a concurrent writer are survivable rather than catastrophic.
+      depends_on:
+        - >-
+          An external writer that cannot speak Delta needs a conversion step into Delta before
+          anything concurrent reads or merges.
+        - >-
+          A partner drop in Parquet or CSV is fine as a drop; it is not fine as the table two jobs
+          overwrite in place.
+        - >-
+          Governance definitions (`DG-03-03`) and cross-engine portability (`IU-02-01`) share this
+          measurement — do not convert three times for three pillars.
+      path:
+        - >-
+          Stop new tables landing outside Delta or Iceberg: set the format in the pipeline template.
+        - >-
+          Convert the tables that already take concurrent writes or need restore, starting with the
+          ones that have failed mid-write.
+        - >-
+          Write down remaining exceptions and why each stays outside an ACID format.
+      costs:
+        - >-
+          Converting a large table rewrites it; both copies exist while it runs.
+        - >-
+          Writers that assumed directory replace semantics need a MERGE or overwrite rewrite, which
+          is the real engineering cost.
+      retain: >-
+        The dated format count and the exception list with reasons — the same artefacts stop the next
+        review rediscovering partner drops.
+      revisit: >-
+        A mid-write corruption, a second writer added to a non-Delta path, or a restore that could not
+        find a version. Failing those, annually.
+
+  # Configure jobs for automatic retries and termination
+  # Never put to a person. Guidance here explains a finding rather than enabling an answer.
+  # Resolver reads timeout_seconds only on jobs with a recorded setting — not health rules.
+  REL-01-04:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: Platform owner, with the data engineering lead
+    means: >-
+      Live jobs carry a timeout above zero, so a hung run stops when the bound is hit rather than
+      billing until a person notices missing output.
+    matters: >-
+      Without a timeout a stuck task holds compute indefinitely. The first signal is often a dashboard
+      that did not refresh, and by then the bill and the backlog have both grown for hours.
+    good:
+      - At least four in five jobs with a readable timeout setting have timeout_seconds above zero.
+      - Timeouts are set from how long the job should ever take, not left at zero or blank.
+      - Jobs edited since early December 2025 show a recorded timeout in the system table.
+      - Hung runs appear as timed-out failures with a notification, not as silent missing data.
+      - Task retries (where used) are separate from the job timeout and only on idempotent tasks.
+    examples:
+      strong: >-
+        Production jobs have timeouts set from observed run times plus headroom. A hung cluster last
+        month hit the timeout, alerted the owner, and did not run overnight.
+      partial: >-
+        Newer jobs have timeouts and a long tail of jobs never re-saved still show no recorded
+        setting, so the share only covers what the system table can see.
+      weak: >-
+        Timeouts are unset or zero across the jobs that can be read. Hung runs are found by someone
+        asking why a table is stale.
+    verify:
+      - how: sql
+        where: |-
+          with latest as (
+            select * from system.lakeflow.jobs
+            qualify row_number() over (
+              partition by workspace_id, job_id order by change_time desc) = 1)
+          select
+            count(*) as jobs,
+            count_if(timeout_seconds is not null) as timeout_known,
+            count_if(timeout_seconds > 0) as timeout_set
+          from latest
+          where delete_time is null
+        expect: >-
+          timeout_set close to timeout_known, and timeout_known not zero when jobs exist
+        caveat: >-
+          `timeout_seconds` is unpopulated for job rows written before early December 2025. A null is
+          unknown, not "no timeout" — the app excludes those rows from the share and reports
+          unmeasurable when none are known. This check does not score health rules; the resolver only
+          reads the timeout.
+      - how: ui
+        where: >-
+          Workflows > Jobs > a production job's settings, the Timeout field
+        expect: >-
+          A positive timeout, rather than blank or zero
+      - how: by-hand
+        where: >-
+          Ask how the last hung job was discovered
+        expect: >-
+          A timeout or alert, rather than a consumer noticing stale data
+    pitfalls:
+      - >-
+        Treating every null timeout as a failure. Pre-December 2025 rows may be configured in the UI
+        and still unread here until the job is saved again.
+      - >-
+        A timeout shorter than a legitimate long run, which turns success into a timeout loop.
+      - >-
+        Scoring health rules as this control. Health rules are useful and are not what the scan
+        measures for REL-01-04.
+    partial_when: >-
+      Most jobs with a recorded setting have a timeout and a known set still have none, or timeouts
+      exist while hung runs are still discovered by consumers because nothing notifies.
+    not_applicable_when: >-
+      There are no jobs in the workspace.
+    references:
+      - https://docs.databricks.com/aws/en/jobs/configure-job
+      - https://docs.databricks.com/aws/en/admin/system-tables/jobs
+    advice:
+      start_from: >-
+        A job-level timeout on every scheduled job, set above the worst legitimate run with headroom,
+        plus an on-failure notification — and re-save older jobs so the setting is recorded.
+      depends_on:
+        - >-
+          Jobs that legitimately run for many hours need a matching timeout; copying a one-hour bound
+          onto them creates false failures.
+        - >-
+          Task retries belong on idempotent tasks (see REL-04-03); they do not replace a job timeout.
+        - >-
+          Continuous streaming jobs need backlog and health rules more than a batch-style wall-clock
+          timeout — set the bound that matches how that job fails.
+      path:
+        - >-
+          From jobs with a recorded timeout of null or zero, set a positive timeout on the ones that
+          run on a schedule.
+        - >-
+          Re-save long-standing jobs once so `timeout_seconds` is written to the system table and the
+          scan can see them.
+        - >-
+          Add failure notifications so a timeout is not a silent stop.
+      costs:
+        - >-
+          Re-saving hundreds of jobs is mechanical but calendar time; leaving them unread keeps the
+          finding unmeasurable.
+        - >-
+          An undersized timeout costs failed runs and pages; an oversized one costs delayed detection.
+      retain: >-
+        The dated share of jobs with timeout_seconds > 0 among those with a recorded setting, and the
+        count still unknown because the column was never written.
+      revisit: >-
+        A hung run that billed past expectation, a wave of new jobs without timeouts, or the unknown
+        count staying flat after a save campaign. Failing those, quarterly.
+
+  # Use managed services where possible
+  # Never put to a person. Guidance here explains a finding rather than enabling an answer.
+  # Alias serverless-adoption with CO-01-06, PE-02-01, IU-03-02 — reliability: managed compute absorbs failure/patching.
+  REL-01-06:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: Platform owner
+    means: >-
+      Work that can run on serverless does, so node loss, runtime patching and capacity planning sit
+      with the platform rather than with a classic cluster somebody sized and must keep healthy.
+    matters: >-
+      Classic compute fails in ways the team owns: an expired runtime, a bad autoscaling range, a
+      driver that died and nobody restarted. Serverless moves those failure modes off the critical
+      path; staying on classic keeps them as pages.
+    good:
+      - Most of the spend that has a serverless option is already on serverless.
+      - New jobs and warehouses start serverless unless a named exception blocks them.
+      - Classic clusters that remain have a written reason — library, GPU, regional gap.
+      - The share is of choice-spend, not of the whole bill including serving and storage.
+      - Patching and node replacement are not a weekly chore for the platform team.
+    examples:
+      strong: >-
+        Jobs, SQL and notebooks are serverless. The classic clusters left are a GPU job and a custom
+        image, both listed. Nobody patches runtimes for the rest.
+      partial: >-
+        SQL is serverless and production jobs still run on classic clusters the team restarts after
+        failures, or new work is serverless and the old jobs were never moved.
+      weak: >-
+        Everything that can be a cluster is a cluster. Runtime upgrades and node loss are routine
+        incidents.
+    verify:
+      - how: sql
+        where: |-
+          select billing_origin_product,
+          coalesce(product_features.is_serverless, false) as serverless,
+          round(sum(usage_quantity), 1) as dbus
+          from system.billing.usage
+          where usage_date > current_date() - 30 and usage_unit = 'DBU'
+          and billing_origin_product in ('JOBS', 'ALL_PURPOSE', 'INTERACTIVE', 'SQL', 'DLT')
+          group by all order by dbus desc
+        expect: >-
+          Serverless carrying most of the DBU in those products — the ones with a classic form
+        caveat: >-
+          The app scores priced cost over choice-spend, not raw DBU, and excludes products with no
+          classic form. This is the same measurement as `IU-03-02`; here the question is who absorbs
+          failure and patching, not how fast a first query starts.
+      - how: ui
+        where: >-
+          Compute and Jobs, whether production work defaults to serverless
+        expect: >-
+          Serverless as the default path, classic as a named exception
+      - how: by-hand
+        where: >-
+          Ask who last patched a runtime or recovered a dead driver on production compute
+        expect: >-
+          Rare or never for serverless workloads — not a weekly rota
+    pitfalls:
+      - >-
+        Moving SQL for convenience and leaving jobs on classic, which is where most failure handling
+        still sits.
+      - >-
+        Counting model serving as serverless adoption. It has no classic form, so it neither helps nor
+        hurts this share.
+      - >-
+        Keeping classic "for control" without owning the patching and recovery that control implies.
+    partial_when: >-
+      Serverless carries part of the choice-spend while production jobs still run on classic
+      clusters that need a person when a node dies or a runtime must be patched — not merely
+      clusters nobody has moved yet.
+    not_applicable_when: >-
+      Nothing in the window was billed on jobs, all-purpose, SQL or pipelines, so there was no
+      serverless decision to take.
+    references:
+      - https://docs.databricks.com/aws/en/compute/serverless/
+      - https://docs.databricks.com/aws/en/jobs/run-serverless-jobs
+    advice:
+      start_from: >-
+        Run production work on managed compute so a dead node and a runtime patch do not become
+        incidents your team owns — treat remaining classic clusters as failure-handling debt with a
+        named owner, not as the default shape for new jobs.
+      depends_on:
+        - >-
+          Custom containers and GPUs stay classic; everything else should not inherit that exception.
+        - >-
+          A region without serverless keeps classic plus short auto-stop and an explicit patching
+          owner.
+        - >-
+          Long continuous jobs may cost more per DBU on serverless — measure before moving, but do
+          not keep classic only from habit.
+      path:
+        - >-
+          Move SQL and interactive first where outages hit people waiting on a cluster.
+        - >-
+          Make serverless the default for new jobs so classic stops growing.
+        - >-
+          Migrate existing jobs that fail on node loss or stale runtimes; leave the GPU and custom
+          image list as the exception register.
+      costs:
+        - >-
+          Serverless can cost more per DBU than a well-sized always-on classic cluster.
+        - >-
+          Cold start after idle is a latency trade for not owning the fleet — pick per workload.
+      retain: >-
+        The dated choice-spend serverless share and the classic exception list with who owns patching
+        each remaining cluster.
+      revisit: >-
+        A runtime or node-loss incident on classic compute, a new region, or the classic share rising
+        two months running. Failing those, quarterly.
+
+  # Enable autoscaling for ETL workloads
+  # Never put to a person. Guidance here explains a finding rather than enabling an answer.
+  # Alias compute-autoscaling with CO-02-01 — reliability: absorb load without manual resize.
+  REL-03-01:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: Data engineering lead, with the platform owner
+    means: >-
+      All-purpose clusters autoscale and SQL warehouses scale out or are serverless, so a surge of
+      ETL or interactive load is absorbed without someone resizing compute by hand.
+    matters: >-
+      Fixed-size compute that was right on Tuesday is wrong on month-end. The failure mode is a queue
+      or an OOM while somebody is found to raise max workers — which is an outage with a person in
+      the loop.
+    good:
+      - Most all-purpose clusters have an autoscale range rather than a fixed worker count.
+      - Most warehouses either scale out (max clusters above min) or are serverless.
+      - ETL jobs that still use classic clusters sit inside that elastic population.
+      - Nobody's runbook says "scale the cluster" as the first response to backlog.
+      - Serverless-only estates meet this by architecture — there is no capacity setting to miss.
+    examples:
+      strong: >-
+        All-purpose clusters autoscale and warehouses scale out or are serverless. Last month's
+        month-end spike raised workers and warehouse clusters without a ticket.
+      partial: >-
+        Warehouses scale and half the all-purpose clusters are still fixed at a size chosen years
+        ago, so interactive spikes still need a resize.
+      weak: >-
+        Fixed clusters and single-cluster warehouses. Peaks wait on whoever can edit the config.
+    verify:
+      - how: sql
+        where: |-
+          with clusters as (
+            select * from system.compute.clusters
+            qualify row_number() over (
+              partition by workspace_id, cluster_id order by change_time desc) = 1)
+          select cluster_id, cluster_name,
+            min_autoscale_workers, max_autoscale_workers, worker_count
+          from clusters
+          where delete_time is null
+          and cluster_source = 'UI'
+          and (max_autoscale_workers is null
+            or max_autoscale_workers <= coalesce(min_autoscale_workers, 0))
+          order by cluster_name
+        expect: >-
+          Few or no interactive all-purpose clusters left without an autoscale range
+        caveat: >-
+          Classic compute only. The app also counts warehouses that are serverless or have
+          max_clusters > min_clusters into the same share. Job clusters are out of this interactive
+          list — check warehouse inventory separately for REL-03-02's narrower question.
+      - how: ui
+        where: >-
+          Compute > a production all-purpose cluster, and SQL warehouses > scaling
+        expect: >-
+          Autoscale ranges and warehouse max clusters above min, rather than fixed size
+      - how: by-hand
+        where: >-
+          Ask what happened the last time ETL or dashboard load spiked
+        expect: >-
+          Compute grew on its own, rather than a ticket to resize
+    pitfalls:
+      - >-
+        Autoscale with min equal to max, which is a fixed size wearing an autoscaling label.
+      - >-
+        Scaling warehouses for cost reasons only and leaving ETL clusters fixed — the alias scores
+        both; fixing one pillar's favourite half is not enough.
+      - >-
+        Manual "scale up for the batch window" scripts that work until the person who runs them is
+        away.
+    partial_when: >-
+      Warehouses or clusters scale and the other half of the estate is still fixed, so some surges
+      are absorbed and others still need a person.
+    not_applicable_when: >-
+      The estate runs no classic clusters or SQL warehouses — serverless compute scales without a
+      capacity setting.
+    references:
+      - https://docs.databricks.com/aws/en/compute/configure
+      - https://docs.databricks.com/aws/en/compute/sql-warehouse/create
+    advice:
+      start_from: >-
+        Autoscale on every all-purpose cluster that still exists, and warehouses with max clusters
+        above min (or serverless), so ETL and interactive peaks do not wait on a resize ticket.
+      depends_on:
+        - >-
+          A tiny single-user warehouse can stay at one cluster; concurrent dashboards cannot.
+        - >-
+          Cost-driven min/max bounds still need headroom above expected peak, or autoscaling exists
+          and never reaches what the job needs.
+        - >-
+          Serverless jobs and warehouses already satisfy the intent — do not recreate classic
+          capacity to have something to autoscale.
+      path:
+        - >-
+          Enable autoscale on fixed all-purpose clusters that run production or shared interactive
+          work.
+        - >-
+          Raise warehouse max_clusters above min on warehouses that serve more than one consumer.
+        - >-
+          Remove "resize the cluster" from runbooks once the ranges have absorbed a real spike.
+      costs:
+        - >-
+          Higher max workers and warehouse clusters can spend more during a spike — that is the
+          alternative to an outage.
+        - >-
+          Undersized max values look configured and still fail under load.
+      retain: >-
+        The dated share of elastic clusters and warehouses, and a note of the last spike that scaled
+        without intervention.
+      revisit: >-
+        A peak that queued or OOM'd at the max, a new fixed-size cluster for "just this job", or a
+        return of manual resize runbooks. Failing those, quarterly.
+
+  # Enable autoscaling for SQL warehouse
+  # Never put to a person. Guidance here explains a finding rather than enabling an answer.
+  # warehouseScaling only — scalesOut (max_clusters > min_clusters), not the combined autoscaling resolver.
+  REL-03-02:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: Platform owner, with the analytics engineering lead
+    means: >-
+      SQL warehouses can add clusters under load — max_clusters above min_clusters — so concurrent
+      queries at peak do not sit in a queue behind a single cluster.
+    matters: >-
+      A warehouse fixed at one cluster turns a concurrency spike into wait time for every dashboard
+      on it. The warehouse looks healthy; the users experience an outage.
+    good:
+      - At least four in five warehouses have max_clusters greater than min_clusters.
+      - Warehouses that serve many concurrent users are in that elastic set.
+      - Single-cluster warehouses are only those with a single known consumer.
+      - Peaks are absorbed by added clusters, not by asking users to retry later.
+      - Cluster size and cluster count are tuned for different problems — slow query vs queue.
+    examples:
+      strong: >-
+        Shared warehouses scale from one to several clusters. Month-end dashboard concurrency adds
+        clusters and drain time stays flat.
+      partial: >-
+        The main shared warehouse scales and several team warehouses remain fixed at one cluster
+        even though each serves a group.
+      weak: >-
+        Every warehouse is one cluster. Peaks show up as queued queries and Slack messages.
+    verify:
+      - how: sql
+        where: |-
+          with latest as (
+            select * from system.compute.warehouses
+            qualify row_number() over (
+              partition by workspace_id, warehouse_id order by change_time desc) = 1)
+          select warehouse_name, min_clusters, max_clusters,
+            coalesce(max_clusters, 1) > coalesce(min_clusters, 1) as scales_out
+          from latest
+          where delete_time is null
+          order by scales_out, warehouse_name
+        expect: >-
+          scales_out true for shared warehouses; fixed size only where one consumer is intended
+        caveat: >-
+          This control scores scale-out only (`max_clusters > min_clusters`). Serverless warehouses
+          that do not expose a wider range still appear here as configured rows — a single-cluster
+          warehouse is not automatically wrong for one consumer. REL-03-01's combined resolver also
+          credits serverless; this one does not substitute for that.
+      - how: ui
+        where: >-
+          SQL warehouses > each shared warehouse > Scaling
+        expect: >-
+          Max clusters above min, rather than both set to one
+      - how: by-hand
+        where: >-
+          Ask whether last peak's queued queries were fixed by waiting or by the warehouse adding
+          clusters
+        expect: >-
+          Clusters added, rather than users asked to come back later
+    pitfalls:
+      - >-
+        Raising warehouse size for a concurrency problem. Size helps a slow query; scale-out helps a
+        queue of many queries.
+      - >-
+        Counting this as done because REL-03-01 passed via cluster autoscaling alone while every
+        warehouse is still fixed.
+      - >-
+        Max equal to min on a warehouse labelled "production shared".
+    partial_when: >-
+      The primary shared warehouse scales out and secondary warehouses that also have concurrent
+      users do not.
+    not_applicable_when: >-
+      There are no SQL warehouses in the workspace.
+    references:
+      - https://docs.databricks.com/aws/en/compute/sql-warehouse/create
+      - https://docs.databricks.com/aws/en/compute/sql-warehouse/warehouse-behavior
+    advice:
+      start_from: >-
+        Max clusters above min on every warehouse that more than one person or dashboard uses, with
+        min at one and max set from measured peak concurrency.
+      depends_on:
+        - >-
+          A warehouse with one scheduled job as its only consumer can stay at one cluster.
+        - >-
+          A single very heavy query needs a larger cluster size, not a higher max count.
+        - >-
+          Serverless warehouses still need a deliberate scaling configuration where the product
+          exposes one — do not assume "serverless" answered scale-out on this control.
+      path:
+        - >-
+          Identify warehouses with concurrent users from query history or ownership, and raise
+          max_clusters above min.
+        - >-
+          Watch queueing during the next known peak and adjust max if clusters pegged.
+        - >-
+          Leave true single-consumer warehouses documented so they are not "fixed" into multi-cluster
+          spend.
+      costs:
+        - >-
+          Extra clusters during peaks cost DBUs; that is cheaper than every dashboard timing out.
+        - >-
+          Over-setting max on quiet warehouses wastes little if auto-stop is short — still set max
+          from need, not from fear.
+      retain: >-
+        The list of warehouses with scales_out false and the reason each stays single-cluster, dated
+        after the last peak review.
+      revisit: >-
+        Queued queries at peak, a new shared warehouse created at one cluster, or a team warehouse
+        that grew past one consumer. Failing those, quarterly.
+
+  # Manage Delta history and time-travel retention
+  # Never put to a person. Guidance here explains a finding rather than enabling an answer.
+  # Alias delta-history-retention with CO-03-07 — sampled describe:table_details.
+  REL-04-05:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: Data engineering lead
+    means: >-
+      Tables state how far back time travel and RESTORE can reach — log and deleted-file retention
+      set deliberately and aligned — so a bad write is still recoverable when it is noticed.
+    matters: >-
+      Time travel only works inside the reachable window: the lesser of log retention and file
+      retention. A long log against short file retention promises a year and delivers a week. Defaults
+      are seven days of files; a subtle corruption is often found later than that.
+    good:
+      - Every sampled table can be restored at least seven days back.
+      - Critical tables set retention explicitly rather than inheriting defaults only.
+      - Log retention and deleted-file retention reach the same point when log is raised.
+      - VACUUM (or predictive optimization) is understood so the window is what settings guarantee.
+      - Somebody can name the recovery window for the tables that matter.
+    examples:
+      strong: >-
+        Critical tables set both retention properties to thirty days. No sampled table is below seven
+        days, and none keeps a year of log against a week of files.
+      partial: >-
+        Nothing is shortened below seven days, but no table sets retention explicitly — everything
+        inherits defaults — or log was raised while file retention was left at seven days.
+      weak: >-
+        Some tables have deleted-file retention shorter than seven days, so a bad write from last
+        week may already be unrestorable.
+    verify:
+      - how: sql
+        where: |-
+          show tblproperties <a critical production table>
+        expect: >-
+          delta.logRetentionDuration and delta.deletedFileRetentionDuration present and aligned
+        caveat: >-
+          Absent properties mean Delta defaults (30 days of log, 7 of files). The app samples
+          most-read tables via DESCRIBE DETAIL; a pass is over that sample. Reachable history also
+          depends on VACUUM having run — predictive optimization vacuums managed tables; on tables
+          nobody vacuums, more history may remain than the settings guarantee.
+      - how: sql
+        where: describe history <a critical production table>
+        expect: >-
+          Versions spanning at least the recovery window you need
+      - how: by-hand
+        where: >-
+          Ask for the recovery window on the table you would restore first in an incident
+        expect: >-
+          A number somebody chose, matching both retention properties, not "whatever the default is"
+    pitfalls:
+      - >-
+        Raising only log retention. History lists versions whose files are gone.
+      - >-
+        Shortening file retention to save storage below seven days without accepting that restore
+        dies with it.
+      - >-
+        Confusing this with REL-04-02 — settings without an exercised restore, or a restore test
+        without retention long enough to matter.
+    partial_when: >-
+      No table is shortened below seven days but retention is only inherited defaults, or log
+      retention was set longer than file retention so the advertised window overstates what RESTORE
+      can do.
+    references:
+      - https://docs.databricks.com/aws/en/tables/history
+      - https://docs.databricks.com/aws/en/tables/operations/vacuum
+    advice:
+      start_from: >-
+        Keep at least seven days reachable on every table (never shorten below the platform default
+        without a written reason), and set both retention properties explicitly on critical tables to
+        the same window — typically thirty days unless the business needs longer.
+      depends_on:
+        - >-
+          Tables whose bugs are found in weeks need a window longer than seven days; defaults alone
+          are not enough there.
+        - >-
+          Storage pressure is why the cost pillar shares this alias — shorten only where recovery
+          truly does not matter, and never below seven days on tables you would restore.
+        - >-
+          Unparsed interval forms (months, years) are not scored as numbers; use weeks or smaller as
+          Delta documents.
+      path:
+        - >-
+          Find tables with reachable windows under seven days and raise deleted-file retention (and
+          log if needed) first — those are fails.
+        - >-
+          On critical tables, set both properties to the same chosen window rather than inheriting.
+        - >-
+          Where log was raised alone, raise file retention to match, then confirm VACUUM policy will
+          not undercut it.
+      costs:
+        - >-
+          Longer retention keeps deleted files and logs, which is storage cost — the recovery window's
+          price.
+        - >-
+          Aligning properties on many tables is a scripted ALTER; discovering mismatch during an
+          incident is worse.
+      retain: >-
+        The dated sample of retention properties on critical tables, and the written window each
+        role needs.
+      revisit: >-
+        A restore that failed because files were gone, a storage drive to shorten retention, or a new
+        critical table left on defaults. Failing those, annually.

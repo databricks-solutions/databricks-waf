@@ -1,0 +1,1521 @@
+# Answering guidance for the questions in this pillar.
+#
+# Keyed by control id, flat rather than nested by principle: the catalogue owns that structure.
+# Scaffolded by scripts/scaffold-guidance.mjs, which never edits an entry that already exists.
+# Held to config/guidance/guidance.schema.json by scripts/check-guidance.mjs.
+#
+# docs/design/guidance-authoring.md fixes the voice and works one entry through end to end.
+pillar: data-and-ai-governance
+entries:
+  # Establish a data and AI governance process
+  # Q: Is there a written governance process for data and AI assets with named owners, and is it followed for new assets?
+  DG-01-01:
+    status: authored
+    last_reviewed: '2026-08-03'
+    owner_role: Data governance lead, or the platform owner where no such role exists
+    means: >-
+      There is a written account of how a data or AI asset becomes governed — who owns it, who
+      classifies it, who approves access to it — and a new asset goes through it rather than around it.
+    matters: >-
+      Where the process is unwritten it lives in the memory of whoever set the platform up. Access
+      requests then get decided by whoever is available, nobody can say who approved the sharing of a
+      customer table, and the first time anyone reconstructs it is during an audit or a breach.
+    good:
+      - Every catalog and schema has a named owner who is a group, not a person who may have left.
+      - A new dataset gets an owner and a classification as part of being created, not afterwards.
+      - Access requests follow a stated route, and the decision is recorded somewhere durable.
+      - Somebody is accountable for reviewing access periodically, and the last review has a date.
+      - The document is findable by a new joiner without asking, and has been updated in the last year.
+    examples:
+      strong: >-
+        A governance standard in the internal wiki names the owning group for each catalog, the
+        classification scheme, and the access request route through the service desk. Onboarding a new
+        domain follows a checklist that includes both. Access is reviewed quarterly and the review is
+        minuted.
+      partial: >-
+        Ownership is recorded for the production catalogs and the process is understood by the platform
+        team, but nothing is written down, and the three catalogs created for the AI work last quarter
+        have no owner set and no classification.
+      weak: >-
+        Access is granted by whoever on the platform team sees the message first. There is no written
+        process, no owner recorded on most schemas, and no record of who approved what.
+    verify:
+      - how: ui
+        where: Catalog Explorer, the Owner field on your three or four largest catalogs and their schemas
+        expect: A group rather than an individual, and not the account admin who created everything
+      - how: sql
+        where: |-
+          select catalog_name, catalog_owner from system.information_schema.catalogs order by 1
+        expect: >-
+          An owner on every row, and owners that are groups rather than personal identities
+      - how: by-hand
+        where: >-
+          Ask the person who created the most recent catalog what they did about ownership and
+          classification
+        expect: >-
+          A route they can name, rather than a recollection of what they decided at the time
+    pitfalls:
+      - >-
+        A governance document that describes an intended process nobody follows, which is worse than
+        none: it answers the audit question and none of the operational ones.
+      - >-
+        Ownership set to the individual who ran the migration. It survives until they change team, and
+        then nobody can grant anything without an account admin.
+      - >-
+        A process that covers tables and says nothing about models, feature tables, volumes or
+        dashboards, which is where the sensitive derived data usually ends up.
+    partial_when: >-
+      Ownership and classification are real for the assets that existed when the platform was set up
+      but are not applied to new ones, or the process is followed consistently and written down
+      nowhere.
+    references:
+      - https://docs.databricks.com/aws/en/data-governance/
+      - https://docs.databricks.com/aws/en/catalogs/
+    advice:
+      start_from: >-
+        One page naming, for each asset class, who owns it, who classifies it and who approves access —
+        and one gate that a new asset cannot get past without an owner. Everything else is elaboration on
+        those two.
+      depends_on:
+        - >-
+          A regulated estate needs the classification step to name a scheme and a retention obligation per
+          class, which turns the page into a policy somebody outside the platform team signs.
+        - >-
+          Where teams self-serve their own catalogs, ownership has to be assigned at creation or it never
+          is, so the gate belongs in the provisioning route rather than in a review.
+        - >-
+          A single-team estate can carry this as a convention rather than a document, and the requirement
+          becomes real the day a second team creates an asset the first has to trust.
+      path:
+        - >-
+          Write down what happens today, honestly, including the parts that happen by nobody. A process
+          document describing an aspiration is the failure mode this requirement has most often.
+        - >-
+          Add the ownership gate: no new catalog or schema without a named owner. It is the cheapest step
+          and the one everything downstream depends on.
+        - >-
+          Then classification and access approval, in that order, because approving access to data nobody
+          has classified is a decision made without the input that would change it.
+      costs:
+        - >-
+          Somebody has to own the document and keep it true, and an out-of-date process document is worse
+          than none because it is quoted.
+        - >-
+          The ownership gate will block a team mid-task the first few times, and that friction is what
+          makes it real rather than advisory.
+        - >-
+          Classification needs the business to decide what the classes are, which is weeks of other
+          people's calendars rather than platform work.
+      retain: >-
+        The written process with a review date, and the list of catalogs and schemas with their owners.
+        The owner list is the one an auditor asks for and the one that decays fastest.
+      revisit: >-
+        A new regulatory obligation, a new asset class, a reorganisation that moves ownership, or an
+        access review that could not name an owner. Failing those, annually.
+
+
+  # Allow easy data discovery for data consumers
+  # Q: Can someone outside the owning team find a dataset they need and understand what it contains without asking a person?
+  DG-01-06:
+    status: authored
+    last_reviewed: '2026-08-03'
+    owner_role: Data platform lead, with the owning data teams
+    means: >-
+      Somebody who needs data they did not produce can find it, tell what it contains and how current
+      it is, and decide whether it is the right table — without messaging the team that owns it.
+    matters: >-
+      Where discovery runs through people, the answer depends on who is asked and how busy they are.
+      The predictable outcome is a second copy: a team that cannot find the table builds its own from
+      the source, and now two numbers disagree and nobody knows which is authoritative.
+    good:
+      - Tables carry a comment saying what one row represents and what the table is for.
+      - Column comments exist on the columns whose meaning is not obvious from the name.
+      - Search in Catalog Explorer finds the main production tables by a business term, not just by name.
+      - Certified or preferred datasets are marked as such, so a consumer can tell the canonical one.
+      - A consumer can see lineage far enough upstream to judge whether the data is derived or raw.
+    examples:
+      strong: >-
+        Production tables carry table and column comments maintained in the pipeline that creates them,
+        so the description cannot drift from the schema. Tags mark the certified datasets, and lineage
+        is visible from the dashboard back to ingestion.
+      partial: >-
+        The core finance tables are documented and tagged, but the marketing and ML feature tables have
+        no comments, and a consumer looking for customer attributes finds four candidate tables with no
+        way to tell which is current.
+      weak: >-
+        Table and column comments are empty. Discovery is a message in a Slack channel, and the answer
+        is usually a link to a notebook.
+    verify:
+      - how: sql
+        where: |-
+          select table_catalog, table_schema, count(*) as tables, count(comment) as documented,
+          round(100.0 * count(comment) / count(*), 0) as pct
+          from system.information_schema.tables where table_schema <> 'information_schema'
+          group by all order by tables desc
+        expect: >-
+          Coverage on the schemas consumers actually use, rather than one curated schema at a hundred
+          per cent and the rest at nothing
+        caveat: >-
+          Coverage per schema rather than a sample of rows: an unordered `limit` returns an arbitrary slice
+          on any estate large enough for the question to matter. `count(comment)` skips nulls, which is what
+          makes the ratio the coverage.
+      - how: ui
+        where: >-
+          Catalog Explorer search, using a business term a consumer would use rather than a table name
+        expect: >-
+          The canonical table in the first few results, and enough on its page to decide
+      - how: by-hand
+        where: Ask an analyst outside the platform team to find a dataset they have not used before
+        expect: >-
+          That they get there without messaging anybody, which is the whole claim
+    pitfalls:
+      - >-
+        A data catalogue maintained separately from Unity Catalog, which is accurate on the day it is
+        written and describes last quarter's schema by the time anybody reads it.
+      - >-
+        Comments that restate the column name — "customer_id: the customer id" — which satisfy a
+        completeness count and answer nothing.
+      - >-
+        Discovery that works for the team that built the pipeline because they know the schema names,
+        and is untested by anybody else.
+    partial_when: >-
+      One domain is properly documented and discoverable and the rest are not, or tables are documented
+      but nothing distinguishes the canonical dataset from its copies.
+    references:
+      - https://docs.databricks.com/aws/en/discover/
+      - https://docs.databricks.com/aws/en/comments
+    advice:
+      start_from: >-
+        Table and column comments set by the pipeline that creates the table, tags marking the certified
+        dataset in each domain, and one test: somebody outside the platform team finds a dataset they
+        have not used before, without asking anybody.
+      depends_on:
+        - >-
+          Where consumers are analysts using a BI tool rather than the catalogue, discovery has to work in
+          that tool, and the requirement is what the semantic layer exposes rather than what Catalog
+          Explorer shows.
+        - >-
+          An estate with several copies of the same data needs the certification tag before it needs more
+          comments, because the reader's problem is choosing rather than understanding.
+        - >-
+          Under about fifty tables a person can hold the map, and the requirement is really about the day
+          that person is on leave.
+      path:
+        - >-
+          Mark the canonical dataset in each domain first. A reader who can tell which table is
+          authoritative is most of the way there even with thin descriptions.
+        - >-
+          Then document by consumption — the tables something reads most — rather than by catalogue order,
+          setting the comment in the creating pipeline so it cannot drift.
+        - >-
+          Then run the test with a real consumer and watch where they stop. That is the only step that
+          measures the requirement rather than a proxy for it.
+      costs:
+        - >-
+          The certification tag is a decision somebody has to make and defend, which is why estates have
+          four candidate tables and no tag.
+        - >-
+          Comments maintained in pipeline code are slower to change than comments edited in the UI, and
+          that is the trade that keeps them accurate.
+        - >-
+          Watching a consumer fail is uncomfortable and takes an hour of two people's time, and there is
+          no substitute for it.
+      retain: >-
+        The tag convention, the comment coverage by schema, and a note of the last time somebody outside
+        the platform team was asked to find something and what happened. That last one is the evidence.
+      revisit: >-
+        A new consumer group, a BI or semantic layer arriving in front of the catalogue, a second copy of
+        an important dataset, or a discovery question that reached a person. Failing those, annually.
+
+
+  # Centralize access control for all data and AI assets
+  # Q: Is access to data and AI assets granted in one place, or do some assets still have permissions managed outside Unity Catalog?
+  DG-02-01:
+    status: authored
+    last_reviewed: '2026-08-03'
+    owner_role: Platform administrator or account admin
+    means: >-
+      One system decides who can read what. Grants are made in Unity Catalog, and no production data is
+      reachable by a path that Unity Catalog does not govern — a legacy Hive metastore, a mounted bucket,
+      or a cluster with an instance profile that reads storage directly.
+    matters: >-
+      A second access path is an ungoverned one. Revoking a grant in Unity Catalog does not close it,
+      the audit log does not describe it, and the answer to "who can read this table" becomes a survey
+      of every cluster configuration rather than a query.
+    good:
+      - Production data is in Unity Catalog, and grants are made to groups rather than to individuals.
+      - No mounts under /mnt reach production data, and no cluster carries credentials that bypass the catalogue.
+      - The legacy Hive metastore is empty, or holds nothing anybody reads.
+      - External locations and storage credentials are registered, so raw file access is governed too.
+      - Models, volumes and feature tables are governed by the same grants as the tables, not by workspace ACLs.
+    examples:
+      strong: >-
+        All production data is in Unity Catalog with grants to groups derived from the identity
+        provider. Mounts were removed during migration, external locations cover the raw zones, and no
+        cluster policy permits an instance profile.
+      partial: >-
+        Tables are in Unity Catalog and governed, but two ingestion jobs still read a mounted bucket
+        with a shared credential, and the models registered before the migration remain in the
+        workspace registry.
+      weak: >-
+        Unity Catalog holds a copy of some tables. The pipelines read mounts, several clusters carry
+        instance profiles, and access is effectively decided by which cluster a user can attach to.
+    verify:
+      - how: ui
+        where: >-
+          Catalog Explorer > External Data > External locations and Storage credentials, then Compute >
+          Policies for any policy permitting an instance profile
+        expect: >-
+          Registered locations for the raw zones, and no policy handing a cluster its own credentials
+      - how: cli
+        where: databricks fs ls dbfs:/mnt
+        expect: >-
+          Nothing, or mounts that reach no production data
+      - how: sql
+        where: |-
+          select table_catalog, count(*) as tables from system.information_schema.tables
+          group by all order by tables desc
+        expect: >-
+          Production volume in the governed catalogs you expect, and every catalog you expect present.
+        caveat: >-
+          This does not tell you what is left in the legacy metastore: `system.information_schema` covers
+          the Unity Catalog metastore, so legacy tables are absent from this result whether or not they
+          exist, and an estate with thousands of them looks identical to one with none
+      - how: sql
+        where: |-
+          show catalogs
+        expect: >-
+          No `hive_metastore` in the list, which is the strong answer.
+        caveat: >-
+          Asked separately because the query above structurally cannot answer it — a count of zero there is
+          the shape of the view, not a finding about the estate. If `hive_metastore` is listed, `show
+          schemas in hive_metastore` sizes the migration that is left; an error saying legacy access is
+          disabled is the best outcome of all
+    pitfalls:
+      - >-
+        Data in Unity Catalog and also readable through a mount, which reads as governed on every page
+        of the UI and is not.
+      - >-
+        Grants made to individual users. They are centralised and still unmanageable, because a leaver
+        removes an identity and leaves the grant behind on every object it was made against.
+      - >-
+        Governing tables and forgetting models, volumes and feature tables, which is where the derived
+        copies of the sensitive columns live.
+    partial_when: >-
+      Table access is centralised but a subset of jobs, clusters or models still reaches data by another
+      route, or grants are in Unity Catalog and made to individuals rather than groups.
+    references:
+      - https://docs.databricks.com/aws/en/data-governance/unity-catalog/
+      - https://docs.databricks.com/aws/en/dbfs/mounts
+    advice:
+      start_from: >-
+        Grants in Unity Catalog to groups, and every other route to production storage closed —
+        no mounts, no instance profiles reading buckets directly, nothing left in the Hive metastore. The
+        second half is the work; the first is a day.
+      depends_on:
+        - >-
+          Where an external tool must read storage directly, it gets its own credential scoped to its own
+          path, and that path is documented as an ungoverned route rather than left to be discovered.
+        - >-
+          An estate with identity federation can grant to account groups once instead of per workspace,
+          and without it the same grant has to be maintained in several places.
+        - >-
+          Where row or column filtering is needed, grants alone will not express the policy and the answer
+          is a row filter or a mask, which is a different piece of work with its own review.
+      path:
+        - >-
+          Enumerate the routes to production storage, not the grants. The grants are visible and the
+          second paths are what make the answer wrong, so the inventory is the finding.
+        - >-
+          Close them one at a time, repointing the workload at a governed path first and removing the
+          mount or the instance profile after it has run once.
+        - >-
+          Then convert direct user grants to group grants, so the access model can be read from the group
+          membership rather than reconstructed per object.
+      costs:
+        - >-
+          Every closed route is a workload that has to be repointed, and the ones nobody owns are found
+          by breaking them.
+        - >-
+          Removing an instance profile can break a job that reads something incidental — a config file, a
+          jar — that nobody remembered was on that bucket.
+        - >-
+          Group-based grants need the groups to exist and mean something, and inheriting groups built for
+          another purpose is how an over-broad grant arrives.
+      retain: >-
+        The inventory of storage routes with each marked closed or documented, and the group-to-catalog
+        grant list. The inventory is what proves the absence of a second path, which grants cannot show.
+      revisit: >-
+        A new external tool, a new storage account, a workspace added, or an access review that found a
+        path the inventory did not name. Failing those, annually.
+
+
+  # Define clear data quality standards
+  # Q: Are data quality expectations written down per dataset — completeness, freshness, accuracy — rather than assumed?
+  DG-03-01:
+    status: authored
+    last_reviewed: '2026-08-03'
+    owner_role: The team that owns each dataset, with a standard set by the data platform lead
+    means: >-
+      For each dataset that matters, somebody has written down what "good" means: which columns cannot
+      be null, how current it has to be, what range a value can take, and what uniqueness holds.
+    matters: >-
+      Without written expectations, quality is whatever the last pipeline run produced. Nobody can tell
+      a bad load from a quiet week, a consumer cannot judge whether to trust a number, and the first
+      person to notice is the one who acted on it.
+    good:
+      - The datasets that feed decisions have stated expectations, not every table in the estate.
+      - Freshness is expressed as a bound a consumer can rely on — "no more than two hours behind" — rather than "daily".
+      - Expectations live beside the pipeline or the table, not in a document that drifts from it.
+      - Somebody is named as accountable for each dataset's quality, and knows they are.
+      - The expectations were revised the last time the schema or the source changed.
+    examples:
+      strong: >-
+        Each certified dataset has a written contract next to its pipeline: nullability, primary key,
+        accepted ranges, and a freshness bound. Consumers read the same contract, and the last revision
+        is dated to the schema change that prompted it.
+      partial: >-
+        The finance datasets have written expectations. The rest have conventions the owning team knows
+        and has not written down, and the freshness expectation for the customer table is "it runs
+        nightly", which is a schedule rather than a bound.
+      weak: >-
+        Nothing is written down. Quality is discussed when a dashboard looks wrong.
+    verify:
+      - how: by-hand
+        where: >-
+          Ask the owner of a top-three dataset what the freshness and completeness expectations are, and
+          where they are recorded
+        expect: >-
+          A location, not a recollection
+      - how: ui
+        where: >-
+          The pipeline that produces one of those datasets, looking for declared expectations or checks
+          rather than for a document
+        expect: >-
+          Expectations expressed where the data is produced, so they cannot drift from the schema
+      - how: sql
+        where: |-
+          describe table extended <your busiest production table>
+        expect: >-
+          Constraints and comments that state what the table guarantees, rather than schema alone
+    pitfalls:
+      - >-
+        Expectations written once during a platform project and never revised, so they describe a schema
+        two migrations ago and quietly stop being checked.
+      - >-
+        A freshness expectation stated as a schedule. "Runs nightly" says when the job starts, not how
+        stale the data a consumer reads may be when the job fails.
+      - >-
+        Applying the same standard to all 400 tables, which produces a spreadsheet nobody maintains
+        rather than expectations anybody relies on.
+    partial_when: >-
+      Expectations exist for the most important datasets and are assumed for the rest, or they are
+      written down somewhere that is no longer in step with the pipelines.
+    references:
+      - https://docs.databricks.com/aws/en/lakehouse-architecture/reliability/best-practices
+      - https://docs.databricks.com/aws/en/tables/constraints
+    advice:
+      start_from: >-
+        Written expectations for the datasets consumers depend on — nullability, freshness, ranges,
+        uniqueness — starting with the handful whose failure somebody would notice. Not the whole estate;
+        the ones that carry decisions.
+      depends_on:
+        - >-
+          Where a dataset feeds a regulatory report, the expectations have to match that report's own
+          tolerances, and those are given rather than chosen.
+        - >-
+          A dataset arriving from a third party has expectations that are really a contract with the
+          supplier, and enforcing them internally without renegotiating that contract just relocates the
+          argument.
+        - >-
+          Freshness on a streaming source means something different from freshness on a daily batch, so
+          one standard expressed in hours will be wrong for one of them.
+      path:
+        - >-
+          Pick the datasets by consequence and write the expectations with the consumer, not for them.
+          Expectations written by the platform team get disowned the first time one fires.
+        - >-
+          State freshness explicitly, because it is the one people leave implicit and the one that
+          silently fails — a stale table looks exactly like a correct table.
+        - >-
+          Then extend outward by dependency, so a table's expectations are not stricter than those of
+          what feeds it.
+      costs:
+        - >-
+          Agreeing a threshold takes a conversation per dataset, and the conversation is the work — the
+          writing down is minutes.
+        - >-
+          Expectations that turn out to be wrong will fire on good data, and the cost of that is trust in
+          every other expectation.
+        - >-
+          Somebody owns revising them as the business changes, and an unrevised expectation becomes a
+          warning people route to a folder.
+      retain: >-
+        The expectations per dataset with the name of whoever agreed each, and the date. The name is what
+        makes a later revision a conversation rather than an argument.
+      revisit: >-
+        A new consumer with different tolerances, a source system change, a regulatory report added, or
+        an expectation that has fired on good data more than once. Failing those, annually.
+
+
+  # Use data quality tools for profiling, cleansing, validating, and monitoring data
+  # Q: Do pipelines check data against those expectations automatically, and does a failed check stop or quarantine the data?
+  DG-03-02:
+    status: authored
+    last_reviewed: '2026-08-03'
+    owner_role: Data engineering lead
+    means: >-
+      The expectations are enforced by the pipeline rather than by a person reading a dashboard. A load
+      that violates them is stopped or diverted, and somebody is told.
+    matters: >-
+      A check that only warns is a check nobody acts on until a consumer complains. Bad data that
+      reaches a published table propagates into every dashboard, model and export downstream of it, and
+      removing it afterwards means reprocessing everything that read it.
+    good:
+      - Expectations are declared in the pipeline — Lakeflow expectations, or an explicit validation step — and run on every load.
+      - A violation fails the run or quarantines the rows, rather than logging a warning and continuing.
+      - Somebody is alerted when it happens, on a route they actually read.
+      - Rejected rows are kept somewhere they can be inspected, so a failure is diagnosable.
+      - Quality checks cover the tables consumers read, not only the raw landing zone.
+    examples:
+      strong: >-
+        Lakeflow pipelines declare expectations on every published table, with expect_or_drop on the
+        rows that can be discarded and expect_or_fail on the invariants that must hold. Dropped rows land
+        in a quarantine table, and a failed run pages the owning team.
+      partial: >-
+        The bronze layer validates schema and row counts and alerts on failure, but the silver and gold
+        tables are unchecked, so a join that silently drops half the rows publishes without complaint.
+      weak: >-
+        No automated checks. Problems are found when a number in a dashboard looks wrong, and the
+        investigation starts from there.
+    verify:
+      - how: ui
+        where: >-
+          Jobs & Pipelines > your pipeline > a dataset, and the Data quality tab in the right sidebar
+        expect: >-
+          Declared expectations with a pass rate, rather than an empty tab
+      - how: sql
+        where: |-
+          select pipeline_id, update_id, result_state, max(period_end_time) as ended
+          from system.lakeflow.pipeline_update_timeline
+          where period_start_time > current_timestamp() - interval 90 days
+          and result_state is not null and result_state <> 'SUCCEEDED'
+          group by all order by ended desc limit 50
+        expect: >-
+          Either updates an expectation stopped, or a clean history — which is good news only once the tab
+          above has shown there are expectations to be clean of
+        caveat: >-
+          Expectations run in declarative pipelines, so this reads their timeline and not the job one.
+          `<> 'SUCCEEDED'` because a failure is also `ERROR`, `TIMED_OUT`, `CANCELLED` or `BLOCKED` — on
+          one estate every failing run was `ERROR`, so a check for `FAILED` found nothing. A clean history
+          still cannot separate nothing failing from nothing declared; the event log's `data_quality` can.
+      - how: by-hand
+        where: >-
+          Ask what happened the last time bad data arrived, and who found out first
+        expect: >-
+          A pipeline that stopped and an alert, rather than a consumer who noticed
+    pitfalls:
+      - >-
+        Checks that warn and continue. They look identical to enforcement on every dashboard, and the
+        bad rows are downstream before anybody reads the warning.
+      - >-
+        Validating the landing zone and trusting every transformation after it, which misses the joins
+        and filters that lose rows without any single value being invalid.
+      - >-
+        Alerts routed to a mailbox nobody reads, which converts a detected failure into an undetected
+        one with an audit trail.
+    partial_when: >-
+      Some layers or some pipelines enforce expectations and others do not, or checks run everywhere but
+      only warn rather than stopping or quarantining the load.
+    references:
+      - https://docs.databricks.com/aws/en/ldp/expectations
+      - https://docs.databricks.com/aws/en/data-governance/unity-catalog/data-quality-monitoring/data-profiling
+    advice:
+      start_from: >-
+        Expectations enforced in the pipeline that writes the table, failing the load or diverting the
+        bad rows rather than warning, with the alert going to the team that owns the data. Warn-only is
+        the state this requirement exists to move off.
+      depends_on:
+        - >-
+          Where a consumer would rather have late data than wrong data, the pipeline stops; where the
+          reverse holds, it quarantines and publishes the rest — and that is the consumer's decision, not
+          the engineer's.
+        - >-
+          A pipeline already built on declarative expectations gets this nearly free, and one built as
+          hand-written notebooks needs the enforcement point created before any rule can go in it.
+        - >-
+          Streaming loads cannot stop the way a batch can, so the pattern is a quarantine table and a
+          rising-count alert rather than a failed run.
+      path:
+        - >-
+          Add the checks in warn mode first and read what they fire on for a fortnight. Enforcing an
+          untested expectation stops a good load, and the first time that happens decides how this is
+          received.
+        - >-
+          Then turn on enforcement for the rules that were quiet, dataset by dataset, and route the alert
+          to the owning team rather than to the platform team.
+        - >-
+          Then handle the quarantine: rows diverted and never looked at are a growing silent data loss
+          that reads as a clean pipeline.
+      costs:
+        - >-
+          A stopped load is an incident somebody is paged for, so this converts silent wrongness into
+          visible interruption, which is the trade and needs saying out loud.
+        - >-
+          Quarantine tables need an owner and a review, or they become the place data goes to be
+          forgotten.
+        - >-
+          Expectation checks cost compute on every load, and on a wide table the profiling ones are not
+          free.
+      retain: >-
+        Which expectations are enforced against which datasets, what happens on violation, and the
+        quarantine review record. The last is the one that shows enforcement is not just deferral.
+      revisit: >-
+        A new dataset with consumers, a quarantine table nobody has reviewed, an expectation that stopped
+        a good load, or a move from batch to streaming. Failing those, annually.
+
+
+  # Design Unity Catalog for your organization
+  # Never put to a person. Guidance here explains a finding rather than enabling an answer.
+  DG-01-02:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: Platform administrator, with the metastore admin
+    means: >-
+      The catalogue has a deliberate shape — how many catalogs there are, what separates one from
+      another, where each environment sits — and every table lives inside it rather than in a metastore
+      left over from before.
+    matters: >-
+      A table outside Unity Catalog cannot be granted on by group, does not appear in lineage, and
+      emits no audit event. So every other control in this pillar is silently scoped to whatever
+      fraction of the estate is inside — and this reading is too, because it can only see the metastore
+      it is taken from. A pass says what is governed, not that it is everything.
+    good:
+      - Every schema a production job writes to is in a Unity Catalog catalog, not `hive_metastore`.
+      - Catalogs separate what should not share permissions, on a rule decided once and applied since.
+      - A new team gets a catalog or schema by a known route, not by adding to whichever one exists.
+      - '`hive_metastore` is empty, or holds only tables somebody agreed to leave and wrote down why.'
+      - The isolation rule is written down, so the next person extends it rather than inventing a second.
+    examples:
+      strong: >-
+        Three catalogs, one per environment, with a schema per domain inside each. `hive_metastore`
+        holds nothing. New domains follow a documented naming rule, and workspace-catalog bindings stop
+        production being readable from the development workspace.
+      partial: >-
+        The analytics estate is in Unity Catalog and well organised, but the ingestion jobs still write
+        to `hive_metastore.raw`, because the migration stopped at the first managed table that needed
+        copying rather than syncing.
+      weak: >-
+        Unity Catalog exists with one catalog called `main`, everything is in `default`, and most
+        production tables are still in `hive_metastore`.
+    verify:
+      - how: sql
+        where: |-
+          select table_catalog, count(*) as tables
+          from system.information_schema.tables
+          where table_schema <> 'information_schema'
+          group by all order by tables desc
+        expect: >-
+          The catalogs this metastore governs, in a layout that matches a rule somebody chose
+        caveat: >-
+          This cannot see a legacy metastore, and that is the trap rather than a footnote.
+          `hive_metastore` has no `information_schema` of its own and does not appear in
+          `information_schema.catalogs` — confirmed on an estate holding 1,101 legacy tables. A clean
+          result here is therefore not evidence that the migration finished. The next step is the one
+          that answers that.
+      - how: sql
+        where: |-
+          show schemas in hive_metastore;
+          -- then, for each schema returned:
+          show tables in hive_metastore.<schema>;
+        expect: >-
+          Nothing beyond an empty `default`. Anything listed is the migration that remains, and it is
+          invisible to every other measurement in this pillar
+        caveat: >-
+          Needs compute that can reach the legacy metastore. Catalog Explorer's `hive_metastore`
+          catalog answers the same question by hand where the query cannot run.
+      - how: by-hand
+        where: >-
+          Ask what decided the catalog layout — environment, domain, or business unit — and where that
+          decision is recorded
+        expect: >-
+          A rule somebody applied, rather than the order in which the catalogs happened to get created
+    pitfalls:
+      - >-
+        Reading a clean census as a finished migration. The measurement covers the Unity Catalog
+        metastore only, and four resolvers in this app once turned that blind spot into a claim that
+        every table was governed — on an estate where 1,101 were not.
+      - >-
+        A migration that moved the tables and left the jobs writing to the old location, so the Hive
+        schema refills behind it and nothing downstream notices.
+      - >-
+        '`SYNC` run against managed tables, which cannot be upgraded in place: it succeeds on the
+        external ones and leaves the managed ones where they are, reporting nothing that looks wrong.'
+      - >-
+        A catalog per team on an estate with thirty teams, which turns every cross-domain grant into a
+        per-catalog job. It is the shape people regret at about ten.
+    partial_when: >-
+      Production is governed by Unity Catalog but some ingestion or legacy reporting still reads and
+      writes `hive_metastore`, or the tables all moved and no isolation rule was chosen, so the layout
+      is whatever the migration happened to produce.
+    references:
+      - https://docs.databricks.com/aws/en/data-governance/unity-catalog/migrate
+      - https://docs.databricks.com/aws/en/catalogs/
+    advice:
+      start_from: >-
+        One catalog per environment, schemas per domain within them, and workspace-catalog bindings so a
+        development workspace cannot read production. Upgrade external tables with `SYNC`, copy the
+        managed ones, and repoint the jobs before deleting anything.
+      depends_on:
+        - >-
+          A regulated estate that must keep data physically separated needs a catalog per jurisdiction
+          with its own storage credential, because a schema is not a storage boundary.
+        - >-
+          Above about thirty teams a catalog each stops being manageable and domain-per-schema is the
+          shape that holds; below about five, a catalog per team is fine and easier to explain.
+        - >-
+          Where a legacy tool can only speak to the Hive metastore, its tables stay — as a written
+          exception with an owner and a replacement date, rather than as an unfinished migration.
+      path:
+        - >-
+          Count what is left and split it by kind. `SYNC` upgrades an external table in place; a managed
+          table has to be copied. The two halves have very different costs, and the per-schema count of
+          each is the plan.
+        - >-
+          Upgrade the external tables and repoint the jobs that write them, one schema at a time,
+          leaving the Hive entry in place until the job has run once against the new location.
+        - >-
+          Then copy the managed tables, and only then delete anything. Deleting a Hive schema before its
+          writer has been repointed is how a migration becomes an incident.
+      costs:
+        - >-
+          Copying a managed table pays for the storage twice until the old copy goes, and the large fact
+          tables are where that bill lands.
+        - >-
+          Every job, dashboard and notebook naming a table by its old two-level name has to be edited,
+          and the ones nobody remembers are found by breaking them.
+        - >-
+          Workspace-catalog bindings will cut off somebody's ad-hoc route into production from a
+          development workspace. That is the point, and it is still an interruption somebody owns.
+      retain: >-
+        The per-catalog table count from before and after, and the written isolation rule saying what
+        separates one catalog from another. The count is the same query the first verification step
+        runs, saved with a date on it.
+      revisit: >-
+        A new environment, a new regulated data domain, an acquisition, or a team growing large enough
+        that a schema stops being a sufficient boundary. Failing those, annually.
+
+  # Manage metadata for all data and AI assets in one place
+  # Never put to a person. Guidance here explains a finding rather than enabling an answer.
+  DG-01-03:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: Data governance lead, with the platform administrator
+    means: >-
+      There is one place to look up what an asset is, who owns it and who may read it — and that place
+      answers for tables, models, functions and files alike, rather than for tables while everything
+      else is described elsewhere or nowhere.
+    matters: >-
+      Two registries disagree the moment either is edited, and the one nobody maintains is the one a
+      reader trusts. The cost arrives during an access review or an incident, when the question is which
+      of the two described the asset as it actually was, and the honest answer is neither.
+    good:
+      - One system answers "what is this asset and who owns it" for every kind of asset, not just tables.
+      - Ownership and grants are read from that system rather than from a spreadsheet beside it.
+      - An external catalogue tool, where one exists, reads from Unity Catalog rather than duplicating it.
+      - Somebody can name the one authoritative place, and two people asked separately name the same one.
+      - Assets created by a pipeline arrive in it automatically, rather than being registered afterwards.
+    examples:
+      strong: >-
+        Unity Catalog is the register for tables, volumes, models and functions. The enterprise
+        catalogue tool reads it through the API and adds business glossary terms on top, holding no
+        ownership or permission data of its own.
+      partial: >-
+        Unity Catalog holds the tables and a separate wiki page holds the ownership and classification,
+        maintained by hand. The two agreed when the page was written and nobody has compared them since.
+      weak: >-
+        Table metadata is in Unity Catalog, models are in the workspace registry, files are described in
+        a README, and ownership is a column in a spreadsheet.
+    verify:
+      - how: cli
+        where: |-
+          databricks registered-models list
+          databricks volumes list <catalog> <schema>
+        expect: >-
+          The models and volumes the estate is known to have, rather than an empty list beside a full
+          catalogue of tables
+        caveat: >-
+          Asked over the CLI rather than in SQL because `information_schema.tables` holds tables and
+          views only — grouping it by `table_type` says nothing about whether a model or a volume is
+          registered, which is the half of this requirement that gets missed.
+      - how: ui
+        where: >-
+          Catalog Explorer, then the Models and Volumes tabs on a catalog the ML work uses
+        expect: >-
+          Models and volumes present and owned, rather than an empty tab beside a full Tables tab
+      - how: by-hand
+        where: >-
+          Ask two people, separately, where they would look up who owns a dataset and who may read it
+        expect: >-
+          The same answer from both, and for it to be a system rather than a person
+    pitfalls:
+      - >-
+        A second catalogue tool that holds its own copy of ownership, which is authoritative until the
+        first time somebody changes a grant in Unity Catalog instead.
+      - >-
+        Metadata that is complete for tables and absent for models, feature tables and volumes, which is
+        where the sensitive derived data usually ends up.
+      - >-
+        Treating the migration as the goal, so the register is accurate on the day it is filled and
+        nothing keeps it accurate as assets are created.
+    partial_when: >-
+      Unity Catalog is authoritative for tables but models, volumes or functions are registered
+      somewhere else or not at all, or a second tool holds ownership that has to be kept in step by
+      somebody remembering to do it.
+    references:
+      - https://docs.databricks.com/aws/en/data-governance/unity-catalog/
+      - https://docs.databricks.com/aws/en/machine-learning/manage-model-lifecycle/
+    advice:
+      start_from: >-
+        Unity Catalog is the single register, for every kind of asset. Anything else that describes the
+        estate reads from it through the API and stores no ownership or permission of its own.
+      depends_on:
+        - >-
+          An organisation with a mandated enterprise catalogue keeps it, in a reading role: it holds the
+          business glossary and the stewardship workflow, and Unity Catalog holds ownership and grants.
+        - >-
+          Where data lives across more than one metastore or cloud, the single place is a federated view
+          over them rather than one metastore, and the register is where the federation is defined.
+        - >-
+          A team with almost no ML assets can defer the model and volume half, provided the deferral is
+          written down — it becomes urgent the first time a model is trained on customer data.
+      path:
+        - >-
+          Establish which system is authoritative and say so in writing, because most estates have two
+          and have never had to choose. Everything downstream depends on that sentence existing.
+        - >-
+          Move the asset kinds that are outside it in: register models under three-level names, bring
+          volumes under catalogs, and make the pipeline that creates an asset the thing that registers it.
+        - >-
+          Then reduce the second system to a reader, or retire it. Leaving it writable is what recreates
+          the disagreement the first step resolved.
+      costs:
+        - >-
+          Retraining jobs need their MLflow registry URI changed and their models re-registered, and a
+          model already serving traffic needs its endpoint repointed.
+        - >-
+          A catalogue tool demoted to a reader loses whatever workflow was built on its ownership
+          fields, and somebody owns rebuilding that on the API.
+        - >-
+          The business glossary work — the part Unity Catalog does not do — remains manual, and stating
+          a single register does not make it smaller.
+      retain: >-
+        The written statement of which system is authoritative for ownership and permissions, dated, and
+        a count of assets by kind in the register at that date so the next review can see what moved.
+      revisit: >-
+        A new asset kind arriving in the estate, a second metastore or cloud, a mandated enterprise
+        catalogue, or an access review that finds the two systems disagreeing. Failing those, annually.
+
+  # Track data and AI lineage to drive visibility of the data
+  # Never put to a person. Guidance here explains a finding rather than enabling an answer.
+  DG-01-04:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: Data platform lead
+    means: >-
+      For a given table, somebody can see which jobs write it and which dashboards and models read it,
+      without reading the pipeline code — and that picture is produced by the platform as work runs
+      rather than drawn by hand.
+    matters: >-
+      Without it, the blast radius of a schema change is a guess, and the guess is checked by shipping.
+      The two questions that arrive under time pressure — what breaks if this column goes, and where did
+      this number come from — both become an afternoon of reading code, on the day nobody has one.
+    good:
+      - Production workloads run on compute that emits lineage, so the graph fills as a by-product.
+      - A table's upstreams and downstreams can be read in Catalog Explorer, not just in the repository.
+      - Lineage reaches through to the dashboards and models, not only between tables.
+      - Coverage is understood for what it is, so an absent table prompts asking whether anything reads it.
+      - Nobody maintains a lineage diagram by hand alongside the one the platform produces.
+    examples:
+      strong: >-
+        Every production job runs on serverless or on a cluster in a Unity Catalog access mode, so table
+        and column lineage is captured without anybody asking for it, and reaches from ingestion to the
+        dashboards analysts open.
+      partial: >-
+        The SQL warehouse workloads emit lineage and the tables they touch are all visible, but the
+        Spark ingestion jobs run on a no-isolation cluster, so the graph starts halfway down and ingestion
+        looks like a source.
+      weak: >-
+        Lineage is empty or nearly so. What reads a table is answered by searching the repository for its
+        name, and what a number means is answered by asking whoever wrote the dashboard.
+    verify:
+      - how: sql
+        where: |-
+          with sides as (
+            select named_struct('c', source_table_catalog, 's', source_table_schema,
+                                't', source_table_name) as id
+            from system.access.table_lineage
+            where event_date >= current_date() - interval 30 days and source_table_name is not null
+            union all
+            select named_struct('c', target_table_catalog, 's', target_table_schema,
+                                't', target_table_name)
+            from system.access.table_lineage
+            where event_date >= current_date() - interval 30 days and target_table_name is not null
+          )
+          select count(distinct id) as tables_with_lineage from sides
+        expect: >-
+          A count to hold against the managed and external tables in the catalogue, which is the
+          denominator the app divides by — and why its passing band is half rather than most
+        caveat: >-
+          Counted once per table across both sides. One side alone misses a table only ever written;
+          adding the two double-counts a table on both — 7 of 26 distinct tables on one estate, 21% of
+          the sum. Absence has two causes this cannot separate: the table was inactive, or its activity
+          happened outside Unity Catalog's view.
+      - how: ui
+        where: >-
+          Catalog Explorer, a production table, the Lineage tab, followed upstream and down
+        expect: >-
+          The writing job and the reading dashboards named, and the chain reaching past the immediate
+          neighbours
+      - how: by-hand
+        where: >-
+          Check the access mode of the clusters the production jobs run on, in the job definitions
+        expect: >-
+          None of them running in a mode that emits no lineage, which is what makes a gap in the graph
+          permanent rather than quiet
+    pitfalls:
+      - >-
+        Reading low coverage as a governance failure when it is an inactivity artefact, and starting a
+        remediation project for tables nothing reads.
+      - >-
+        Summing a source-side count and a target-side count to get coverage, which counts every table
+        that was both read and written twice and reports more covered tables than the estate has.
+      - >-
+        Fixing a cluster's access mode and expecting the graph to fill immediately: it fills as the next
+        runs happen, so the measurement moves days after the change.
+      - >-
+        Lineage that stops at the boundary of an external tool, so the graph looks complete and the
+        transformation that actually produced the number is outside it.
+    partial_when: >-
+      The warehouse and serverless workloads are visible but one class of compute is not, so the graph
+      is real and starts in the middle — or lineage exists between tables and stops before the
+      dashboards and models that consume them.
+    references:
+      - https://docs.databricks.com/aws/en/data-governance/unity-catalog/data-lineage
+      - https://docs.databricks.com/aws/en/admin/system-tables/lineage
+    advice:
+      start_from: >-
+        Every production workload on serverless or on a Unity Catalog access mode, and lineage read from
+        the catalogue rather than maintained anywhere. Nothing to build: the requirement is that no
+        production compute is configured in a way that emits nothing.
+      depends_on:
+        - >-
+          Where transformation happens in an external tool, the platform's graph will stop at its edge,
+          and closing that needs the tool's own lineage exported and joined — a project, not a setting.
+        - >-
+          A workload pinned to a no-isolation cluster for a library or an init script that cannot run in
+          a shared access mode has a real blocker, and the fix is that library, not the lineage.
+        - >-
+          Column-level lineage is what makes the blast-radius question answerable; if only table-level is
+          available for a workload, the impact analysis stays manual for the tables it touches.
+      path:
+        - >-
+          List the production jobs by the access mode of their compute. That list is the whole finding,
+          and it is usually short and concentrated in the oldest pipelines.
+        - >-
+          Move them, cheapest first — serverless where the workload allows it, `USER_ISOLATION` where it
+          does not — and confirm each by running it once and reading the table's Lineage tab.
+        - >-
+          Then leave it alone for a fortnight and re-measure. Coverage rises as the jobs run, so the
+          number that shows the fix worked is not available on the day of the change.
+      costs:
+        - >-
+          A shared access mode restricts some Spark APIs, init scripts and library sources, so a job that
+          moves may need code changes rather than a configuration change.
+        - >-
+          Serverless changes the cost profile of a job rather than always lowering it, and a long-running
+          job with a small cluster is one that can get more expensive.
+        - >-
+          Nothing improves on the day of the change, which makes this hard to schedule against work that
+          shows a result immediately.
+      retain: >-
+        The list of production jobs and the access mode each runs in, dated, and the lineage coverage
+        count before and after. The job list is the evidence; the count is the confirmation.
+      revisit: >-
+        A new class of compute in production, an external transformation tool arriving, or a schema
+        change whose blast radius nobody could answer — that last one is the signal this was never
+        really working. Failing those, annually.
+
+  # Add consistent descriptions to your metadata
+  # Never put to a person. Guidance here explains a finding rather than enabling an answer.
+  DG-01-05:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: Data platform lead, with the owning data teams
+    means: >-
+      A reader finds the same kinds of fact in the same places across the estate — what one row is, what
+      an ambiguous column means, who to ask — because there is a convention for what a description says,
+      not only a rule that one exists.
+    matters: >-
+      Coverage counted as a percentage rewards filling the field, and a description that restates the
+      column name fills it. A reader misled once stops reading them at all, and the estate then pays to
+      maintain documentation nobody consults, which is worse than having none.
+    good:
+      - A table comment says what one row represents, so the grain is readable without querying it.
+      - Column comments exist where the name is ambiguous, and are skipped where it is not.
+      - Units, currencies and timezones are stated on the columns that have them.
+      - Descriptions are written by whoever owns the data, and reviewed rather than accepted unread.
+      - The convention is written down somewhere, so two teams describe a table the same way.
+    examples:
+      strong: >-
+        A short convention says what a table comment must answer, and the pipeline that creates a table
+        sets it, so the description cannot drift from the schema. Column comments carry units and
+        timezones, and generated suggestions are reviewed before being accepted.
+      partial: >-
+        Coverage is high because comments were generated and accepted in bulk. The ones describing what a
+        column contains are useful; the ones guessing why it exists are wrong in a way that reads as
+        authoritative.
+      weak: >-
+        Table and column comments are empty, or hold the column name again, and the meaning of a field
+        is settled by asking somebody who remembers.
+    verify:
+      - how: sql
+        where: |-
+          select table_catalog, table_schema, count(*) as tables, count(comment) as documented,
+          round(100.0 * count(comment) / count(*), 0) as pct
+          from system.information_schema.tables where table_schema <> 'information_schema'
+          group by all order by tables desc
+        expect: >-
+          Coverage spread across the schemas in use, rather than one curated schema at a hundred per cent
+          carrying the estate's average
+        caveat: >-
+          This counts whether a comment exists, which is all a query can see. Whether it says anything is
+          the by-hand step below, and it is the half that decides the answer. It will also read a little
+          differently from the app's percentage, which leaves Databricks-owned catalogs out of both sides
+          — they are read-only, so a finding about them is a finding about tables nobody can change.
+      - how: ui
+        where: >-
+          Catalog Explorer, a table one of the ML or marketing teams owns rather than a finance table
+        expect: >-
+          A comment that answers what a row is, and column comments on the fields whose names do not
+          explain themselves
+      - how: by-hand
+        where: >-
+          Read ten column comments at random and count how many restate the column name
+        expect: >-
+          Nearly none, which is the difference between coverage and documentation
+    pitfalls:
+      - >-
+        Comments that restate the name — "customer_id: the customer id" — which satisfy a completeness
+        count and answer nothing a reader was asking.
+      - >-
+        Generated descriptions accepted in bulk without review: a generated comment about what a column
+        contains is useful, and one guessing why it exists is confidently wrong.
+      - >-
+        A convention that asks for a paragraph per column, which is abandoned in the second schema and
+        leaves the first one looking like the standard.
+    partial_when: >-
+      Most of the estate carries a description but they say what the name already said, or one team
+      writes them properly and the convention is that team's rather than the estate's, so a reader has
+      to know which schema they are in to know whether to trust the text.
+    references:
+      - https://docs.databricks.com/aws/en/comments/
+      - https://docs.databricks.com/aws/en/comments/ai-comments
+    advice:
+      start_from: >-
+        A one-paragraph convention naming what a table comment must answer and when a column needs one,
+        set by the pipeline that creates the table. Generated suggestions are a first draft to review,
+        not a way to raise the percentage.
+      depends_on:
+        - >-
+          An estate whose consumers are all on the team that produced the data needs far less of this,
+          and the requirement gets real the first time somebody outside reads a table.
+        - >-
+          Where a column's meaning is regulated — a retention class, a lawful basis — the description
+          belongs in a tag that can be queried, not in prose a person has to read.
+        - >-
+          Several hundred undocumented tables make hand-writing infeasible, so generated drafts plus
+          review is the only route that finishes; under about fifty, writing them is faster than
+          reviewing them.
+      path:
+        - >-
+          Write the convention first, in a paragraph. Filling descriptions before deciding what they must
+          answer is what produces the coverage that reads as noise.
+        - >-
+          Set the comment in the code that creates the table for anything new, so today's work does not
+          add to the backlog while the backlog is being cleared.
+        - >-
+          Then work the backlog by consumption — the tables something reads most — generating drafts and
+          reviewing them with the owning team, rather than by catalogue order.
+      costs:
+        - >-
+          Review is the expensive half and it needs the owning team, not the platform team, which makes
+          it a scheduling problem rather than a technical one.
+        - >-
+          Generated comments must be read before acceptance, and the cost of not reading them is a
+          confidently wrong description that outlives the person who accepted it.
+        - >-
+          Comments set in pipeline code make the pipeline the place a wording change happens, which is
+          slower than editing in the UI and is the reason it stays accurate.
+      retain: >-
+        The written convention, and the coverage query's output by schema with a date, so the next
+        reading can see which schemas moved and which team's tables are still carrying the average.
+      revisit: >-
+        A new consumer group outside the producing teams, a regulated classification arriving that prose
+        cannot answer, or a coverage number that rose without anybody writing anything. Failing those,
+        annually.
+
+  # Govern AI assets together with data
+  # Never put to a person. Guidance here explains a finding rather than enabling an answer.
+  DG-01-07:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: ML platform lead, with the metastore admin
+    means: >-
+      A model, a feature volume or a user-defined function is subject to the same grants, lineage and
+      audit trail as a table, so an AI asset is not a category the governance model quietly makes an
+      exception for.
+    matters: >-
+      The most sensitive data in an estate ends up in the derived assets — a feature table, a
+      fine-tuning set, an embedding volume — and those are created fastest and reviewed least. Where
+      they sit outside the permission model, an access review of the tables is accurate and incomplete.
+    good:
+      - Models are registered under a three-level name and granted on by group, like a table.
+      - Feature tables and training sets live in a governed schema, not in a workspace path.
+      - Volumes hold the files a model reads, so file access is granted rather than assumed.
+      - Lineage connects a model to the tables it was trained on, and answers what fed it.
+      - The same review that covers table access covers model and volume access, in one pass.
+    examples:
+      strong: >-
+        Training runs register to Unity Catalog under `catalog.schema.model`, serving endpoints read
+        from there, and `EXECUTE` is granted to consumer groups. Feature tables and file inputs are in
+        governed schemas and volumes, and lineage links the model to its training tables.
+      partial: >-
+        Models are registered in Unity Catalog and granted properly, but the training data sits in DBFS
+        paths the jobs read directly, so the inputs to a governed model are ungoverned.
+      weak: >-
+        Models are in the workspace registry, features are Parquet files on a mount, and access to both
+        is whoever can reach the workspace.
+    verify:
+      - how: cli
+        where: |-
+          databricks registered-models list
+          databricks volumes list <catalog> <schema>
+        expect: >-
+          Models and volumes matching what the ML work is known to produce, rather than nothing on an
+          estate that trains models — which means they are in the workspace registry or on a mount
+        caveat: >-
+          There is no SQL route to this: `information_schema` describes tables and views, so an AI asset
+          is absent from it whether or not it is governed. A models list that is empty on an estate with
+          models is the finding.
+      - how: ui
+        where: >-
+          Catalog Explorer, the Models and Volumes tabs on the catalog the ML teams use, then the
+          Permissions tab of one model
+        expect: >-
+          Models and volumes present, and permissions granted to groups rather than left at the owner
+      - how: by-hand
+        where: >-
+          Read one training job and follow where it reads its features from and where it writes the model
+        expect: >-
+          Three-level names at both ends, rather than a mount path in and a workspace registry out
+    pitfalls:
+      - >-
+        Registering the model in Unity Catalog while the training data stays on a mount, which governs
+        the artefact and leaves the sensitive part open.
+      - >-
+        Models left in the workspace registry, which cannot be granted on at all, so access is decided
+        by workspace membership and no review can see it.
+      - >-
+        Governed AI assets granted to a broad group because nobody applied the permission thinking that
+        the data tables already had.
+    partial_when: >-
+      The models are governed and their inputs are not, or models and volumes are registered but still
+      granted broadly, so the assets are visible to a review and the access they carry has not been
+      decided by anybody.
+    references:
+      - https://docs.databricks.com/aws/en/machine-learning/manage-model-lifecycle/
+      - https://docs.databricks.com/aws/en/volumes/
+    advice:
+      start_from: >-
+        Set the MLflow registry URI to `databricks-uc` so training runs register under three-level names,
+        put feature tables in a governed schema and file inputs in a volume, then grant `EXECUTE` and
+        `READ VOLUME` to the consuming groups.
+      depends_on:
+        - >-
+          A team with one model and no external consumers can defer the grant work, but not the
+          registration: an unregistered model cannot be granted on later without being re-registered.
+        - >-
+          Where a model is served to an application rather than to people, the grant belongs to that
+          application's service principal, and a group of humans is the wrong shape for it.
+        - >-
+          Fine-tuning on customer data raises the retention question with it, because a training set is a
+          copy and the copy inherits the original's obligations without inheriting its lifecycle.
+      path:
+        - >-
+          Point the training runs at Unity Catalog and re-register, because everything else depends on the
+          asset having a three-level name to grant on.
+        - >-
+          Move the inputs next — feature tables into a governed schema, files into a volume — and repoint
+          the jobs. This is the half that actually governs the sensitive data.
+        - >-
+          Then grant deliberately, and fold model and volume access into the same review that covers
+          tables rather than running a second one.
+      costs:
+        - >-
+          A model already serving traffic needs its endpoint repointed at the new registered name, which
+          is a deployment rather than a metadata change.
+        - >-
+          Moving feature data off mounts and into volumes means editing every job that reads a path, and
+          paths are commonly hard-coded in notebooks nobody owns.
+        - >-
+          Governed models carry a permission that has to be maintained, so somebody now owns model
+          access requests who previously did not.
+      retain: >-
+        The count of models, volumes and functions in the catalogue with a date, and the grant list for
+        the models that serve anything, so a later review can see both what is governed and to whom.
+      revisit: >-
+        A first model trained on customer data, a first externally served endpoint, a new class of AI
+        asset such as a vector index, or an access review that covered tables only. Failing those,
+        annually.
+
+  # Configure audit logging
+  # Never put to a person. Guidance here explains a finding rather than enabling an answer.
+  DG-02-02:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: Account administrator, with the metastore admin
+    means: >-
+      The audit schemas are switched on, events are arriving with no more than a day or so of lag, and
+      the people who would have to read them already have the grant — so a question about who did what
+      has an answer that predates the question.
+    matters: >-
+      Audit data is not retroactive. Enabling the schema starts the record from that moment, so any gap
+      is permanent and cannot be recovered by fixing the configuration afterwards. The day it is first
+      needed is the day after an incident, which is the one day it is too late to turn on.
+    good:
+      - The `access` and `compute` system schemas are enabled on the metastore, not just available.
+      - Events are current — the newest is hours old, not weeks — and somebody would notice if that changed.
+      - The identities that investigate have `SELECT` on the audit schema before they need it.
+      - Retention is known, and long enough to cover the period an investigation would ask about.
+      - A gap in the record, when one happens, is recorded as a gap rather than read as a quiet period.
+    examples:
+      strong: >-
+        Audit system schemas were enabled when the metastore was created, the security team and the
+        assessing identity hold `SELECT`, and a scheduled query alerts if the newest event is more than a
+        day old.
+      partial: >-
+        The schemas are enabled and events are arriving, but only account admins can read them, so every
+        question goes through a person with a queue, and the assessing tooling reads nothing.
+      weak: >-
+        The audit schemas have never been enabled. What happened last month is reconstructed from the
+        workspace UI and people's recollection.
+    verify:
+      - how: sql
+        where: |-
+          select max(event_time) as newest, count(*) as events_7d
+          from system.access.audit
+          where event_time > current_date() - interval 7 days
+        expect: >-
+          A newest event within about a day, and a volume consistent with the estate's activity rather
+          than a handful of rows
+        caveat: >-
+          A permission error here and an empty result mean different things — one is a missing grant, the
+          other a schema that was never enabled — and both look like "no audit data" from a distance.
+      - how: cli
+        where: databricks system-schemas list <metastore-id>
+        expect: >-
+          '`access` and `compute` reported as enabled, rather than available and untouched'
+      - how: by-hand
+        where: >-
+          Ask who could answer "which principal dropped this table last Tuesday" without asking anybody
+          else
+        expect: >-
+          A named group that already holds the grant, rather than a person who would have to request it
+          first
+    pitfalls:
+      - >-
+        Enabling the schema during an investigation and expecting to see the event being investigated,
+        which is the one thing it cannot show.
+      - >-
+        Granting the audit schema to nobody but account admins, so the record exists and the people who
+        need it are the ones who cannot read it.
+      - >-
+        Treating an empty result as evidence of no activity, when it is more often evidence of a missing
+        grant or a schema that was never enabled.
+    partial_when: >-
+      Events are arriving but the grant is narrow enough that investigation depends on a specific
+      person's availability, or one of the schemas is enabled and another that an investigation would
+      need is not.
+    references:
+      - https://docs.databricks.com/aws/en/admin/system-tables/audit-logs
+      - https://docs.databricks.com/aws/en/admin/system-tables/
+    advice:
+      start_from: >-
+        Enable the `access` and `compute` system schemas on the metastore, grant `SELECT` on
+        `system.access` to the security group and the assessing identity, and add one scheduled check
+        that fires when the newest event is more than a day old.
+      depends_on:
+        - >-
+          Where an obligation names a retention period, the system tables' own retention may be shorter
+          than it, and the gap is closed by exporting to a governed table rather than by a setting.
+        - >-
+          An estate on several metastores has to enable and grant on each, and a single reading is a fact
+          about one metastore only.
+        - >-
+          Where the audit record itself is sensitive — it names principals and objects — the grant is to a
+          defined group rather than broadly, and that is a narrower decision than it looks.
+      path:
+        - >-
+          Enable the schemas first and do nothing else that day. Every other step in this row is worth
+          less than an hour of record that does not exist yet.
+        - >-
+          Grant to the group that would investigate, and to the assessing identity, then confirm by
+          running the query as one of them rather than as an admin.
+        - >-
+          Then add the staleness check, because a pipeline that silently stops delivering events looks
+          exactly like a quiet estate.
+      costs:
+        - >-
+          Enabling is an account-admin action and the grant is a metastore-admin one, so this usually
+          needs two people and is more often blocked on scheduling than on technique.
+        - >-
+          Events start from the moment of enablement, so the staleness this measures takes a day to clear
+          even once everything is correct.
+        - >-
+          A long retention obligation means exporting audit data somewhere governed, which is a pipeline
+          with a cost and an owner rather than a checkbox.
+      retain: >-
+        The date each schema was enabled, the grant list on `system.access`, and the known retention
+        period. The enablement date is the one that matters, because it bounds every question anybody can
+        later ask.
+      revisit: >-
+        A new metastore, a new obligation naming a retention period, a change to who investigates, or an
+        incident where the record turned out not to cover the window. Failing those, annually.
+
+  # Audit data platform events
+  # Never put to a person. Guidance here explains a finding rather than enabling an answer.
+  DG-02-03:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: Security operations, with the platform administrator
+    means: >-
+      Platform actions — a grant changed, a cluster created, a job edited, a table dropped — leave a
+      record naming the actor, and somebody reads that record on a schedule rather than only after
+      something has gone wrong.
+    matters: >-
+      Most of the harm a misconfiguration does happens between the change and its discovery. Where
+      nothing watches those events, that interval is however long it takes somebody to notice a symptom,
+      and the change behind it is then reconstructed from memory.
+    good:
+      - Administrative events are queryable alongside data access, not just table reads and writes.
+      - A small number of high-consequence actions are alerted on, rather than everything or nothing.
+      - Somebody has read the audit data in the last month for a reason other than an incident.
+      - The actor on an event resolves to a person or a named service principal, not an opaque id.
+      - Events from automation are distinguishable from events made by hand, so the unusual one stands out.
+    examples:
+      strong: >-
+        A scheduled query summarises permission changes, metastore-level actions and dropped objects each
+        week, and alerts on a defined short list — grants to broad groups, changes to storage credentials.
+        The weekly summary is read by a named team.
+      partial: >-
+        The audit tables are enabled and complete, and are only ever queried during an incident. Nothing
+        would surface an unexpected grant until somebody went looking for one.
+      weak: >-
+        Nobody has queried the audit data. What an administrator changed last quarter is not a question
+        anybody attempts.
+    verify:
+      - how: sql
+        where: |-
+          select service_name, action_name, count(*) as events
+          from system.access.audit
+          where event_time > current_date() - interval 7 days
+          group by all order by events desc limit 30
+        expect: >-
+          Administrative services present — `unityCatalog`, `clusters`, `jobs` — rather than only data
+          access, which would mean the platform half is not being captured or not being looked at
+      - how: ui
+        where: >-
+          The alerts or scheduled queries in the workspace, looking for anything built on the audit
+          schemas
+        expect: >-
+          At least one that runs without being asked, rather than a saved query somebody runs by hand
+      - how: by-hand
+        where: >-
+          Ask when the audit data was last read, and whether that reading was prompted by an incident
+        expect: >-
+          A date within the last month and a reason that was not an incident
+    pitfalls:
+      - >-
+        Alerting on everything, which produces a channel nobody reads and is indistinguishable from
+        alerting on nothing within about a fortnight.
+      - >-
+        Watching data access and not platform administration, which misses the change that granted the
+        access in the first place.
+      - >-
+        A review that only happens after an incident, which makes the audit record a forensic tool and
+        never a preventive one.
+    partial_when: >-
+      The record is complete and nothing is watching it, so the events would answer a question if asked
+      and nothing prompts the asking — or a review exists and covers data access while leaving
+      administrative changes unread.
+    references:
+      - https://docs.databricks.com/aws/en/admin/system-tables/audit-logs
+      - https://docs.databricks.com/aws/en/sql/user/alerts/
+    advice:
+      start_from: >-
+        One scheduled query, weekly, summarising permission changes and metastore-level actions, read by
+        a named team — and a short alert list of three or four actions worth waking somebody for. Add to
+        the list only when something is missed.
+      depends_on:
+        - >-
+          An estate with a SIEM sends the audit data there and reviews it with everything else, in which
+          case the requirement is the export and the rule set, not a query in the workspace.
+        - >-
+          Where change goes through a bundle or a pipeline, most events are automation and the review is
+          looking for the ones that are not, which is a much shorter list than on a hand-managed estate.
+        - >-
+          A regulated estate may need evidence that the review happened, which makes the record of the
+          reading as much a requirement as the reading.
+      path:
+        - >-
+          Read a week of events once, by hand, to find out what normal looks like. Alert rules written
+          before that reading are guesses, and a wrong rule is worse than no rule.
+        - >-
+          Then write the weekly summary and give it an owner. A summary somebody reads beats an alert
+          nobody has tuned.
+        - >-
+          Add alerts last, on the few actions where the gap between change and discovery is what does the
+          damage, and delete any that fire routinely.
+      costs:
+        - >-
+          Somebody's recurring time, weekly, and the review stops happening the moment it is nobody's
+          named job.
+        - >-
+          Tuning noise out of an alert list takes a few weeks of it being slightly wrong, and that period
+          is when people learn whether to trust it.
+        - >-
+          Audit queries scan a large table, so a broad weekly summary is a real warehouse cost and worth
+          bounding by time and service.
+      retain: >-
+        The scheduled query, the alert list with the reason each entry is on it, and a note of who owns
+        the reading. The reasons are what let a later reviewer delete an alert rather than inherit it.
+      revisit: >-
+        A SIEM arriving, an incident nothing surfaced, an alert that has fired routinely for a month, or
+        a change of owner. Failing those, annually.
+
+  # Implement and enforce standardized data formats and definitions
+  # Never put to a person. Guidance here explains a finding rather than enabling an answer.
+  DG-03-03:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: Data governance lead, with the owning data teams
+    means: >-
+      The estate settles on one open table format and one agreed set of definitions for the fields that
+      cross team boundaries, so a rule written once holds everywhere instead of needing a variant per
+      format and per schema.
+    matters: >-
+      A table in a legacy format carries no constraints, no time travel and no dependable schema
+      evolution, so the estate's guarantees are its weakest format's guarantees. The definitions half is
+      quieter and worse: a column that means one thing in two schemas makes a join produce a number
+      instead of an answer.
+    good:
+      - Effectively every table is Delta or Iceberg, with the exceptions listed and explained.
+      - A shared field — customer, account, region — means one thing across schemas, and it is written down.
+      - New tables get the standard format from the pipeline template, not from whoever wrote them.
+      - Constraints and expectations can be relied on, because every table supports them.
+      - Where two definitions genuinely differ, the names differ too, rather than the meaning being implied.
+    examples:
+      strong: >-
+        Every governed table is Delta, with a handful of Iceberg tables for an external reader and each
+        one recorded. Shared dimensions come from one place, and the definitions of the fields that cross
+        teams are written down and referenced by the pipelines.
+      partial: >-
+        The estate is nearly all Delta after a migration, and a Parquet ingestion landing zone remains
+        because a partner delivers files there — which is reasonable, and is not written down anywhere.
+      weak: >-
+        A mixture of Parquet, CSV and Delta with no rule about which to use, and `customer_id` meaning the
+        billing account in one schema and the login in another.
+    verify:
+      - how: sql
+        where: |-
+          select data_source_format, count(*) as tables
+          from system.information_schema.tables
+          where table_schema <> 'information_schema'
+            and table_type not in ('VIEW', 'METRIC_VIEW', 'FOREIGN')
+          group by all order by tables desc
+        expect: >-
+          Delta and Iceberg carrying nearly all of it, with any other format small enough to enumerate
+          and account for
+        caveat: >-
+          Views, metric views and foreign tables report no choosable format and are not exceptions, so
+          count them out rather than reading them as tables in an unexpected format — the app's
+          denominator is tables less those three, less the Databricks-owned catalogs. The query above
+          already drops them, which is why a hand-run share should match the percentage on the finding.
+      - how: ui
+        where: >-
+          Catalog Explorer, a table from whichever schema the query above showed in a non-standard format
+        expect: >-
+          A reason it is that way — an external producer, a partner drop — rather than nobody knowing
+      - how: by-hand
+        where: >-
+          Take one field name that appears in two teams' schemas and ask each team what it means
+        expect: >-
+          The same answer, or two different names — not the same name with two meanings
+    pitfalls:
+      - >-
+        Standardising the format and calling the requirement met, when the definitions half is the one
+        that silently produces wrong numbers.
+      - >-
+        A landing zone in a raw format that is genuinely fine and undocumented, so every review
+        rediscovers it and nobody can say whether it is deliberate.
+      - >-
+        A definition agreed in a meeting and not written anywhere, which survives until the people who
+        were in the room have moved on.
+    partial_when: >-
+      A format migration is under way rather than never started — most tables converted, a known set not
+      — or the format is uniform while shared field definitions are still per-team, so joins across
+      domains need somebody who knows both.
+    references:
+      - https://docs.databricks.com/aws/en/delta/
+      - https://docs.databricks.com/aws/en/tables/
+    advice:
+      start_from: >-
+        Delta for everything the platform owns, Iceberg where an external reader needs it, and a written
+        list of the exceptions with a reason each. Then one page of definitions for the fields that cross
+        team boundaries.
+      depends_on:
+        - >-
+          An external consumer that reads the storage directly may require Iceberg, and that is a
+          standard rather than an exception once it is written down as one.
+        - >-
+          A partner or vendor drop in a raw format is a landing zone, and the standard applies to what is
+          published from it rather than to the drop itself.
+        - >-
+          Where two business units genuinely define a customer differently, the answer is two named
+          fields with two definitions, not a negotiation to one — a forced agreement gets ignored.
+      path:
+        - >-
+          Convert the tables and set the format in the pipeline template, so new work stops adding to the
+          list while the list is being worked.
+        - >-
+          Enumerate what is left and write down why each remains. An exception with a reason is finished
+          work; an exception without one is an unmeasured risk that looks identical.
+        - >-
+          Then take the definitions, starting with the fields that appear in more than one team's joins.
+          That is where the wrong numbers come from, and it is a smaller list than it sounds.
+      costs:
+        - >-
+          Converting a large table rewrites it, which costs compute and storage while both copies exist.
+        - >-
+          Anything reading a converted table by path rather than by name breaks, and external readers are
+          the ones that break without telling you.
+        - >-
+          The definitions work needs the business, not the platform team, and is the half that stalls —
+          it is a series of short conversations somebody has to chair.
+      retain: >-
+        The format count by table with a date, the written exception list with its reasons, and the
+        definitions page. The exception list is the artefact that stops the next review starting over.
+      revisit: >-
+        A new external reader, a new source system, a merger bringing a second set of definitions, or a
+        join across domains that produced a number nobody could explain. Failing those, annually.

@@ -1,0 +1,264 @@
+# What stops a job moving to serverless, as data.
+#
+# One entry per thing the analyzer can find, carrying the verdict it implies, the words
+# the reader sees and a citation for the platform fact it rests on. The conditions stay
+# in server/analyze/serverless.ts, because a condition has to be typed against the shape
+# the system tables return and an expression language in YAML would be a worse version of
+# TypeScript. What lives here is everything that is a claim about Databricks rather than a
+# claim about the customer's estate: the verdict, the wording and the source.
+#
+# Split this way for the reason ADR 0002 gives. The blockers change as the platform
+# changes — serverless GPU did not exist when this project started and is a public preview
+# now — so the sentences a reader is shown have to be editable without reopening the
+# analyzer, and every one of them has to say where it came from. A rule with no doc_url is
+# rejected at load: an assertion about what serverless cannot do, with no source, is how a
+# tool ends up confidently repeating a limitation that was lifted a year ago.
+#
+# Each rule's id is also referenced in the analyzer, and a test fails if the two sets differ,
+# so a rule cannot be deleted here and left live in code.
+#
+# Checked on 2026-08-01 against the pages cited, by hand. The two `blocker` rules — the ones
+# asserting what serverless cannot do — were re-read on 2026-08-16 by row 68, and one of them
+# had gone stale: `gpu-cluster` said a multi-node training job could not move at all, and the
+# page it cites had by then been renamed to AI Runtime and had grown an 8xH100 accelerator with
+# distributed training. `run-exceeds-seven-days` still matches its page word for word.
+#
+# What that says about this line is worth more than the line. Since 2026-08-16 every doc_url
+# here is fetched weekly by `check:guidance-links` and on any pull request that touches this
+# file, so a citation that 404s or redirects is now found by a check rather than by a re-read.
+# What no check can find is a page that keeps its URL and changes what it says, which is what
+# a hand-check is for and why this date stays.
+version: 1
+
+# What the cost range rests on. Shown with every estimate, because the estimate is
+# arithmetic on two observed numbers and one assumption, and publishing the number without
+# the assumption is the part that would be dishonest.
+assumptions:
+  - id: dbu-parity
+    statement: >-
+      The estimate assumes the same work consumes the same number of DBU-hours on serverless
+      as it did on the cluster. That is the load-bearing assumption and it is not a
+      measurement: serverless allocates its own capacity, which may be larger or smaller
+      than the cluster you sized, and no published factor converts a classic DBU into a
+      serverless one.
+
+  - id: rate-from-your-price-list
+    statement: >-
+      The serverless rate is the one in your account's own price list, at list price, for the
+      tier the job was billed at and the region its workspace runs in. The region is
+      established from the serverless SKUs that workspace was billed on, because classic
+      compute SKUs do not name a region; the rate's region is shown beside the estimate so
+      the figure can be checked against a published price. Any discount you have negotiated
+      applies to both sides of the comparison and is not in either figure.
+    doc_url: https://docs.databricks.com/aws/en/admin/system-tables/billing
+
+  - id: cloud-bill-excluded
+    statement: >-
+      Today's cost shown here is Databricks DBUs only. The instances behind a classic cluster
+      are billed by your cloud provider and never appear in the system tables, while a
+      serverless DBU includes its infrastructure. So the comparison understates what classic
+      costs, and the real saving is better than the range says by whatever your cloud bill for
+      those clusters was.
+    doc_url: https://docs.databricks.com/aws/en/admin/system-tables/serverless-billing
+
+  - id: start-up-time-is-the-lower-bound
+    statement: >-
+      The bottom of the range removes the cluster start-up time measured on this job's own
+      runs, which classic compute bills and serverless does not. The top keeps it. Neither
+      end assumes serverless executes the work any faster once it has started.
+
+  - id: rework-priced-as-unchanged
+    statement: >-
+      A job needing rework is priced as though the rework changed nothing about how much
+      compute it uses. Replacing an init script or re-pointing storage at Unity Catalog can
+      change a job's shape enough to change its cost, and that is not in these figures.
+
+rules:
+  # ---------------------------------------------------------------------------
+  # Blockers: serverless jobs compute cannot run this work as it stands.
+  # ---------------------------------------------------------------------------
+  - id: gpu-cluster
+    kind: blocker
+    action: Assess this job against AI Runtime instead of serverless jobs compute
+    headline: The work runs on GPUs
+    detail: >-
+      This job ran on a cluster with GPU workers, and serverless jobs compute has no GPU
+      option. The serverless path for GPU work is AI Runtime, in public preview, and a job
+      can target it. The cited page lists A10 and H100 accelerators only, each provisioning
+      a single node carrying one A10, one H100 or eight H100s, with distributed training
+      supported across the eight; it also requires the preview to be enabled by a workspace
+      admin, and a workspace in one of the regions it names. So moving there is a change of
+      platform to assess against that page for the shape of this job, rather than a change
+      of compute setting.
+    doc_url: https://docs.databricks.com/aws/en/machine-learning/ai-runtime
+
+  - id: run-exceeds-seven-days
+    kind: blocker
+    action: Split or checkpoint the job so every run finishes within seven days
+    headline: A run took longer than serverless permits
+    detail: >-
+      A serverless workload is terminated at seven days and is not retried, and a task run
+      of this job has already exceeded that. Splitting the work into shorter runs or
+      checkpointing it would make it eligible; until then classic compute is the only
+      place it can finish.
+    doc_url: https://docs.databricks.com/aws/en/compute/serverless/limitations
+
+  # ---------------------------------------------------------------------------
+  # Rework: it can move, but something has to change first.
+  # ---------------------------------------------------------------------------
+  - id: init-script
+    kind: rework
+    action: Move the init script into serverless dependencies or job parameters
+    headline: The cluster runs an init script
+    detail: >-
+      Compute-scoped init scripts do not run on serverless. Whatever the script installs
+      or configures has to be expressed another way — dependencies through a serverless
+      environment or notebook-scoped libraries, configuration through job parameters —
+      and what the script does decides how much work that is. A script that pip-installs
+      two packages is an afternoon; one that writes JVM options and drops files on the
+      driver is not.
+    doc_url: https://docs.databricks.com/aws/en/compute/serverless/limitations
+
+  - id: instance-pool
+    kind: rework
+    action: Remove the instance pool and verify the job does not depend on its instance type
+    headline: The cluster starts from an instance pool
+    detail: >-
+      Instance pools are not a serverless concept, so the pool reference is dropped rather
+      than translated. That is usually a simplification and not a loss: the pool exists to
+      cut start-up time, which is the thing serverless removes outright. Check whether the
+      pool was also pinning an instance type the workload depends on.
+    doc_url: https://docs.databricks.com/aws/en/compute/serverless/limitations
+
+  - id: cloud-identity
+    kind: rework
+    action: Move every job data path to Unity Catalog storage credentials and external locations
+    headline: The cluster carries its own cloud identity
+    detail: >-
+      This cluster has an instance profile or a Google service account attached, which is
+      how classic compute reaches storage that Unity Catalog does not govern — including
+      DBFS mounts, which serverless does not support with an instance profile. Serverless
+      reads cloud storage through external locations and storage credentials, so every
+      path the job touches has to be governed in Unity Catalog before the compute can
+      move. This is the item on this list most likely to be the real work.
+    doc_url: https://docs.databricks.com/aws/en/compute/serverless/limitations
+
+  - id: legacy-access-mode
+    kind: rework
+    action: Replace RDD, Scala notebook, or unrestricted DBFS usage before moving the job
+    headline: The cluster runs in an access mode serverless has no equivalent of
+    detail: >-
+      No-isolation and the pre-Unity-Catalog access modes permit things serverless does
+      not: Spark RDD APIs, Scala in notebooks, and unrestricted DBFS. Code written under
+      one of those modes may use them without anyone remembering that it does, so the
+      cluster's mode is a signal to read the code rather than a defect in itself.
+    doc_url: https://docs.databricks.com/aws/en/compute/serverless/limitations
+
+  - id: ml-runtime
+    kind: rework
+    action: Declare single-node ML dependencies in a serverless environment, or keep distributed training off serverless jobs compute
+    headline: The cluster runs the ML runtime
+    detail: >-
+      Serverless jobs compute is not the ML runtime and does not carry its preinstalled
+      stack. Training that fits one machine can move with its dependencies declared in a
+      serverless environment; anything using Spark MLlib or distributed training across
+      workers needs either classic compute or AI Runtime, which is a different offering
+      rather than a setting.
+    doc_url: https://docs.databricks.com/aws/en/compute/serverless/dependencies
+
+  - id: runtime-predates-serverless
+    kind: rework
+    action: Run this job on a current runtime and fix compatibility before moving it
+    headline: The code is pinned to a runtime older than serverless offers
+    detail: >-
+      Serverless runs a current environment version rather than a Databricks Runtime you
+      pick, and the oldest environment is newer than the runtime this job ran on. So the
+      job's code has never executed on a Spark as new as the one it would land on, and the
+      move includes whatever that upgrade would have involved anyway.
+    doc_url: https://docs.databricks.com/aws/en/release-notes/serverless/
+
+  - id: continuous-trigger
+    kind: rework
+    action: Change the stream to AvailableNow, or move it to a continuous declarative pipeline
+    headline: The job runs continuously
+    detail: >-
+      Serverless supports Trigger.AvailableNow and the deprecated Trigger.Once, and
+      refuses Trigger.ProcessingTime and Trigger.Continuous — including the processing-time
+      trigger Spark applies when a stream does not set one. A continuously-running job can
+      move once its streams are switched to AvailableNow; a stream that must react within
+      seconds belongs on a declarative pipeline in continuous mode instead.
+    doc_url: https://docs.databricks.com/aws/en/compute/serverless/limitations
+
+  # ---------------------------------------------------------------------------
+  # Undeterminable: the configuration itself could not be read.
+  # ---------------------------------------------------------------------------
+  - id: compute-unclassified
+    kind: unknown
+    action: Rerun the analysis after the job's compute type is recorded
+    headline: Some runs recorded compute that cannot be classified
+    detail: >-
+      A task run of this job named compute the tables cannot resolve — either it recorded
+      none, or it recorded an id from before the run timeline wrote what kind of compute it
+      was. Those runs could be classic or serverless, so the verdict for this job is
+      undeterminable rather than assumed.
+    doc_url: https://docs.databricks.com/aws/en/admin/system-tables/jobs
+
+  - id: cluster-unreadable
+    kind: unknown
+    action: Rerun the analysis after the cluster configuration is available
+    headline: A cluster this job used has no configuration on record
+    detail: >-
+      A compute id from this job's runs matches no row in the cluster table, so its
+      workers, its runtime and its init scripts could not be read. An unreadable cluster
+      is not a clean one: the checks above cannot rule out a blocker they never saw.
+    doc_url: https://docs.databricks.com/aws/en/admin/system-tables/compute
+
+  - id: configuration-unwritten
+    kind: unknown
+    action: Run the job on current compute and rerun the analysis
+    headline: Part of the cluster's configuration was never written down
+    detail: >-
+      The cluster row exists but a column this analysis depends on is empty, which the
+      compute table documents for records written before certain dates. An unwritten
+      init-script or access-mode column is not the same as a cluster that has neither,
+      and it is not read as one.
+    doc_url: https://docs.databricks.com/aws/en/admin/system-tables/compute
+
+  # ---------------------------------------------------------------------------
+  # Notes: true, worth saying, and not a reason the job cannot move.
+  # ---------------------------------------------------------------------------
+  - id: all-purpose-cluster
+    kind: note
+    action: Move scheduled runs from all-purpose compute to job or serverless compute
+    headline: The job runs on all-purpose compute
+    detail: >-
+      This job's tasks ran on an interactive cluster, which is billed at the all-purpose
+      rate — roughly twice jobs compute for the same work — and is shared with whoever
+      else is using it. Moving to serverless settles this as a side effect; moving to job
+      compute would settle most of it without any of the migration work below.
+    doc_url: https://docs.databricks.com/aws/en/jobs/compute
+
+  - id: policy-governed
+    kind: note
+    action: Create a serverless budget policy with the required cost tags before moving
+    headline: A compute policy governs this cluster today
+    detail: >-
+      Compute policies do not apply to serverless, so whatever this one was enforcing stops
+      being enforced when the job moves. Only part of it has a serverless equivalent: a
+      serverless usage policy applies the cost-attribution tags, and the rest of what a
+      compute policy does — permitted instance types, autoscaling bounds, runtime versions
+      — is either meaningless on serverless or simply gone. Worth knowing before the move
+      rather than after the first untagged bill.
+    doc_url: https://docs.databricks.com/aws/en/admin/usage/budget-policies
+
+  - id: outside-metadata
+    kind: note
+    action: Inspect the job code for unsupported serverless features before moving it
+    headline: Some blockers are not visible from configuration at all
+    detail: >-
+      Custom containers, Maven coordinates, cluster-scoped libraries, Spark configuration,
+      environment variables, Scala and R code, RDD APIs and cached-dataframe calls all
+      block or change on serverless, and none of them are readable from the system tables
+      this analysis uses. A verdict here is about the compute a job ran on, not about the
+      code it ran, and the code has to be looked at before any of these jobs is moved.
+    doc_url: https://docs.databricks.com/aws/en/compute/serverless/limitations

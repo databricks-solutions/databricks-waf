@@ -1,0 +1,84 @@
+{
+  "runFinishedAt": "2026-08-16T05:53:05.022Z",
+  "profile": "large-estate",
+  "host": "https://example.cloud.databricks.com",
+  "warehouse": "fedcba9876543210",
+  "lookbackDays": 30,
+  "statement": "uc_discovery_metadata",
+  "statementSha": "4b8340d4bcc27c08",
+  "budget": {
+    "pollsPerPart": 450,
+    "pollsPerStatement": 2700,
+    "runBudgetMs": 21600000,
+    "spentMs": 11362585
+  },
+  "whole": {
+    "verdict": "ran",
+    "ms": 3999984,
+    "error": null
+  },
+  "parts": [
+    {
+      "name": "customer_tables",
+      "verdict": "ran",
+      "ms": 19453,
+      "rows": 495468,
+      "error": null
+    },
+    {
+      "name": "reads",
+      "verdict": "ran",
+      "ms": 4792,
+      "rows": 24714,
+      "error": null
+    },
+    {
+      "name": "tagged",
+      "verdict": "ran",
+      "ms": 7186,
+      "rows": 9558,
+      "error": null
+    },
+    {
+      "name": "columns",
+      "verdict": "unfinished",
+      "ms": null,
+      "rows": null,
+      "error": "Error: statement did not succeed: {\"state\":\"RUNNING\"}"
+    }
+  ],
+  "withoutEachPart": [
+    {
+      "name": "columns",
+      "verdict": "ran",
+      "ms": 52699,
+      "droppedColumns": 2,
+      "undefinedBecause": null,
+      "error": null
+    },
+    {
+      "name": "customer_tables",
+      "verdict": "not a defined cut",
+      "ms": null,
+      "droppedColumns": null,
+      "undefinedBecause": "Error: customer_tables is not left-joined in the final SELECT, so this cut is not defined.",
+      "error": null
+    },
+    {
+      "name": "tagged",
+      "verdict": "ran",
+      "ms": 3954460,
+      "droppedColumns": 1,
+      "undefinedBecause": null,
+      "error": null
+    },
+    {
+      "name": "reads",
+      "verdict": "refused",
+      "ms": null,
+      "droppedColumns": 7,
+      "undefinedBecause": null,
+      "error": "Error: statement did not succeed: {\"state\":\"FAILED\",\"error\":{\"error_code\":\"BAD_REQUEST\",\"message\":\"\\n[PARSE_SYNTAX_ERROR] Syntax error at or near 't'. SQLSTATE: 42601 (line 31, pos 21)\\n\\n== SQL ==\\nWITH customer_tables AS (\\nSELECT\\n    concat_ws('.', table_catalog, table_schema, table_name) AS ful"
+    }
+  ]
+}

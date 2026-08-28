@@ -1,0 +1,20 @@
+title: Databricks WAF assessment
+description: Install, configure and operate the Databricks Well-Architected Framework assessment.
+url: "https://databricks-solutions.github.io"
+baseurl: "/databricks-waf"
+repository: databricks-solutions/databricks-waf
+markdown: kramdown
+highlighter: rouge
+permalink: pretty
+strict_front_matter: true
+exclude:
+  - README.md
+  - coverage-ledger.md
+  - design
+  - pilot-uplift
+
+defaults:
+  - scope:
+      path: ""
+    values:
+      layout: default

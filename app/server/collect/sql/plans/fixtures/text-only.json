@@ -1,0 +1,21 @@
+{
+  "_capture": {
+    "synthetic": true,
+    "script": "written by hand; capture-plan-fixtures.mjs does not refresh this file",
+    "note": "SYNTHETIC, not a capture. The advisor document names a 'text plan' among the five fixtures the parser should be tested against, and no rung of this endpoint returns one. The four rungs measured return: no plan field at all, a metrics object, a plans object of graphs, and a base64 json_query_plans string. So this file is not evidence about the API. It exists because the document also names text-only and unrecognised shapes as normalisations to survive (line 571), and a parser that throws on an encoding it has never seen is worse than one that reports no plan. What it asserts is that the parser declines rather than crashes.",
+    "shapeUnderTest": "plans present, values are strings that are not JSON",
+    "status": 200
+  },
+  "body": {
+    "query_id": "00000000-0000-0000-0000-00000000text",
+    "status": "FINISHED",
+    "query_text": "SELECT 1",
+    "plans_state": "EXISTS",
+    "statement_type": "SELECT",
+    "warehouse_id": "0000000000000000",
+    "plans": {
+      "0": "== Physical Plan ==\n* Project (3)\n+- * Filter (2)\n   +- Scan parquet main.default.events (1)\n",
+      "1": "== Parsed Logical Plan ==\nProject [id#1]\n+- Filter (id#1 > 0)\n   +- Relation main.default.events\n"
+    }
+  }
+}

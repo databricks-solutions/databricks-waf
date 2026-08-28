@@ -1,0 +1,200 @@
+# The optional job that runs the assessment on a schedule.
+#
+# Deployed paused. A job that appears and immediately starts scanning would spend a customer's
+# warehouse on the strength of a bundle deploy, and the identity it runs as almost certainly has
+# no grants yet — so the first thing it would produce is a failed run. Unpause it once the
+# run-as identity can actually read the estate. `npm run schedule:principal` reports whether it can,
+# and `docs/scheduled-scans.md` explains what it asks for and why.
+#
+# Kept in its own file rather than in databricks.yml, so that the file a Marketplace listing and
+# the Apps runtime both depend on stays exactly as small as it was. Delete this file to opt out
+# entirely; nothing else references it.
+#
+# Why a job at all, rather than a timer inside the app: an app is restarted, scaled and stopped by
+# the platform, so a timer in it would fire an unpredictable number of times or none. A job has a
+# schedule, a retry policy, an owner, alerting, and a run history that is somebody's record rather
+# than this app's — which matters most in exactly the case this exists for, where nobody is
+# watching.
+
+resources:
+  jobs:
+    scheduled_assessment:
+      name: 'Well-Architected assessment'
+      description: >-
+        Runs the Well-Architected assessment against this workspace and records the result in the
+        app's history, so a trend has more than the runs somebody remembered to start.
+
+      # Fails loudly rather than quietly. The task fails when the app reports that the run
+      # measured nothing, which is the failure mode that matters: a scheduled assessment that
+      # silently stopped reading the estate would otherwise look like a flat trend line.
+      email_notifications:
+        on_failure: ['${workspace.current_user.userName}']
+
+      # The app may see this job and start it, and may not change it.
+      #
+      # `CAN_MANAGE_RUN` is the whole of it: view the job, its schedule and its run history, and
+      # trigger a run. Not `CAN_MANAGE`, which would let the app edit the schedule, the retry policy
+      # and the run-as identity — the four things this file exists to be authoritative about. A
+      # reviewer asking "what can the app do to the job?" gets the answer from this line rather than
+      # from the app's source, which is the point of granting it here.
+      #
+      # Without this the app cannot read the job at all. The job's owner is whoever deployed the
+      # bundle, and the app runs as its own service principal, so an unglanted app reports "no
+      # scheduled assessment is deployed" on a workspace where one is — the worst of the three
+      # states it can report, because it is wrong rather than merely uninformative.
+      #
+      # Granted from this file rather than through the app's own `resources` block in
+      # `databricks.yml`, for two reasons. This file's contract is that deleting it opts out
+      # entirely and nothing else references it; a binding over there would make deleting it break
+      # the app's deploy. And the app-resources route is the one with the known drift bug — it adds
+      # the principal to the job's permissions without recording it, so the next deploy sees an
+      # untracked permission and removes it (databricks/cli#4309). Declaring it here is that bug's
+      # own recommended fix.
+      permissions:
+        - level: CAN_MANAGE_RUN
+          service_principal_name: '${resources.apps.app.service_principal_client_id}'
+
+      schedule:
+        # Weekly, early Monday. The assessment reads system tables whose usage and audit data
+        # arrive with a lag, so a daily run mostly re-reads the same rows for a warehouse bill;
+        # a week is the shortest window over which the numbers this app scores actually move.
+        quartz_cron_expression: '0 0 6 ? * MON'
+        timezone_id: 'UTC'
+        pause_status: 'PAUSED'
+
+      # One at a time, matching the app: the app holds a single-scan lock and would refuse the
+      # second caller anyway, so overlapping runs would produce failed tasks and no more data.
+      max_concurrent_runs: 1
+
+      # Standard by default, because of when this job runs. Performance-optimized is the serverless
+      # default and costs about three times the DBUs for a faster start, and at six on a Monday
+      # morning nobody is waiting: the task makes one HTTP request and then waits on an app that
+      # takes minutes to read the estate. The supervisor's own patience is measured from when the
+      # notebook starts, so a slower start costs it none of that.
+      #
+      # It is a variable rather than a constant because that argument is about a schedule, and it
+      # inverts the moment a human is waiting. Measured on labs, on the same job on the same day:
+      #
+      # | Target | Cold start |
+      # | --- | --- |
+      # | PERFORMANCE_OPTIMIZED | 123s |
+      # | STANDARD | 205s, 245s |
+      #
+      # Two to four minutes per attempt, paid before anything under test has run, is what makes an
+      # afternoon of exercising this job unaffordable in attention rather than in DBUs. So a
+      # development workspace sets this to PERFORMANCE_OPTIMIZED and a customer gets STANDARD
+      # without having to know the variable exists. See `databricks.yml`, where the `default` target
+      # — which is a labs workspace — does exactly that.
+      #
+      # Worth knowing before reaching for it: the second task of a run starts in about a second,
+      # because serverless reuses the compute the first warmed (ADR 0065). This variable therefore
+      # buys down the first start of a run and nothing after it, and the cheapest way to iterate on
+      # the app remains not to involve the job at all — the routes the notebook calls answer a curl
+      # with the principal's token in seconds.
+      performance_target: '${var.job_performance_target}'
+
+      # Two tasks, and the split is about retries rather than about work. Everything the assessment
+      # does happens in the app (ADR 0060), so dividing the supervision into more tasks would divide
+      # nothing and pay another serverless start for each piece. What the division does buy is a place
+      # for the refusals a retry cannot clear: measured on labs before this existed, an identity
+      # outside the assessors group cost four attempts, seven and a half minutes of startup and 47
+      # seconds of work to learn the same thing four times. Asking first, in a task that does not
+      # retry, costs one start and says which grant is missing.
+      tasks:
+        - task_key: 'readiness'
+          # No retries, deliberately: the whole point of this task is that its answer will not change
+          # by being asked again. It is not fragile — it waits out an app that is restarting, and where
+          # it runs out of patience it passes rather than fails — so a failure here is a settled answer
+          # about permission or a binding, and repeating it would only spend another start.
+          max_retries: 0
+          # `max_retries: 0` is necessary and was not sufficient, and the reason is in the notebook
+          # rather than here. A task that ends by exiting the interpreter — `raise SystemExit` — lands
+          # the run in INTERNAL_ERROR rather than a clean failure, and the platform retries an internal
+          # error whatever the retry policy says: measured twice on labs, two attempts at a settled
+          # permission refusal with this line already in place. `schedule/trigger.py` raises an
+          # ordinary exception for that reason. `disable_auto_optimization: true` was tried here first
+          # and is not the lever: the API does not keep the field, and the second attempt still ran.
+          #
+          # This line is also not observable through a partial run. `jobs run-now --only readiness` is
+          # the cheap way to exercise this task by hand and it retries regardless — measured twice on a
+          # clean failure — so a reproduction that shows two attempts is showing that, not this.
+          notebook_task:
+            notebook_path: ../schedule/trigger.py
+            base_parameters:
+              phase: 'readiness'
+              app_url: '${var.app_url}'
+              workspace_url: '${workspace.host}'
+              client_id: '${var.schedule_client_id}'
+              secret_scope: '${var.schedule_secret_scope}'
+              secret_key: '${var.schedule_secret_key}'
+          # Minutes rather than the hour the assessment gets. This task asks one question and waits
+          # only for an app that is coming back, so an hour of it would be an hour of a Monday spent
+          # discovering the app is gone.
+          timeout_seconds: 900
+
+        - task_key: 'assess'
+          # Only after the question has been answered. A dependency rather than a shared task, so the
+          # run history says which of the two failed — "this identity may not start a scan" and "the
+          # assessment stopped half way" send an operator to different places.
+          depends_on:
+            - task_key: 'readiness'
+          # Retries, because this is where the supervision in ADR 0060 becomes real rather than
+          # described. Each retry posts the same idempotency key, so the app carries on the run it
+          # already has from its last checkpoint instead of starting a second assessment of the same
+          # night — which is what makes a restarted app, a dropped connection or an exhausted task
+          # timeout recoverable rather than a lost week.
+          #
+          # Three rather than one, because the failures worth retrying are transient by nature and
+          # come in bursts: an app being replaced is unavailable for a minute or two. Not more,
+          # because the failures that are not transient — a missing grant, a warehouse the identity
+          # may not use — fail identically every time, and an operator should hear about those on
+          # Monday rather than after lunch.
+          max_retries: 3
+          min_retry_interval_millis: 120000
+          # A task that ran out of time was, almost always, waiting on a scan that was still going.
+          # Its retry rejoins that scan rather than restarting it, so retrying a timeout costs a
+          # request and gains the result.
+          retry_on_timeout: true
+          notebook_task:
+            notebook_path: ../schedule/trigger.py
+            base_parameters:
+              phase: 'assess'
+              app_url: '${var.app_url}'
+              workspace_url: '${workspace.host}'
+              # What makes a retry one run and next Monday another. Substituted by Lakeflow when the
+              # run starts: the job run id is the same for every automatic retry of this task and
+              # different for every schedule tick, and the repair count changes when a person asks
+              # for the run again — which means something a retry does not, so it starts over rather
+              # than resuming. `schedule/trigger.py` has the argument.
+              job_id: '{{job.id}}'
+              job_run_id: '{{job.run_id}}'
+              repair_count: '{{job.repair_count}}'
+              # The identity the assessment runs as, and where its OAuth secret is kept. The
+              # secret is the customer's, in the customer's scope, read by this job — the app is
+              # never given it and its manifest does not ask for one. An OAuth grant is the only
+              # credential the Apps proxy accepts: a runtime token, a dbutils token and a personal
+              # access token were each measured and refused. ADR 0021.
+              client_id: '${var.schedule_client_id}'
+              secret_scope: '${var.schedule_secret_scope}'
+              secret_key: '${var.schedule_secret_key}'
+              lookback_days: '30'
+              # The assessment every run of this job answers to, as an id rather than a lookup.
+              #
+              # The distinction is the whole of GAP-036. A job that asked for "the newest definition" when
+              # it fired would change which assessment it answers the moment somebody added one, and a
+              # trend line would step for a reason nothing recorded. An id in this file changes when
+              # somebody edits this file.
+              #
+              # Empty is a supported setting and the default: the run then answers to no assessment, which
+              # is what every run of this job did before this parameter existed. The app's schedule panel
+              # says which of the two it is reading.
+              #
+              # The assessment's own definition carries how far back to look, so the notebook sends this
+              # *instead of* lookback_days — `POST /api/scan/scheduled` refuses a request that names an
+              # assessment and also sets the window, because a run recorded against a definition's
+              # fingerprint while measuring a different window would be a run of a question nobody asked.
+              # `lookback_days` above still applies when this is empty.
+              assessment_id: '${var.schedule_assessment_id}'
+          # Serverless: no cluster block. The task makes one HTTP call and waits, so a JVM and a
+          # driver node would be several minutes of startup to do nothing.
+          timeout_seconds: 3600

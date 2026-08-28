@@ -1,0 +1,1116 @@
+{
+  "runFinishedAt": "2026-08-11T16:12:06.425Z",
+  "profile": "labs",
+  "candidateMetrics": {
+    "DATA_SKEW": [
+      "MapStage - Skew max to non-empty median ratio",
+      "MapStage - Skew num skewed partitions",
+      "MapStage - Skew skewed data size ratio",
+      "MapStage - Skew non-empty median partition size",
+      "MapStage - Skew num empty partitions",
+      "AQEShuffleRead - Skew handled by"
+    ],
+    "EXCESSIVE_EXCHANGES": [
+      "AQEShuffleRead - Number of partitions",
+      "AQEShuffleRead - Number of coalesced partitions",
+      "MapStage - Number of output rows"
+    ],
+    "LARGE_SORT": [
+      "Max batch size (rows) produced in the sort node",
+      "Max column batch size (bytes) sort spilled",
+      "Num bytes spilled to disk due to memory pressure"
+    ],
+    "BROADCAST_CANDIDATE": [
+      "Hashed relation size",
+      "Aggressive BHJ Extrapolated Size",
+      "Aggressive BHJ Decision"
+    ],
+    "MISSING_OR_STALE_STATS": [
+      "MapStage - EnsureRequirementsDP estimated NDV",
+      "Scan - Size of a row of all columns in the relation (estimated)",
+      "Scan - Size of a row of scanned columns (estimated)"
+    ]
+  },
+  "endpointPairsTried": [
+    "source/target",
+    "from/to",
+    "fromId/toId",
+    "from_id/to_id"
+  ],
+  "probes": [
+    {
+      "id": "join-and-sort",
+      "statementId": "01f1959f-4f84-1c64-ad02-de996c07a4e2",
+      "statement": "SELECT h.statement_id, h.total_duration_ms, small.label\n      FROM system.query.history h\n      JOIN (VALUES ('a', 'SELECT'), ('b', 'INSERT')) AS small(label, kind)\n        ON h.statement_type = small.kind\n      WHERE h.start_time >= current_timestamp() - INTERVAL 2 DAYS\n      ORDER BY h.total_duration_ms DESC\n      LIMIT 50",
+      "plansState": "EXISTS",
+      "edges": {
+        "edges": 13,
+        "nodes": 18,
+        "fields": [
+          "from_id",
+          "to_id"
+        ],
+        "fieldTypes": {
+          "from_id": [
+            "string"
+          ],
+          "to_id": [
+            "string"
+          ]
+        },
+        "nodeIdTypes": [
+          "string"
+        ],
+        "nodeIdsUnique": true,
+        "resolution": {
+          "source/target": {
+            "edgesCarryingBoth": 0,
+            "resolvedStrictly": 0,
+            "resolvedAfterCoercion": 0
+          },
+          "from/to": {
+            "edgesCarryingBoth": 0,
+            "resolvedStrictly": 0,
+            "resolvedAfterCoercion": 0
+          },
+          "fromId/toId": {
+            "edgesCarryingBoth": 0,
+            "resolvedStrictly": 0,
+            "resolvedAfterCoercion": 0
+          },
+          "from_id/to_id": {
+            "edgesCarryingBoth": 13,
+            "resolvedStrictly": 13,
+            "resolvedAfterCoercion": 13
+          }
+        },
+        "sample": [
+          {
+            "from_id": "444",
+            "to_id": "445"
+          },
+          {
+            "from_id": "445",
+            "to_id": "447"
+          },
+          {
+            "from_id": "447",
+            "to_id": "450"
+          },
+          {
+            "from_id": "450",
+            "to_id": "451"
+          },
+          {
+            "from_id": "451",
+            "to_id": "452"
+          }
+        ]
+      },
+      "endpointNames": "from_id/to_id",
+      "aroundSorts": [],
+      "sortMeta": {
+        "SORT_ORDER": {
+          "spellings": [
+            "values"
+          ],
+          "tags": [
+            "UNKNOWN.PhotonTopK"
+          ],
+          "operators": 2,
+          "entries": 2,
+          "samples": [
+            "h.total_duration_ms DESC NULLS LAST",
+            "h.total_duration_ms DESC NULLS LAST"
+          ]
+        }
+      },
+      "namedMetrics": {
+        "Aggressive BHJ Decision": {
+          "carried": 1,
+          "nonZero": 0,
+          "keys": [
+            "UNKNOWN_KEY"
+          ],
+          "samples": [
+            {
+              "tag": "PHOTON_BROADCAST_HASH_JOIN_EXEC",
+              "value": 0
+            }
+          ]
+        },
+        "Aggressive BHJ Extrapolated Size": {
+          "carried": 1,
+          "nonZero": 0,
+          "keys": [
+            "UNKNOWN_KEY"
+          ],
+          "samples": [
+            {
+              "tag": "PHOTON_BROADCAST_HASH_JOIN_EXEC",
+              "value": 0
+            }
+          ]
+        },
+        "Hashed relation size": {
+          "carried": 1,
+          "nonZero": 1,
+          "keys": [
+            "UNKNOWN_KEY"
+          ],
+          "samples": [
+            {
+              "tag": "PHOTON_BROADCAST_HASH_JOIN_EXEC",
+              "value": 4325376
+            }
+          ]
+        },
+        "MapStage - EnsureRequirementsDP estimated NDV": {
+          "carried": 2,
+          "nonZero": 0,
+          "keys": [
+            "UNKNOWN_KEY"
+          ],
+          "samples": [
+            {
+              "tag": "UNKNOWN.PhotonShuffleExchangeSink",
+              "value": 0
+            },
+            {
+              "tag": "UNKNOWN.PhotonShuffleExchangeSink",
+              "value": 0
+            }
+          ]
+        },
+        "MapStage - Number of output rows": {
+          "carried": 2,
+          "nonZero": 0,
+          "keys": [
+            "NUMBER_OUTPUT_ROWS"
+          ],
+          "samples": [
+            {
+              "tag": "UNKNOWN.PhotonShuffleExchangeSink",
+              "value": 0
+            },
+            {
+              "tag": "UNKNOWN.PhotonShuffleExchangeSink",
+              "value": 0
+            }
+          ]
+        },
+        "MapStage - Skew max to non-empty median ratio": {
+          "carried": 2,
+          "nonZero": 1,
+          "keys": [
+            "UNKNOWN_KEY"
+          ],
+          "samples": [
+            {
+              "tag": "UNKNOWN.PhotonShuffleExchangeSink",
+              "value": 0
+            },
+            {
+              "tag": "UNKNOWN.PhotonShuffleExchangeSink",
+              "value": 1
+            }
+          ]
+        },
+        "MapStage - Skew non-empty median partition size": {
+          "carried": 2,
+          "nonZero": 1,
+          "keys": [
+            "UNKNOWN_KEY"
+          ],
+          "samples": [
+            {
+              "tag": "UNKNOWN.PhotonShuffleExchangeSink",
+              "value": 0
+            },
+            {
+              "tag": "UNKNOWN.PhotonShuffleExchangeSink",
+              "value": 148
+            }
+          ]
+        },
+        "MapStage - Skew num empty partitions": {
+          "carried": 2,
+          "nonZero": 0,
+          "keys": [
+            "UNKNOWN_KEY"
+          ],
+          "samples": [
+            {
+              "tag": "UNKNOWN.PhotonShuffleExchangeSink",
+              "value": 0
+            },
+            {
+              "tag": "UNKNOWN.PhotonShuffleExchangeSink",
+              "value": 0
+            }
+          ]
+        },
+        "MapStage - Skew num skewed partitions": {
+          "carried": 2,
+          "nonZero": 0,
+          "keys": [
+            "UNKNOWN_KEY"
+          ],
+          "samples": [
+            {
+              "tag": "UNKNOWN.PhotonShuffleExchangeSink",
+              "value": 0
+            },
+            {
+              "tag": "UNKNOWN.PhotonShuffleExchangeSink",
+              "value": 0
+            }
+          ]
+        },
+        "MapStage - Skew skewed data size ratio": {
+          "carried": 2,
+          "nonZero": 0,
+          "keys": [
+            "UNKNOWN_KEY"
+          ],
+          "samples": [
+            {
+              "tag": "UNKNOWN.PhotonShuffleExchangeSink",
+              "value": 0
+            },
+            {
+              "tag": "UNKNOWN.PhotonShuffleExchangeSink",
+              "value": 0
+            }
+          ]
+        },
+        "Num bytes spilled to disk due to memory pressure": {
+          "carried": 2,
+          "nonZero": 0,
+          "keys": [
+            "UNKNOWN_KEY"
+          ],
+          "samples": [
+            {
+              "tag": "UNKNOWN.PhotonTopK",
+              "value": 0
+            },
+            {
+              "tag": "UNKNOWN.PhotonTopK",
+              "value": 0
+            }
+          ]
+        },
+        "Scan - Size of a row of all columns in the relation (estimated)": {
+          "carried": 1,
+          "nonZero": 1,
+          "keys": [
+            "UNKNOWN_KEY"
+          ],
+          "samples": [
+            {
+              "tag": "PHOTON_PARQUET_FILE_SCAN_EXEC",
+              "value": 2157
+            }
+          ]
+        },
+        "Scan - Size of a row of scanned columns (estimated)": {
+          "carried": 1,
+          "nonZero": 1,
+          "keys": [
+            "UNKNOWN_KEY"
+          ],
+          "samples": [
+            {
+              "tag": "PHOTON_PARQUET_FILE_SCAN_EXEC",
+              "value": 56
+            }
+          ]
+        }
+      },
+      "cost": {
+        "responseBytes": 169714,
+        "baselineBytes": 2565,
+        "responseOverBaseline": 66.2,
+        "added": {
+          "edges": {
+            "bytes": 2991,
+            "addedBytes": 426,
+            "addedPercent": 16.6
+          },
+          "sortOrder": {
+            "bytes": 2671,
+            "addedBytes": 106,
+            "addedPercent": 4.1
+          },
+          "namedMetrics": {
+            "bytes": 3587,
+            "addedBytes": 1022,
+            "addedPercent": 39.8
+          },
+          "all": {
+            "bytes": 4119,
+            "addedBytes": 1554,
+            "addedPercent": 60.6
+          }
+        }
+      }
+    },
+    {
+      "id": "sort-without-limit",
+      "statementId": "01f1959f-565a-1c47-add0-442fa21057cb",
+      "statement": "SELECT count(*) FROM (\n        SELECT statement_id, row_number() OVER (ORDER BY total_duration_ms DESC) AS rank\n        FROM system.query.history\n        WHERE start_time >= current_timestamp() - INTERVAL 7 DAYS\n      ) ranked\n      WHERE rank > 0",
+      "plansState": "EXISTS",
+      "edges": {
+        "edges": 11,
+        "nodes": 15,
+        "fields": [
+          "from_id",
+          "to_id"
+        ],
+        "fieldTypes": {
+          "from_id": [
+            "string"
+          ],
+          "to_id": [
+            "string"
+          ]
+        },
+        "nodeIdTypes": [
+          "string"
+        ],
+        "nodeIdsUnique": true,
+        "resolution": {
+          "source/target": {
+            "edgesCarryingBoth": 0,
+            "resolvedStrictly": 0,
+            "resolvedAfterCoercion": 0
+          },
+          "from/to": {
+            "edgesCarryingBoth": 0,
+            "resolvedStrictly": 0,
+            "resolvedAfterCoercion": 0
+          },
+          "fromId/toId": {
+            "edgesCarryingBoth": 0,
+            "resolvedStrictly": 0,
+            "resolvedAfterCoercion": 0
+          },
+          "from_id/to_id": {
+            "edgesCarryingBoth": 11,
+            "resolvedStrictly": 11,
+            "resolvedAfterCoercion": 11
+          }
+        },
+        "sample": [
+          {
+            "from_id": "498",
+            "to_id": "499"
+          },
+          {
+            "from_id": "499",
+            "to_id": "501"
+          },
+          {
+            "from_id": "501",
+            "to_id": "504"
+          },
+          {
+            "from_id": "504",
+            "to_id": "505"
+          },
+          {
+            "from_id": "505",
+            "to_id": "506"
+          }
+        ]
+      },
+      "endpointNames": "from_id/to_id",
+      "aroundSorts": [
+        {
+          "id": "509",
+          "tag": "PHOTON_SORT_EXEC",
+          "alongTo": [
+            "UNKNOWN.PhotonShuffleExchangeSink",
+            "PHOTON_PROJECT_EXEC",
+            "PHOTON_PARQUET_FILE_SCAN_EXEC"
+          ],
+          "alongFrom": [
+            "UNKNOWN.PhotonWindow",
+            "PHOTON_FILTER_EXEC",
+            "PHOTON_PROJECT_EXEC"
+          ]
+        }
+      ],
+      "sortMeta": {
+        "SORT_ORDER": {
+          "spellings": [
+            "values"
+          ],
+          "tags": [
+            "PHOTON_SORT_EXEC",
+            "UNKNOWN.PhotonWindow"
+          ],
+          "operators": 2,
+          "entries": 2,
+          "samples": [
+            "system.query.history.total_duration_ms DESC NULLS LAST",
+            "system.query.history.total_duration_ms DESC NULLS LAST"
+          ]
+        }
+      },
+      "namedMetrics": {
+        "MapStage - EnsureRequirementsDP estimated NDV": {
+          "carried": 1,
+          "nonZero": 0,
+          "keys": [
+            "UNKNOWN_KEY"
+          ],
+          "samples": [
+            {
+              "tag": "UNKNOWN.PhotonShuffleExchangeSink",
+              "value": 0
+            }
+          ]
+        },
+        "MapStage - Number of output rows": {
+          "carried": 1,
+          "nonZero": 0,
+          "keys": [
+            "NUMBER_OUTPUT_ROWS"
+          ],
+          "samples": [
+            {
+              "tag": "UNKNOWN.PhotonShuffleExchangeSink",
+              "value": 0
+            }
+          ]
+        },
+        "MapStage - Skew max to non-empty median ratio": {
+          "carried": 1,
+          "nonZero": 1,
+          "keys": [
+            "UNKNOWN_KEY"
+          ],
+          "samples": [
+            {
+              "tag": "UNKNOWN.PhotonShuffleExchangeSink",
+              "value": 1
+            }
+          ]
+        },
+        "MapStage - Skew non-empty median partition size": {
+          "carried": 1,
+          "nonZero": 1,
+          "keys": [
+            "UNKNOWN_KEY"
+          ],
+          "samples": [
+            {
+              "tag": "UNKNOWN.PhotonShuffleExchangeSink",
+              "value": 143404
+            }
+          ]
+        },
+        "MapStage - Skew num empty partitions": {
+          "carried": 1,
+          "nonZero": 0,
+          "keys": [
+            "UNKNOWN_KEY"
+          ],
+          "samples": [
+            {
+              "tag": "UNKNOWN.PhotonShuffleExchangeSink",
+              "value": 0
+            }
+          ]
+        },
+        "MapStage - Skew num skewed partitions": {
+          "carried": 1,
+          "nonZero": 0,
+          "keys": [
+            "UNKNOWN_KEY"
+          ],
+          "samples": [
+            {
+              "tag": "UNKNOWN.PhotonShuffleExchangeSink",
+              "value": 0
+            }
+          ]
+        },
+        "MapStage - Skew skewed data size ratio": {
+          "carried": 1,
+          "nonZero": 0,
+          "keys": [
+            "UNKNOWN_KEY"
+          ],
+          "samples": [
+            {
+              "tag": "UNKNOWN.PhotonShuffleExchangeSink",
+              "value": 0
+            }
+          ]
+        },
+        "Max batch size (rows) produced in the sort node": {
+          "carried": 1,
+          "nonZero": 0,
+          "keys": [
+            "UNKNOWN_KEY"
+          ],
+          "samples": [
+            {
+              "tag": "PHOTON_SORT_EXEC"
+            }
+          ]
+        },
+        "Max column batch size (bytes) sort spilled": {
+          "carried": 1,
+          "nonZero": 0,
+          "keys": [
+            "UNKNOWN_KEY"
+          ],
+          "samples": [
+            {
+              "tag": "PHOTON_SORT_EXEC",
+              "value": 0
+            }
+          ]
+        },
+        "Num bytes spilled to disk due to memory pressure": {
+          "carried": 2,
+          "nonZero": 0,
+          "keys": [
+            "UNKNOWN_KEY"
+          ],
+          "samples": [
+            {
+              "tag": "UNKNOWN.PhotonWindow",
+              "value": 0
+            },
+            {
+              "tag": "PHOTON_SORT_EXEC",
+              "value": 0
+            }
+          ]
+        },
+        "Scan - Size of a row of all columns in the relation (estimated)": {
+          "carried": 1,
+          "nonZero": 1,
+          "keys": [
+            "UNKNOWN_KEY"
+          ],
+          "samples": [
+            {
+              "tag": "PHOTON_PARQUET_FILE_SCAN_EXEC",
+              "value": 2157
+            }
+          ]
+        },
+        "Scan - Size of a row of scanned columns (estimated)": {
+          "carried": 1,
+          "nonZero": 1,
+          "keys": [
+            "UNKNOWN_KEY"
+          ],
+          "samples": [
+            {
+              "tag": "PHOTON_PARQUET_FILE_SCAN_EXEC",
+              "value": 16
+            }
+          ]
+        }
+      },
+      "cost": {
+        "responseBytes": 119872,
+        "baselineBytes": 2049,
+        "responseOverBaseline": 58.5,
+        "added": {
+          "edges": {
+            "bytes": 2411,
+            "addedBytes": 362,
+            "addedPercent": 17.7
+          },
+          "sortOrder": {
+            "bytes": 2193,
+            "addedBytes": 144,
+            "addedPercent": 7
+          },
+          "namedMetrics": {
+            "bytes": 2690,
+            "addedBytes": 641,
+            "addedPercent": 31.3
+          },
+          "all": {
+            "bytes": 3196,
+            "addedBytes": 1147,
+            "addedPercent": 56
+          }
+        }
+      }
+    },
+    {
+      "id": "shuffle-heavy",
+      "statementId": "01f1959f-5d10-1771-8bfd-9e151d718690",
+      "statement": "WITH per_user AS (\n        SELECT executed_by, statement_type, count(*) AS runs, sum(total_duration_ms) AS ms\n        FROM system.query.history\n        WHERE start_time >= current_timestamp() - INTERVAL 7 DAYS\n        GROUP BY 1, 2\n      ),\n      per_type AS (\n        SELECT statement_type, count(DISTINCT executed_by) AS users, sum(runs) AS runs\n        FROM per_user GROUP BY 1\n      )\n      SELECT per_type.statement_type, per_type.users, per_type.runs, sum(per_user.ms) AS ms\n      FROM per_type JOIN per_user USING (statement_type)\n      GROUP BY 1, 2, 3\n      ORDER BY ms DESC",
+      "plansState": "EXISTS",
+      "edges": {
+        "edges": 33,
+        "nodes": 39,
+        "fields": [
+          "from_id",
+          "to_id"
+        ],
+        "fieldTypes": {
+          "from_id": [
+            "string"
+          ],
+          "to_id": [
+            "string"
+          ]
+        },
+        "nodeIdTypes": [
+          "string"
+        ],
+        "nodeIdsUnique": true,
+        "resolution": {
+          "source/target": {
+            "edgesCarryingBoth": 0,
+            "resolvedStrictly": 0,
+            "resolvedAfterCoercion": 0
+          },
+          "from/to": {
+            "edgesCarryingBoth": 0,
+            "resolvedStrictly": 0,
+            "resolvedAfterCoercion": 0
+          },
+          "fromId/toId": {
+            "edgesCarryingBoth": 0,
+            "resolvedStrictly": 0,
+            "resolvedAfterCoercion": 0
+          },
+          "from_id/to_id": {
+            "edgesCarryingBoth": 33,
+            "resolvedStrictly": 33,
+            "resolvedAfterCoercion": 33
+          }
+        },
+        "sample": [
+          {
+            "from_id": "549",
+            "to_id": "550"
+          },
+          {
+            "from_id": "550",
+            "to_id": "552"
+          },
+          {
+            "from_id": "552",
+            "to_id": "555"
+          },
+          {
+            "from_id": "555",
+            "to_id": "556"
+          },
+          {
+            "from_id": "556",
+            "to_id": "557"
+          }
+        ]
+      },
+      "endpointNames": "from_id/to_id",
+      "aroundSorts": [
+        {
+          "id": "556",
+          "tag": "PHOTON_SORT_EXEC",
+          "alongTo": [
+            "PHOTON_PROJECT_EXEC",
+            "PHOTON_GROUPING_AGG_EXEC",
+            "PHOTON_PROJECT_EXEC"
+          ],
+          "alongFrom": [
+            "PHOTON_ARROW_BATCH_SINK_EXEC",
+            "UNKNOWN.ColumnarToRow",
+            "RESULT_QUERY_STAGE_EXEC"
+          ]
+        }
+      ],
+      "sortMeta": {
+        "SORT_ORDER": {
+          "spellings": [
+            "values"
+          ],
+          "tags": [
+            "PHOTON_SORT_EXEC"
+          ],
+          "operators": 1,
+          "entries": 1,
+          "samples": [
+            "ms DESC NULLS LAST"
+          ]
+        }
+      },
+      "namedMetrics": {
+        "Aggressive BHJ Decision": {
+          "carried": 1,
+          "nonZero": 0,
+          "keys": [
+            "UNKNOWN_KEY"
+          ],
+          "samples": [
+            {
+              "tag": "PHOTON_BROADCAST_HASH_JOIN_EXEC",
+              "value": 0
+            }
+          ]
+        },
+        "Aggressive BHJ Extrapolated Size": {
+          "carried": 1,
+          "nonZero": 0,
+          "keys": [
+            "UNKNOWN_KEY"
+          ],
+          "samples": [
+            {
+              "tag": "PHOTON_BROADCAST_HASH_JOIN_EXEC",
+              "value": 0
+            }
+          ]
+        },
+        "AQEShuffleRead - Number of coalesced partitions": {
+          "carried": 3,
+          "nonZero": 3,
+          "keys": [
+            "UNKNOWN_KEY"
+          ],
+          "samples": [
+            {
+              "tag": "UNKNOWN.PhotonShuffleExchangeSink",
+              "value": 1
+            },
+            {
+              "tag": "SHUFFLE_QUERY_STAGE_EXEC",
+              "value": 1
+            },
+            {
+              "tag": "UNKNOWN.PhotonShuffleExchangeSink",
+              "value": 1
+            }
+          ]
+        },
+        "AQEShuffleRead - Number of partitions": {
+          "carried": 3,
+          "nonZero": 3,
+          "keys": [
+            "UNKNOWN_KEY"
+          ],
+          "samples": [
+            {
+              "tag": "UNKNOWN.PhotonShuffleExchangeSink",
+              "value": 1
+            },
+            {
+              "tag": "SHUFFLE_QUERY_STAGE_EXEC",
+              "value": 1
+            },
+            {
+              "tag": "UNKNOWN.PhotonShuffleExchangeSink",
+              "value": 1
+            }
+          ]
+        },
+        "AQEShuffleRead - Skew handled by": {
+          "carried": 3,
+          "nonZero": 0,
+          "keys": [
+            "UNKNOWN_KEY"
+          ],
+          "samples": [
+            {
+              "tag": "UNKNOWN.PhotonShuffleExchangeSink",
+              "value": 0
+            },
+            {
+              "tag": "SHUFFLE_QUERY_STAGE_EXEC",
+              "value": 0
+            },
+            {
+              "tag": "UNKNOWN.PhotonShuffleExchangeSink",
+              "value": 0
+            }
+          ]
+        },
+        "Hashed relation size": {
+          "carried": 1,
+          "nonZero": 1,
+          "keys": [
+            "UNKNOWN_KEY"
+          ],
+          "samples": [
+            {
+              "tag": "PHOTON_BROADCAST_HASH_JOIN_EXEC",
+              "value": 4325376
+            }
+          ]
+        },
+        "MapStage - EnsureRequirementsDP estimated NDV": {
+          "carried": 3,
+          "nonZero": 2,
+          "keys": [
+            "UNKNOWN_KEY"
+          ],
+          "samples": [
+            {
+              "tag": "UNKNOWN.PhotonShuffleExchangeSink",
+              "value": 1
+            },
+            {
+              "tag": "PHOTON_SHUFFLE_MAP_STAGE_EXEC",
+              "value": 0
+            },
+            {
+              "tag": "UNKNOWN.PhotonShuffleExchangeSink",
+              "value": 1
+            }
+          ]
+        },
+        "MapStage - Number of output rows": {
+          "carried": 3,
+          "nonZero": 0,
+          "keys": [
+            "NUMBER_OUTPUT_ROWS"
+          ],
+          "samples": [
+            {
+              "tag": "UNKNOWN.PhotonShuffleExchangeSink",
+              "value": 0
+            },
+            {
+              "tag": "PHOTON_SHUFFLE_MAP_STAGE_EXEC",
+              "value": 0
+            },
+            {
+              "tag": "UNKNOWN.PhotonShuffleExchangeSink",
+              "value": 0
+            }
+          ]
+        },
+        "MapStage - Skew max to non-empty median ratio": {
+          "carried": 3,
+          "nonZero": 2,
+          "keys": [
+            "UNKNOWN_KEY"
+          ],
+          "samples": [
+            {
+              "tag": "UNKNOWN.PhotonShuffleExchangeSink",
+              "value": 2
+            },
+            {
+              "tag": "PHOTON_SHUFFLE_MAP_STAGE_EXEC",
+              "value": 0
+            },
+            {
+              "tag": "UNKNOWN.PhotonShuffleExchangeSink",
+              "value": 4
+            }
+          ]
+        },
+        "MapStage - Skew non-empty median partition size": {
+          "carried": 3,
+          "nonZero": 2,
+          "keys": [
+            "UNKNOWN_KEY"
+          ],
+          "samples": [
+            {
+              "tag": "UNKNOWN.PhotonShuffleExchangeSink",
+              "value": 656
+            },
+            {
+              "tag": "PHOTON_SHUFFLE_MAP_STAGE_EXEC",
+              "value": 0
+            },
+            {
+              "tag": "UNKNOWN.PhotonShuffleExchangeSink",
+              "value": 630
+            }
+          ]
+        },
+        "MapStage - Skew num empty partitions": {
+          "carried": 3,
+          "nonZero": 2,
+          "keys": [
+            "UNKNOWN_KEY"
+          ],
+          "samples": [
+            {
+              "tag": "UNKNOWN.PhotonShuffleExchangeSink",
+              "value": 7
+            },
+            {
+              "tag": "PHOTON_SHUFFLE_MAP_STAGE_EXEC",
+              "value": 0
+            },
+            {
+              "tag": "UNKNOWN.PhotonShuffleExchangeSink",
+              "value": 38
+            }
+          ]
+        },
+        "MapStage - Skew num skewed partitions": {
+          "carried": 3,
+          "nonZero": 0,
+          "keys": [
+            "UNKNOWN_KEY"
+          ],
+          "samples": [
+            {
+              "tag": "UNKNOWN.PhotonShuffleExchangeSink",
+              "value": 0
+            },
+            {
+              "tag": "PHOTON_SHUFFLE_MAP_STAGE_EXEC",
+              "value": 0
+            },
+            {
+              "tag": "UNKNOWN.PhotonShuffleExchangeSink",
+              "value": 0
+            }
+          ]
+        },
+        "MapStage - Skew skewed data size ratio": {
+          "carried": 3,
+          "nonZero": 0,
+          "keys": [
+            "UNKNOWN_KEY"
+          ],
+          "samples": [
+            {
+              "tag": "UNKNOWN.PhotonShuffleExchangeSink",
+              "value": 0
+            },
+            {
+              "tag": "PHOTON_SHUFFLE_MAP_STAGE_EXEC",
+              "value": 0
+            },
+            {
+              "tag": "UNKNOWN.PhotonShuffleExchangeSink",
+              "value": 0
+            }
+          ]
+        },
+        "Max batch size (rows) produced in the sort node": {
+          "carried": 1,
+          "nonZero": 0,
+          "keys": [
+            "UNKNOWN_KEY"
+          ],
+          "samples": [
+            {
+              "tag": "PHOTON_SORT_EXEC"
+            }
+          ]
+        },
+        "Max column batch size (bytes) sort spilled": {
+          "carried": 1,
+          "nonZero": 0,
+          "keys": [
+            "UNKNOWN_KEY"
+          ],
+          "samples": [
+            {
+              "tag": "PHOTON_SORT_EXEC",
+              "value": 0
+            }
+          ]
+        },
+        "Num bytes spilled to disk due to memory pressure": {
+          "carried": 9,
+          "nonZero": 0,
+          "keys": [
+            "UNKNOWN_KEY"
+          ],
+          "samples": [
+            {
+              "tag": "PHOTON_SORT_EXEC",
+              "value": 0
+            },
+            {
+              "tag": "PHOTON_GROUPING_AGG_EXEC",
+              "value": 0
+            },
+            {
+              "tag": "PHOTON_GROUPING_AGG_EXEC",
+              "value": 0
+            },
+            {
+              "tag": "PHOTON_GROUPING_AGG_EXEC",
+              "value": 0
+            }
+          ]
+        },
+        "Scan - Size of a row of all columns in the relation (estimated)": {
+          "carried": 2,
+          "nonZero": 2,
+          "keys": [
+            "UNKNOWN_KEY"
+          ],
+          "samples": [
+            {
+              "tag": "PHOTON_PARQUET_FILE_SCAN_EXEC",
+              "value": 2157
+            },
+            {
+              "tag": "PHOTON_PARQUET_FILE_SCAN_EXEC",
+              "value": 2157
+            }
+          ]
+        },
+        "Scan - Size of a row of scanned columns (estimated)": {
+          "carried": 2,
+          "nonZero": 2,
+          "keys": [
+            "UNKNOWN_KEY"
+          ],
+          "samples": [
+            {
+              "tag": "PHOTON_PARQUET_FILE_SCAN_EXEC",
+              "value": 48
+            },
+            {
+              "tag": "PHOTON_PARQUET_FILE_SCAN_EXEC",
+              "value": 36
+            }
+          ]
+        }
+      },
+      "cost": {
+        "responseBytes": 360452,
+        "baselineBytes": 5353,
+        "responseOverBaseline": 67.3,
+        "added": {
+          "edges": {
+            "bytes": 6419,
+            "addedBytes": 1066,
+            "addedPercent": 19.9
+          },
+          "sortOrder": {
+            "bytes": 5389,
+            "addedBytes": 36,
+            "addedPercent": 0.7
+          },
+          "namedMetrics": {
+            "bytes": 7732,
+            "addedBytes": 2379,
+            "addedPercent": 44.4
+          },
+          "all": {
+            "bytes": 8834,
+            "addedBytes": 3481,
+            "addedPercent": 65
+          }
+        }
+      }
+    }
+  ]
+}

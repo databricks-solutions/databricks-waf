@@ -1,0 +1,504 @@
+{
+  "runFinishedAt": "2026-08-12T02:09:09.234Z",
+  "profile": "large-estate",
+  "host": "https://example.cloud.databricks.com",
+  "warehouse": "0011223344556677",
+  "lookbackDays": 30,
+  "retentionDays": 400,
+  "readings": {
+    "computeIdsPopulated": {
+      "share": 0.698,
+      "of": 228791,
+      "unknown": null
+    },
+    "computeStructPopulated": {
+      "share": 0.711,
+      "of": 228791,
+      "unknown": null
+    },
+    "jobsTheWorkerJoinReaches": {
+      "share": 0.166,
+      "of": 4158,
+      "unknown": null
+    },
+    "runsTheWorkerJoinReaches": {
+      "share": 0.096,
+      "of": 115714,
+      "unknown": null
+    },
+    "nodeSamplesBelow10PercentCpu": {
+      "share": 0.44,
+      "of": 2708353,
+      "unknown": null
+    },
+    "runsBelow30PercentCpu": {
+      "share": 0.947,
+      "of": 11105,
+      "unknown": null
+    },
+    "runsRuleAWouldConsider": {
+      "share": 0.864,
+      "of": 11105,
+      "unknown": null
+    },
+    "jobsClearingTheGuardrail": {
+      "share": 0.196,
+      "of": 4876,
+      "unknown": null
+    },
+    "pairsWithAnAsOfConfig": {
+      "share": 0.01,
+      "of": 116762,
+      "unknown": null
+    },
+    "runsWithAStatedTotal": {
+      "share": 0.208,
+      "of": 176260,
+      "unknown": null
+    },
+    "runsWithAStatedSetup": {
+      "share": 0.002,
+      "of": 176260,
+      "unknown": null
+    },
+    "jobsWithCostRecords": {
+      "share": 0.675,
+      "of": 4877,
+      "unknown": null
+    }
+  },
+  "probes": [
+    {
+      "label": "which spelling of the compute column is populated",
+      "ok": true,
+      "rows": [
+        {
+          "timeline_rows": "228791",
+          "rows_with_compute_ids": "159599",
+          "rows_with_compute_struct": "162590",
+          "rows_with_neither": "66201",
+          "earliest": "2026-07-13T02:07:56.314Z",
+          "latest": "2026-08-12T02:01:00.150Z"
+        }
+      ]
+    },
+    {
+      "label": "how far the run-window worker join reaches",
+      "ok": true,
+      "rows": [
+        {
+          "run_cluster_pairs": "116764",
+          "pairs_with_worker_samples": "11105",
+          "jobs": "4158",
+          "jobs_with_worker_samples": "689",
+          "runs": "115714",
+          "runs_with_worker_samples": "11087",
+          "worker_samples": "456488"
+        }
+      ]
+    },
+    {
+      "label": "what kind of compute the job runs used",
+      "ok": true,
+      "rows": [
+        {
+          "kind": "SERVERLESS_COMPUTE",
+          "task_computes": "117927",
+          "runs": "98395",
+          "with_a_cluster_id": "0",
+          "with_a_warehouse_id": "0"
+        },
+        {
+          "kind": "CLASSIC_COMPUTE",
+          "task_computes": "31686",
+          "runs": "13732",
+          "with_a_cluster_id": "31686",
+          "with_a_warehouse_id": "0"
+        },
+        {
+          "kind": "WAREHOUSE",
+          "task_computes": "5236",
+          "runs": "4448",
+          "with_a_cluster_id": "0",
+          "with_a_warehouse_id": "5236"
+        }
+      ]
+    },
+    {
+      "label": "whether the compute relations hold anything at all",
+      "ok": true,
+      "rows": [
+        {
+          "relation": "node_timeline",
+          "rows_in_first_thousand": "1000"
+        },
+        {
+          "relation": "clusters",
+          "rows_in_first_thousand": "1000"
+        }
+      ]
+    },
+    {
+      "label": "the CPU claim as made, over every node sample",
+      "ok": true,
+      "rows": [
+        {
+          "node_samples": "2708353",
+          "clusters": "99047",
+          "driver_samples": "1186021",
+          "mean_cpu_percent": "30.55",
+          "samples_below_10_percent": "1191446",
+          "samples_below_30_percent": "1512456",
+          "earliest": "2026-07-13T02:08:00.000Z",
+          "latest": "2026-08-12T01:45:00.000Z"
+        }
+      ]
+    },
+    {
+      "label": "the four utilisation distributions at the rules’ own grain",
+      "ok": true,
+      "rows": [
+        {
+          "run_cluster_pairs": "11105",
+          "mean_samples_per_pair": "41.1",
+          "pairs_with_under_three_samples": "5357",
+          "avg_cpu_percentiles": "[\"3.0746222966816346\",\"3.457997537633135\",\"4.050393998663419\",\"15.308888628153912\",\"25.86188128981514\",\"30.392187056233215\"]",
+          "peak_cpu_percentiles": "[\"4.350018913125591\",\"43.82317886448672\",\"54.45451123608946\"]",
+          "avg_cpu_wait_percentiles": "[\"0.04423616126671341\",\"0.6932359006467325\",\"1.3244381840463149\"]",
+          "avg_memory_percentiles": "[\"21.403107507373992\",\"22.799930864705985\",\"25.96072777552948\",\"40.23694919561899\",\"74.51038363487035\",\"78.98259794089444\"]",
+          "peak_memory_percentiles": "[\"26.077690604956892\",\"75.65474969509516\",\"80.08511816643366\"]",
+          "avg_swap_percentiles": "[\"0.03173829335719747\",\"1.9587409815753891\",\"3.325196580961831\"]",
+          "pairs_under_30_cpu": "10516",
+          "pairs_under_40_cpu": "10957",
+          "pairs_under_50_memory": "9707",
+          "pairs_rule_a_would_consider": "9595",
+          "pairs_rule_b_would_consider": "1286",
+          "pairs_rule_c_would_consider": "18",
+          "pairs_with_any_swap": "9559",
+          "pairs_with_swap_over_5": "49"
+        }
+      ]
+    },
+    {
+      "label": "how many jobs clear the three-run guardrail",
+      "ok": true,
+      "rows": [
+        {
+          "jobs": "4876",
+          "jobs_with_three_runs": "957",
+          "jobs_run_once": "3757",
+          "runs": "174980",
+          "runs_percentiles": "[\"1.0\",\"1.0\",\"30.0\",\"120.0\"]",
+          "most_runs": "7774"
+        }
+      ]
+    },
+    {
+      "label": "what the run timeline carries",
+      "ok": true,
+      "rows": [
+        {
+          "col_name": "account_id",
+          "data_type": "string",
+          "comment": "The ID of the account this job belongs to."
+        },
+        {
+          "col_name": "workspace_id",
+          "data_type": "string",
+          "comment": "The ID of the workspace this job belongs to."
+        },
+        {
+          "col_name": "job_id",
+          "data_type": "string",
+          "comment": "The ID of the job. This key is only unique within a single workspace."
+        },
+        {
+          "col_name": "run_id",
+          "data_type": "string",
+          "comment": "The ID of the job run."
+        },
+        {
+          "col_name": "period_start_time",
+          "data_type": "timestamp",
+          "comment": "The start time for the run or for the time period. Timezone information is recorded at the end of the value with +00:00 representing UTC."
+        },
+        {
+          "col_name": "period_end_time",
+          "data_type": "timestamp",
+          "comment": "The end time for the run or for the time period. Timezone information is recorded at the end of the value with +00:00 representing UTC."
+        },
+        {
+          "col_name": "trigger_type",
+          "data_type": "string",
+          "comment": "The type of trigger that can fire a run. For possible values, see [Trigger type values](https://docs.databricks.com/en/admin/system-tables/jobs.html#trigger)"
+        },
+        {
+          "col_name": "result_state",
+          "data_type": "string",
+          "comment": "The outcome of the job run. For possible values, see [Result state values](https://docs.databricks.com/en/admin/system-tables/jobs.html#result)."
+        },
+        {
+          "col_name": "run_type",
+          "data_type": "string",
+          "comment": "The type of job run. For possible values, see [Run type values](https://docs.databricks.com/en/admin/system-tables/jobs.html#run-type)."
+        },
+        {
+          "col_name": "run_name",
+          "data_type": "string",
+          "comment": "The user-supplied run name associated with this job run."
+        },
+        {
+          "col_name": "compute_ids",
+          "data_type": "array<string>",
+          "comment": "Array containing the compute IDs for the parent job run. Use for identifying cluster used by `WORKFLOW_RUN` run types. For other compute information, refer to the `job_task_run_timeline` table. **Not populated for rows emitted before late August 2024**"
+        },
+        {
+          "col_name": "termination_code",
+          "data_type": "string",
+          "comment": "The termination code of the job run. For possible values, see [Termination code values](https://docs.databricks.com/en/admin/system-tables/jobs.html#termination). **Not populated for rows emitted before late August 2024.**"
+        },
+        {
+          "col_name": "job_parameters",
+          "data_type": "map<string,map<string,string>>",
+          "comment": "The job-level parameters used in the job run. **Not populated for rows emitted before late August 2024.**"
+        },
+        {
+          "col_name": "source_task_run_id",
+          "data_type": "string",
+          "comment": "The id of the source task run. Use for identifying which task run triggered this job run. **Not populated for rows emitted before late November 2025**"
+        },
+        {
+          "col_name": "root_task_run_id",
+          "data_type": "string",
+          "comment": "The id of the root task run. Use for identifying which task run triggered this job run. **Not populated for rows emitted before late November 2025**"
+        },
+        {
+          "col_name": "compute",
+          "data_type": "array<struct<type:string,cluster_id:string,warehouse_id:string>>",
+          "comment": "Details about the compute resources used in the job run. **Not populated for rows emitted before late November 2025**"
+        },
+        {
+          "col_name": "termination_type",
+          "data_type": "string",
+          "comment": "The type of termination for the job run. **Not populated for rows emitted before late November 2025**"
+        },
+        {
+          "col_name": "setup_duration_seconds",
+          "data_type": "bigint",
+          "comment": "The duration of the setup phase for the job run in seconds. **Not populated for rows emitted before late November 2025**"
+        },
+        {
+          "col_name": "queue_duration_seconds",
+          "data_type": "bigint",
+          "comment": "The duration spent in the queue for the job run in seconds. **Not populated for rows emitted before late November 2025**"
+        },
+        {
+          "col_name": "run_duration_seconds",
+          "data_type": "bigint",
+          "comment": "The total duration of the job run in seconds. **Not populated for rows emitted before late November 2025**"
+        },
+        {
+          "col_name": "cleanup_duration_seconds",
+          "data_type": "bigint",
+          "comment": "The duration of the cleanup phase for the job run in seconds. **Not populated for rows emitted before late November 2025**"
+        },
+        {
+          "col_name": "execution_duration_seconds",
+          "data_type": "bigint",
+          "comment": "The duration of the execution phase for the job run in seconds. **Not populated for rows emitted before late November 2025**"
+        }
+      ]
+    },
+    {
+      "label": "whether the stated per-run durations are populated",
+      "ok": true,
+      "rows": [
+        {
+          "runs": "176260",
+          "runs_with_null_total": "0",
+          "runs_with_zero_total": "140566",
+          "runs_with_a_total": "36603",
+          "runs_with_null_setup": "0",
+          "runs_with_a_setup": "374",
+          "runs_with_an_execution": "24314"
+        }
+      ]
+    },
+    {
+      "label": "whether the run timeline’s periods agree with the task timeline’s",
+      "ok": true,
+      "rows": [
+        {
+          "runs": "174979",
+          "runs_absent_from_the_run_timeline": "0",
+          "multi_task_runs": "9764",
+          "mean_absolute_difference_seconds": "0.4",
+          "runs_over_a_minute_apart": "1",
+          "derived_seconds_percentiles": "[\"44.0\",\"186.0\",\"588.1000000000058\"]"
+        }
+      ]
+    },
+    {
+      "label": "whether the as-of cluster configuration join finds a row",
+      "ok": true,
+      "rows": [
+        {
+          "run_cluster_pairs": "116762",
+          "pairs_with_any_config": "7406",
+          "pairs_with_an_as_of_config": "1204",
+          "pairs_whose_only_config_postdates_the_run": "6202",
+          "mean_config_records_per_cluster": "1.34",
+          "pairs_on_a_reconfigured_cluster": "706"
+        }
+      ]
+    },
+    {
+      "label": "whether retry and repair overhead is readable",
+      "ok": true,
+      "rows": [
+        {
+          "run_type": "JOB_RUN",
+          "runs": "172354",
+          "jobs": "1470",
+          "succeeded": "91182",
+          "did_not_succeed": "81170",
+          "result_unstated": "2",
+          "with_a_termination_code": "172352"
+        },
+        {
+          "run_type": "SUBMIT_RUN",
+          "runs": "3411",
+          "jobs": "3410",
+          "succeeded": "2383",
+          "did_not_succeed": "1026",
+          "result_unstated": "2",
+          "with_a_termination_code": "3409"
+        },
+        {
+          "run_type": "WORKFLOW_RUN",
+          "runs": "496",
+          "jobs": "496",
+          "succeeded": "394",
+          "did_not_succeed": "102",
+          "result_unstated": "0",
+          "with_a_termination_code": "496"
+        }
+      ]
+    },
+    {
+      "label": "whether the timing rule G needs is populated",
+      "ok": true,
+      "rows": [
+        {
+          "runs": "176261",
+          "runs_with_no_setup_figure": "0",
+          "runs_with_no_total": "139659",
+          "mean_setup_seconds": "0.0",
+          "setup_percentiles": "[\"0.0\",\"0.0\",\"0.0\"]",
+          "total_percentiles": "[\"0.0\",\"11.0\",\"51.0\"]",
+          "runs_over_a_quarter_setup": "7",
+          "runs_over_half_setup": "5"
+        }
+      ]
+    },
+    {
+      "label": "whether job cost is readable",
+      "ok": true,
+      "rows": [
+        {
+          "jobs_that_ran": "4877",
+          "jobs_with_usage": "3293",
+          "usage_records": "244685",
+          "records_naming_a_run": "244685",
+          "most_skus_on_one_job": "3",
+          "total_quantity": "25276.87",
+          "retraction_records": "0"
+        }
+      ]
+    },
+    {
+      "label": "how many jobs rule A’s documented conditions actually select",
+      "ok": true,
+      "rows": [
+        {
+          "jobs_with_worker_samples": "689",
+          "and_three_runs": "97",
+          "and_p95_over_the_threshold": "22",
+          "and_cpu_under_40": "21",
+          "and_memory_under_50": "14",
+          "and_no_meaningful_swap_or_wait": "12",
+          "and_three_samples_a_run": "9",
+          "the_two_thresholds_alone": "516"
+        }
+      ]
+    },
+    {
+      "label": "whether rule G’s inputs exist for classic job clusters",
+      "ok": true,
+      "rows": [
+        {
+          "classic_run_cluster_pairs": "13821",
+          "classic_runs": "13732",
+          "pairs_with_any_config": "7405",
+          "pairs_with_an_as_of_config": "1204",
+          "pairs_whose_only_config_postdates_the_run": "6201",
+          "pairs_with_a_setup_figure": "18",
+          "pairs_over_a_quarter_setup": "2"
+        }
+      ]
+    },
+    {
+      "label": "whether the cluster configuration table sees what the node timeline sees",
+      "ok": true,
+      "rows": [
+        {
+          "relation": "clusters",
+          "rows_in_window": "194540",
+          "clusters": "194351",
+          "workspace_ids": "3",
+          "earliest": "2026-07-13T02:08:56.242Z",
+          "latest": "2026-08-12T01:51:49.499Z"
+        },
+        {
+          "relation": "node_timeline",
+          "rows_in_window": "2708283",
+          "clusters": "99044",
+          "workspace_ids": "3",
+          "earliest": "2026-07-13T02:09:00.000Z",
+          "latest": "2026-08-12T01:45:00.000Z"
+        }
+      ]
+    },
+    {
+      "label": "how many of the low-CPU samples are drivers",
+      "ok": true,
+      "rows": [
+        {
+          "node_samples": "2708283",
+          "below_10_percent": "1191419",
+          "drivers_below_10_percent": "390576",
+          "workers_below_10_percent": "800843",
+          "worker_samples": "1522298"
+        }
+      ]
+    },
+    {
+      "label": "how far back each table goes",
+      "ok": true,
+      "rows": [
+        {
+          "relation": "node_timeline",
+          "earliest": "2026-05-10T00:00:00.000Z",
+          "latest": "2026-08-12T01:45:00.000Z",
+          "days_held": "94"
+        },
+        {
+          "relation": "job_task_run_timeline",
+          "earliest": "2025-08-06T23:54:16.336Z",
+          "latest": "2026-08-12T02:02:59.751Z",
+          "days_held": "370"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+blank_issues_enabled: false
+contact_links:
+  - name: User guide and troubleshooting
+    url: https://databricks-solutions.github.io/databricks-waf/troubleshooting/
+    about: Check installation, permission, assessment and scheduling guidance before filing an issue.
+  - name: Report a security vulnerability
+    url: https://github.com/databricks-solutions/databricks-waf/security/advisories/new
+    about: Report project vulnerabilities privately. Do not place sensitive information in a public issue.
+

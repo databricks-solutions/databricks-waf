@@ -1,0 +1,2319 @@
+{
+  "measuredAt": "2026-08-17T01:30:27.136Z",
+  "apparatus": {
+    "postgres": "PostgreSQL 17.10",
+    "node": "v24.15.0",
+    "samples": 5,
+    "overdueShare": 0.1,
+    "writeSampleRows": 1000,
+    "runCadenceDays": 7
+  },
+  "requirements": 184,
+  "times": 1,
+  "readings": [
+    {
+      "table": "assessment_setup_drafts",
+      "stamp": "saved_at",
+      "rows": 96,
+      "provenance": "assumed",
+      "derives": "12 assessments, each with a draft saved by 8 authors — the widest a setup surface holds",
+      "reach": "absent",
+      "heapBytes": 49152,
+      "statements": [
+        {
+          "which": "total",
+          "cutoff": "inside",
+          "without": {
+            "node": "Aggregate",
+            "medianMs": 0.01,
+            "buffers": 6,
+            "rows": 1
+          },
+          "with": {
+            "node": "Aggregate",
+            "medianMs": 0.02,
+            "buffers": 131,
+            "rows": 1
+          }
+        },
+        {
+          "which": "eligible",
+          "cutoff": "inside",
+          "without": {
+            "node": "Aggregate",
+            "medianMs": 0.01,
+            "buffers": 6,
+            "rows": 1
+          },
+          "with": {
+            "node": "Aggregate",
+            "medianMs": 0,
+            "buffers": 2,
+            "rows": 1
+          }
+        },
+        {
+          "which": "oldest",
+          "cutoff": "inside",
+          "without": {
+            "node": "Limit",
+            "medianMs": 0.01,
+            "buffers": 6,
+            "rows": 1
+          },
+          "with": {
+            "node": "Limit",
+            "medianMs": 0,
+            "buffers": 4,
+            "rows": 1
+          }
+        },
+        {
+          "which": "total",
+          "cutoff": "overdue",
+          "without": {
+            "node": "Aggregate",
+            "medianMs": 0.01,
+            "buffers": 6,
+            "rows": 1
+          },
+          "with": {
+            "node": "Aggregate",
+            "medianMs": 0.02,
+            "buffers": 131,
+            "rows": 1
+          }
+        },
+        {
+          "which": "eligible",
+          "cutoff": "overdue",
+          "without": {
+            "node": "Aggregate",
+            "medianMs": 0.01,
+            "buffers": 6,
+            "rows": 1
+          },
+          "with": {
+            "node": "Aggregate",
+            "medianMs": 0,
+            "buffers": 4,
+            "rows": 1
+          }
+        },
+        {
+          "which": "oldest",
+          "cutoff": "overdue",
+          "without": {
+            "node": "Limit",
+            "medianMs": 0.01,
+            "buffers": 6,
+            "rows": 1
+          },
+          "with": {
+            "node": "Limit",
+            "medianMs": 0,
+            "buffers": 4,
+            "rows": 1
+          }
+        },
+        {
+          "which": "delete",
+          "cutoff": "overdue",
+          "without": {
+            "node": "ModifyTable",
+            "medianMs": 0.01,
+            "buffers": 16,
+            "rows": 0
+          },
+          "with": {
+            "node": "ModifyTable",
+            "medianMs": 0.01,
+            "buffers": 13,
+            "rows": 0
+          }
+        }
+      ],
+      "indexBytes": 49152,
+      "writeMs": {
+        "without": 17.96,
+        "with": 19.61
+      }
+    },
+    {
+      "table": "scans",
+      "stamp": "started_at",
+      "rows": 105,
+      "provenance": "assumed",
+      "derives": "one completed scan per assessment run: ceil(730 / 7)",
+      "reach": "leads",
+      "ledBy": "scans_newest_first",
+      "heapBytes": 57344,
+      "statements": [
+        {
+          "which": "total",
+          "cutoff": "inside",
+          "without": {
+            "node": "Aggregate",
+            "medianMs": 0.01,
+            "buffers": 7,
+            "rows": 1
+          }
+        },
+        {
+          "which": "eligible",
+          "cutoff": "inside",
+          "without": {
+            "node": "Aggregate",
+            "medianMs": 0,
+            "buffers": 1,
+            "rows": 1
+          }
+        },
+        {
+          "which": "oldest",
+          "cutoff": "inside",
+          "without": {
+            "node": "Limit",
+            "medianMs": 0,
+            "buffers": 2,
+            "rows": 1
+          }
+        },
+        {
+          "which": "total",
+          "cutoff": "overdue",
+          "without": {
+            "node": "Aggregate",
+            "medianMs": 0.01,
+            "buffers": 7,
+            "rows": 1
+          }
+        },
+        {
+          "which": "eligible",
+          "cutoff": "overdue",
+          "without": {
+            "node": "Aggregate",
+            "medianMs": 0,
+            "buffers": 2,
+            "rows": 1
+          }
+        },
+        {
+          "which": "oldest",
+          "cutoff": "overdue",
+          "without": {
+            "node": "Limit",
+            "medianMs": 0,
+            "buffers": 2,
+            "rows": 1
+          }
+        },
+        {
+          "which": "delete",
+          "cutoff": "overdue",
+          "without": {
+            "node": "ModifyTable",
+            "medianMs": 0.02,
+            "buffers": 77,
+            "rows": 0
+          }
+        }
+      ]
+    },
+    {
+      "table": "imported_evidence",
+      "stamp": "generated_at",
+      "rows": 105,
+      "provenance": "assumed",
+      "derives": "one collection imported per assessment run, which is the cadence an offline install uploads at",
+      "reach": "absent",
+      "heapBytes": 122880,
+      "statements": [
+        {
+          "which": "total",
+          "cutoff": "inside",
+          "without": {
+            "node": "Aggregate",
+            "medianMs": 0.01,
+            "buffers": 2,
+            "rows": 1
+          },
+          "with": {
+            "node": "Aggregate",
+            "medianMs": 0.04,
+            "buffers": 301,
+            "rows": 1
+          }
+        },
+        {
+          "which": "eligible",
+          "cutoff": "inside",
+          "without": {
+            "node": "Aggregate",
+            "medianMs": 0.01,
+            "buffers": 15,
+            "rows": 1
+          },
+          "with": {
+            "node": "Aggregate",
+            "medianMs": 0,
+            "buffers": 2,
+            "rows": 1
+          }
+        },
+        {
+          "which": "oldest",
+          "cutoff": "inside",
+          "without": {
+            "node": "Limit",
+            "medianMs": 0.01,
+            "buffers": 15,
+            "rows": 1
+          },
+          "with": {
+            "node": "Limit",
+            "medianMs": 0,
+            "buffers": 4,
+            "rows": 1
+          }
+        },
+        {
+          "which": "total",
+          "cutoff": "overdue",
+          "without": {
+            "node": "Aggregate",
+            "medianMs": 0.01,
+            "buffers": 2,
+            "rows": 1
+          },
+          "with": {
+            "node": "Aggregate",
+            "medianMs": 0.03,
+            "buffers": 301,
+            "rows": 1
+          }
+        },
+        {
+          "which": "eligible",
+          "cutoff": "overdue",
+          "without": {
+            "node": "Aggregate",
+            "medianMs": 0.01,
+            "buffers": 15,
+            "rows": 1
+          },
+          "with": {
+            "node": "Aggregate",
+            "medianMs": 0.01,
+            "buffers": 5,
+            "rows": 1
+          }
+        },
+        {
+          "which": "oldest",
+          "cutoff": "overdue",
+          "without": {
+            "node": "Limit",
+            "medianMs": 0.01,
+            "buffers": 15,
+            "rows": 1
+          },
+          "with": {
+            "node": "Limit",
+            "medianMs": 0,
+            "buffers": 4,
+            "rows": 1
+          }
+        },
+        {
+          "which": "delete",
+          "cutoff": "overdue",
+          "without": {
+            "node": "ModifyTable",
+            "medianMs": 0.02,
+            "buffers": 73,
+            "rows": 0
+          },
+          "with": {
+            "node": "ModifyTable",
+            "medianMs": 0.02,
+            "buffers": 73,
+            "rows": 0
+          }
+        }
+      ],
+      "indexBytes": 57344,
+      "writeMs": {
+        "without": 540.34,
+        "with": 532.76
+      }
+    },
+    {
+      "table": "attestations",
+      "stamp": "attested_at",
+      "rows": 5336,
+      "provenance": "derived",
+      "derives": "every scored requirement answered on the shortest cadence for the governance period",
+      "reach": "covers",
+      "ledBy": "attestations_by_control",
+      "heapBytes": 8749056,
+      "statements": [
+        {
+          "which": "total",
+          "cutoff": "inside",
+          "without": {
+            "node": "Aggregate",
+            "medianMs": 0.24,
+            "buffers": 7,
+            "rows": 1
+          },
+          "with": {
+            "node": "Aggregate",
+            "medianMs": 0.31,
+            "buffers": 131,
+            "rows": 1
+          }
+        },
+        {
+          "which": "eligible",
+          "cutoff": "inside",
+          "without": {
+            "node": "Aggregate",
+            "medianMs": 0.07,
+            "buffers": 45,
+            "rows": 1
+          },
+          "with": {
+            "node": "Aggregate",
+            "medianMs": 0.01,
+            "buffers": 2,
+            "rows": 1
+          }
+        },
+        {
+          "which": "oldest",
+          "cutoff": "inside",
+          "without": {
+            "node": "Limit",
+            "medianMs": 0.28,
+            "buffers": 46,
+            "rows": 1
+          },
+          "with": {
+            "node": "Limit",
+            "medianMs": 0.01,
+            "buffers": 4,
+            "rows": 1
+          }
+        },
+        {
+          "which": "total",
+          "cutoff": "overdue",
+          "without": {
+            "node": "Aggregate",
+            "medianMs": 0.23,
+            "buffers": 7,
+            "rows": 1
+          },
+          "with": {
+            "node": "Aggregate",
+            "medianMs": 0.3,
+            "buffers": 131,
+            "rows": 1
+          }
+        },
+        {
+          "which": "eligible",
+          "cutoff": "overdue",
+          "without": {
+            "node": "Aggregate",
+            "medianMs": 0.1,
+            "buffers": 46,
+            "rows": 1
+          },
+          "with": {
+            "node": "Aggregate",
+            "medianMs": 0.05,
+            "buffers": 111,
+            "rows": 1
+          }
+        },
+        {
+          "which": "oldest",
+          "cutoff": "overdue",
+          "without": {
+            "node": "Limit",
+            "medianMs": 0.27,
+            "buffers": 46,
+            "rows": 1
+          },
+          "with": {
+            "node": "Limit",
+            "medianMs": 0.01,
+            "buffers": 4,
+            "rows": 1
+          }
+        },
+        {
+          "which": "delete",
+          "cutoff": "overdue",
+          "without": {
+            "node": "ModifyTable",
+            "medianMs": 0.31,
+            "buffers": 1602,
+            "rows": 0
+          },
+          "with": {
+            "node": "ModifyTable",
+            "medianMs": 0.11,
+            "buffers": 644,
+            "rows": 0
+          }
+        }
+      ],
+      "indexBytes": 180224,
+      "writeMs": {
+        "without": 16.73,
+        "with": 18.58
+      }
+    },
+    {
+      "table": "decisions",
+      "stamp": "decided_at",
+      "rows": 5336,
+      "provenance": "derived",
+      "derives": "one decision per attestation — what was accepted, planned or claimed fixed",
+      "reach": "covers",
+      "ledBy": "decisions_by_control",
+      "heapBytes": 8749056,
+      "statements": [
+        {
+          "which": "total",
+          "cutoff": "inside",
+          "without": {
+            "node": "Aggregate",
+            "medianMs": 0.23,
+            "buffers": 7,
+            "rows": 1
+          },
+          "with": {
+            "node": "Aggregate",
+            "medianMs": 0.3,
+            "buffers": 131,
+            "rows": 1
+          }
+        },
+        {
+          "which": "eligible",
+          "cutoff": "inside",
+          "without": {
+            "node": "Aggregate",
+            "medianMs": 0.07,
+            "buffers": 45,
+            "rows": 1
+          },
+          "with": {
+            "node": "Aggregate",
+            "medianMs": 0,
+            "buffers": 2,
+            "rows": 1
+          }
+        },
+        {
+          "which": "oldest",
+          "cutoff": "inside",
+          "without": {
+            "node": "Limit",
+            "medianMs": 0.29,
+            "buffers": 46,
+            "rows": 1
+          },
+          "with": {
+            "node": "Limit",
+            "medianMs": 0.01,
+            "buffers": 4,
+            "rows": 1
+          }
+        },
+        {
+          "which": "total",
+          "cutoff": "overdue",
+          "without": {
+            "node": "Aggregate",
+            "medianMs": 0.24,
+            "buffers": 7,
+            "rows": 1
+          },
+          "with": {
+            "node": "Aggregate",
+            "medianMs": 0.3,
+            "buffers": 131,
+            "rows": 1
+          }
+        },
+        {
+          "which": "eligible",
+          "cutoff": "overdue",
+          "without": {
+            "node": "Aggregate",
+            "medianMs": 0.1,
+            "buffers": 46,
+            "rows": 1
+          },
+          "with": {
+            "node": "Aggregate",
+            "medianMs": 0.05,
+            "buffers": 111,
+            "rows": 1
+          }
+        },
+        {
+          "which": "oldest",
+          "cutoff": "overdue",
+          "without": {
+            "node": "Limit",
+            "medianMs": 0.27,
+            "buffers": 46,
+            "rows": 1
+          },
+          "with": {
+            "node": "Limit",
+            "medianMs": 0.01,
+            "buffers": 4,
+            "rows": 1
+          }
+        },
+        {
+          "which": "delete",
+          "cutoff": "overdue",
+          "without": {
+            "node": "ModifyTable",
+            "medianMs": 0.3,
+            "buffers": 1602,
+            "rows": 0
+          },
+          "with": {
+            "node": "ModifyTable",
+            "medianMs": 0.09,
+            "buffers": 644,
+            "rows": 0
+          }
+        }
+      ],
+      "indexBytes": 180224,
+      "writeMs": {
+        "without": 15.82,
+        "with": 16.87
+      }
+    },
+    {
+      "table": "improvement_plans",
+      "stamp": "created_at",
+      "rows": 16,
+      "provenance": "assumed",
+      "derives": "one board per 12 requirements",
+      "reach": "leads",
+      "ledBy": "improvement_plans_newest_first",
+      "heapBytes": 24576,
+      "statements": [
+        {
+          "which": "total",
+          "cutoff": "inside",
+          "without": {
+            "node": "Aggregate",
+            "medianMs": 0.01,
+            "buffers": 3,
+            "rows": 1
+          }
+        },
+        {
+          "which": "eligible",
+          "cutoff": "inside",
+          "without": {
+            "node": "Aggregate",
+            "medianMs": 0,
+            "buffers": 3,
+            "rows": 1
+          }
+        },
+        {
+          "which": "oldest",
+          "cutoff": "inside",
+          "without": {
+            "node": "Limit",
+            "medianMs": 0,
+            "buffers": 2,
+            "rows": 1
+          }
+        },
+        {
+          "which": "total",
+          "cutoff": "overdue",
+          "without": {
+            "node": "Aggregate",
+            "medianMs": 0.01,
+            "buffers": 3,
+            "rows": 1
+          }
+        },
+        {
+          "which": "eligible",
+          "cutoff": "overdue",
+          "without": {
+            "node": "Aggregate",
+            "medianMs": 0,
+            "buffers": 3,
+            "rows": 1
+          }
+        },
+        {
+          "which": "oldest",
+          "cutoff": "overdue",
+          "without": {
+            "node": "Limit",
+            "medianMs": 0,
+            "buffers": 2,
+            "rows": 1
+          }
+        },
+        {
+          "which": "delete",
+          "cutoff": "overdue",
+          "without": {
+            "node": "ModifyTable",
+            "medianMs": 0.01,
+            "buffers": 5,
+            "rows": 0
+          }
+        }
+      ]
+    },
+    {
+      "table": "improvement_actions",
+      "stamp": "plan_created_at",
+      "rows": 5568,
+      "provenance": "assumed",
+      "derives": "12 actions per board, each revised once per governance cadence",
+      "reach": "leads",
+      "ledBy": "improvement_actions_by_sweep",
+      "heapBytes": 3514368,
+      "statements": [
+        {
+          "which": "total",
+          "cutoff": "inside",
+          "without": {
+            "node": "Aggregate",
+            "medianMs": 0.26,
+            "buffers": 10,
+            "rows": 1
+          }
+        },
+        {
+          "which": "eligible",
+          "cutoff": "inside",
+          "without": {
+            "node": "Aggregate",
+            "medianMs": 0,
+            "buffers": 2,
+            "rows": 1
+          }
+        },
+        {
+          "which": "oldest",
+          "cutoff": "inside",
+          "without": {
+            "node": "Limit",
+            "medianMs": 0.01,
+            "buffers": 3,
+            "rows": 1
+          }
+        },
+        {
+          "which": "total",
+          "cutoff": "overdue",
+          "without": {
+            "node": "Aggregate",
+            "medianMs": 0.25,
+            "buffers": 10,
+            "rows": 1
+          }
+        },
+        {
+          "which": "eligible",
+          "cutoff": "overdue",
+          "without": {
+            "node": "Aggregate",
+            "medianMs": 0.03,
+            "buffers": 4,
+            "rows": 1
+          }
+        },
+        {
+          "which": "oldest",
+          "cutoff": "overdue",
+          "without": {
+            "node": "Limit",
+            "medianMs": 0.01,
+            "buffers": 3,
+            "rows": 1
+          }
+        },
+        {
+          "which": "delete",
+          "cutoff": "overdue",
+          "without": {
+            "node": "ModifyTable",
+            "medianMs": 0.11,
+            "buffers": 603,
+            "rows": 0
+          }
+        }
+      ]
+    },
+    {
+      "table": "validation_attempts",
+      "stamp": "plan_created_at",
+      "rows": 5568,
+      "provenance": "assumed",
+      "derives": "one attempt per action revision, all but the newest answered",
+      "reach": "leads",
+      "ledBy": "validation_attempts_by_sweep",
+      "heapBytes": 11403264,
+      "statements": [
+        {
+          "which": "total",
+          "cutoff": "inside",
+          "without": {
+            "node": "Aggregate",
+            "medianMs": 0.28,
+            "buffers": 18,
+            "rows": 1
+          }
+        },
+        {
+          "which": "eligible",
+          "cutoff": "inside",
+          "without": {
+            "node": "Aggregate",
+            "medianMs": 0,
+            "buffers": 2,
+            "rows": 1
+          }
+        },
+        {
+          "which": "oldest",
+          "cutoff": "inside",
+          "without": {
+            "node": "Limit",
+            "medianMs": 0,
+            "buffers": 3,
+            "rows": 1
+          }
+        },
+        {
+          "which": "total",
+          "cutoff": "overdue",
+          "without": {
+            "node": "Aggregate",
+            "medianMs": 0.28,
+            "buffers": 18,
+            "rows": 1
+          }
+        },
+        {
+          "which": "eligible",
+          "cutoff": "overdue",
+          "without": {
+            "node": "Aggregate",
+            "medianMs": 0.04,
+            "buffers": 4,
+            "rows": 1
+          }
+        },
+        {
+          "which": "oldest",
+          "cutoff": "overdue",
+          "without": {
+            "node": "Limit",
+            "medianMs": 0.01,
+            "buffers": 3,
+            "rows": 1
+          }
+        },
+        {
+          "which": "delete",
+          "cutoff": "overdue",
+          "without": {
+            "node": "ModifyTable",
+            "medianMs": 0.13,
+            "buffers": 700,
+            "rows": 0
+          }
+        }
+      ]
+    },
+    {
+      "table": "accepted_risks",
+      "stamp": "recorded_at",
+      "rows": 5336,
+      "provenance": "derived",
+      "derives": "the register arithmetic, as for attestations — an acceptance expires on the same table",
+      "reach": "leads",
+      "ledBy": "accepted_risks_by_sweep",
+      "heapBytes": 8749056,
+      "statements": [
+        {
+          "which": "total",
+          "cutoff": "inside",
+          "without": {
+            "node": "Aggregate",
+            "medianMs": 0.21,
+            "buffers": 7,
+            "rows": 1
+          }
+        },
+        {
+          "which": "eligible",
+          "cutoff": "inside",
+          "without": {
+            "node": "Aggregate",
+            "medianMs": 0,
+            "buffers": 2,
+            "rows": 1
+          }
+        },
+        {
+          "which": "oldest",
+          "cutoff": "inside",
+          "without": {
+            "node": "Limit",
+            "medianMs": 0.01,
+            "buffers": 3,
+            "rows": 1
+          }
+        },
+        {
+          "which": "total",
+          "cutoff": "overdue",
+          "without": {
+            "node": "Aggregate",
+            "medianMs": 0.26,
+            "buffers": 7,
+            "rows": 1
+          }
+        },
+        {
+          "which": "eligible",
+          "cutoff": "overdue",
+          "without": {
+            "node": "Aggregate",
+            "medianMs": 0.03,
+            "buffers": 4,
+            "rows": 1
+          }
+        },
+        {
+          "which": "oldest",
+          "cutoff": "overdue",
+          "without": {
+            "node": "Limit",
+            "medianMs": 0.01,
+            "buffers": 3,
+            "rows": 1
+          }
+        },
+        {
+          "which": "delete",
+          "cutoff": "overdue",
+          "without": {
+            "node": "ModifyTable",
+            "medianMs": 0.12,
+            "buffers": 644,
+            "rows": 0
+          }
+        }
+      ]
+    },
+    {
+      "table": "applicability_decisions",
+      "stamp": "recorded_at",
+      "rows": 5336,
+      "provenance": "derived",
+      "derives": "the register arithmetic, as for attestations — a scoping decision expires on the same table",
+      "reach": "leads",
+      "ledBy": "applicability_by_sweep",
+      "heapBytes": 8749056,
+      "statements": [
+        {
+          "which": "total",
+          "cutoff": "inside",
+          "without": {
+            "node": "Aggregate",
+            "medianMs": 0.23,
+            "buffers": 7,
+            "rows": 1
+          }
+        },
+        {
+          "which": "eligible",
+          "cutoff": "inside",
+          "without": {
+            "node": "Aggregate",
+            "medianMs": 0,
+            "buffers": 2,
+            "rows": 1
+          }
+        },
+        {
+          "which": "oldest",
+          "cutoff": "inside",
+          "without": {
+            "node": "Limit",
+            "medianMs": 0.01,
+            "buffers": 3,
+            "rows": 1
+          }
+        },
+        {
+          "which": "total",
+          "cutoff": "overdue",
+          "without": {
+            "node": "Aggregate",
+            "medianMs": 0.24,
+            "buffers": 7,
+            "rows": 1
+          }
+        },
+        {
+          "which": "eligible",
+          "cutoff": "overdue",
+          "without": {
+            "node": "Aggregate",
+            "medianMs": 0.03,
+            "buffers": 4,
+            "rows": 1
+          }
+        },
+        {
+          "which": "oldest",
+          "cutoff": "overdue",
+          "without": {
+            "node": "Limit",
+            "medianMs": 0,
+            "buffers": 3,
+            "rows": 1
+          }
+        },
+        {
+          "which": "delete",
+          "cutoff": "overdue",
+          "without": {
+            "node": "ModifyTable",
+            "medianMs": 0.1,
+            "buffers": 644,
+            "rows": 0
+          }
+        }
+      ]
+    },
+    {
+      "table": "notes",
+      "stamp": "noted_at",
+      "rows": 5336,
+      "provenance": "assumed",
+      "derives": "as many notes about a requirement as there are answers to it — the assumption 46a states",
+      "reach": "covers",
+      "ledBy": "notes_by_subject",
+      "heapBytes": 5062656,
+      "statements": [
+        {
+          "which": "total",
+          "cutoff": "inside",
+          "without": {
+            "node": "Aggregate",
+            "medianMs": 0.23,
+            "buffers": 9,
+            "rows": 1
+          },
+          "with": {
+            "node": "Aggregate",
+            "medianMs": 0.3,
+            "buffers": 96,
+            "rows": 1
+          }
+        },
+        {
+          "which": "eligible",
+          "cutoff": "inside",
+          "without": {
+            "node": "Aggregate",
+            "medianMs": 0.08,
+            "buffers": 54,
+            "rows": 1
+          },
+          "with": {
+            "node": "Aggregate",
+            "medianMs": 0,
+            "buffers": 2,
+            "rows": 1
+          }
+        },
+        {
+          "which": "oldest",
+          "cutoff": "inside",
+          "without": {
+            "node": "Limit",
+            "medianMs": 0.27,
+            "buffers": 55,
+            "rows": 1
+          },
+          "with": {
+            "node": "Limit",
+            "medianMs": 0.01,
+            "buffers": 4,
+            "rows": 1
+          }
+        },
+        {
+          "which": "total",
+          "cutoff": "overdue",
+          "without": {
+            "node": "Aggregate",
+            "medianMs": 0.23,
+            "buffers": 9,
+            "rows": 1
+          },
+          "with": {
+            "node": "Aggregate",
+            "medianMs": 0.3,
+            "buffers": 96,
+            "rows": 1
+          }
+        },
+        {
+          "which": "eligible",
+          "cutoff": "overdue",
+          "without": {
+            "node": "Aggregate",
+            "medianMs": 0.1,
+            "buffers": 55,
+            "rows": 1
+          },
+          "with": {
+            "node": "Aggregate",
+            "medianMs": 0.05,
+            "buffers": 74,
+            "rows": 1
+          }
+        },
+        {
+          "which": "oldest",
+          "cutoff": "overdue",
+          "without": {
+            "node": "Limit",
+            "medianMs": 0.28,
+            "buffers": 55,
+            "rows": 1
+          },
+          "with": {
+            "node": "Limit",
+            "medianMs": 0.01,
+            "buffers": 4,
+            "rows": 1
+          }
+        },
+        {
+          "which": "delete",
+          "cutoff": "overdue",
+          "without": {
+            "node": "ModifyTable",
+            "medianMs": 0.29,
+            "buffers": 1152,
+            "rows": 0
+          },
+          "with": {
+            "node": "ModifyTable",
+            "medianMs": 0.1,
+            "buffers": 607,
+            "rows": 0
+          }
+        }
+      ],
+      "indexBytes": 180224,
+      "writeMs": {
+        "without": 14.64,
+        "with": 15.66
+      }
+    },
+    {
+      "table": "pillar_reviews",
+      "stamp": "recorded_at",
+      "rows": 735,
+      "provenance": "assumed",
+      "derives": "7 pillars confirmed or skipped per review, one review per assessment run",
+      "reach": "absent",
+      "heapBytes": 671744,
+      "statements": [
+        {
+          "which": "total",
+          "cutoff": "inside",
+          "without": {
+            "node": "Aggregate",
+            "medianMs": 0.04,
+            "buffers": 9,
+            "rows": 1
+          },
+          "with": {
+            "node": "Aggregate",
+            "medianMs": 0.05,
+            "buffers": 22,
+            "rows": 1
+          }
+        },
+        {
+          "which": "eligible",
+          "cutoff": "inside",
+          "without": {
+            "node": "Aggregate",
+            "medianMs": 0.03,
+            "buffers": 82,
+            "rows": 1
+          },
+          "with": {
+            "node": "Aggregate",
+            "medianMs": 0,
+            "buffers": 2,
+            "rows": 1
+          }
+        },
+        {
+          "which": "oldest",
+          "cutoff": "inside",
+          "without": {
+            "node": "Limit",
+            "medianMs": 0.05,
+            "buffers": 82,
+            "rows": 1
+          },
+          "with": {
+            "node": "Limit",
+            "medianMs": 0,
+            "buffers": 4,
+            "rows": 1
+          }
+        },
+        {
+          "which": "total",
+          "cutoff": "overdue",
+          "without": {
+            "node": "Aggregate",
+            "medianMs": 0.04,
+            "buffers": 9,
+            "rows": 1
+          },
+          "with": {
+            "node": "Aggregate",
+            "medianMs": 0.05,
+            "buffers": 22,
+            "rows": 1
+          }
+        },
+        {
+          "which": "eligible",
+          "cutoff": "overdue",
+          "without": {
+            "node": "Aggregate",
+            "medianMs": 0.03,
+            "buffers": 82,
+            "rows": 1
+          },
+          "with": {
+            "node": "Aggregate",
+            "medianMs": 0.01,
+            "buffers": 12,
+            "rows": 1
+          }
+        },
+        {
+          "which": "oldest",
+          "cutoff": "overdue",
+          "without": {
+            "node": "Limit",
+            "medianMs": 0.05,
+            "buffers": 82,
+            "rows": 1
+          },
+          "with": {
+            "node": "Limit",
+            "medianMs": 0,
+            "buffers": 4,
+            "rows": 1
+          }
+        },
+        {
+          "which": "delete",
+          "cutoff": "overdue",
+          "without": {
+            "node": "ModifyTable",
+            "medianMs": 0.05,
+            "buffers": 156,
+            "rows": 0
+          },
+          "with": {
+            "node": "ModifyTable",
+            "medianMs": 0.02,
+            "buffers": 85,
+            "rows": 0
+          }
+        }
+      ],
+      "indexBytes": 81920,
+      "writeMs": {
+        "without": 20.06,
+        "with": 21.25
+      }
+    },
+    {
+      "table": "review_answers",
+      "stamp": "recorded_at",
+      "rows": 5336,
+      "provenance": "assumed",
+      "derives": "one review answer per attestation, which is what the unique index on the pair allows",
+      "reach": "leads",
+      "ledBy": "review_answers_by_sweep",
+      "heapBytes": 4857856,
+      "statements": [
+        {
+          "which": "total",
+          "cutoff": "inside",
+          "without": {
+            "node": "Aggregate",
+            "medianMs": 0.27,
+            "buffers": 17,
+            "rows": 1
+          }
+        },
+        {
+          "which": "eligible",
+          "cutoff": "inside",
+          "without": {
+            "node": "Aggregate",
+            "medianMs": 0,
+            "buffers": 2,
+            "rows": 1
+          }
+        },
+        {
+          "which": "oldest",
+          "cutoff": "inside",
+          "without": {
+            "node": "Limit",
+            "medianMs": 0,
+            "buffers": 3,
+            "rows": 1
+          }
+        },
+        {
+          "which": "total",
+          "cutoff": "overdue",
+          "without": {
+            "node": "Aggregate",
+            "medianMs": 0.28,
+            "buffers": 17,
+            "rows": 1
+          }
+        },
+        {
+          "which": "eligible",
+          "cutoff": "overdue",
+          "without": {
+            "node": "Aggregate",
+            "medianMs": 0.03,
+            "buffers": 4,
+            "rows": 1
+          }
+        },
+        {
+          "which": "oldest",
+          "cutoff": "overdue",
+          "without": {
+            "node": "Limit",
+            "medianMs": 0.01,
+            "buffers": 3,
+            "rows": 1
+          }
+        },
+        {
+          "which": "delete",
+          "cutoff": "overdue",
+          "without": {
+            "node": "ModifyTable",
+            "medianMs": 0.11,
+            "buffers": 597,
+            "rows": 0
+          }
+        }
+      ]
+    },
+    {
+      "table": "assessment_results",
+      "stamp": "finalised_at",
+      "rows": 105,
+      "provenance": "assumed",
+      "derives": "one finalised result per review",
+      "reach": "absent",
+      "heapBytes": 90112,
+      "statements": [
+        {
+          "which": "total",
+          "cutoff": "inside",
+          "without": {
+            "node": "Aggregate",
+            "medianMs": 0.01,
+            "buffers": 2,
+            "rows": 1
+          },
+          "with": {
+            "node": "Aggregate",
+            "medianMs": 0.03,
+            "buffers": 211,
+            "rows": 1
+          }
+        },
+        {
+          "which": "eligible",
+          "cutoff": "inside",
+          "without": {
+            "node": "Aggregate",
+            "medianMs": 0.01,
+            "buffers": 11,
+            "rows": 1
+          },
+          "with": {
+            "node": "Aggregate",
+            "medianMs": 0,
+            "buffers": 2,
+            "rows": 1
+          }
+        },
+        {
+          "which": "oldest",
+          "cutoff": "inside",
+          "without": {
+            "node": "Limit",
+            "medianMs": 0.01,
+            "buffers": 11,
+            "rows": 1
+          },
+          "with": {
+            "node": "Limit",
+            "medianMs": 0.01,
+            "buffers": 4,
+            "rows": 1
+          }
+        },
+        {
+          "which": "total",
+          "cutoff": "overdue",
+          "without": {
+            "node": "Aggregate",
+            "medianMs": 0.01,
+            "buffers": 2,
+            "rows": 1
+          },
+          "with": {
+            "node": "Aggregate",
+            "medianMs": 0.03,
+            "buffers": 211,
+            "rows": 1
+          }
+        },
+        {
+          "which": "eligible",
+          "cutoff": "overdue",
+          "without": {
+            "node": "Aggregate",
+            "medianMs": 0.01,
+            "buffers": 11,
+            "rows": 1
+          },
+          "with": {
+            "node": "Aggregate",
+            "medianMs": 0.01,
+            "buffers": 5,
+            "rows": 1
+          }
+        },
+        {
+          "which": "oldest",
+          "cutoff": "overdue",
+          "without": {
+            "node": "Limit",
+            "medianMs": 0.01,
+            "buffers": 11,
+            "rows": 1
+          },
+          "with": {
+            "node": "Limit",
+            "medianMs": 0,
+            "buffers": 4,
+            "rows": 1
+          }
+        },
+        {
+          "which": "delete",
+          "cutoff": "overdue",
+          "without": {
+            "node": "ModifyTable",
+            "medianMs": 0.01,
+            "buffers": 22,
+            "rows": 0
+          },
+          "with": {
+            "node": "ModifyTable",
+            "medianMs": 0.01,
+            "buffers": 15,
+            "rows": 0
+          }
+        }
+      ],
+      "indexBytes": 57344,
+      "writeMs": {
+        "without": 100.78,
+        "with": 74.63
+      }
+    },
+    {
+      "table": "assessment_reviews",
+      "stamp": "opened_at",
+      "rows": 105,
+      "provenance": "assumed",
+      "derives": "one review per completed run, which the unique index on run_id enforces",
+      "reach": "absent",
+      "heapBytes": 147456,
+      "statements": [
+        {
+          "which": "total",
+          "cutoff": "inside",
+          "without": {
+            "node": "Aggregate",
+            "medianMs": 0.01,
+            "buffers": 2,
+            "rows": 1
+          },
+          "with": {
+            "node": "Aggregate",
+            "medianMs": 0.1,
+            "buffers": 354,
+            "rows": 1
+          }
+        },
+        {
+          "which": "eligible",
+          "cutoff": "inside",
+          "without": {
+            "node": "Aggregate",
+            "medianMs": 0.01,
+            "buffers": 18,
+            "rows": 1
+          },
+          "with": {
+            "node": "Aggregate",
+            "medianMs": 0,
+            "buffers": 2,
+            "rows": 1
+          }
+        },
+        {
+          "which": "oldest",
+          "cutoff": "inside",
+          "without": {
+            "node": "Limit",
+            "medianMs": 0.01,
+            "buffers": 18,
+            "rows": 1
+          },
+          "with": {
+            "node": "Limit",
+            "medianMs": 0,
+            "buffers": 4,
+            "rows": 1
+          }
+        },
+        {
+          "which": "total",
+          "cutoff": "overdue",
+          "without": {
+            "node": "Aggregate",
+            "medianMs": 0.01,
+            "buffers": 2,
+            "rows": 1
+          },
+          "with": {
+            "node": "Aggregate",
+            "medianMs": 0.09,
+            "buffers": 354,
+            "rows": 1
+          }
+        },
+        {
+          "which": "eligible",
+          "cutoff": "overdue",
+          "without": {
+            "node": "Aggregate",
+            "medianMs": 0.01,
+            "buffers": 18,
+            "rows": 1
+          },
+          "with": {
+            "node": "Aggregate",
+            "medianMs": 0,
+            "buffers": 5,
+            "rows": 1
+          }
+        },
+        {
+          "which": "oldest",
+          "cutoff": "overdue",
+          "without": {
+            "node": "Limit",
+            "medianMs": 0.01,
+            "buffers": 18,
+            "rows": 1
+          },
+          "with": {
+            "node": "Limit",
+            "medianMs": 0,
+            "buffers": 4,
+            "rows": 1
+          }
+        },
+        {
+          "which": "delete",
+          "cutoff": "overdue",
+          "without": {
+            "node": "ModifyTable",
+            "medianMs": 0.01,
+            "buffers": 29,
+            "rows": 0
+          },
+          "with": {
+            "node": "ModifyTable",
+            "medianMs": 0.01,
+            "buffers": 15,
+            "rows": 0
+          }
+        }
+      ],
+      "indexBytes": 57344,
+      "writeMs": {
+        "without": 17.64,
+        "with": 19.24
+      }
+    },
+    {
+      "table": "month_publications",
+      "stamp": "published_at",
+      "rows": 84,
+      "provenance": "derived",
+      "derives": "one publication per month over the governance period — the longest-lived record here",
+      "reach": "covers",
+      "ledBy": "month_publications_by_month",
+      "heapBytes": 172032,
+      "statements": [
+        {
+          "which": "total",
+          "cutoff": "inside",
+          "without": {
+            "node": "Aggregate",
+            "medianMs": 0.01,
+            "buffers": 2,
+            "rows": 1
+          },
+          "with": {
+            "node": "Aggregate",
+            "medianMs": 0.11,
+            "buffers": 524,
+            "rows": 1
+          }
+        },
+        {
+          "which": "eligible",
+          "cutoff": "inside",
+          "without": {
+            "node": "Aggregate",
+            "medianMs": 0,
+            "buffers": 1,
+            "rows": 1
+          },
+          "with": {
+            "node": "Aggregate",
+            "medianMs": 0,
+            "buffers": 2,
+            "rows": 1
+          }
+        },
+        {
+          "which": "oldest",
+          "cutoff": "inside",
+          "without": {
+            "node": "Limit",
+            "medianMs": 0.01,
+            "buffers": 2,
+            "rows": 1
+          },
+          "with": {
+            "node": "Limit",
+            "medianMs": 0,
+            "buffers": 4,
+            "rows": 1
+          }
+        },
+        {
+          "which": "total",
+          "cutoff": "overdue",
+          "without": {
+            "node": "Aggregate",
+            "medianMs": 0.01,
+            "buffers": 2,
+            "rows": 1
+          },
+          "with": {
+            "node": "Aggregate",
+            "medianMs": 0.1,
+            "buffers": 524,
+            "rows": 1
+          }
+        },
+        {
+          "which": "eligible",
+          "cutoff": "overdue",
+          "without": {
+            "node": "Aggregate",
+            "medianMs": 0,
+            "buffers": 2,
+            "rows": 1
+          },
+          "with": {
+            "node": "Aggregate",
+            "medianMs": 0,
+            "buffers": 6,
+            "rows": 1
+          }
+        },
+        {
+          "which": "oldest",
+          "cutoff": "overdue",
+          "without": {
+            "node": "Limit",
+            "medianMs": 0.01,
+            "buffers": 2,
+            "rows": 1
+          },
+          "with": {
+            "node": "Limit",
+            "medianMs": 0,
+            "buffers": 4,
+            "rows": 1
+          }
+        },
+        {
+          "which": "delete",
+          "cutoff": "overdue",
+          "without": {
+            "node": "ModifyTable",
+            "medianMs": 0.01,
+            "buffers": 30,
+            "rows": 0
+          },
+          "with": {
+            "node": "ModifyTable",
+            "medianMs": 0.01,
+            "buffers": 14,
+            "rows": 0
+          }
+        }
+      ],
+      "indexBytes": 49152,
+      "writeMs": {
+        "without": 215.03,
+        "with": 205.2
+      }
+    },
+    {
+      "table": "run_attempts",
+      "stamp": "started_at",
+      "rows": 236,
+      "provenance": "assumed",
+      "derives": "two attempts per run, so a retry and a takeover are both in the count",
+      "reach": "absent",
+      "heapBytes": 32768,
+      "statements": [
+        {
+          "which": "total",
+          "cutoff": "inside",
+          "without": {
+            "node": "Aggregate",
+            "medianMs": 0.04,
+            "buffers": 16,
+            "rows": 1
+          },
+          "with": {
+            "node": "Aggregate",
+            "medianMs": 0.04,
+            "buffers": 48,
+            "rows": 1
+          }
+        },
+        {
+          "which": "eligible",
+          "cutoff": "inside",
+          "without": {
+            "node": "Aggregate",
+            "medianMs": 0.01,
+            "buffers": 4,
+            "rows": 1
+          },
+          "with": {
+            "node": "Aggregate",
+            "medianMs": 0,
+            "buffers": 2,
+            "rows": 1
+          }
+        },
+        {
+          "which": "oldest",
+          "cutoff": "inside",
+          "without": {
+            "node": "Limit",
+            "medianMs": 0.03,
+            "buffers": 16,
+            "rows": 1
+          },
+          "with": {
+            "node": "Limit",
+            "medianMs": 0.01,
+            "buffers": 5,
+            "rows": 1
+          }
+        },
+        {
+          "which": "total",
+          "cutoff": "overdue",
+          "without": {
+            "node": "Aggregate",
+            "medianMs": 0.03,
+            "buffers": 16,
+            "rows": 1
+          },
+          "with": {
+            "node": "Aggregate",
+            "medianMs": 0.04,
+            "buffers": 48,
+            "rows": 1
+          }
+        },
+        {
+          "which": "eligible",
+          "cutoff": "overdue",
+          "without": {
+            "node": "Aggregate",
+            "medianMs": 0.02,
+            "buffers": 16,
+            "rows": 1
+          },
+          "with": {
+            "node": "Aggregate",
+            "medianMs": 0.02,
+            "buffers": 15,
+            "rows": 1
+          }
+        },
+        {
+          "which": "oldest",
+          "cutoff": "overdue",
+          "without": {
+            "node": "Limit",
+            "medianMs": 0.03,
+            "buffers": 16,
+            "rows": 1
+          },
+          "with": {
+            "node": "Limit",
+            "medianMs": 0.01,
+            "buffers": 5,
+            "rows": 1
+          }
+        },
+        {
+          "which": "delete",
+          "cutoff": "overdue",
+          "without": {
+            "node": "ModifyTable",
+            "medianMs": 0.03,
+            "buffers": 19,
+            "rows": 0
+          },
+          "with": {
+            "node": "ModifyTable",
+            "medianMs": 0.02,
+            "buffers": 18,
+            "rows": 0
+          }
+        }
+      ],
+      "indexBytes": 57344,
+      "writeMs": {
+        "without": 12.93,
+        "with": 13.77
+      }
+    },
+    {
+      "table": "plan_extracts",
+      "stamp": "advisory_at",
+      "rows": 1560,
+      "provenance": "assumed",
+      "derives": "40 shapes per advisory run, three executions each — the shape 33n records",
+      "reach": "leads",
+      "ledBy": "plan_extracts_by_age",
+      "heapBytes": 983040,
+      "statements": [
+        {
+          "which": "total",
+          "cutoff": "inside",
+          "without": {
+            "node": "Aggregate",
+            "medianMs": 0.08,
+            "buffers": 7,
+            "rows": 1
+          }
+        },
+        {
+          "which": "eligible",
+          "cutoff": "inside",
+          "without": {
+            "node": "Aggregate",
+            "medianMs": 0,
+            "buffers": 2,
+            "rows": 1
+          }
+        },
+        {
+          "which": "oldest",
+          "cutoff": "inside",
+          "without": {
+            "node": "Limit",
+            "medianMs": 0.01,
+            "buffers": 3,
+            "rows": 1
+          }
+        },
+        {
+          "which": "total",
+          "cutoff": "overdue",
+          "without": {
+            "node": "Aggregate",
+            "medianMs": 0.08,
+            "buffers": 7,
+            "rows": 1
+          }
+        },
+        {
+          "which": "eligible",
+          "cutoff": "overdue",
+          "without": {
+            "node": "Aggregate",
+            "medianMs": 0.01,
+            "buffers": 3,
+            "rows": 1
+          }
+        },
+        {
+          "which": "oldest",
+          "cutoff": "overdue",
+          "without": {
+            "node": "Limit",
+            "medianMs": 0,
+            "buffers": 3,
+            "rows": 1
+          }
+        },
+        {
+          "which": "delete",
+          "cutoff": "overdue",
+          "without": {
+            "node": "ModifyTable",
+            "medianMs": 0.04,
+            "buffers": 170,
+            "rows": 0
+          }
+        }
+      ]
+    },
+    {
+      "table": "advisories",
+      "stamp": "finished_at",
+      "rows": 13,
+      "provenance": "derived",
+      "derives": "one advisory per advisory run: ceil(90 / 7)",
+      "reach": "leads",
+      "ledBy": "advisories_newest_first",
+      "heapBytes": 32768,
+      "statements": [
+        {
+          "which": "total",
+          "cutoff": "inside",
+          "without": {
+            "node": "Aggregate",
+            "medianMs": 0,
+            "buffers": 4,
+            "rows": 1
+          }
+        },
+        {
+          "which": "eligible",
+          "cutoff": "inside",
+          "without": {
+            "node": "Aggregate",
+            "medianMs": 0,
+            "buffers": 4,
+            "rows": 1
+          }
+        },
+        {
+          "which": "oldest",
+          "cutoff": "inside",
+          "without": {
+            "node": "Limit",
+            "medianMs": 0,
+            "buffers": 2,
+            "rows": 1
+          }
+        },
+        {
+          "which": "total",
+          "cutoff": "overdue",
+          "without": {
+            "node": "Aggregate",
+            "medianMs": 0,
+            "buffers": 4,
+            "rows": 1
+          }
+        },
+        {
+          "which": "eligible",
+          "cutoff": "overdue",
+          "without": {
+            "node": "Aggregate",
+            "medianMs": 0,
+            "buffers": 4,
+            "rows": 1
+          }
+        },
+        {
+          "which": "oldest",
+          "cutoff": "overdue",
+          "without": {
+            "node": "Limit",
+            "medianMs": 0,
+            "buffers": 2,
+            "rows": 1
+          }
+        },
+        {
+          "which": "delete",
+          "cutoff": "overdue",
+          "without": {
+            "node": "ModifyTable",
+            "medianMs": 0.01,
+            "buffers": 6,
+            "rows": 0
+          }
+        }
+      ]
+    },
+    {
+      "table": "runs",
+      "stamp": "requested_at",
+      "rows": 118,
+      "provenance": "assumed",
+      "derives": "assessment runs over the assessment period plus advisory runs over the advisory period",
+      "reach": "leads",
+      "ledBy": "runs_unfinished",
+      "heapBytes": 98304,
+      "statements": [
+        {
+          "which": "total",
+          "cutoff": "inside",
+          "without": {
+            "node": "Aggregate",
+            "medianMs": 0.01,
+            "buffers": 2,
+            "rows": 1
+          }
+        },
+        {
+          "which": "eligible",
+          "cutoff": "inside",
+          "without": {
+            "node": "Aggregate",
+            "medianMs": 0,
+            "buffers": 1,
+            "rows": 1
+          }
+        },
+        {
+          "which": "oldest",
+          "cutoff": "inside",
+          "without": {
+            "node": "Limit",
+            "medianMs": 0,
+            "buffers": 2,
+            "rows": 1
+          }
+        },
+        {
+          "which": "total",
+          "cutoff": "overdue",
+          "without": {
+            "node": "Aggregate",
+            "medianMs": 0.01,
+            "buffers": 2,
+            "rows": 1
+          }
+        },
+        {
+          "which": "eligible",
+          "cutoff": "overdue",
+          "without": {
+            "node": "Aggregate",
+            "medianMs": 0,
+            "buffers": 2,
+            "rows": 1
+          }
+        },
+        {
+          "which": "oldest",
+          "cutoff": "overdue",
+          "without": {
+            "node": "Limit",
+            "medianMs": 0,
+            "buffers": 2,
+            "rows": 1
+          }
+        },
+        {
+          "which": "delete",
+          "cutoff": "overdue",
+          "without": {
+            "node": "ModifyTable",
+            "medianMs": 0.01,
+            "buffers": 4,
+            "rows": 0
+          }
+        }
+      ]
+    },
+    {
+      "table": "run_checkpoints",
+      "stamp": "at",
+      "rows": 6300,
+      "provenance": "assumed",
+      "derives": "60 signals reached per run, kept only so a retry does not read them again",
+      "reach": "absent",
+      "heapBytes": 3194880,
+      "statements": [
+        {
+          "which": "total",
+          "cutoff": "inside",
+          "without": {
+            "node": "Aggregate",
+            "medianMs": 0.32,
+            "buffers": 39,
+            "rows": 1
+          },
+          "with": {
+            "node": "Aggregate",
+            "medianMs": 0.37,
+            "buffers": 73,
+            "rows": 1
+          }
+        },
+        {
+          "which": "eligible",
+          "cutoff": "inside",
+          "without": {
+            "node": "Aggregate",
+            "medianMs": 0.21,
+            "buffers": 390,
+            "rows": 1
+          },
+          "with": {
+            "node": "Aggregate",
+            "medianMs": 0,
+            "buffers": 2,
+            "rows": 1
+          }
+        },
+        {
+          "which": "oldest",
+          "cutoff": "inside",
+          "without": {
+            "node": "Limit",
+            "medianMs": 0.32,
+            "buffers": 390,
+            "rows": 1
+          },
+          "with": {
+            "node": "Limit",
+            "medianMs": 0.01,
+            "buffers": 4,
+            "rows": 1
+          }
+        },
+        {
+          "which": "total",
+          "cutoff": "overdue",
+          "without": {
+            "node": "Aggregate",
+            "medianMs": 0.35,
+            "buffers": 39,
+            "rows": 1
+          },
+          "with": {
+            "node": "Aggregate",
+            "medianMs": 0.35,
+            "buffers": 73,
+            "rows": 1
+          }
+        },
+        {
+          "which": "eligible",
+          "cutoff": "overdue",
+          "without": {
+            "node": "Aggregate",
+            "medianMs": 0.23,
+            "buffers": 390,
+            "rows": 1
+          },
+          "with": {
+            "node": "Aggregate",
+            "medianMs": 0.05,
+            "buffers": 44,
+            "rows": 1
+          }
+        },
+        {
+          "which": "oldest",
+          "cutoff": "overdue",
+          "without": {
+            "node": "Limit",
+            "medianMs": 0.33,
+            "buffers": 390,
+            "rows": 1
+          },
+          "with": {
+            "node": "Limit",
+            "medianMs": 0.01,
+            "buffers": 4,
+            "rows": 1
+          }
+        },
+        {
+          "which": "delete",
+          "cutoff": "overdue",
+          "without": {
+            "node": "ModifyTable",
+            "medianMs": 0.28,
+            "buffers": 1020,
+            "rows": 0
+          },
+          "with": {
+            "node": "ModifyTable",
+            "medianMs": 0.12,
+            "buffers": 673,
+            "rows": 0
+          }
+        }
+      ],
+      "indexBytes": 204800,
+      "writeMs": {
+        "without": 16.73,
+        "with": 17.41
+      }
+    },
+    {
+      "table": "audit_events",
+      "stamp": "at",
+      "rows": 10672,
+      "provenance": "assumed",
+      "derives": "two acts recorded per governance record written — the write, and the read that preceded it",
+      "reach": "leads",
+      "ledBy": "audit_events_by_time",
+      "heapBytes": 9715712,
+      "statements": [
+        {
+          "which": "total",
+          "cutoff": "inside",
+          "without": {
+            "node": "Aggregate",
+            "medianMs": 0.53,
+            "buffers": 32,
+            "rows": 1
+          }
+        },
+        {
+          "which": "eligible",
+          "cutoff": "inside",
+          "without": {
+            "node": "Limit",
+            "medianMs": 0,
+            "buffers": 3,
+            "rows": 1
+          }
+        },
+        {
+          "which": "oldest",
+          "cutoff": "inside",
+          "without": {
+            "node": "Limit",
+            "medianMs": 0,
+            "buffers": 3,
+            "rows": 1
+          }
+        },
+        {
+          "which": "total",
+          "cutoff": "overdue",
+          "without": {
+            "node": "Aggregate",
+            "medianMs": 0.54,
+            "buffers": 32,
+            "rows": 1
+          }
+        },
+        {
+          "which": "eligible",
+          "cutoff": "overdue",
+          "without": {
+            "node": "Limit",
+            "medianMs": 0.06,
+            "buffers": 123,
+            "rows": 1
+          }
+        },
+        {
+          "which": "oldest",
+          "cutoff": "overdue",
+          "without": {
+            "node": "Limit",
+            "medianMs": 0.01,
+            "buffers": 3,
+            "rows": 1
+          }
+        }
+      ]
+    }
+  ]
+}

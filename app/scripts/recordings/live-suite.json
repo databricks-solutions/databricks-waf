@@ -1,0 +1,57 @@
+{
+  "what": "The last run of server/store/postgres.live.test.ts that passed, and the SQL it passed against.",
+  "ran": "2026-08-28T06:12:37.820Z",
+  "commit": "2c03985964ec21be866247aefe7b9d7a118cff3c",
+  "endpoint": "provisioned",
+  "tests": 54,
+  "digest": "b180a0e4f1cbf344",
+  "lifecycle": {
+    "restarted": true,
+    "definition": {
+      "id": "live-projected-definition",
+      "version": 1,
+      "fingerprint": "sha256:72510a9de525a476e97bb9c64cf00dcb03eeb845b54123afcd11f33f1264b5fa"
+    },
+    "resultId": "live-projected-result",
+    "runId": "live-projected-run",
+    "reviewId": "live-projected-review",
+    "planId": "live-customer-lifecycle-plan",
+    "actionId": "live-customer-lifecycle-action",
+    "foundationFingerprint": "sha256:ea50a006443647e53c805bb2b56e3b27eaa56febd0649c0a12153a698db84fed",
+    "monthId": "live-customer-lifecycle-month",
+    "monthFinalResultId": "live-projected-result",
+    "rollback": {
+      "runId": "live-projected-rollback-run",
+      "reviewId": "live-projected-rollback-review",
+      "terminalPillarWritten": false,
+      "resultWritten": false
+    }
+  },
+  "covered": [
+    "server/admin/retention-store.ts",
+    "server/advise/plan-store.ts",
+    "server/attest/postgres-store.ts",
+    "server/decide/store.ts",
+    "server/define/postgres-store.ts",
+    "server/define/setup-postgres-store.ts",
+    "server/foundation/serving-postgres-store.ts",
+    "server/import/store.ts",
+    "server/improve/postgres-store.ts",
+    "server/monthly/store.ts",
+    "server/note/postgres-store.ts",
+    "server/records/verify.ts",
+    "server/review/postgres-store.ts",
+    "server/run/run-store.ts",
+    "server/scan/postgres-store.ts",
+    "server/store/audit-log.ts",
+    "server/store/postgres.ts",
+    "server/validate/postgres-store.ts"
+  ],
+  "uncovered": [
+    "server/accept/postgres-store.ts",
+    "server/advise/store.ts",
+    "server/apply/postgres-store.ts",
+    "server/scan/store-choice.ts",
+    "server/store/event-log.ts"
+  ]
+}

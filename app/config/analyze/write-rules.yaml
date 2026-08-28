@@ -1,0 +1,121 @@
+# What the advisor says about how the estate writes.
+#
+# Data rather than code for the reason ADR 0002 gives, and for the reason the advisor document gives at
+# line 606: every number below is a claim about a distribution, meant to be fitted from measured outcomes
+# rather than compiled into a binary. The conditions that read them are in `server/advise/writes.ts`, over
+# the rows `workload_write_patterns.sql` returns.
+#
+# ## Two rules, and both of them stop one step short of the advice
+#
+# `33g` set out with four write-and-ingest patterns. `41d` found two of them already shipped as assessment
+# controls and the table they were said to need unwritten on both estates, so what is left is the pair the
+# premise measured: a table rewritten whole over and over, and a load arriving in pieces.
+#
+# Each of them is a pattern the platform recorded. Neither of them is the remedy, and the difference is the
+# hardest thing about this file. `MERGE` is the answer to a rewrite that changes part of a table and the
+# wrong answer to one that changes all of it; Auto Loader is the answer to files landing in cloud storage
+# and the wrong answer to rows arriving over JDBC. Which of those applies is a property of the pipeline
+# that produced the statement, and this app reads `system.query.history`, which records what ran rather
+# than what could have run instead. So both rules name what happened and offer the remedy as the thing to
+# check, and neither says the estate should be doing it.
+#
+# That is not hedging. It is the same rule `schedule-language.ts` records three review rounds of: a
+# sentence may be no more specific than the field under it, and there is no field under "this could have
+# been a MERGE".
+#
+# ## Where the thresholds come from, and where they were not read
+#
+# Measured on `large-estate` on 2026-08-12 over three days, recorded under `33g` in
+# `docs/plan/h6-workload-advisor.md`: 7,545 `REPLACE`, 1,706 `INSERT`, 606 `UPDATE`, 460 `MERGE`, 154
+# `DELETE` and 1 `COPY`, `written_bytes` populated on all but two of them, 617 GB written by the rewrites
+# against 3.9 GB by the merges.
+#
+# **Read on labs too, and the premise was wrong about it.** `33g` recorded labs as running no write
+# statements at all with `written_bytes` null throughout. Read on 2026-08-16 over thirty days: 178 write
+# statements, every one of them carrying a written figure, 517 MB between them across 35 shapes. What is
+# true is that labs is small — its largest rewrite shape ran 17 times on one day and its middle run wrote
+# 4.9 MB, three orders of magnitude under `median_write_bytes` below.
+#
+# So `estates.md`'s rule is met in the direction it can be met. Every threshold here was read on field-eng,
+# because labs has no upper tail to read one off; what labs establishes is that neither rule fires on a
+# small estate, which is the failure mode a threshold set on the messiest workspace in the company would
+# otherwise have. The first estate that writes at scale and is not field-eng is the one that will move
+# these numbers.
+version: 1
+
+rules:
+  # ---------------------------------------------------------------------------
+  # The rewrite. Large, repeated, and the whole table every time.
+  # ---------------------------------------------------------------------------
+  - id: TABLE_REWRITTEN_WHOLE
+    provenance: extension
+    severity: medium
+    action: Confirm whether each run changes only part of the table; if it does, replace the rewrite with MERGE
+    headline: This statement rewrites its target in full, over and over
+    detail: >-
+      The platform recorded this statement as a replace — it wrote its target from scratch rather than
+      changing part of it — and it ran repeatedly across several days, writing a substantial amount each
+      time. That is the cost of the pattern rather than a fault in the statement: a full rewrite writes
+      every row whether or not it changed, so the bytes written are the size of the table and not the size
+      of the change. Where the change is a subset of the rows, a `MERGE` writes that subset instead. Where
+      it is not — a table derived wholesale from something upstream — a rewrite is the correct shape and
+      what is worth checking is whether it needs to run this often.
+    rationale: >-
+      Neither design document names it, and the estate that has writes puts it first by a wide margin: 617
+      GB written by rewrites against 3.9 GB by merges over three days, on 7,545 replace statements against
+      460 merges. The rule exists because that ratio is the largest single writing pattern the advisor can
+      see, and it stops at naming the pattern because the app cannot read whether the change was partial —
+      that is in the code that built the statement, and `system.query.history` does not hold it.
+    doc_url: https://docs.databricks.com/aws/en/delta/merge
+    thresholds:
+      # Times it ran in the window. Three, so a table built once and rebuilt twice is not a pattern.
+      min_runs: 3
+      # Days it ran on. Two, for the reason every sizing rule counts days: a rebuild is a habit or an
+      # afternoon, and only the first is worth telling somebody about.
+      min_days: 2
+      # The middle write, in bytes. A gibibyte, which on the measured estate is the point at which a
+      # rewrite is moving real data rather than refreshing a lookup nobody would restructure.
+      median_write_bytes: 1073741824
+      # Total written across the window, above which the finding is critical rather than medium. A
+      # tebibyte: at that volume the difference between rewriting and merging is a line on a bill.
+      critical_written_bytes: 1099511627776
+
+  # ---------------------------------------------------------------------------
+  # The dribble. Frequent, small, and each one a file somebody has to read later.
+  # ---------------------------------------------------------------------------
+  - id: INGEST_IN_SMALL_PIECES
+    provenance: extension
+    severity: medium
+    action: Batch these writes, or move file ingestion to Auto Loader
+    headline: This statement loads data many times a day in small pieces
+    detail: >-
+      This statement ran many times a day across several days, and the middle run wrote a small amount.
+      Data arriving that way costs twice: each write leaves files that later reads have to open, and each
+      run pays the fixed cost of planning and committing whatever it wrote. Where the data is arriving as
+      files in cloud storage, Auto Loader is the ingest path built for it — it tracks what it has already
+      seen, so the reader does not have to. Where it is not, the same effect comes from batching the writes
+      or from letting the platform compact behind them.
+    rationale: >-
+      Neither design document names it, and it is the other half of what the write measurement found: the
+      estate's 1,706 inserts against its 460 merges. It reads the middle write rather than the mean,
+      because one backfill in a fortnight of hourly loads moves a mean by two orders of magnitude and is
+      the exact shape this must not fire on. It names the pattern and not the remedy for the same reason
+      the rewrite rule does — whether Auto Loader applies depends on where the data is coming from, which
+      the query history does not record.
+    doc_url: https://docs.databricks.com/aws/en/ingestion/cloud-object-storage/auto-loader/
+    thresholds:
+      # The middle write, in bytes. 128 MiB is the file size the platform's own compaction targets, so a
+      # write below it is one that cannot have produced a well-sized file even if it produced exactly one.
+      max_median_write_bytes: 134217728
+      # Times it ran in the window, and on how many days. The pair rather than either alone: a hundred
+      # loads is a pattern across a fortnight and a burst inside an afternoon.
+      min_runs: 50
+      min_days: 3
+      # And the cadence, which is what "many times a day" means.
+      #
+      # Twenty-five rather than a round ten, and the number is set by one case rather than by a
+      # distribution: an hourly load is 24 runs a day, and an hourly load is a schedule somebody chose
+      # with small hourly files as the trade they chose it for. Ten was the first number written here
+      # and `writes.test.ts` caught that it fires on hourly — which is the whole population this rule
+      # would have been wrong about, since hourly is the commonest scheduled load there is.
+      min_runs_per_day: 25

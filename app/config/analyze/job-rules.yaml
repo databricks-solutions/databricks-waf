@@ -1,0 +1,371 @@
+# What the advisor says about a Lakeflow job's runs.
+#
+# Data rather than code for the reason ADR 0002 gives and the reason the audit document gives at line 728:
+# "use a rules table rather than hardcoding thresholds in the application. This allows different
+# thresholds for batch ETL, streaming, ML training, and maintenance workloads." The conditions that read
+# these numbers are in `server/advise/jobs.ts`, typed against what the two Lakeflow timelines record.
+#
+# ## Ten rules, where the audit document has eight, and they are not the same eight
+#
+# Four read the two Lakeflow timelines: a job that runs long, a job that spends its time in one task, a
+# job whose runs do not succeed, and a job whose tasks run again. Those are the document's four discovery
+# queries, which it lists as inputs to its rules rather than as rules, and none of them recommends a
+# compute change.
+#
+# Four more read `job_compute_utilisation.sql`, which is the document's rules A, B, C and G. They were
+# ledger row `33ce`, held because `33ca` measured every one of their inputs empty on labs — every run
+# serverless, the node timeline readable and returning nothing. That reading is still true and was never
+# a fact about the platform: `large-estate` carries 11,105 run-cluster pairs over thirty days, `41b`
+# measured the distributions there, and `47` decided what each rule may say. **On labs these four report
+# no population rather than a clean estate**, which is
+# [ADR 0074](../../../docs/decisions/0074-an-emptiness-the-scan-cannot-establish-is-unmeasured-rather-than-not-applicable.md).
+#
+# Two more are the document's D and E, and **neither is the document's rule** — `50` measured both premises
+# and both came back different from the write-up. Rule D has five conditions and three are unusable: low
+# CPU selects 98.4% of pairs, CPU wait's p95 is 1.28% with a thirty-day maximum of 23.6%, and the two that
+# compare traffic with data processed need a denominator `system.query.history` names no classic job cluster
+# on — 0 rows of 4,106,493 in the window. What survives is the network rate, which does discriminate, so the
+# rule fires on that alone and is named for it. **It may not be called I/O-bound**, because the words imply
+# the comparison the two dead conditions would have made. Rule E reads `product_features.is_photon` on the
+# billing record rather than the cluster configuration the document's own engine reads: that record carries
+# no Photon column at all, and the route through it would have bounded the rule at the 8.7% the as-of join
+# resolves instead of the 96.6% billing usage reaches.
+#
+# Rule F is the serverless advisor's fourteen blockers and rule H is H6b's six plan rules; both already ship.
+#
+# ## Where each threshold comes from, and which are assumptions
+#
+# The corpus is seven jobs and 44 runs on labs, which is too small to fit anything. So every number below
+# says which of three it is: the document's own, arithmetic, or an assumption. Two are the document's,
+# three are arithmetic over what the corpus showed, and the rest are assumptions marked as such.
+#
+# What the corpus showed, measured 2026-08-11 over 30 days:
+#
+#   runs per job         34, 3, 3, 1, 1, 1, 1 — so the three-run guardrail admits 3 of 7 jobs
+#   p95 wall clock       743.7s at most, and 12.4 minutes is well under the document's 30
+#   busiest task share   1.0 on all six single-task jobs, 0.633 on the only multi-task one
+#   runs repeating       12 of 34, 2 of 3, 1 of 3, 1 of 1, and none on three jobs
+#   did not succeed      25 of 34, 2 of 3, 1 of 3, and none on four jobs
+#
+# The single-task 1.0 is the finding that shaped a rule rather than a threshold: a job with one task
+# spends all of its time in that task by construction, so the dominance rule requires two.
+#
+# The four utilisation rules have a second corpus, and a real one: `41b` on `large-estate`, 2026-08-12,
+# thirty days, 11,105 run-cluster pairs across 689 jobs. What it showed, and what each number below is
+# owed to:
+#
+#   avg CPU              94.7% of pairs sit under 30% — so a low-CPU condition alone selects the estate
+#   peak CPU             p95 is 54.5%, so the document's 80% is rare rather than wrong
+#   avg CPU wait         p50 0.04%, p90 0.69%, p95 1.32% — no threshold on this discriminates
+#   swap                 non-zero on 95% of node-minutes at a median of 0.05%, so "any swap" is baseline
+#   samples per pair     48.2% of pairs have fewer than three one-minute samples
+#   setup figure         18 of 13,821 classic pairs non-zero; null on 0 of 176,261 runs
+#
+# Two of those changed a rule rather than a number. The swap baseline is why rule A's swap condition is a
+# threshold above zero rather than the document's "no swap", and the sample floor is why every one of the
+# four requires three one-minute samples in a pair before it will read the pair's mean at all.
+#
+# The last two rules have a third corpus, `50` on the same estate, 2026-08-15:
+#
+#   network rate         p50 3.0 MiB per node-minute, p95 136.3, max 18,995 — five orders of magnitude
+#   a cut at 1,000 MiB   2.1% of the 10,488 pairs with a rate
+#   a cut at 1 MiB       62.1% of them — so the magnitude decides whether this is a rule or the estate
+#   Photon, stated       on 7,695 of 7,695 classic job usage records, reaching 96.6% of the clusters
+#   Photon, off          37.4% of the clusters it is stated for
+#
+# **No labs reading calibrates either.** Labs runs every job on serverless, so it has no classic
+# run-cluster pair to have a network rate and Photon is not a setting there. `50` recorded that as a fact
+# about the questions rather than a gap, and the two thresholds below ship as assumptions bounded by one
+# estate rather than as fitted numbers — which is what `51` said it would ship.
+version: 3
+
+rules:
+  # ---------------------------------------------------------------------------
+  # Query 1. How long the job takes, at the tail rather than the mean.
+  # ---------------------------------------------------------------------------
+  - id: JOB_LONG_RUNNING
+    provenance: design-document
+    severity: medium
+    action: Open the slowest run and identify the task on its critical path
+    headline: This job's slowest runs take a long time
+    detail: >-
+      The slowest 5% of this job's runs in the window took longer than the audit's threshold. That is a
+      measurement and not yet a diagnosis: a job can be slow because its compute is too small, because one
+      task is doing all the work, because it is retrying, or because the work itself grew. The other
+      findings on this job, and the query-level findings under Optimisation, are where the cause is. What
+      this says on its own is that the job is worth an operator's attention and that a 30-day tail is what
+      says so rather than one bad night.
+    doc_url: https://docs.databricks.com/aws/en/jobs/monitor
+    thresholds:
+      # The document's own, from query 1's `HAVING p95_minutes > 30`, in seconds because that is the unit
+      # the statement derives. No job on the measured estate reaches it — the longest p95 was 743.7s — so
+      # this rule is silent there, which is the correct reading of a workspace whose jobs are all short.
+      p95_seconds: 1800
+      # Rule A's first condition, applied to all four of these rather than to one: "at least three
+      # completed runs are available". Measured, it admits 3 of the 7 jobs on labs, and the surface has to
+      # say so — this bounds what the audit covers rather than lowering anyone's confidence in it.
+      min_runs: 3
+
+  # ---------------------------------------------------------------------------
+  # Query 2. Which task inside the job is the job.
+  # ---------------------------------------------------------------------------
+  - id: JOB_DOMINATED_BY_ONE_TASK
+    provenance: design-document
+    severity: medium
+    action: Optimize the task holding most of this job's run time
+    headline: One task accounts for most of this job's work
+    detail: >-
+      Across the window, a single task holds most of the total task time in this multi-task job. That
+      makes the task the job's critical path: work done anywhere else in the job — more tasks running in
+      parallel, a faster task elsewhere — changes the total by at most the small remainder. Read the named
+      task's own query findings before changing anything about the job, because the lever is inside that
+      task.
+    doc_url: https://docs.databricks.com/aws/en/jobs/monitor
+    thresholds:
+      # An assumption, and the one number here a bigger corpus would most likely move. The only multi-task
+      # job measured sat at 0.633, so this fires on nothing on that estate; the document asks for
+      # conservative thresholds and 0.7 is the conservative side of the one observation there is.
+      busiest_share: 0.7
+      # Two, because a single-task job spends 1.0 of its task time in its one task as a matter of
+      # arithmetic. Six of the seven jobs measured are single-task and all six read exactly 1.0. Without
+      # this the rule would fire on every one of them and say nothing about any of them.
+      min_tasks: 2
+      min_runs: 3
+
+  # ---------------------------------------------------------------------------
+  # The outcome half of query 8. What the runs came to.
+  # ---------------------------------------------------------------------------
+  - id: JOB_RUNS_NOT_SUCCEEDING
+    provenance: extension
+    severity: high
+    action: Open a failed run and fix its first failing task
+    headline: A material share of this job's runs did not succeed
+    detail: >-
+      Runs of this job reached a terminal state other than success, at a share of the runs the platform
+      recorded an outcome for. What that state was is in the evidence; why it happened is not, and neither
+      the code nor the data behind the failure is visible here. Read this before any finding about how long
+      the job takes or what it costs, because both are measured over runs that include these.
+    rationale: >-
+      Not one of the audit document's eight rules, which are all about compute. It is the document's own
+      triage criterion — "select long-running, expensive, high-retry, or anomalous workloads" at line 779
+      — made into a finding, and it is here because a job whose runs fail is not a job to resize. The
+      measured estate is why the share threshold is not zero: 25 of 34 runs of one job did not succeed and
+      the remaining six jobs are at 3 runs or fewer, so a rule firing on a single unsuccessful run would
+      have reported most of the workspace and ranked a job with one failure of one run alongside that.
+    doc_url: https://docs.databricks.com/aws/en/jobs/repair-job-failures
+    thresholds:
+      # An assumption. A fifth of the runs is the point at which failure is the job's normal behaviour
+      # rather than an incident, and nothing measured here fits it: the estate's three eligible jobs read
+      # 0.74, 0.33 and 0.67, which is above this and does not calibrate it.
+      unsuccessful_share: 0.2
+      # Above this the finding is critical: a job failing more often than it succeeds is not a job with a
+      # failure rate, it is a job that does not work.
+      critical_unsuccessful_share: 0.5
+      # Runs the run timeline stated an outcome for, which is the denominator of the share above and not
+      # the same population as `min_runs` elsewhere — those come from the task timeline. Three, for the
+      # same reason.
+      min_resolved_runs: 3
+
+  # ---------------------------------------------------------------------------
+  # The repeat half of query 8, at the grain the platform actually records it.
+  # ---------------------------------------------------------------------------
+  - id: JOB_TASKS_RUN_AGAIN
+    provenance: design-document
+    severity: medium
+    action: Inspect the repeated task's termination code and logs
+    headline: Tasks in this job ran more than once
+    detail: >-
+      In several of this job's runs, a task ran more than once inside the same run. The extra task runs are
+      time and compute spent on work that had already been attempted. What this cannot say is why: the
+      platform records that a task ran again and does not distinguish an automatic retry from a person
+      repairing the run, so both arrive here identically. The document's own guidance is the action —
+      inspect the termination code, the failed task and its logs, and any change in data volume, before
+      concluding that the compute was too small.
+    doc_url: https://docs.databricks.com/aws/en/jobs/repair-job-failures
+    thresholds:
+      # An assumption, and the reason this is not the document's `HAVING retries_count > 0`: at any repeat
+      # at all, 4 of the 7 jobs measured fire, three of them on a single repeat in a single run. A quarter
+      # of the runs is a job that repeats as a habit.
+      repeating_share: 0.25
+      min_runs: 3
+
+  # ---------------------------------------------------------------------------
+  # Rule A. Workers with nothing much to do, on a job long enough to be worth resizing.
+  # ---------------------------------------------------------------------------
+  - id: JOB_WORKERS_UNDERUSED
+    provenance: design-document
+    severity: medium
+    action: Check whether the work parallelises, then test fewer or smaller workers
+    headline: This job's workers were mostly idle
+    detail: >-
+      Across the runs this reading could reach, the workers of this job's classic clusters averaged well
+      under the CPU and memory the audit expects a busy cluster to use, and neither swap nor time waiting
+      on storage explains it. That points at a cluster larger than the work needs, or at work that is not
+      parallel enough to fill it. Only worker nodes are counted — a driver idles by design — and the
+      figures are means over one-minute samples, so a job with a short burst inside a long run reads low
+      here and is not necessarily oversized. Check the run's own shape before resizing.
+    doc_url: https://docs.databricks.com/aws/en/compute/cluster-config-best-practices
+    thresholds:
+      # The document's own, at the bottom of its 30–40% range. In isolation this selects 94.7% of pairs on
+      # the measured estate, which is why the rule is a conjunction and why the runtime floor below is not
+      # optional: alone, a low-CPU condition names the estate rather than a population inside it.
+      cpu_percent: 30
+      # The document's own.
+      memory_percent: 50
+      # Above the measured baseline rather than at zero. `mem_swap_percent > 0` fires on 95% of
+      # node-minutes at a median of 0.05%, so the document's "no sustained swap" as written is a condition
+      # nothing would meet. One percent is an assumption: it is two decimal orders above the median and
+      # nothing in the corpus sits between them to calibrate against.
+      swap_percent: 1
+      # An assumption for the same reason inverted: CPU wait's p95 is 1.32%, so anything at or below this
+      # is the estate's ordinary noise and cannot explain an idle worker. Five percent is well clear of it.
+      cpu_wait_percent: 5
+      # The document's own p95 runtime condition, in seconds. It removes 75 of the 97 jobs that clear the
+      # three-run minimum — the single largest piece of rule A's attrition — and it stays because a job
+      # whose runs are short is not worth an operator resizing whatever its utilisation.
+      p95_seconds: 1800
+      min_runs: 3
+      # This app's and not the document's. 48.2% of run-cluster pairs are averaged over fewer than three
+      # one-minute samples, and a mean over one observation is not a mean. It costs three of the twelve
+      # jobs rule A would otherwise select on the measured estate.
+      min_sampled_pairs: 3
+
+  # ---------------------------------------------------------------------------
+  # Rule B. Memory pressure, which is the one of the four with an ordinary population.
+  # ---------------------------------------------------------------------------
+  - id: JOB_MEMORY_BOUND
+    provenance: design-document
+    severity: high
+    action: Test memory-optimized workers or fewer concurrent tasks per worker
+    headline: This job's workers ran short of memory
+    detail: >-
+      The workers of this job's classic clusters held memory high across the runs this reading could
+      reach, either on average or at their peak. A cluster near its memory ceiling spills to disk and
+      slows down before it fails, and the run that eventually fails is often not the one that was
+      undersized. The usual answers are a memory-optimised node type or fewer concurrent tasks per worker;
+      which of those applies depends on whether the peak is one task or the whole run.
+    doc_url: https://docs.databricks.com/aws/en/compute/cluster-config-best-practices
+    thresholds:
+      # Both the document's own. The average clause selects 11.6% of pairs on the measured estate — 1,286
+      # of 11,105 — which is the only ordinary population any of these four rules has. The peak clause was
+      # not measured separately, so the selection above is a lower bound on what this rule fires on.
+      memory_percent: 70
+      peak_memory_percent: 85
+      min_runs: 3
+      min_sampled_pairs: 3
+
+  # ---------------------------------------------------------------------------
+  # Rule C. The opposite reading, and the one that found almost nothing.
+  # ---------------------------------------------------------------------------
+  - id: JOB_COMPUTE_BOUND
+    provenance: design-document
+    severity: medium
+    action: Test more or faster cores and compare the same run
+    headline: This job's workers were CPU-bound
+    detail: >-
+      The workers of this job's classic clusters held CPU high while memory stayed low and little time
+      went to waiting on storage, which is the shape of work limited by processing rather than by data.
+      More or faster cores is the direction; whether that means more workers or a compute-optimised node
+      type depends on whether the work spreads. Photon is the other lever, and whether this job's compute
+      already uses it is a separate finding read from the billing record rather than from this one.
+    doc_url: https://docs.databricks.com/aws/en/compute/cluster-config-best-practices
+    thresholds:
+      # The document's own. Measured, the two together select 18 of 11,105 pairs — 0.16% — and peak CPU's
+      # own p95 is 54.5%, so on that estate this rule reports almost nothing. That is the reading and not
+      # a reason to lower it: an estate where CPU is the limit is a real estate and one workspace cannot
+      # say how common it is.
+      cpu_percent: 80
+      memory_percent: 60
+      # The same five percent rule A uses, and the same justification: CPU wait's p95 is 1.32%, so this
+      # separates "not waiting on storage" from the estate's noise without pretending to measure it
+      # finely.
+      cpu_wait_percent: 5
+      min_runs: 3
+      min_sampled_pairs: 3
+
+  # ---------------------------------------------------------------------------
+  # Rule G. Startup overhead, which ships as a stated population rather than a ranking.
+  # ---------------------------------------------------------------------------
+  - id: JOB_STARTUP_OVERHEAD
+    provenance: design-document
+    severity: medium
+    action: Put frequent runs on a job pool and compare their startup time
+    headline: This job spends a material part of each run starting its cluster
+    detail: >-
+      Before any of this job's work begins, the platform reports time spent provisioning the cluster, and
+      that setup is a material share of the run. A job pool or a shared all-purpose cluster removes most
+      of it for jobs that run often; a job that runs twice a month is usually not worth either. The share
+      is over the run duration the platform states, which is a different figure from the wall clock
+      elsewhere on this page.
+    doc_url: https://docs.databricks.com/aws/en/compute/pool-best-practices
+    thresholds:
+      # An assumption bounded by one measurement. 18 of 13,821 classic pairs carry a non-zero setup figure
+      # at all and two of those are above a quarter of the run, so a quarter is where the corpus has its
+      # only instances rather than where a distribution was fitted. `47` decided the rule ships anyway:
+      # where the figure is carried it is the one finding nothing else in this family produces.
+      setup_share: 0.25
+      # A floor under the share, so a five-second run with a two-second setup is not a finding. An
+      # assumption; nothing in the corpus bears on it.
+      setup_seconds: 30
+      min_runs: 3
+
+  # ---------------------------------------------------------------------------
+  # Rule D, as much of it as is answerable. Three of its five conditions are gone and the headline says
+  # what the survivor is rather than what the document called it.
+  # ---------------------------------------------------------------------------
+  - id: JOB_NETWORK_HEAVY
+    provenance: design-document
+    severity: medium
+    action: Inspect the job's shuffles and wide joins before changing its workers
+    headline: This job's workers moved far more network traffic than the rest of the estate
+    detail: >-
+      Per minute of worker time, this job's classic clusters sent and received orders of magnitude more
+      over the network than the middle of this workspace. That is often shuffle across workers, a wide
+      join, or a read from storage the cluster is far from, and the usual directions are fewer and larger
+      workers, a broadcast where one side is small, or moving the data closer. What this cannot say is
+      whether the traffic is proportionate to the work: the comparison with data processed needs a figure
+      that no relation this app reads carries for a job cluster, so this is the rate on its own.
+    doc_url: https://docs.databricks.com/aws/en/optimizations/spark-ui-guide/
+    thresholds:
+      # The condition, and the number that decides whether this is a rule or a description of the estate.
+      # `50` measured the population spanning five orders of magnitude around a median of 3.0 MiB per
+      # node-minute: an absolute cut at 1 MiB takes 62.1% of pairs and one at 1,000 MiB takes 2.1%. Fifty
+      # times the median is roughly the second, and it is a multiple rather than an absolute so that a
+      # workspace whose ordinary traffic is higher does not have every job named. An assumption in the
+      # sense the header means: bounded by one estate, calibrated on none.
+      median_multiple: 50
+      # A floor under the multiple, because a workspace whose median is near zero would make any traffic a
+      # multiple of it. One MiB per node-minute is the magnitude `50` measured 62.1% of pairs above, so it
+      # excludes only what is quiet in absolute terms as well as relative.
+      min_bytes_per_node_minute: 1048576
+      # The same floors the utilisation rules carry, for the same reason: a rate averaged over one pair is
+      # not the job's rate.
+      min_sampled_pairs: 3
+      # And the estate needs enough pairs for a median to mean anything. An assumption; `50`'s estate had
+      # 10,488 and nothing bears on where the floor should be.
+      min_estate_pairs: 20
+      min_runs: 3
+
+  # ---------------------------------------------------------------------------
+  # Rule E. The one rule here that fires without any machine telemetry, because its input is on the bill.
+  # ---------------------------------------------------------------------------
+  - id: JOB_PHOTON_OFF
+    provenance: design-document
+    severity: medium
+    action: Enable Photon for one comparable run and measure the cost and duration
+    headline: This job's classic compute ran without Photon
+    detail: >-
+      Billing records this job's non-serverless usage as running without Photon. Photon is a vectorised
+      execution engine that speeds up most SQL and DataFrame work and bills at a higher rate per unit of
+      compute, so whether it is worth turning on depends on whether the job goes faster by more than the
+      rate rises — which this reading cannot tell you and a single run with it enabled can. Work dominated
+      by Python UDFs or by RDD operations is the usual case where it does not help.
+    doc_url: https://docs.databricks.com/aws/en/compute/photon
+    thresholds:
+      # Most of the job's stated classic usage, rather than all of it. A job whose clusters changed part
+      # way through the window has records on both sides, and requiring all of them would drop exactly the
+      # jobs somebody is already halfway through fixing. An assumption; `50` measured the share across
+      # clusters and not within a job.
+      photon_off_share: 0.8
+      # A floor under the share, so a job with one classic usage record is not a finding. An assumption.
+      min_photon_records: 3

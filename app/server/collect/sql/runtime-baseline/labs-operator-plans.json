@@ -1,0 +1,424 @@
+{
+  "runFinishedAt": "2026-08-11T03:34:27.459Z",
+  "profile": "labs",
+  "lookbackDays": 30,
+  "maxProfileBytes": 8388608,
+  "reachability": {
+    "byComputeType": [
+      {
+        "computeType": "WAREHOUSE",
+        "statements": 18448
+      },
+      {
+        "computeType": "SERVERLESS_COMPUTE",
+        "statements": 24
+      }
+    ],
+    "statements": 18472,
+    "warehouse": 18448,
+    "refusal": {
+      "status": 404,
+      "errorCode": "NOT_FOUND",
+      "bytes": 236
+    }
+  },
+  "ladder": {
+    "none": {
+      "status": 200,
+      "bytes": 28914,
+      "ofCap": 0.3
+    },
+    "include_metrics": {
+      "status": 200,
+      "bytes": 29843,
+      "ofCap": 0.4
+    },
+    "include_plans": {
+      "status": 200,
+      "bytes": 2429915,
+      "ofCap": 29
+    },
+    "include_plans+debug_info": {
+      "status": 200,
+      "bytes": 4655891,
+      "ofCap": 55.5
+    },
+    "include_plans+debug_info+json_plans": {
+      "status": 200,
+      "bytes": 9224845,
+      "ofCap": 110
+    }
+  },
+  "response": {
+    "statementId": "01f1818f-0629-16f0-b22e-550ce38beca9",
+    "plansState": "EXISTS",
+    "graphs": [
+      {
+        "index": "0",
+        "nodes": 123,
+        "source": "QUERY_EXECUTION_END"
+      },
+      {
+        "index": "1",
+        "nodes": 1,
+        "source": "QUERY_EXECUTION_END"
+      },
+      {
+        "index": "2",
+        "nodes": 1,
+        "source": "QUERY_EXECUTION_END"
+      },
+      {
+        "index": "3",
+        "nodes": 1,
+        "source": "QUERY_EXECUTION_END"
+      },
+      {
+        "index": "4",
+        "nodes": 1,
+        "source": "QUERY_EXECUTION_END"
+      },
+      {
+        "index": "5",
+        "nodes": 1,
+        "source": "QUERY_EXECUTION_END"
+      },
+      {
+        "index": "6",
+        "nodes": 1,
+        "source": "QUERY_EXECUTION_END"
+      },
+      {
+        "index": "7",
+        "nodes": 0,
+        "source": null
+      },
+      {
+        "index": "8",
+        "nodes": 1,
+        "source": "QUERY_EXECUTION_END"
+      },
+      {
+        "index": "9",
+        "nodes": 1,
+        "source": "QUERY_EXECUTION_END"
+      },
+      {
+        "index": "10",
+        "nodes": 1,
+        "source": "QUERY_EXECUTION_END"
+      },
+      {
+        "index": "11",
+        "nodes": 1,
+        "source": "QUERY_EXECUTION_END"
+      },
+      {
+        "index": "12",
+        "nodes": 1,
+        "source": "QUERY_EXECUTION_END"
+      },
+      {
+        "index": "13",
+        "nodes": 1,
+        "source": "QUERY_EXECUTION_END"
+      }
+    ],
+    "widest": {
+      "index": "0",
+      "nodes": 123
+    },
+    "metaDataKeys": [
+      "AGGREGATE_EXPRESSIONS",
+      "ALIASES",
+      "CONDITION",
+      "FILTERS",
+      "FILTER_CONDITION",
+      "GROUPING_EXPRESSIONS",
+      "IS_DELTA",
+      "IS_PHOTON",
+      "JOIN_ALGORITHM",
+      "JOIN_BUILD_SIDE",
+      "JOIN_TYPE",
+      "LEFT_KEYS",
+      "OUTPUT",
+      "PARTITIONING_TYPE",
+      "PROJECTION",
+      "RIGHT_KEYS",
+      "SCAN_CATALOG_TABLE_TYPE",
+      "SCAN_DATABASE",
+      "SCAN_FILE_INDEX_NAME",
+      "SCAN_FILE_PATHS",
+      "SCAN_IDENTIFIER",
+      "SCAN_PARTITIONS",
+      "SCAN_RELATION_DESC",
+      "SCAN_RELATION_NAME",
+      "SCAN_TABLE",
+      "SHUFFLE_ATTRIBUTES",
+      "SORT_ORDER"
+    ],
+    "promisedMetaDataAbsent": [],
+    "keyMetrics": {
+      "operators": 123,
+      "absent": 17,
+      "allZero": 3,
+      "measured": 103
+    },
+    "rawBytes": 2429915,
+    "extractBytes": 16372
+  },
+  "stability": {
+    "shapes": [
+      {
+        "shape": "392b12d7e49e",
+        "executions": [
+          {
+            "statementId": "01f1916c-83a5-1199-82c7-c1381b1a669f",
+            "startedAt": "2026-08-06 07:57:47.637",
+            "status": 200,
+            "bytes": 127522,
+            "nodes": 24,
+            "planFingerprint": "b39c29e06d2a3f25"
+          },
+          {
+            "statementId": "01f1916c-8196-17cd-8b49-c42567dbb169",
+            "startedAt": "2026-08-06 07:57:44.186",
+            "status": 200,
+            "bytes": 121098,
+            "nodes": 24,
+            "planFingerprint": "b39c29e06d2a3f25"
+          },
+          {
+            "statementId": "01f1916c-7f07-1486-a09b-3545846af1bc",
+            "startedAt": "2026-08-06 07:57:39.894",
+            "status": 200,
+            "bytes": 239115,
+            "nodes": 18,
+            "planFingerprint": "e1820651701e2847"
+          }
+        ],
+        "distinctPlans": 2,
+        "distinctNodeCounts": 2
+      },
+      {
+        "shape": "6b54312507eb",
+        "executions": [
+          {
+            "statementId": "01f19528-8116-1fe2-bffc-fd8cdbe3e9ac",
+            "startedAt": "2026-08-11 02:01:02.223",
+            "status": 200,
+            "bytes": 567792,
+            "nodes": 38,
+            "planFingerprint": "2096ff028ee5e0ed"
+          },
+          {
+            "statementId": "01f19528-7d7b-1d35-b2f6-6ab16955e7f7",
+            "startedAt": "2026-08-11 02:00:56.176",
+            "status": 200,
+            "bytes": 562361,
+            "nodes": 38,
+            "planFingerprint": "2096ff028ee5e0ed"
+          },
+          {
+            "statementId": "01f19528-7a1a-1cc9-a232-0acff1d427fe",
+            "startedAt": "2026-08-11 02:00:50.504",
+            "status": 200,
+            "bytes": 566626,
+            "nodes": 38,
+            "planFingerprint": "2096ff028ee5e0ed"
+          }
+        ],
+        "distinctPlans": 1,
+        "distinctNodeCounts": 1
+      },
+      {
+        "shape": "b68a83d91008",
+        "executions": [
+          {
+            "statementId": "01f1914a-5aae-1877-bb8d-35596c03d3ed",
+            "startedAt": "2026-08-06 03:53:16.026",
+            "status": 200,
+            "bytes": 164213,
+            "nodes": 24,
+            "planFingerprint": "b39c29e06d2a3f25"
+          },
+          {
+            "statementId": "01f1914a-5964-10ff-8cd1-137de8dcbc90",
+            "startedAt": "2026-08-06 03:53:13.859",
+            "status": 200,
+            "bytes": 164213,
+            "nodes": 24,
+            "planFingerprint": "b39c29e06d2a3f25"
+          },
+          {
+            "statementId": "01f1914a-5814-1f05-907b-0c2a02418467",
+            "startedAt": "2026-08-06 03:53:11.662",
+            "status": 200,
+            "bytes": 164213,
+            "nodes": 24,
+            "planFingerprint": "b39c29e06d2a3f25"
+          }
+        ],
+        "distinctPlans": 1,
+        "distinctNodeCounts": 1
+      },
+      {
+        "shape": "b6d29b6fe028",
+        "executions": [
+          {
+            "statementId": "01f19528-5bd2-13ba-a664-a154bc38752e",
+            "startedAt": "2026-08-11 01:59:59.699",
+            "status": 200,
+            "bytes": 259308,
+            "nodes": 19,
+            "planFingerprint": "04b81c1b224a142e"
+          },
+          {
+            "statementId": "01f19528-5933-1c9e-93e4-16649c9bb760",
+            "startedAt": "2026-08-11 01:59:55.305",
+            "status": 200,
+            "bytes": 259306,
+            "nodes": 19,
+            "planFingerprint": "04b81c1b224a142e"
+          },
+          {
+            "statementId": "01f19528-56c9-1766-95ba-a3e1877f713a",
+            "startedAt": "2026-08-11 01:59:51.253",
+            "status": 200,
+            "bytes": 259308,
+            "nodes": 19,
+            "planFingerprint": "04b81c1b224a142e"
+          }
+        ],
+        "distinctPlans": 1,
+        "distinctNodeCounts": 1
+      },
+      {
+        "shape": "c37abe11402d",
+        "executions": [
+          {
+            "statementId": "01f19527-c483-1583-9280-8ac326b24775",
+            "startedAt": "2026-08-11 01:55:45.845",
+            "status": 200,
+            "bytes": 420407,
+            "nodes": 31,
+            "planFingerprint": "2238f1545ade2da7"
+          },
+          {
+            "statementId": "01f19527-c088-1cc7-b31f-cc5a0cdcf8b7",
+            "startedAt": "2026-08-11 01:55:39.169",
+            "status": 200,
+            "bytes": 420402,
+            "nodes": 31,
+            "planFingerprint": "2238f1545ade2da7"
+          },
+          {
+            "statementId": "01f19527-bc33-13b5-b1ef-0c36dbcf9a40",
+            "startedAt": "2026-08-11 01:55:31.899",
+            "status": 200,
+            "bytes": 420417,
+            "nodes": 31,
+            "planFingerprint": "2238f1545ade2da7"
+          }
+        ],
+        "distinctPlans": 1,
+        "distinctNodeCounts": 1
+      },
+      {
+        "shape": "cf908c2c2de7",
+        "executions": [
+          {
+            "statementId": "01f19527-f26e-12ae-9bbd-7e2696fdf5ae",
+            "startedAt": "2026-08-11 01:57:02.88",
+            "status": 200,
+            "bytes": 164451,
+            "nodes": 24,
+            "planFingerprint": "b39c29e06d2a3f25"
+          },
+          {
+            "statementId": "01f19527-f0c2-13e5-94e4-a35e2f3836c4",
+            "startedAt": "2026-08-11 01:57:00.08",
+            "status": 200,
+            "bytes": 164451,
+            "nodes": 24,
+            "planFingerprint": "b39c29e06d2a3f25"
+          },
+          {
+            "statementId": "01f19527-ef09-1056-8297-86160904695b",
+            "startedAt": "2026-08-11 01:56:57.185",
+            "status": 200,
+            "bytes": 164451,
+            "nodes": 24,
+            "planFingerprint": "b39c29e06d2a3f25"
+          }
+        ],
+        "distinctPlans": 1,
+        "distinctNodeCounts": 1
+      },
+      {
+        "shape": "e9d29634f475",
+        "executions": [
+          {
+            "statementId": "01f1916c-a05b-1ba7-a8c8-a54454bc4cde",
+            "startedAt": "2026-08-06 07:58:35.811",
+            "status": 200,
+            "bytes": 179254,
+            "nodes": 68,
+            "planFingerprint": "1a696429cdc68d67"
+          },
+          {
+            "statementId": "01f1916c-9d64-1593-b71a-672775f36fbc",
+            "startedAt": "2026-08-06 07:58:30.833",
+            "status": 200,
+            "bytes": 112197,
+            "nodes": 36,
+            "planFingerprint": "d7940cafd90ac9c9"
+          },
+          {
+            "statementId": "01f1916c-9836-1b73-8a9b-f59adee83042",
+            "startedAt": "2026-08-06 07:58:22.147",
+            "status": 200,
+            "bytes": 1028868,
+            "nodes": 77,
+            "planFingerprint": "d034620517230d40"
+          }
+        ],
+        "distinctPlans": 3,
+        "distinctNodeCounts": 3
+      },
+      {
+        "shape": "fa7c367cf8a3",
+        "executions": [
+          {
+            "statementId": "01f1916c-8e03-1c93-a73b-59bde02eeab8",
+            "startedAt": "2026-08-06 07:58:05.036",
+            "status": 200,
+            "bytes": 146317,
+            "nodes": 45,
+            "planFingerprint": "540a7a0d34f81212"
+          },
+          {
+            "statementId": "01f1916c-8ae5-1afa-9b5e-2415f19540d8",
+            "startedAt": "2026-08-06 07:57:59.805",
+            "status": 200,
+            "bytes": 146317,
+            "nodes": 45,
+            "planFingerprint": "540a7a0d34f81212"
+          },
+          {
+            "statementId": "01f1916c-85cd-183e-a31b-3c908c7dce20",
+            "startedAt": "2026-08-06 07:57:51.258",
+            "status": 200,
+            "bytes": 871855,
+            "nodes": 51,
+            "planFingerprint": "a1fe7a2e45cec2ee"
+          }
+        ],
+        "distinctPlans": 2,
+        "distinctNodeCounts": 2
+      }
+    ],
+    "shapesMeasured": 8,
+    "shapesDrifted": 3
+  }
+}

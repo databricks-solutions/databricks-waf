@@ -1,0 +1,83 @@
+name: Documentation drift
+
+# The Well-Architected Framework documentation moves. When Databricks publishes,
+# retitles or removes a best practice, this catalogue silently stops
+# representing the framework it claims to represent. That is the failure this
+# job exists to catch, and it is a failure of correctness rather than of
+# freshness, which is why it fails loudly rather than warning.
+#
+# Scoped to provenance:waf-docs controls only. Extension controls have no source
+# anchor to diff and would otherwise be reported as deletions on every run.
+
+on:
+  schedule:
+    - cron: "0 7 * * 1"
+  pull_request:
+    paths:
+      - "app/config/controls/**"
+      - "app/scripts/docs-drift.mjs"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  drift:
+    name: Diff catalogue against published documentation
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - run: npm ci
+
+      - name: Check for drift
+        id: drift
+        run: npm run drift:docs -- --report ../docs-drift-report.md
+
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: docs-drift-report
+          path: docs-drift-report.md
+          if-no-files-found: ignore
+
+      # On the scheduled run a failure should become a tracked item rather than
+      # a red tick nobody looks at.
+      - name: Open an issue on drift
+        if: failure() && github.event_name == 'schedule'
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const fs = require('fs');
+            let body = 'The catalogue no longer matches the published Well-Architected Framework documentation.';
+            try {
+              body = fs.readFileSync('docs-drift-report.md', 'utf8');
+            } catch {}
+            const title = 'Documentation drift: catalogue no longer matches published guidance';
+            const existing = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'docs-drift',
+            });
+            if (existing.data.some((i) => i.title === title)) {
+              core.info('An open drift issue already exists; not filing a duplicate.');
+              return;
+            }
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title,
+              body,
+              labels: ['docs-drift', 'catalogue'],
+            });

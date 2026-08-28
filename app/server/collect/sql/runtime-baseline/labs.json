@@ -1,0 +1,1541 @@
+{
+  "runFinishedAt": "2026-08-16T20:45:06.963Z",
+  "profile": "labs",
+  "lookbackDays": 30,
+  "workspaceId": "",
+  "liveWorkspaceCount": 14,
+  "statements": {
+    "workspace_directory": {
+      "name": "workspace_directory",
+      "statementId": "01f199b2-69e2-1a82-aa89-8d10008b2757",
+      "measuredAt": "2026-08-16T20:38:18.320Z",
+      "warehouseId": "0123456789abcdef",
+      "statementSha": "sha256:83eb5d18c3e193e6b9f9884455144264d2ad670480998dc98684b85e9cc0f123",
+      "slicedInRecording": false,
+      "sliceColumn": null,
+      "rows": 18,
+      "columnCount": 7,
+      "serializedBytes": 2483,
+      "durationMs": 4144,
+      "durations": {
+        "readings": [
+          4144,
+          4131,
+          3870,
+          4020,
+          3769
+        ],
+        "samples": 5,
+        "min": 3769,
+        "median": 4020,
+        "max": 4144,
+        "spreadRatio": 1.1
+      },
+      "bytesRead": null,
+      "truncated": false,
+      "scannedBytes": 1020176,
+      "shuffleReadBytes": 0,
+      "spilledLocalBytes": 0,
+      "plan": null,
+      "error": null,
+      "parameters": {
+        "lookback_days": "30"
+      }
+    },
+    "serving_population": {
+      "name": "serving_population",
+      "statementId": "01f19996-247b-139c-88e2-a73f6c91c39f",
+      "measuredAt": "2026-08-16T17:15:55.902Z",
+      "warehouseId": "0123456789abcdef",
+      "statementSha": "sha256:0982f8d927c816fc22144d422a98c459c6b752e5cc379f5e2da6d7555d0bce64",
+      "slicedInRecording": false,
+      "sliceColumn": null,
+      "rows": 21,
+      "columnCount": 10,
+      "serializedBytes": 5535,
+      "durationMs": 3687,
+      "durations": {
+        "readings": [
+          3687,
+          2958,
+          2879,
+          2688,
+          2666
+        ],
+        "samples": 5,
+        "min": 2666,
+        "median": 2879,
+        "max": 3687,
+        "spreadRatio": 1.38
+      },
+      "bytesRead": null,
+      "truncated": false,
+      "scannedBytes": 0,
+      "shuffleReadBytes": 0,
+      "spilledLocalBytes": 0,
+      "plan": null,
+      "error": null,
+      "parameters": {
+        "serving_limit": "2000",
+        "serving_names": "main.servco_demo.call_actions,main.servco_demo.document_extracts",
+        "serving_tag_keys": "data_product,domain,layer"
+      }
+    },
+    "auth_login_paths": {
+      "name": "auth_login_paths",
+      "statementId": "01f1955e-3e67-12bf-9fbc-85924b0fd120",
+      "measuredAt": "2026-08-11T08:25:42.855Z",
+      "warehouseId": "0123456789abcdef",
+      "statementSha": "sha256:5d5efc0887d19da4cf0a947f8477712a00c261605cba694e04d7cbf604d8f638",
+      "slicedInRecording": false,
+      "sliceColumn": null,
+      "rows": 1,
+      "columnCount": 9,
+      "serializedBytes": 150,
+      "durationMs": 8623,
+      "durations": {
+        "readings": [
+          8623,
+          9661,
+          8641,
+          9873,
+          8160
+        ],
+        "samples": 5,
+        "min": 8160,
+        "median": 8641,
+        "max": 9873,
+        "spreadRatio": 1.21
+      },
+      "bytesRead": null,
+      "truncated": false,
+      "scannedBytes": 32965699,
+      "shuffleReadBytes": 2648221,
+      "spilledLocalBytes": 0,
+      "plan": null,
+      "error": null,
+      "parameters": {
+        "live_workspace_ids": "7000000000000023,7000000000000026,7000000000000020,7000000000000013,7000000000000021,7000000000000011,7000000000000008",
+        "lookback_days": "30",
+        "workspace_id": ""
+      }
+    },
+    "compute_cluster_inventory": {
+      "name": "compute_cluster_inventory",
+      "statementId": "01f1955e-592a-157a-8d1b-e5856faa133e",
+      "measuredAt": "2026-08-11T08:26:27.814Z",
+      "warehouseId": "0123456789abcdef",
+      "statementSha": "sha256:d9455c269d21ffed4107bc5f830b92aefbba756fdd483334bcb1a6496e688b36",
+      "slicedInRecording": false,
+      "sliceColumn": "workspace_id,",
+      "rows": 0,
+      "columnCount": 22,
+      "serializedBytes": 2,
+      "durationMs": 2401,
+      "durations": {
+        "readings": [
+          2401,
+          2590,
+          2506,
+          2240,
+          2244
+        ],
+        "samples": 5,
+        "min": 2240,
+        "median": 2401,
+        "max": 2590,
+        "spreadRatio": 1.16
+      },
+      "bytesRead": null,
+      "truncated": false,
+      "scannedBytes": 0,
+      "shuffleReadBytes": 0,
+      "spilledLocalBytes": 0,
+      "plan": null,
+      "error": null,
+      "parameters": {
+        "live_workspace_ids": "7000000000000023,7000000000000026,7000000000000020,7000000000000013,7000000000000021,7000000000000011,7000000000000008",
+        "workspace_id": ""
+      }
+    },
+    "compute_warehouse_inventory": {
+      "name": "compute_warehouse_inventory",
+      "statementId": "01f1955e-604d-1bd4-87dc-16721c22e372",
+      "measuredAt": "2026-08-11T08:26:39.797Z",
+      "warehouseId": "0123456789abcdef",
+      "statementSha": "sha256:254bc0a1b0d0aa5db5db1940956bde4fbec79fdf9192b78fa3e944fcece2400c",
+      "slicedInRecording": false,
+      "sliceColumn": null,
+      "rows": 7,
+      "columnCount": 14,
+      "serializedBytes": 1157,
+      "durationMs": 3840,
+      "durations": {
+        "readings": [
+          3840,
+          3373,
+          3521,
+          3715,
+          3770
+        ],
+        "samples": 5,
+        "min": 3373,
+        "median": 3715,
+        "max": 3840,
+        "spreadRatio": 1.14
+      },
+      "bytesRead": null,
+      "truncated": false,
+      "scannedBytes": 10939,
+      "shuffleReadBytes": 1300,
+      "spilledLocalBytes": 0,
+      "plan": null,
+      "error": null,
+      "parameters": {
+        "live_workspace_ids": "7000000000000023,7000000000000026,7000000000000020,7000000000000013,7000000000000021,7000000000000011,7000000000000008",
+        "workspace_id": ""
+      }
+    },
+    "cost_attribution_coverage": {
+      "name": "cost_attribution_coverage",
+      "statementId": "01f1955e-6b2a-108e-ab36-f7f362c576d2",
+      "measuredAt": "2026-08-11T08:26:58.018Z",
+      "warehouseId": "0123456789abcdef",
+      "statementSha": "sha256:1da298c4591b4ed666e24f50b313c671df914e39219f196dadd1fc48f7bdda70",
+      "slicedInRecording": false,
+      "sliceColumn": null,
+      "rows": 1,
+      "columnCount": 14,
+      "serializedBytes": 288,
+      "durationMs": 5613,
+      "durations": {
+        "readings": [
+          5613,
+          5343,
+          5185,
+          4839,
+          4981
+        ],
+        "samples": 5,
+        "min": 4839,
+        "median": 5185,
+        "max": 5613,
+        "spreadRatio": 1.16
+      },
+      "bytesRead": null,
+      "truncated": false,
+      "scannedBytes": 2865050,
+      "shuffleReadBytes": 2788440,
+      "spilledLocalBytes": 0,
+      "plan": null,
+      "error": null,
+      "parameters": {
+        "live_workspace_ids": "7000000000000023,7000000000000026,7000000000000020,7000000000000013,7000000000000021,7000000000000011,7000000000000008",
+        "lookback_days": "30",
+        "workspace_id": ""
+      }
+    },
+    "cost_compute_mix": {
+      "name": "cost_compute_mix",
+      "statementId": "01f1955e-7aa5-17a2-aaf7-0bf2f8faa1da",
+      "measuredAt": "2026-08-11T08:27:23.980Z",
+      "warehouseId": "0123456789abcdef",
+      "statementSha": "sha256:095e1039bce05daab54b7282aefc4f6f4581d92a3b7d7dbd36a9217093fc0e57",
+      "slicedInRecording": false,
+      "sliceColumn": null,
+      "rows": 1,
+      "columnCount": 18,
+      "serializedBytes": 134,
+      "durationMs": 5238,
+      "durations": {
+        "readings": [
+          5238,
+          5044,
+          4978,
+          5035,
+          4910
+        ],
+        "samples": 5,
+        "min": 4910,
+        "median": 5035,
+        "max": 5238,
+        "spreadRatio": 1.07
+      },
+      "bytesRead": null,
+      "truncated": false,
+      "scannedBytes": 2882016,
+      "shuffleReadBytes": 2810779,
+      "spilledLocalBytes": 0,
+      "plan": null,
+      "error": null,
+      "parameters": {
+        "live_workspace_ids": "7000000000000023,7000000000000026,7000000000000020,7000000000000013,7000000000000021,7000000000000011,7000000000000008",
+        "lookback_days": "30",
+        "workspace_id": ""
+      }
+    },
+    "estate_compute_profile": {
+      "name": "estate_compute_profile",
+      "statementId": "01f1955e-89aa-19b5-b20d-89004c392caf",
+      "measuredAt": "2026-08-11T08:27:49.188Z",
+      "warehouseId": "0123456789abcdef",
+      "statementSha": "sha256:a67c53e791e21486f77db3a444a85aca9d0e0e61c9f6029050cc0af6ee8e0e1d",
+      "slicedInRecording": false,
+      "sliceColumn": null,
+      "rows": 9,
+      "columnCount": 9,
+      "serializedBytes": 805,
+      "durationMs": 2943,
+      "durations": {
+        "readings": [
+          2943,
+          2943,
+          3079,
+          2941,
+          2968
+        ],
+        "samples": 5,
+        "min": 2941,
+        "median": 2943,
+        "max": 3079,
+        "spreadRatio": 1.05
+      },
+      "bytesRead": null,
+      "truncated": false,
+      "scannedBytes": 576807,
+      "shuffleReadBytes": 0,
+      "spilledLocalBytes": 0,
+      "plan": null,
+      "error": null,
+      "parameters": {
+        "live_workspace_ids": "7000000000000023,7000000000000026,7000000000000020,7000000000000013,7000000000000021,7000000000000011,7000000000000008",
+        "lookback_days": "30",
+        "workspace_id": ""
+      }
+    },
+    "governance_audit_coverage": {
+      "name": "governance_audit_coverage",
+      "statementId": "01f1955e-9289-1485-8286-b0eb71310076",
+      "measuredAt": "2026-08-11T08:28:04.064Z",
+      "warehouseId": "0123456789abcdef",
+      "statementSha": "sha256:258acae90708887365ee2583210b173838c5f0675089e6bac7353ebe740cf202",
+      "slicedInRecording": false,
+      "sliceColumn": null,
+      "rows": 1,
+      "columnCount": 8,
+      "serializedBytes": 93,
+      "durationMs": 8435,
+      "durations": {
+        "readings": [
+          8435,
+          8018,
+          7419,
+          8587,
+          7714
+        ],
+        "samples": 5,
+        "min": 7419,
+        "median": 8018,
+        "max": 8587,
+        "spreadRatio": 1.16
+      },
+      "bytesRead": null,
+      "truncated": false,
+      "scannedBytes": 33760506,
+      "shuffleReadBytes": 94044,
+      "spilledLocalBytes": 0,
+      "plan": null,
+      "error": null,
+      "parameters": {
+        "live_workspace_ids": "7000000000000023,7000000000000026,7000000000000020,7000000000000013,7000000000000021,7000000000000011,7000000000000008",
+        "lookback_days": "30",
+        "workspace_id": ""
+      }
+    },
+    "job_compute_utilisation": {
+      "name": "job_compute_utilisation",
+      "statementId": "01f199a6-f5a1-10a2-abe7-41f1b8fcef0d",
+      "measuredAt": "2026-08-16T19:16:18.758Z",
+      "warehouseId": "0123456789abcdef",
+      "statementSha": "sha256:193db8f035a51c37263aea0c12a3bbd41daebc5d40c9d10072f7625d8b214486",
+      "slicedInRecording": false,
+      "sliceColumn": null,
+      "rows": 0,
+      "columnCount": 31,
+      "serializedBytes": 2,
+      "durationMs": 8608,
+      "durations": {
+        "readings": [
+          8608,
+          8260,
+          7949,
+          7608,
+          7328
+        ],
+        "samples": 5,
+        "min": 7328,
+        "median": 7949,
+        "max": 8608,
+        "spreadRatio": 1.17
+      },
+      "bytesRead": null,
+      "truncated": false,
+      "scannedBytes": 0,
+      "shuffleReadBytes": 0,
+      "spilledLocalBytes": 0,
+      "plan": null,
+      "error": null,
+      "parameters": {
+        "job_limit": "200",
+        "live_workspace_ids": "7000000000000023,7000000000000026,7000000000000011,7000000000000010,7000000000000016,7000000000000022,7000000000000017,7000000000000015,7000000000000019,7000000000000025,7000000000000024,7000000000000012,7000000000000014,7000000000000008",
+        "lookback_days": "30",
+        "workspace_id": ""
+      }
+    },
+    "job_run_health": {
+      "name": "job_run_health",
+      "statementId": "01f199a6-df11-12da-8091-2d266801420d",
+      "measuredAt": "2026-08-16T19:15:40.919Z",
+      "warehouseId": "0123456789abcdef",
+      "statementSha": "sha256:203fc527c578fad828cdcdfc50a13d8228020379b746a4945d34b77c1aba7a93",
+      "slicedInRecording": false,
+      "sliceColumn": null,
+      "rows": 6,
+      "columnCount": 29,
+      "serializedBytes": 1284,
+      "durationMs": 7226,
+      "durations": {
+        "readings": [
+          7226,
+          8203,
+          7905,
+          7873,
+          6632
+        ],
+        "samples": 5,
+        "min": 6632,
+        "median": 7873,
+        "max": 8203,
+        "spreadRatio": 1.24
+      },
+      "bytesRead": null,
+      "truncated": false,
+      "scannedBytes": 1179421,
+      "shuffleReadBytes": 0,
+      "spilledLocalBytes": 0,
+      "plan": null,
+      "error": null,
+      "parameters": {
+        "job_limit": "200",
+        "live_workspace_ids": "7000000000000023,7000000000000026,7000000000000011,7000000000000010,7000000000000016,7000000000000022,7000000000000017,7000000000000015,7000000000000019,7000000000000025,7000000000000024,7000000000000012,7000000000000014,7000000000000008",
+        "lookback_days": "30",
+        "workspace_id": ""
+      }
+    },
+    "jobs_inventory": {
+      "name": "jobs_inventory",
+      "statementId": "01f1955e-aa7b-10c8-8cfc-a2034b7b5eab",
+      "measuredAt": "2026-08-11T08:28:44.239Z",
+      "warehouseId": "0123456789abcdef",
+      "statementSha": "sha256:6a15afa100109201de028dfb155760df701b5cb8f7c262e2a9bab2bf424b3f6a",
+      "slicedInRecording": false,
+      "sliceColumn": "workspace_id,",
+      "rows": 4,
+      "columnCount": 16,
+      "serializedBytes": 762,
+      "durationMs": 4546,
+      "durations": {
+        "readings": [
+          4546,
+          4373,
+          4328,
+          4682,
+          5060
+        ],
+        "samples": 5,
+        "min": 4328,
+        "median": 4546,
+        "max": 5060,
+        "spreadRatio": 1.17
+      },
+      "bytesRead": null,
+      "truncated": false,
+      "scannedBytes": 14958,
+      "shuffleReadBytes": 0,
+      "spilledLocalBytes": 0,
+      "plan": null,
+      "error": null,
+      "parameters": {
+        "live_workspace_ids": "7000000000000023,7000000000000026,7000000000000020,7000000000000013,7000000000000021,7000000000000011,7000000000000008",
+        "workspace_id": ""
+      }
+    },
+    "lakeflow_pipeline_inventory": {
+      "name": "lakeflow_pipeline_inventory",
+      "statementId": "01f1955e-b82e-1f0a-84c4-4fba78b8dbfd",
+      "measuredAt": "2026-08-11T08:29:07.231Z",
+      "warehouseId": "0123456789abcdef",
+      "statementSha": "sha256:8d235ce103e313e9c69cc217fb93d581e913ab1cb376f400908f2a679f40c1dd",
+      "slicedInRecording": false,
+      "sliceColumn": null,
+      "rows": 0,
+      "columnCount": 13,
+      "serializedBytes": 2,
+      "durationMs": 4986,
+      "durations": {
+        "readings": [
+          4986,
+          4762,
+          4691,
+          4659,
+          4558
+        ],
+        "samples": 5,
+        "min": 4558,
+        "median": 4691,
+        "max": 4986,
+        "spreadRatio": 1.09
+      },
+      "bytesRead": null,
+      "truncated": false,
+      "scannedBytes": 16595,
+      "shuffleReadBytes": 0,
+      "spilledLocalBytes": 0,
+      "plan": null,
+      "error": null,
+      "parameters": {
+        "live_workspace_ids": "7000000000000023,7000000000000026,7000000000000020,7000000000000013,7000000000000021,7000000000000011,7000000000000008",
+        "lookback_days": "30",
+        "workspace_id": ""
+      }
+    },
+    "maintenance_recency": {
+      "name": "maintenance_recency",
+      "statementId": "01f19995-37b1-1e5d-a57c-5954a60533a4",
+      "measuredAt": "2026-08-16T17:09:18.622Z",
+      "warehouseId": "0123456789abcdef",
+      "statementSha": "sha256:d69c9264e09e2ebd2238f7abc91836877381d7095b1397a7724a637cefc77cc2",
+      "slicedInRecording": false,
+      "sliceColumn": null,
+      "rows": 3,
+      "columnCount": 6,
+      "serializedBytes": 234,
+      "durationMs": 8803,
+      "durations": {
+        "readings": [
+          8803,
+          5357,
+          5453,
+          5285,
+          5400
+        ],
+        "samples": 5,
+        "min": 5285,
+        "median": 5400,
+        "max": 8803,
+        "spreadRatio": 1.67
+      },
+      "bytesRead": null,
+      "truncated": false,
+      "scannedBytes": 18205776,
+      "shuffleReadBytes": 0,
+      "spilledLocalBytes": 0,
+      "plan": null,
+      "error": null,
+      "parameters": {
+        "lookback_days": "30",
+        "workspace_id": ""
+      }
+    },
+    "mlflow_run_tracking": {
+      "name": "mlflow_run_tracking",
+      "statementId": "01f199b2-8b47-10fd-a051-5fe6bba45fdd",
+      "measuredAt": "2026-08-16T20:39:14.352Z",
+      "warehouseId": "0123456789abcdef",
+      "statementSha": "sha256:babe471880e277a23f157fea552a2adb8ea4548f0aa5e76aecaafe3dafc63fed",
+      "slicedInRecording": false,
+      "sliceColumn": null,
+      "rows": 1,
+      "columnCount": 11,
+      "serializedBytes": 47,
+      "durationMs": 6694,
+      "durations": {
+        "readings": [
+          6694,
+          5655,
+          5405,
+          5868,
+          5788
+        ],
+        "samples": 5,
+        "min": 5405,
+        "median": 5788,
+        "max": 6694,
+        "spreadRatio": 1.24
+      },
+      "bytesRead": null,
+      "truncated": false,
+      "scannedBytes": 0,
+      "shuffleReadBytes": 0,
+      "spilledLocalBytes": 0,
+      "plan": null,
+      "error": null,
+      "parameters": {
+        "live_workspace_ids": "7000000000000023,7000000000000026,7000000000000011,7000000000000010,7000000000000016,7000000000000022,7000000000000017,7000000000000015,7000000000000019,7000000000000025,7000000000000024,7000000000000012,7000000000000014,7000000000000008",
+        "lookback_days": "30",
+        "workspace_id": ""
+      }
+    },
+    "node_utilization": {
+      "name": "node_utilization",
+      "statementId": "01f1955e-d828-19e3-a556-6a1a32d07e57",
+      "measuredAt": "2026-08-11T08:30:00.879Z",
+      "warehouseId": "0123456789abcdef",
+      "statementSha": "sha256:8c7e23b92cb19ad84be4f222a40248984d8da16896fdca179fdeaa3d95b328ad",
+      "slicedInRecording": false,
+      "sliceColumn": null,
+      "rows": 1,
+      "columnCount": 4,
+      "serializedBytes": 20,
+      "durationMs": 4115,
+      "durations": {
+        "readings": [
+          4115,
+          4156,
+          3945,
+          4767,
+          4104
+        ],
+        "samples": 5,
+        "min": 3945,
+        "median": 4115,
+        "max": 4767,
+        "spreadRatio": 1.21
+      },
+      "bytesRead": null,
+      "truncated": false,
+      "scannedBytes": 0,
+      "shuffleReadBytes": 0,
+      "spilledLocalBytes": 0,
+      "plan": null,
+      "error": null,
+      "parameters": {
+        "live_workspace_ids": "7000000000000023,7000000000000026,7000000000000020,7000000000000013,7000000000000021,7000000000000011,7000000000000008",
+        "lookback_days": "30",
+        "workspace_id": ""
+      }
+    },
+    "serverless_job_readiness": {
+      "name": "serverless_job_readiness",
+      "statementId": "01f1955e-e4bb-17d9-833e-784c662c451f",
+      "measuredAt": "2026-08-11T08:30:21.969Z",
+      "warehouseId": "0123456789abcdef",
+      "statementSha": "sha256:cfc77b15c4c0c4b69a599998159f763c94a93a8ff799d412d4e7d3e75e9aea8a",
+      "slicedInRecording": false,
+      "sliceColumn": "workspace_id,",
+      "rows": 7,
+      "columnCount": 29,
+      "serializedBytes": 1213,
+      "durationMs": 4041,
+      "durations": {
+        "readings": [
+          4041,
+          4463,
+          4096,
+          4096,
+          4630
+        ],
+        "samples": 5,
+        "min": 4041,
+        "median": 4096,
+        "max": 4630,
+        "spreadRatio": 1.15
+      },
+      "bytesRead": null,
+      "truncated": false,
+      "scannedBytes": 30972,
+      "shuffleReadBytes": 0,
+      "spilledLocalBytes": 0,
+      "plan": null,
+      "error": null,
+      "parameters": {
+        "live_workspace_ids": "7000000000000023,7000000000000026,7000000000000020,7000000000000013,7000000000000021,7000000000000011,7000000000000008",
+        "lookback_days": "30",
+        "workspace_id": ""
+      }
+    },
+    "serverless_job_spend": {
+      "name": "serverless_job_spend",
+      "statementId": "01f1955e-f171-1cf7-922f-e8062e1273a9",
+      "measuredAt": "2026-08-11T08:30:43.299Z",
+      "warehouseId": "0123456789abcdef",
+      "statementSha": "sha256:e00c763b23c1117da46cb3c12e496a88f247b5a40cc61ade731f385eea468e49",
+      "slicedInRecording": false,
+      "sliceColumn": "workspace_id,",
+      "rows": 7,
+      "columnCount": 11,
+      "serializedBytes": 818,
+      "durationMs": 6359,
+      "durations": {
+        "readings": [
+          6359,
+          6406,
+          7720,
+          6010,
+          5980
+        ],
+        "samples": 5,
+        "min": 5980,
+        "median": 6359,
+        "max": 7720,
+        "spreadRatio": 1.29
+      },
+      "bytesRead": null,
+      "truncated": false,
+      "scannedBytes": 1913063,
+      "shuffleReadBytes": 29742,
+      "spilledLocalBytes": 0,
+      "plan": null,
+      "error": null,
+      "parameters": {
+        "live_workspace_ids": "7000000000000023,7000000000000026,7000000000000020,7000000000000013,7000000000000021,7000000000000011,7000000000000008",
+        "lookback_days": "30",
+        "workspace_id": ""
+      }
+    },
+    "serving_asset_facts": {
+      "name": "serving_asset_facts",
+      "statementId": "01f19996-2d5a-11c0-821e-401bc3b2a9ec",
+      "measuredAt": "2026-08-16T17:16:10.782Z",
+      "warehouseId": "0123456789abcdef",
+      "statementSha": "sha256:69ad9ceb3869b5114ec67208de574b902a5b51905c67c301d93adb8a19092bcd",
+      "slicedInRecording": false,
+      "sliceColumn": null,
+      "rows": 10,
+      "columnCount": 10,
+      "serializedBytes": 924,
+      "durationMs": 13776,
+      "durations": {
+        "readings": [
+          13776,
+          15751,
+          12145,
+          11820,
+          12238
+        ],
+        "samples": 5,
+        "min": 11820,
+        "median": 12238,
+        "max": 15751,
+        "spreadRatio": 1.33
+      },
+      "bytesRead": null,
+      "truncated": false,
+      "scannedBytes": 874973,
+      "shuffleReadBytes": 0,
+      "spilledLocalBytes": 0,
+      "plan": null,
+      "error": null,
+      "parameters": {
+        "lookback_days": "30",
+        "serving_assets": "main.servco_demo.call_actions,main.servco_demo.call_insights,main.servco_demo.call_transcripts,main.servco_demo.customer_reviews,main.servco_demo.document_extracts,main.servco_demo.review_metrics,main.servco_demo.sales_metrics,main.servco_demo.service_metrics,main.servco_demo.service_orders,main.servco_demo.vehicle_sales",
+        "serving_limit": "2000"
+      }
+    },
+    "serving_asset_tags": {
+      "name": "serving_asset_tags",
+      "statementId": "01f19910-7a95-1a84-b64a-69081528e9bf",
+      "measuredAt": "2026-08-16T01:19:07.924Z",
+      "warehouseId": "0123456789abcdef",
+      "statementSha": "sha256:4932636c90d095f81f1a8bf77cf10971d3dce91f26e442c793f34673cca251e9",
+      "slicedInRecording": false,
+      "sliceColumn": null,
+      "rows": 40,
+      "columnCount": 4,
+      "serializedBytes": 2980,
+      "durationMs": 1056,
+      "durations": {
+        "readings": [
+          1056,
+          945,
+          957,
+          985,
+          958
+        ],
+        "samples": 5,
+        "min": 945,
+        "median": 958,
+        "max": 1056,
+        "spreadRatio": 1.12
+      },
+      "bytesRead": null,
+      "truncated": false,
+      "scannedBytes": 0,
+      "shuffleReadBytes": 0,
+      "spilledLocalBytes": 0,
+      "plan": null,
+      "error": null,
+      "parameters": {
+        "serving_assets": "main.servco_demo.call_actions,main.servco_demo.call_insights,main.servco_demo.call_transcripts,main.servco_demo.customer_reviews,main.servco_demo.document_extracts,main.servco_demo.review_metrics,main.servco_demo.sales_metrics,main.servco_demo.service_metrics,main.servco_demo.service_orders,main.servco_demo.vehicle_sales",
+        "serving_limit": "2000"
+      }
+    },
+    "serving_model_entities": {
+      "name": "serving_model_entities",
+      "statementId": "01f199b2-75c3-1eae-ad29-81e4720c006b",
+      "measuredAt": "2026-08-16T20:38:38.256Z",
+      "warehouseId": "0123456789abcdef",
+      "statementSha": "sha256:8a01b41470ea400974c50a0242bf3766d5110804803f59336c0d58cbac2b3fdc",
+      "slicedInRecording": false,
+      "sliceColumn": null,
+      "rows": 33,
+      "columnCount": 24,
+      "serializedBytes": 10194,
+      "durationMs": 7730,
+      "durations": {
+        "readings": [
+          7730,
+          7421,
+          6916,
+          7008,
+          7017
+        ],
+        "samples": 5,
+        "min": 6916,
+        "median": 7017,
+        "max": 7730,
+        "spreadRatio": 1.12
+      },
+      "bytesRead": null,
+      "truncated": false,
+      "scannedBytes": 97253,
+      "shuffleReadBytes": 0,
+      "spilledLocalBytes": 0,
+      "plan": null,
+      "error": null,
+      "parameters": {
+        "live_workspace_ids": "7000000000000023,7000000000000026,7000000000000011,7000000000000010,7000000000000016,7000000000000022,7000000000000017,7000000000000015,7000000000000019,7000000000000025,7000000000000024,7000000000000012,7000000000000014,7000000000000008",
+        "lookback_days": "30",
+        "serving_entity_limit": "200",
+        "workspace_id": ""
+      }
+    },
+    "storage_sample_selection": {
+      "name": "storage_sample_selection",
+      "statementId": "01f19996-5485-17e8-acf5-5f2afe45af2d",
+      "measuredAt": "2026-08-16T17:17:16.513Z",
+      "warehouseId": "0123456789abcdef",
+      "statementSha": "sha256:dffe7d32f57d64c483c1d4b5d1961af720cdda8c80f4f39e3aedc0ea0650e891",
+      "slicedInRecording": false,
+      "sliceColumn": null,
+      "rows": 45,
+      "columnCount": 6,
+      "serializedBytes": 2943,
+      "durationMs": 3900,
+      "durations": {
+        "readings": [
+          3900,
+          3654,
+          3595,
+          3709,
+          3793
+        ],
+        "samples": 5,
+        "min": 3595,
+        "median": 3709,
+        "max": 3900,
+        "spreadRatio": 1.08
+      },
+      "bytesRead": null,
+      "truncated": false,
+      "scannedBytes": 299872,
+      "shuffleReadBytes": 0,
+      "spilledLocalBytes": 0,
+      "plan": null,
+      "error": null,
+      "parameters": {
+        "lookback_days": "30",
+        "table_limit": "200",
+        "workspace_id": ""
+      }
+    },
+    "storage_table_metrics": {
+      "name": "storage_table_metrics",
+      "statementId": "01f19611-0a57-1515-a0c0-6fd523f99167",
+      "measuredAt": "2026-08-12T05:45:35.495Z",
+      "warehouseId": "0123456789abcdef",
+      "statementSha": "sha256:18cbf40f4743bb685acbc9e54454ee9e228d084f475d3b28f67bed65970d7b87",
+      "slicedInRecording": false,
+      "sliceColumn": null,
+      "rows": 1,
+      "columnCount": 10,
+      "serializedBytes": 56,
+      "durationMs": 6822,
+      "durations": {
+        "readings": [
+          6822,
+          4961,
+          5106,
+          4885,
+          4769
+        ],
+        "samples": 5,
+        "min": 4769,
+        "median": 4961,
+        "max": 6822,
+        "spreadRatio": 1.43
+      },
+      "bytesRead": null,
+      "truncated": false,
+      "scannedBytes": 0,
+      "shuffleReadBytes": 0,
+      "spilledLocalBytes": 0,
+      "plan": null,
+      "error": null,
+      "parameters": {
+        "table_limit": "200"
+      }
+    },
+    "uc_asset_census": {
+      "name": "uc_asset_census",
+      "statementId": "01f19996-5fa2-161a-b9cd-3b15576bf46a",
+      "measuredAt": "2026-08-16T17:17:35.164Z",
+      "warehouseId": "0123456789abcdef",
+      "statementSha": "sha256:72b3a6e45824f38e4adb0bd363f47806239822b946a051cad5397c1d5d755546",
+      "slicedInRecording": false,
+      "sliceColumn": null,
+      "rows": 1,
+      "columnCount": 15,
+      "serializedBytes": 76,
+      "durationMs": 1743,
+      "durations": {
+        "readings": [
+          1743,
+          1516,
+          1453,
+          1462,
+          1510
+        ],
+        "samples": 5,
+        "min": 1453,
+        "median": 1510,
+        "max": 1743,
+        "spreadRatio": 1.2
+      },
+      "bytesRead": null,
+      "truncated": false,
+      "scannedBytes": 0,
+      "shuffleReadBytes": 0,
+      "spilledLocalBytes": 0,
+      "plan": null,
+      "error": null,
+      "parameters": {}
+    },
+    "uc_catalog_inventory": {
+      "name": "uc_catalog_inventory",
+      "statementId": "01f19996-6436-1a1f-ad97-4e8b0d6a924f",
+      "measuredAt": "2026-08-16T17:17:42.849Z",
+      "warehouseId": "0123456789abcdef",
+      "statementSha": "sha256:7e094553d8fa5eb2ad2033762568bc76e6e2cd465cf48b28b943b1dd318fec2a",
+      "slicedInRecording": false,
+      "sliceColumn": null,
+      "rows": 4,
+      "columnCount": 4,
+      "serializedBytes": 110,
+      "durationMs": 810,
+      "durations": {
+        "readings": [
+          810,
+          837,
+          825,
+          870,
+          868
+        ],
+        "samples": 5,
+        "min": 810,
+        "median": 837,
+        "max": 870,
+        "spreadRatio": 1.07
+      },
+      "bytesRead": null,
+      "truncated": false,
+      "scannedBytes": 0,
+      "shuffleReadBytes": 0,
+      "spilledLocalBytes": 0,
+      "plan": null,
+      "error": null,
+      "parameters": {}
+    },
+    "uc_discovery_columns": {
+      "name": "uc_discovery_columns",
+      "statementId": "01f1999d-d618-1de7-8d2e-544e195cc0e1",
+      "measuredAt": "2026-08-16T18:11:00.373Z",
+      "warehouseId": "0123456789abcdef",
+      "statementSha": "sha256:9ffc7f6a66601c2b0d8b5df6980f80d2e9fbee980f15a501c513e98f622fc535",
+      "slicedInRecording": false,
+      "sliceColumn": null,
+      "rows": 1,
+      "columnCount": 2,
+      "serializedBytes": 14,
+      "durationMs": 5336,
+      "durations": {
+        "readings": [
+          5336,
+          5734,
+          5931,
+          5624,
+          5330
+        ],
+        "samples": 5,
+        "min": 5330,
+        "median": 5624,
+        "max": 5931,
+        "spreadRatio": 1.11
+      },
+      "bytesRead": null,
+      "truncated": false,
+      "scannedBytes": 565716,
+      "shuffleReadBytes": 0,
+      "spilledLocalBytes": 0,
+      "plan": null,
+      "error": null,
+      "parameters": {
+        "lookback_days": "30",
+        "workspace_id": ""
+      }
+    },
+    "uc_discovery_metadata": {
+      "name": "uc_discovery_metadata",
+      "statementId": "01f1999d-c952-10a0-950a-ef309811f729",
+      "measuredAt": "2026-08-16T18:10:38.848Z",
+      "warehouseId": "0123456789abcdef",
+      "statementSha": "sha256:c8f2dccb5df9b1cfb186c474c66043d5de6fdeb7731b61356a3957befa89265c",
+      "slicedInRecording": false,
+      "sliceColumn": null,
+      "rows": 1,
+      "columnCount": 7,
+      "serializedBytes": 39,
+      "durationMs": 4427,
+      "durations": {
+        "readings": [
+          4427,
+          4239,
+          4158,
+          4167,
+          4533
+        ],
+        "samples": 5,
+        "min": 4158,
+        "median": 4239,
+        "max": 4533,
+        "spreadRatio": 1.09
+      },
+      "bytesRead": null,
+      "truncated": false,
+      "scannedBytes": 564409,
+      "shuffleReadBytes": 0,
+      "spilledLocalBytes": 0,
+      "plan": null,
+      "error": null,
+      "parameters": {
+        "lookback_days": "30",
+        "workspace_id": ""
+      }
+    },
+    "uc_lineage_coverage": {
+      "name": "uc_lineage_coverage",
+      "statementId": "01f19996-7695-1e9b-8883-41a88d1d6a96",
+      "measuredAt": "2026-08-16T17:18:13.662Z",
+      "warehouseId": "0123456789abcdef",
+      "statementSha": "sha256:795b73989211a3e1574a067c42f00ce53a44bff42cf00163c8f1c57df96b6ea2",
+      "slicedInRecording": false,
+      "sliceColumn": null,
+      "rows": 1,
+      "columnCount": 6,
+      "serializedBytes": 57,
+      "durationMs": 4116,
+      "durations": {
+        "readings": [
+          4116,
+          3912,
+          3683,
+          4091,
+          3840
+        ],
+        "samples": 5,
+        "min": 3683,
+        "median": 3912,
+        "max": 4116,
+        "spreadRatio": 1.12
+      },
+      "bytesRead": null,
+      "truncated": false,
+      "scannedBytes": 477607,
+      "shuffleReadBytes": 0,
+      "spilledLocalBytes": 0,
+      "plan": null,
+      "error": null,
+      "parameters": {
+        "lookback_days": "30",
+        "workspace_id": ""
+      }
+    },
+    "uc_platform_census": {
+      "name": "uc_platform_census",
+      "statementId": "01f19996-824c-110a-83fa-bd5df850cbca",
+      "measuredAt": "2026-08-16T17:18:33.304Z",
+      "warehouseId": "0123456789abcdef",
+      "statementSha": "sha256:1981702d4355a6e5846bfce30f80b4a755819223b4167c3bdb5dc5e1cccf4d11",
+      "slicedInRecording": false,
+      "sliceColumn": null,
+      "rows": 1,
+      "columnCount": 18,
+      "serializedBytes": 96,
+      "durationMs": 3048,
+      "durations": {
+        "readings": [
+          3048,
+          2804,
+          2716,
+          2640,
+          2702
+        ],
+        "samples": 5,
+        "min": 2640,
+        "median": 2716,
+        "max": 3048,
+        "spreadRatio": 1.15
+      },
+      "bytesRead": null,
+      "truncated": false,
+      "scannedBytes": 0,
+      "shuffleReadBytes": 0,
+      "spilledLocalBytes": 0,
+      "plan": null,
+      "error": null,
+      "parameters": {}
+    },
+    "uc_schema_census": {
+      "name": "uc_schema_census",
+      "statementId": "01f19996-8a95-1029-b161-f430b21bf961",
+      "measuredAt": "2026-08-16T17:18:47.215Z",
+      "warehouseId": "0123456789abcdef",
+      "statementSha": "sha256:fb1511037598ddf996f4f48541a66f837002aac5cbfd78139e7a186f9706af15",
+      "slicedInRecording": false,
+      "sliceColumn": null,
+      "rows": 6,
+      "columnCount": 12,
+      "serializedBytes": 360,
+      "durationMs": 864,
+      "durations": {
+        "readings": [
+          864,
+          849,
+          942,
+          925,
+          956
+        ],
+        "samples": 5,
+        "min": 849,
+        "median": 925,
+        "max": 956,
+        "spreadRatio": 1.13
+      },
+      "bytesRead": null,
+      "truncated": false,
+      "scannedBytes": 0,
+      "shuffleReadBytes": 0,
+      "spilledLocalBytes": 0,
+      "plan": null,
+      "error": null,
+      "parameters": {
+        "segment_limit": "500"
+      }
+    },
+    "workload_query_shapes": {
+      "name": "workload_query_shapes",
+      "statementId": "01f1955f-4dc8-1b51-aeb4-00cfa39188a1",
+      "measuredAt": "2026-08-11T08:33:18.227Z",
+      "warehouseId": "0123456789abcdef",
+      "statementSha": "sha256:77aeb204ca48391e889720107aa986843c8b9aeacf66b01696a15f9725bd075b",
+      "slicedInRecording": false,
+      "sliceColumn": null,
+      "rows": 40,
+      "columnCount": 45,
+      "serializedBytes": 41760,
+      "durationMs": 14751,
+      "durations": {
+        "readings": [
+          14751,
+          14540,
+          15467,
+          14009,
+          16089
+        ],
+        "samples": 5,
+        "min": 14009,
+        "median": 14751,
+        "max": 16089,
+        "spreadRatio": 1.15
+      },
+      "bytesRead": null,
+      "truncated": false,
+      "scannedBytes": 208612270,
+      "shuffleReadBytes": 364712,
+      "spilledLocalBytes": 0,
+      "plan": null,
+      "error": null,
+      "parameters": {
+        "live_workspace_ids": "7000000000000023,7000000000000026,7000000000000020,7000000000000013,7000000000000021,7000000000000011,7000000000000008",
+        "lookback_days": "30",
+        "shape_limit": "40",
+        "workspace_id": ""
+      }
+    },
+    "workload_sql_paths": {
+      "name": "workload_sql_paths",
+      "statementId": "01f1955f-7a67-1726-af99-b658419c47d0",
+      "measuredAt": "2026-08-11T08:34:33.088Z",
+      "warehouseId": "0123456789abcdef",
+      "statementSha": "sha256:cf45205873c73eb1a3f08c5609aea2ecb283a417f6f2fdb511a95cf60afbf3e0",
+      "slicedInRecording": false,
+      "sliceColumn": null,
+      "rows": 1,
+      "columnCount": 15,
+      "serializedBytes": 262,
+      "durationMs": 8034,
+      "durations": {
+        "readings": [
+          8034,
+          9699,
+          6841,
+          6418,
+          6791
+        ],
+        "samples": 5,
+        "min": 6418,
+        "median": 6841,
+        "max": 9699,
+        "spreadRatio": 1.51
+      },
+      "bytesRead": null,
+      "truncated": false,
+      "scannedBytes": 51966509,
+      "shuffleReadBytes": 4190,
+      "spilledLocalBytes": 0,
+      "plan": null,
+      "error": null,
+      "parameters": {
+        "live_workspace_ids": "7000000000000023,7000000000000026,7000000000000020,7000000000000013,7000000000000021,7000000000000011,7000000000000008",
+        "lookback_days": "30",
+        "workspace_id": ""
+      }
+    },
+    "workload_table_statistics": {
+      "name": "workload_table_statistics",
+      "statementId": "01f19997-796d-1ccc-a660-47cbd2bd4d36",
+      "measuredAt": "2026-08-16T17:25:27.921Z",
+      "warehouseId": "0123456789abcdef",
+      "statementSha": "sha256:b59217f3bad0ad369d9d2a4d105f59144cb441d83f866b8e8047090fdf6ae6a9",
+      "slicedInRecording": false,
+      "sliceColumn": null,
+      "rows": 54,
+      "columnCount": 6,
+      "serializedBytes": 5973,
+      "durationMs": 5729,
+      "durations": {
+        "readings": [
+          5729,
+          5114,
+          5480,
+          5209,
+          5664
+        ],
+        "samples": 5,
+        "min": 5114,
+        "median": 5480,
+        "max": 5729,
+        "spreadRatio": 1.12
+      },
+      "bytesRead": null,
+      "truncated": false,
+      "scannedBytes": 426501,
+      "shuffleReadBytes": 0,
+      "spilledLocalBytes": 0,
+      "plan": null,
+      "error": null,
+      "parameters": {
+        "lookback_days": "30",
+        "stats_limit": "200"
+      }
+    },
+    "workload_warehouse_pressure": {
+      "name": "workload_warehouse_pressure",
+      "statementId": "01f1955f-90ee-1071-a122-7eb3a0f379c1",
+      "measuredAt": "2026-08-11T08:35:10.873Z",
+      "warehouseId": "0123456789abcdef",
+      "statementSha": "sha256:735ede35ab01b949ab277183c4a1652729d8c83806791259b4d6b2dba64f617b",
+      "slicedInRecording": false,
+      "sliceColumn": null,
+      "rows": 4,
+      "columnCount": 25,
+      "serializedBytes": 726,
+      "durationMs": 8001,
+      "durations": {
+        "readings": [
+          8001,
+          11560,
+          11109,
+          14492,
+          11371
+        ],
+        "samples": 5,
+        "min": 8001,
+        "median": 11371,
+        "max": 14492,
+        "spreadRatio": 1.81
+      },
+      "bytesRead": null,
+      "truncated": false,
+      "scannedBytes": 89932947,
+      "shuffleReadBytes": 27217,
+      "spilledLocalBytes": 0,
+      "plan": null,
+      "error": null,
+      "parameters": {
+        "live_workspace_ids": "7000000000000023,7000000000000026,7000000000000020,7000000000000013,7000000000000021,7000000000000011,7000000000000008",
+        "lookback_days": "30",
+        "warehouse_limit": "200",
+        "workspace_id": ""
+      }
+    },
+    "workload_write_patterns": {
+      "name": "workload_write_patterns",
+      "statementId": "01f199ae-0126-1c1e-86af-487408c0f98c",
+      "measuredAt": "2026-08-16T20:06:44.615Z",
+      "warehouseId": "0123456789abcdef",
+      "statementSha": "sha256:f781eb913adf740f4116f10ddf92748a364daeb20d6c6534efafd6585e5040c6",
+      "slicedInRecording": false,
+      "sliceColumn": null,
+      "rows": 35,
+      "columnCount": 22,
+      "serializedBytes": 37552,
+      "durationMs": 8833,
+      "durations": {
+        "readings": [
+          8833,
+          9241,
+          8467,
+          8716,
+          8059
+        ],
+        "samples": 5,
+        "min": 8059,
+        "median": 8716,
+        "max": 9241,
+        "spreadRatio": 1.15
+      },
+      "bytesRead": null,
+      "truncated": false,
+      "scannedBytes": 108756310,
+      "shuffleReadBytes": 0,
+      "spilledLocalBytes": 0,
+      "plan": null,
+      "error": null,
+      "parameters": {
+        "live_workspace_ids": "7000000000000023,7000000000000026,7000000000000011,7000000000000010,7000000000000016,7000000000000022,7000000000000017,7000000000000015,7000000000000019,7000000000000025,7000000000000024,7000000000000012,7000000000000014,7000000000000008",
+        "lookback_days": "30",
+        "shape_limit": "40",
+        "workspace_id": ""
+      }
+    }
+  },
+  "populations": {
+    "billing_price_coverage": {
+      "statementId": "01f1955f-b2a0-1372-93e3-51b84996d280",
+      "measuredAt": "2026-08-11T08:36:07.410Z",
+      "durationMs": 5915,
+      "columns": [
+        "usage_records",
+        "usage_quantity_total",
+        "unpriced_by_start_time",
+        "unpriced_quantity_by_start_time",
+        "unpriced_by_end_time",
+        "unpriced_quantity_by_end_time",
+        "boundary_spanning_records"
+      ],
+      "rows": [
+        [
+          "42790",
+          "128693.22",
+          "40",
+          "13.02",
+          "40",
+          "13.02",
+          "0"
+        ]
+      ]
+    },
+    "jobs_trigger_unknown": {
+      "statementId": "01f1955f-b628-1559-a5bc-a0c532ceea5e",
+      "measuredAt": "2026-08-11T08:36:13.327Z",
+      "durationMs": 2324,
+      "columns": [
+        "jobs",
+        "trigger_type_unknown",
+        "paused_unknown",
+        "timeout_unknown",
+        "health_rules_unknown",
+        "trigger_struct_unknown",
+        "unscheduled_because_unknown",
+        "unscheduled_and_populated"
+      ],
+      "rows": [
+        [
+          "4",
+          "2",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "2"
+        ]
+      ]
+    },
+    "lineage_overlap": {
+      "statementId": "01f1955f-b789-1dd5-9fda-e064e7cc7ab3",
+      "measuredAt": "2026-08-11T08:36:15.652Z",
+      "durationMs": 13359,
+      "columns": [
+        "sources",
+        "targets",
+        "overlap",
+        "distinct_union"
+      ],
+      "rows": [
+        [
+          "32",
+          "43",
+          "25",
+          "50"
+        ]
+      ]
+    },
+    "maintenance_attribution": {
+      "statementId": "01f1955f-bf82-1a4f-94f4-d0a8569a94c2",
+      "measuredAt": "2026-08-11T08:36:29.012Z",
+      "durationMs": 5387,
+      "columns": [
+        "operation_type",
+        "statements",
+        "no_table_identified",
+        "identified_not_in_population",
+        "attributable_to_population"
+      ],
+      "rows": [
+        [
+          "ANALYZE",
+          "1",
+          "0",
+          "1",
+          "0"
+        ]
+      ]
+    },
+    "query_shapes_ambiguity": {
+      "statementId": "01f1955f-c2b7-1db1-9c1b-7e6f918a3f74",
+      "measuredAt": "2026-08-11T08:36:34.401Z",
+      "durationMs": 4069,
+      "columns": [
+        "shapes",
+        "ambiguous_shapes",
+        "covered_ms",
+        "ambiguous_ms",
+        "covered_runs",
+        "ambiguous_runs",
+        "ambiguous_percent"
+      ],
+      "rows": [
+        [
+          "738",
+          "1",
+          "14155718",
+          "96555",
+          "11764",
+          "8",
+          "0.68"
+        ]
+      ]
+    },
+    "query_shapes_empty_text": {
+      "statementId": "01f1955f-c525-1861-948e-980c46e1201e",
+      "measuredAt": "2026-08-11T08:36:38.472Z",
+      "durationMs": 4027,
+      "columns": [
+        "statements",
+        "empty_text_statements",
+        "total_hours",
+        "empty_text_hours"
+      ],
+      "rows": [
+        [
+          "22068",
+          "0",
+          "14.89",
+          "0.00"
+        ]
+      ]
+    },
+    "usage_units": {
+      "statementId": "01f1955f-c78a-1373-b7a6-6efa766fea1f",
+      "measuredAt": "2026-08-11T08:36:42.501Z",
+      "durationMs": 3027,
+      "columns": [
+        "usage_unit",
+        "records",
+        "quantity_total"
+      ],
+      "rows": [
+        [
+          "DBU",
+          "31669",
+          "128584.96"
+        ],
+        [
+          "DSU",
+          "10400",
+          "71.33"
+        ],
+        [
+          "GB",
+          "721",
+          "36.93"
+        ]
+      ]
+    },
+    "warehouse_boundary": {
+      "statementId": "01f1955f-c958-1c84-989f-e993a09c6058",
+      "measuredAt": "2026-08-11T08:36:45.530Z",
+      "durationMs": 5671,
+      "columns": [
+        "running_at_boundary",
+        "running_at_boundary_with_in_window_event",
+        "running_at_boundary_with_no_in_window_event",
+        "running_beyond_thirty_days",
+        "stopped_beyond_thirty_days",
+        "last_event_days"
+      ],
+      "rows": [
+        [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "27"
+        ]
+      ]
+    }
+  }
+}

@@ -1,0 +1,627 @@
+{
+  "source": "app/server/**/*.ts excluding tests",
+  "population": {
+    "scoped": [
+      "assessment_setup_drafts",
+      "attestations",
+      "decisions",
+      "improvement_plans",
+      "accepted_risks",
+      "applicability_decisions",
+      "notes",
+      "serving_declarations",
+      "assessment_results",
+      "scans",
+      "assessment_reviews",
+      "month_publications",
+      "advisories",
+      "runs"
+    ],
+    "byParent": [
+      {
+        "table": "improvement_actions",
+        "parent": "improvement_plans"
+      },
+      {
+        "table": "validation_attempts",
+        "parent": "improvement_actions"
+      },
+      {
+        "table": "review_answers",
+        "parent": "assessment_reviews"
+      },
+      {
+        "table": "pillar_reviews",
+        "parent": "assessment_reviews"
+      },
+      {
+        "table": "run_checkpoints",
+        "parent": "runs"
+      },
+      {
+        "table": "run_attempts",
+        "parent": "runs"
+      }
+    ]
+  },
+  "reads": [
+    {
+      "file": "server/accept/postgres-store.ts",
+      "line": 36,
+      "table": "accepted_risks",
+      "class": "scoped",
+      "shape": "predicate",
+      "alreadyFiltersDefinition": false,
+      "reason": null,
+      "sql": "select body from ${}.accepted_risks ${}"
+    },
+    {
+      "file": "server/accept/postgres-store.ts",
+      "line": 47,
+      "table": "accepted_risks",
+      "class": "scoped",
+      "shape": "predicate",
+      "alreadyFiltersDefinition": false,
+      "reason": null,
+      "sql": "select body from ${}.accepted_risks ${}"
+    },
+    {
+      "file": "server/admin/retention-store.ts",
+      "line": 295,
+      "table": null,
+      "class": null,
+      "shape": "unclassified",
+      "alreadyFiltersDefinition": false,
+      "reason": "dynamic table interpolation",
+      "sql": "select count(*) as total from ${}.${}${}"
+    },
+    {
+      "file": "server/admin/retention-store.ts",
+      "line": 303,
+      "table": null,
+      "class": null,
+      "shape": "unclassified",
+      "alreadyFiltersDefinition": false,
+      "reason": "dynamic table interpolation",
+      "sql": "select count(*) as total from ${}.${} where ${} < $1${}"
+    },
+    {
+      "file": "server/admin/retention-store.ts",
+      "line": 323,
+      "table": null,
+      "class": null,
+      "shape": "unclassified",
+      "alreadyFiltersDefinition": false,
+      "reason": "dynamic table interpolation",
+      "sql": "select ${} as oldest from ${}.${}${} order by ${} asc limit 1"
+    },
+    {
+      "file": "server/admin/retention-store.ts",
+      "line": 339,
+      "table": null,
+      "class": null,
+      "shape": "unclassified",
+      "alreadyFiltersDefinition": false,
+      "reason": "dynamic table interpolation",
+      "sql": "select count(*) as total from ${}.${}"
+    },
+    {
+      "file": "server/admin/retention-store.ts",
+      "line": 400,
+      "table": null,
+      "class": null,
+      "shape": "unclassified",
+      "alreadyFiltersDefinition": false,
+      "reason": "dynamic table interpolation",
+      "sql": "select sequence from ${}.${} where at >= $1 order by sequence asc limit 1"
+    },
+    {
+      "file": "server/admin/retention-store.ts",
+      "line": 411,
+      "table": null,
+      "class": null,
+      "shape": "unclassified",
+      "alreadyFiltersDefinition": false,
+      "reason": "dynamic table interpolation",
+      "sql": "select sequence from ${}.${} order by sequence desc limit 1"
+    },
+    {
+      "file": "server/admin/retention-store.ts",
+      "line": 419,
+      "table": null,
+      "class": null,
+      "shape": "unclassified",
+      "alreadyFiltersDefinition": false,
+      "reason": "dynamic table interpolation",
+      "sql": "select count(*) as total from ${}.${}"
+    },
+    {
+      "file": "server/admin/retention-store.ts",
+      "line": 430,
+      "table": null,
+      "class": null,
+      "shape": "unclassified",
+      "alreadyFiltersDefinition": false,
+      "reason": "dynamic table interpolation",
+      "sql": "select count(*) as total from ${}.${} where sequence <= $1"
+    },
+    {
+      "file": "server/admin/retention-store.ts",
+      "line": 446,
+      "table": null,
+      "class": null,
+      "shape": "unclassified",
+      "alreadyFiltersDefinition": false,
+      "reason": "dynamic table interpolation",
+      "sql": "select sequence, digest from ${}.${} where sequence = $1"
+    },
+    {
+      "file": "server/admin/retention-store.ts",
+      "line": 462,
+      "table": null,
+      "class": null,
+      "shape": "unclassified",
+      "alreadyFiltersDefinition": false,
+      "reason": "dynamic table interpolation",
+      "sql": "select count(*) as total from ${}.${}"
+    },
+    {
+      "file": "server/admin/retention-store.ts",
+      "line": 467,
+      "table": null,
+      "class": null,
+      "shape": "unclassified",
+      "alreadyFiltersDefinition": false,
+      "reason": "dynamic table interpolation",
+      "sql": "select count(*) as total from ${}.${}"
+    },
+    {
+      "file": "server/advise/store.ts",
+      "line": 143,
+      "table": "advisories",
+      "class": "scoped",
+      "shape": "predicate",
+      "alreadyFiltersDefinition": false,
+      "reason": null,
+      "sql": "select ${} from ${}.advisories ${}"
+    },
+    {
+      "file": "server/advise/store.ts",
+      "line": 152,
+      "table": "advisories",
+      "class": "scoped",
+      "shape": "predicate",
+      "alreadyFiltersDefinition": false,
+      "reason": null,
+      "sql": "select ${} from ${}.advisories ${}"
+    },
+    {
+      "file": "server/advise/store.ts",
+      "line": 161,
+      "table": "advisories",
+      "class": "scoped",
+      "shape": "predicate",
+      "alreadyFiltersDefinition": false,
+      "reason": null,
+      "sql": "select ${} from ${}.advisories ${}"
+    },
+    {
+      "file": "server/advise/store.ts",
+      "line": 178,
+      "table": "advisories",
+      "class": "scoped",
+      "shape": "predicate",
+      "alreadyFiltersDefinition": false,
+      "reason": null,
+      "sql": "select ${} from ${}.advisories ${} limit $${}"
+    },
+    {
+      "file": "server/apply/postgres-store.ts",
+      "line": 42,
+      "table": "applicability_decisions",
+      "class": "scoped",
+      "shape": "predicate",
+      "alreadyFiltersDefinition": false,
+      "reason": null,
+      "sql": "select body from ${}.applicability_decisions ${}"
+    },
+    {
+      "file": "server/apply/postgres-store.ts",
+      "line": 53,
+      "table": "applicability_decisions",
+      "class": "scoped",
+      "shape": "predicate",
+      "alreadyFiltersDefinition": false,
+      "reason": null,
+      "sql": "select body from ${}.applicability_decisions ${}"
+    },
+    {
+      "file": "server/define/preflight.ts",
+      "line": 166,
+      "table": null,
+      "class": null,
+      "shape": "unclassified",
+      "alreadyFiltersDefinition": false,
+      "reason": "dynamic table interpolation",
+      "sql": "SELECT 1 FROM ${} WHERE false"
+    },
+    {
+      "file": "server/define/setup-postgres-store.ts",
+      "line": 41,
+      "table": "assessment_setup_drafts",
+      "class": "scoped",
+      "shape": "predicate",
+      "alreadyFiltersDefinition": true,
+      "reason": null,
+      "sql": "select author, definition_id, body from ${}.assessment_setup_drafts where author = $1 and definition_id = $2"
+    },
+    {
+      "file": "server/define/setup-postgres-store.ts",
+      "line": 57,
+      "table": "assessment_setup_drafts",
+      "class": "scoped",
+      "shape": "predicate",
+      "alreadyFiltersDefinition": false,
+      "reason": null,
+      "sql": "select author, definition_id, body from ${}.assessment_setup_drafts where author = $1"
+    },
+    {
+      "file": "server/foundation/serving-postgres-store.ts",
+      "line": 78,
+      "table": "serving_declarations",
+      "class": "scoped",
+      "shape": "predicate",
+      "alreadyFiltersDefinition": false,
+      "reason": null,
+      "sql": "select body from ${}.serving_declarations ${} order by version desc"
+    },
+    {
+      "file": "server/improve/postgres-store.ts",
+      "line": 214,
+      "table": "improvement_actions",
+      "class": "by-parent",
+      "shape": "join",
+      "alreadyFiltersDefinition": false,
+      "reason": null,
+      "sql": "select distinct id from ${}.improvement_actions where body -> 'controlIds' @> to_jsonb($1::text)"
+    },
+    {
+      "file": "server/improve/postgres-store.ts",
+      "line": 234,
+      "table": null,
+      "class": null,
+      "shape": "unclassified",
+      "alreadyFiltersDefinition": false,
+      "reason": "dynamic table interpolation",
+      "sql": "select body from ${}.${} ${} order by revision asc"
+    },
+    {
+      "file": "server/monthly/store.ts",
+      "line": 175,
+      "table": "month_publications",
+      "class": "scoped",
+      "shape": "predicate",
+      "alreadyFiltersDefinition": false,
+      "reason": null,
+      "sql": "select month from ${}.month_publications ${}"
+    },
+    {
+      "file": "server/monthly/store.ts",
+      "line": 194,
+      "table": "month_publications",
+      "class": "scoped",
+      "shape": "predicate",
+      "alreadyFiltersDefinition": false,
+      "reason": null,
+      "sql": "select id, month, published_at, published_by, supersedes, reason, document_version, digest, json, csv, ordinal, definition_id from ${}.month_publications ${}"
+    },
+    {
+      "file": "server/note/postgres-store.ts",
+      "line": 65,
+      "table": "notes",
+      "class": "scoped",
+      "shape": "predicate",
+      "alreadyFiltersDefinition": false,
+      "reason": null,
+      "sql": "select subject_id, count(*)::text as tally from ${}.notes ${} group by subject_id"
+    },
+    {
+      "file": "server/note/postgres-store.ts",
+      "line": 90,
+      "table": "notes",
+      "class": "scoped",
+      "shape": "predicate",
+      "alreadyFiltersDefinition": false,
+      "reason": null,
+      "sql": "select body from ${}.notes ${} order by noted_at asc"
+    },
+    {
+      "file": "server/records/verify.ts",
+      "line": 149,
+      "table": null,
+      "class": null,
+      "shape": "unclassified",
+      "alreadyFiltersDefinition": false,
+      "reason": "dynamic table interpolation",
+      "sql": "select count(*) as total from ${}.${}"
+    },
+    {
+      "file": "server/records/verify.ts",
+      "line": 155,
+      "table": null,
+      "class": null,
+      "shape": "unclassified",
+      "alreadyFiltersDefinition": false,
+      "reason": "dynamic table interpolation",
+      "sql": "select id, ${}${} as body, digest from ${}.${} order by ${} desc limit $1"
+    },
+    {
+      "file": "server/review/postgres-store.ts",
+      "line": 134,
+      "table": "assessment_reviews",
+      "class": "scoped",
+      "shape": "predicate",
+      "alreadyFiltersDefinition": false,
+      "reason": null,
+      "sql": "select body from ${}.assessment_reviews where id = $1 for update"
+    },
+    {
+      "file": "server/review/postgres-store.ts",
+      "line": 178,
+      "table": "scans",
+      "class": "scoped",
+      "shape": "predicate",
+      "alreadyFiltersDefinition": false,
+      "reason": null,
+      "sql": "select id, body, digest from ${}.scans where id = $1"
+    },
+    {
+      "file": "server/review/postgres-store.ts",
+      "line": 283,
+      "table": "assessment_reviews",
+      "class": "scoped",
+      "shape": "predicate",
+      "alreadyFiltersDefinition": false,
+      "reason": null,
+      "sql": "select body from ${}.assessment_reviews ${}"
+    },
+    {
+      "file": "server/review/postgres-store.ts",
+      "line": 287,
+      "table": "assessment_results",
+      "class": "scoped",
+      "shape": "predicate",
+      "alreadyFiltersDefinition": false,
+      "reason": null,
+      "sql": "select review_id from ${}.assessment_results"
+    },
+    {
+      "file": "server/review/postgres-store.ts",
+      "line": 439,
+      "table": "assessment_results",
+      "class": "scoped",
+      "shape": "predicate",
+      "alreadyFiltersDefinition": false,
+      "reason": null,
+      "sql": "select body from ${}.assessment_results where review_id = $1"
+    },
+    {
+      "file": "server/review/postgres-store.ts",
+      "line": 451,
+      "table": "review_answers",
+      "class": "by-parent",
+      "shape": "join",
+      "alreadyFiltersDefinition": false,
+      "reason": null,
+      "sql": "select body from ${}.review_answers where review_id = $1 order by recorded_at asc"
+    },
+    {
+      "file": "server/review/postgres-store.ts",
+      "line": 464,
+      "table": "pillar_reviews",
+      "class": "by-parent",
+      "shape": "join",
+      "alreadyFiltersDefinition": false,
+      "reason": null,
+      "sql": "select body from ${}.pillar_reviews where review_id = $1 order by recorded_at asc"
+    },
+    {
+      "file": "server/review/postgres-store.ts",
+      "line": 478,
+      "table": "attestations",
+      "class": "scoped",
+      "shape": "predicate",
+      "alreadyFiltersDefinition": false,
+      "reason": null,
+      "sql": "select id, body, digest from ${}.attestations where id = any($1::text[])"
+    },
+    {
+      "file": "server/review/postgres-store.ts",
+      "line": 502,
+      "table": "assessment_reviews",
+      "class": "scoped",
+      "shape": "predicate",
+      "alreadyFiltersDefinition": false,
+      "reason": null,
+      "sql": "select body from ${}.assessment_reviews ${}"
+    },
+    {
+      "file": "server/review/postgres-store.ts",
+      "line": 519,
+      "table": "assessment_results",
+      "class": "scoped",
+      "shape": "predicate",
+      "alreadyFiltersDefinition": false,
+      "reason": null,
+      "sql": "select body from ${}.assessment_results ${}"
+    },
+    {
+      "file": "server/run/run-store.ts",
+      "line": 196,
+      "table": "runs",
+      "class": "scoped",
+      "shape": "predicate",
+      "alreadyFiltersDefinition": false,
+      "reason": null,
+      "sql": "select ${} from ${}.runs ${}"
+    },
+    {
+      "file": "server/run/run-store.ts",
+      "line": 205,
+      "table": "runs",
+      "class": "scoped",
+      "shape": "predicate",
+      "alreadyFiltersDefinition": false,
+      "reason": null,
+      "sql": "select ${} from ${}.runs where idempotency_key = $1"
+    },
+    {
+      "file": "server/run/run-store.ts",
+      "line": 214,
+      "table": "runs",
+      "class": "scoped",
+      "shape": "predicate",
+      "alreadyFiltersDefinition": false,
+      "reason": null,
+      "sql": "select ${} from ${}.runs where finished_at is null order by requested_at desc"
+    },
+    {
+      "file": "server/run/run-store.ts",
+      "line": 222,
+      "table": "runs",
+      "class": "scoped",
+      "shape": "predicate",
+      "alreadyFiltersDefinition": false,
+      "reason": null,
+      "sql": "select ${} from ${}.runs ${} limit $${}"
+    },
+    {
+      "file": "server/run/run-store.ts",
+      "line": 321,
+      "table": "runs",
+      "class": "scoped",
+      "shape": "predicate",
+      "alreadyFiltersDefinition": false,
+      "reason": null,
+      "sql": "select cancel_requested_at from ${}.runs where id = $1"
+    },
+    {
+      "file": "server/run/run-store.ts",
+      "line": 347,
+      "table": "run_checkpoints",
+      "class": "by-parent",
+      "shape": "join",
+      "alreadyFiltersDefinition": false,
+      "reason": null,
+      "sql": "select signal_id, at, reading from ${}.run_checkpoints where run_id = $1 order by at asc"
+    },
+    {
+      "file": "server/run/run-store.ts",
+      "line": 436,
+      "table": "run_attempts",
+      "class": "by-parent",
+      "shape": "join",
+      "alreadyFiltersDefinition": false,
+      "reason": null,
+      "sql": "select id, run_id, number, holder, started_at, heartbeat_at, ended_at, outcome from ${}.run_attempts where run_id = $1 order by number asc"
+    },
+    {
+      "file": "server/scan/postgres-store.ts",
+      "line": 85,
+      "table": "scans",
+      "class": "scoped",
+      "shape": "predicate",
+      "alreadyFiltersDefinition": false,
+      "reason": null,
+      "sql": "select body from ${}.scans ${}"
+    },
+    {
+      "file": "server/scan/postgres-store.ts",
+      "line": 121,
+      "table": "scans",
+      "class": "scoped",
+      "shape": "predicate",
+      "alreadyFiltersDefinition": false,
+      "reason": null,
+      "sql": "select id, body from ${}.scans ${}"
+    },
+    {
+      "file": "server/scan/postgres-store.ts",
+      "line": 141,
+      "table": "scans",
+      "class": "scoped",
+      "shape": "predicate",
+      "alreadyFiltersDefinition": false,
+      "reason": null,
+      "sql": "select summary from ${}.scans ${} limit $${}"
+    },
+    {
+      "file": "server/store/event-log.ts",
+      "line": 98,
+      "table": null,
+      "class": null,
+      "shape": "unclassified",
+      "alreadyFiltersDefinition": false,
+      "reason": "dynamic table interpolation",
+      "sql": "select body from ${}.${} ${} order by ${} desc"
+    },
+    {
+      "file": "server/store/postgres.ts",
+      "line": 1227,
+      "table": null,
+      "class": null,
+      "shape": "unclassified",
+      "alreadyFiltersDefinition": false,
+      "reason": "dynamic table interpolation",
+      "sql": "select ${}, count(*) as copies from ${}.${} where ${} group by ${} having count(*) > 1 order by copies desc limit 10"
+    },
+    {
+      "file": "server/validate/postgres-store.ts",
+      "line": 44,
+      "table": "validation_attempts",
+      "class": "by-parent",
+      "shape": "join",
+      "alreadyFiltersDefinition": false,
+      "reason": null,
+      "sql": "select body from ${}.validation_attempts where action_id = $1 order by revision asc"
+    },
+    {
+      "file": "server/validate/postgres-store.ts",
+      "line": 78,
+      "table": "validation_attempts",
+      "class": "by-parent",
+      "shape": "join",
+      "alreadyFiltersDefinition": false,
+      "reason": null,
+      "sql": "select a.body from ${}.validation_attempts a where a.answered = $1 and not exists ( select 1 from ${}.validation_attempts b where b.id = a.id and b.answered = $"
+    }
+  ],
+  "totals": {
+    "reads": 55,
+    "predicate": 31,
+    "join": 7,
+    "unclassified": 17,
+    "alreadyFiltersDefinition": 1,
+    "byTable": {
+      "accepted_risks": 2,
+      "advisories": 4,
+      "applicability_decisions": 2,
+      "assessment_results": 3,
+      "assessment_reviews": 3,
+      "assessment_setup_drafts": 2,
+      "attestations": 1,
+      "improvement_actions": 1,
+      "month_publications": 2,
+      "notes": 2,
+      "pillar_reviews": 1,
+      "review_answers": 1,
+      "run_attempts": 1,
+      "run_checkpoints": 1,
+      "runs": 5,
+      "scans": 4,
+      "serving_declarations": 1,
+      "validation_attempts": 2
+    }
+  },
+  "measuredAt": "2026-08-28T05:49:44.836Z"
+}

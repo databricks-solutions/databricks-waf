@@ -1,0 +1,49 @@
+name: Feature request
+description: Propose a customer outcome or workflow improvement.
+title: "[Feature]: "
+labels: [enhancement]
+body:
+  - type: textarea
+    id: user_problem
+    attributes:
+      label: User and problem
+      description: Who is blocked or slowed down, and what are they trying to achieve?
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Desired outcome
+      description: Describe the observable result without prescribing an implementation.
+    validations:
+      required: true
+  - type: dropdown
+    id: journey
+    attributes:
+      label: Customer journey stage
+      options:
+        - Install or configure
+        - Prepare
+        - Collect
+        - Review or publish
+        - Investigate
+        - Improve
+        - Operate or recover
+        - Contribute
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence and alternatives
+      description: What have users tried, and what shows this is worth changing?
+  - type: checkboxes
+    id: impact
+    attributes:
+      label: Potential impact
+      options:
+        - label: This may change scoring or methodology.
+        - label: This may require new Databricks permissions or data access.
+        - label: This may change the DAB or stored data.
+        - label: This changes a customer-facing page or workflow.
+

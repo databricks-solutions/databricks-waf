@@ -1,0 +1,107 @@
+name: Guidance references
+
+# Every reference the answering guidance cites is a place a reader is invited to
+# leave the app for, about a control they are being asked to attest to. A dead one
+# says the guidance was written against a product that has since changed.
+#
+# The serverless ruleset's citations are here too, and they are the sharper case:
+# the app shows those sentences to a customer as the reason a job cannot move, and
+# a rule with no doc_url is rejected at load for that reason. Nothing fetched them
+# until row 67 — the job that was meant to watch them watched a vendored copy of
+# the skills that this repository never took, which is ADR 0087. The first run
+# found one of the seventeen already redirecting.
+#
+# Sixteen were already stale on content written the same week, and a careful read
+# by hand had found two of eleven. So this is checked rather than read.
+#
+# Not in `npm run verify`: it needs the network, and a check that fails because a
+# proxy is down is a check contributors learn to skip. It runs here instead, on a
+# schedule beside the docs-drift job, and on a pull request that touches the
+# guidance so a citation is verified before it lands rather than a week later.
+#
+# The cost is accepted with open eyes. This job fails when the documentation site
+# renames a page and nobody has touched this repository, which is a failure
+# nobody here caused. That is why the report attributes each one: a citation
+# unchanged for months means the site moved, and one added in the last fortnight
+# means the citation is ours. Without that a weekly red tick becomes a weekly red
+# tick nobody opens.
+
+on:
+  schedule:
+    - cron: "0 8 * * 1"
+  pull_request:
+    paths:
+      - "app/config/guidance/**"
+      - "app/config/analyze/serverless-rules.yaml"
+      - "app/scripts/check-guidance-links.mjs"
+      - "app/scripts/guidance-review.mjs"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  references:
+    name: Fetch every cited reference
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # Full history, because the report's whole job is telling a rename
+          # upstream from a mistake here, and it does that from the date each URL
+          # entered the repository. A shallow clone makes every failure unknown.
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - run: npm ci
+
+      - name: Fetch every cited reference
+        run: npm run check:guidance-links -- --report ../guidance-links-report.md
+
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: guidance-links-report
+          path: guidance-links-report.md
+          if-no-files-found: ignore
+
+      # On the scheduled run a failure should become a tracked item rather than a
+      # red tick nobody looks at. On a pull request the failing check is already
+      # in front of the person who caused it, so an issue would be noise.
+      - name: Open an issue on a broken reference
+        if: failure() && github.event_name == 'schedule'
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const fs = require('fs');
+            let body = 'A reference cited by the answering guidance no longer resolves.';
+            try {
+              body = fs.readFileSync('guidance-links-report.md', 'utf8');
+            } catch {}
+            const title = 'Guidance references: a cited page no longer resolves';
+            const existing = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'guidance-links',
+            });
+            if (existing.data.some((i) => i.title === title)) {
+              core.info('An open reference issue already exists; not filing a duplicate.');
+              return;
+            }
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title,
+              body,
+              labels: ['guidance-links', 'guidance'],
+            });

@@ -1,0 +1,1648 @@
+{
+  "takenAt": "2026-08-11T20:24:04.158Z",
+  "profile": "labs",
+  "lookbackDays": 15,
+  "shapeLimit": 40,
+  "describeLimit": 20,
+  "corpus": {
+    "shapes": 40,
+    "plans": 36,
+    "skipped": {
+      "warehouse-outside-workspace": 3,
+      "not-warehouse-compute": 1
+    }
+  },
+  "scans": {
+    "total": 57,
+    "shapesWithAScan": 33,
+    "distinctThreePartTables": 12,
+    "partsPerIdentifier": {
+      "3": 57
+    },
+    "tagsCarryingOne": {
+      "PHOTON_PARQUET_FILE_SCAN_EXEC": 57
+    },
+    "sample": [
+      "system.billing.usage",
+      "system.billing.list_prices",
+      "main.lakeload.lakeload_account",
+      "main.lakeload.lakeload_product",
+      "system.query.history",
+      "main.lakeload.account",
+      "system.access.audit",
+      "system.access.workspaces_latest",
+      "system.compute.warehouses",
+      "system.lakeflow.job_run_timeline",
+      "system.access.table_lineage",
+      "main.lakeload.lakeload_serving_profile"
+    ]
+  },
+  "described": [
+    {
+      "table": "system.billing.usage",
+      "rows": 34,
+      "statistics": "140251663055 bytes, 1970658704 rows",
+      "metadata": {
+        "account_id": "string",
+        "workspace_id": "string",
+        "record_id": "string",
+        "sku_name": "string",
+        "cloud": "string",
+        "usage_start_time": "timestamp",
+        "usage_end_time": "timestamp",
+        "usage_date": "date",
+        "custom_tags": "map<string,string>",
+        "usage_unit": "string",
+        "usage_quantity": "decimal(38,18)",
+        "usage_metadata": "struct<cluster_id:string,job_id:string,warehouse_id:string,instance_pool_id:string,node_type:string,job_run_id:string,notebook_id:string,dlt_pipeline_id:string,endpoint_name:string,endpoint_id:string,dlt_update_id:string,dlt_maintenance_id:string,run_name:string,job_name:string,notebook_path:string,central_clean_room_id:string,source_region:string,destination_region:string,app_id:string,app_name:string,metastore_id:string,private_endpoint_name:string,storage_api_type:string,budget_policy_id:string,ai_runtime_pool_id:string,... 28 more fields>",
+        "identity_metadata": "struct<run_as:string,created_by:string,owned_by:string,run_by:string>",
+        "record_type": "string",
+        "ingestion_date": "date",
+        "billing_origin_product": "string",
+        "product_features": "struct<jobs_tier:string,sql_tier:string,dlt_tier:string,is_serverless:boolean,is_photon:boolean,serving_type:string,networking:struct<connectivity_type:string>,ai_runtime:struct<compute_type:string>,model_serving:struct<offering_type:string>,ai_gateway:struct<feature_type:string>,serverless_gpu:struct<workload_type:string>,performance_target:string,agent_bricks:struct<problem_type:string,workload_type:string>,ai_functions:struct<ai_function:string>,apps:struct<compute_size:string>,lakeflow_connect:struct<task_type:string,zerobus_request_type:string>,lakebase:struct<compute_type:string,storage_type:string>,ai_bi_genie:struct<capability_type:string,offering_type:string>,genie:struct<offering_type:string>>",
+        "usage_type": "string",
+        "Catalog": "system",
+        "Database": "billing",
+        "Table": "usage",
+        "Owner": "System user",
+        "Created Time": "Wed May 27 23:29:53 UTC 2026",
+        "Last Access": "UNKNOWN",
+        "Created By": "Spark",
+        "Type": "MANAGED",
+        "Provider": "deltasharing",
+        "Comment": "The [usage table](https://docs.databricks.com/admin/system-tables/billing.html) gives you access to account-wide billable usage data. The data is centralized and routed to all the regions.",
+        "Table Properties": "[delta.autoOptimize.autoCompact=auto, delta.autoOptimize.optimizeWrite=true, delta.enableChangeDataFeed=true, delta.lastCommitTimestamp=1785299133000, delta.lastUpdateVersion=163309, delta.minReaderVersion=1, delta.minWriterVersion=4, delta.workloadBasedColumns.deltaFileStatistics=`usage_metadata`.`sharing_materialization_id`]",
+        "Statistics": "140251663055 bytes, 1970658704 rows",
+        "Location": "uc-deltasharing://system.billing.usage#system.billing.usage",
+        "Legacy UC Partitioned DELTASHARING Table": "true"
+      }
+    },
+    {
+      "table": "system.billing.list_prices",
+      "rows": 24,
+      "statistics": "1074947198 bytes, 65397877 rows",
+      "metadata": {
+        "account_id": "string",
+        "price_start_time": "timestamp",
+        "price_end_time": "timestamp",
+        "sku_name": "string",
+        "cloud": "string",
+        "currency_code": "string",
+        "usage_unit": "string",
+        "pricing": "struct<default:decimal(38,18),promotional:struct<default:decimal(38,18)>,effective_list:struct<default:decimal(38,18)>>",
+        "Catalog": "system",
+        "Database": "billing",
+        "Table": "list_prices",
+        "Owner": "System user",
+        "Created Time": "Wed May 27 23:29:53 UTC 2026",
+        "Last Access": "UNKNOWN",
+        "Created By": "Spark",
+        "Type": "MANAGED",
+        "Provider": "deltasharing",
+        "Comment": "The [pricing table](https://docs.databricks.com/admin/system-tables/pricing.html) gives you access to a historical log of SKU pricing. A record gets added each time there is a change to a SKU price.",
+        "Table Properties": "[delta.autoOptimize.autoCompact=auto, delta.autoOptimize.optimizeWrite=true, delta.lastCommitTimestamp=1751639197000, delta.lastUpdateVersion=17312, delta.minReaderVersion=1, delta.minWriterVersion=2]",
+        "Statistics": "1074947198 bytes, 65397877 rows",
+        "Location": "uc-deltasharing://system.billing.list_prices#system.billing.list_prices",
+        "Legacy UC Partitioned DELTASHARING Table": "true"
+      }
+    },
+    {
+      "table": "main.lakeload.lakeload_account",
+      "rows": 20,
+      "statistics": "289469 bytes, 1000000 rows",
+      "metadata": {
+        "id": "bigint",
+        "region": "string",
+        "balance": "decimal(14,2)",
+        "Catalog": "main",
+        "Database": "lakeload",
+        "Table": "lakeload_account",
+        "Created Time": "Sat Aug 08 12:30:30 UTC 2026",
+        "Last Access": "UNKNOWN",
+        "Created By": "Spark",
+        "Statistics": "289469 bytes, 1000000 rows",
+        "Type": "MANAGED",
+        "Collation": "UTF8_BINARY",
+        "Location": "",
+        "Provider": "delta",
+        "Owner": "7cc17d67-bf07-496d-874c-b3aa7ea10e9c",
+        "Is_managed_location": "true",
+        "Predictive Optimization": "ENABLE (inherited from METASTORE metastore_aws_ap_southeast_2)",
+        "Table Properties": "[delta.checkpoint.writeStatsAsJson=false,delta.checkpoint.writeStatsAsStruct=true,delta.enableDeletionVectors=true,delta.feature.appendOnly=supported,delta.feature.deletionVectors=supported,delta.feature.invariants=supported,delta.minReaderVersion=3,delta.minWriterVersion=7,delta.parquet.compression.codec=zstd,delta.parquet.format.version=2.12.0,delta.parquet.format.version.afe.internal=2.12.0]"
+      }
+    },
+    {
+      "table": "main.lakeload.lakeload_product",
+      "rows": 22,
+      "statistics": "48357 bytes, 10000 rows",
+      "metadata": {
+        "id": "bigint",
+        "category": "string",
+        "title": "string",
+        "description": "string",
+        "price": "decimal(10,2)",
+        "Catalog": "main",
+        "Database": "lakeload",
+        "Table": "lakeload_product",
+        "Created Time": "Sat Aug 08 12:30:33 UTC 2026",
+        "Last Access": "UNKNOWN",
+        "Created By": "Spark",
+        "Statistics": "48357 bytes, 10000 rows",
+        "Type": "MANAGED",
+        "Collation": "UTF8_BINARY",
+        "Location": "",
+        "Provider": "delta",
+        "Owner": "7cc17d67-bf07-496d-874c-b3aa7ea10e9c",
+        "Is_managed_location": "true",
+        "Predictive Optimization": "ENABLE (inherited from METASTORE metastore_aws_ap_southeast_2)",
+        "Table Properties": "[delta.checkpoint.writeStatsAsJson=false,delta.checkpoint.writeStatsAsStruct=true,delta.enableDeletionVectors=true,delta.feature.appendOnly=supported,delta.feature.deletionVectors=supported,delta.feature.invariants=supported,delta.minReaderVersion=3,delta.minWriterVersion=7,delta.parquet.compression.codec=zstd,delta.parquet.format.version=2.12.0,delta.parquet.format.version.afe.internal=2.12.0]"
+      }
+    },
+    {
+      "table": "system.query.history",
+      "rows": 60,
+      "statistics": "1152717386074 bytes, 5312248625 rows",
+      "metadata": {
+        "account_id": "string",
+        "workspace_id": "string",
+        "statement_id": "string",
+        "executed_by": "string",
+        "session_id": "string",
+        "execution_status": "string",
+        "compute": "struct<type:string,cluster_id:string,warehouse_id:string>",
+        "executed_by_user_id": "string",
+        "statement_text": "string",
+        "statement_type": "string",
+        "error_message": "string",
+        "client_application": "string",
+        "client_driver": "string",
+        "total_duration_ms": "bigint",
+        "waiting_for_compute_duration_ms": "bigint",
+        "waiting_at_capacity_duration_ms": "bigint",
+        "execution_duration_ms": "bigint",
+        "compilation_duration_ms": "bigint",
+        "total_task_duration_ms": "bigint",
+        "result_fetch_duration_ms": "bigint",
+        "start_time": "timestamp",
+        "end_time": "timestamp",
+        "update_time": "timestamp",
+        "read_partitions": "bigint",
+        "pruned_files": "bigint",
+        "read_files": "bigint",
+        "read_rows": "bigint",
+        "produced_rows": "bigint",
+        "read_bytes": "bigint",
+        "read_io_cache_percent": "tinyint",
+        "from_result_cache": "boolean",
+        "spilled_local_bytes": "bigint",
+        "written_bytes": "bigint",
+        "shuffle_read_bytes": "bigint",
+        "query_source": "struct<job_info:struct<job_id:string,job_run_id:string,job_task_run_id:string>,legacy_dashboard_id:string,dashboard_id:string,alert_id:string,notebook_id:string,sql_query_id:string,genie_space_id:string,pipeline_info:struct<pipeline_id:string,update_id:string>>",
+        "executed_as_user_id": "string",
+        "executed_as": "string",
+        "written_rows": "bigint",
+        "written_files": "bigint",
+        "cache_origin_statement_id": "string",
+        "query_parameters": "struct<named_parameters:map<string,struct<exprs:array<struct<tag:string,data_type:struct<type_name:string,type_ddl:string,redacted_type_ddl:string>,literal:struct<data_type:struct<type_name:string,type_ddl:string,redacted_type_ddl:string>,int_value:int,long_value:bigint,double_value:double,float_value:float,byte_value:int,short_value:int,string_value:string,boolean_value:boolean,decimal_value:struct<value:string,precision:int,scale:int>,binary_value:binary,timestamp_value:bigint,timestamp_ntz_value:bigint,date_value:bigint,calendar_interval_value:struct<months:int,days:int,microseconds:bigint>,day_time_interval_value:bigint,year_month_interval_value:int>,seq_expression:struct<children:array<bigint>>,function:struct<function_name:string,arguments:array<bigint>>,alias:struct<expr:bigint,name:array<string>,metadata:string>,sort_order:struct<child:bigint,direction:string,null_ordering:string>,lambda_function:struct<function:bigint,arguments:array<struct<name_parts:array<string>>>>,window:struct<window_function:bigint,partition_spec:array<bigint>,order_spec:array<bigint>>,unresolved_extract_value:struct<child:bigint,extraction:bigint>,update_fields:struct<struct_expression:bigint,field_name:string,value_expression:bigint>,unresolved_named_lambda_variable:struct<name_parts:array<string>>,named_argument_expression:struct<key:string,value:bigint>,id:bigint>>>>,pos_parameters:array<struct<exprs:array<struct<tag:string,data_type:struct<type_name:string,type_ddl:string,redacted_type_ddl:string>,literal:struct<data_type:struct<type_name:string,type_ddl:string,redacted_type_ddl:string>,int_value:int,long_value:bigint,double_value:double,float_value:float,byte_value:int,short_value:int,string_value:string,boolean_value:boolean,decimal_value:struct<value:string,precision:int,scale:int>,binary_value:binary,timestamp_value:bigint,timestamp_ntz_value:bigint,date_value:bigint,calendar_interval_value:struct<months:int,days:int,microseconds:bigint>,day_time_interval_value:bigint,year_month_interval_value:int>,seq_expression:struct<children:array<bigint>>,function:struct<function_name:string,arguments:array<bigint>>,alias:struct<expr:bigint,name:array<string>,metadata:string>,sort_order:struct<child:bigint,direction:string,null_ordering:string>,lambda_function:struct<function:bigint,arguments:array<struct<name_parts:array<string>>>>,window:struct<window_function:bigint,partition_spec:array<bigint>,order_spec:array<bigint>>,unresolved_extract_value:struct<child:bigint,extraction:bigint>,update_fields:struct<struct_expression:bigint,field_name:string,value_expression:bigint>,unresolved_named_lambda_variable:struct<name_parts:array<string>>,named_argument_expression:struct<key:string,value:bigint>,id:bigint>>>>,truncated:boolean>",
+        "query_tags": "map<string,string>",
+        "pruned_files_bytes": "bigint",
+        "read_files_bytes": "bigint",
+        "Catalog": "system",
+        "Database": "query",
+        "Table": "history",
+        "Owner": "System user",
+        "Created Time": "Wed May 27 23:29:54 UTC 2026",
+        "Last Access": "UNKNOWN",
+        "Created By": "Spark",
+        "Type": "MANAGED",
+        "Provider": "deltasharing",
+        "Comment": "The query history table, located at system.query.history, includes records for every SQL statement run using SQL warehouses. The table includes account-wide records from all workspaces in the same region from which you access the table.",
+        "Table Properties": "[delta.enableChangeDataFeed=true, delta.lastCommitTimestamp=1767834387000, delta.lastUpdateVersion=320787, delta.minReaderVersion=1, delta.minWriterVersion=4, delta.workloadBasedColumns.optimizerStatistics=`workspace_id`]",
+        "Statistics": "1152717386074 bytes, 5312248625 rows",
+        "Location": "uc-deltasharing://system.query.history#system.query.history",
+        "Legacy UC Partitioned DELTASHARING Table": "true"
+      }
+    },
+    {
+      "table": "main.lakeload.account",
+      "rows": 20,
+      "statistics": "154189 bytes, 1000000 rows",
+      "metadata": {
+        "id": "bigint",
+        "region": "string",
+        "balance": "decimal(14,2)",
+        "Catalog": "main",
+        "Database": "lakeload",
+        "Table": "account",
+        "Created Time": "Sat Aug 08 08:03:44 UTC 2026",
+        "Last Access": "UNKNOWN",
+        "Created By": "Spark",
+        "Statistics": "154189 bytes, 1000000 rows",
+        "Type": "MANAGED",
+        "Collation": "UTF8_BINARY",
+        "Location": "",
+        "Provider": "delta",
+        "Owner": "7cc17d67-bf07-496d-874c-b3aa7ea10e9c",
+        "Is_managed_location": "true",
+        "Predictive Optimization": "ENABLE (inherited from METASTORE metastore_aws_ap_southeast_2)",
+        "Table Properties": "[delta.checkpoint.writeStatsAsJson=false,delta.checkpoint.writeStatsAsStruct=true,delta.enableDeletionVectors=true,delta.feature.appendOnly=supported,delta.feature.deletionVectors=supported,delta.feature.invariants=supported,delta.minReaderVersion=3,delta.minWriterVersion=7,delta.parquet.compression.codec=zstd,delta.parquet.format.version=2.12.0,delta.parquet.format.version.afe.internal=2.12.0]"
+      }
+    },
+    {
+      "table": "system.access.audit",
+      "rows": 32,
+      "statistics": null,
+      "metadata": {
+        "account_id": "string",
+        "workspace_id": "string",
+        "version": "string",
+        "event_time": "timestamp",
+        "event_date": "date",
+        "source_ip_address": "string",
+        "user_agent": "string",
+        "session_id": "string",
+        "user_identity": "struct<email:string,subject_name:string>",
+        "service_name": "string",
+        "action_name": "string",
+        "request_id": "string",
+        "request_params": "map<string,string>",
+        "response": "struct<status_code:int,error_message:string,result:string>",
+        "audit_level": "string",
+        "event_id": "string",
+        "identity_metadata": "struct<run_by:string,run_as:string,acting_resource:string,run_by_display_name:string,run_as_display_name:string>",
+        "Catalog": "system",
+        "Database": "access",
+        "Table": "audit",
+        "Owner": "System user",
+        "Created Time": "Wed May 27 10:29:47 UTC 2026",
+        "Last Access": "UNKNOWN",
+        "Created By": "Spark",
+        "Type": "MANAGED",
+        "Provider": "deltasharing",
+        "Comment": "The audit logs table records detailed information about actions and events occurring within a Databricks workspace or account. It is used for security auditing, compliance, and monitoring user and system activity. Each row represents a single event, such as a user login, data access, permission change, or system operation. See documentation of services and actions at https://docs.databricks.com/aws/admin/account-settings/audit-logs",
+        "Table Properties": "[delta.autoOptimize.autoCompact=auto, delta.autoOptimize.optimizeWrite=true, delta.enableChangeDataFeed=true, delta.lastCommitTimestamp=1770144145000, delta.lastUpdateVersion=806494, delta.minReaderVersion=1, delta.minWriterVersion=4]",
+        "Location": "uc-deltasharing://system.access.audit#system.access.audit",
+        "Legacy UC Partitioned DELTASHARING Table": "true"
+      }
+    },
+    {
+      "table": "system.access.workspaces_latest",
+      "rows": 22,
+      "statistics": "227900991 bytes, 102888 rows",
+      "metadata": {
+        "account_id": "string",
+        "workspace_id": "string",
+        "workspace_name": "string",
+        "workspace_url": "string",
+        "create_time": "timestamp",
+        "status": "string",
+        "Catalog": "system",
+        "Database": "access",
+        "Table": "workspaces_latest",
+        "Owner": "System user",
+        "Created Time": "Wed May 27 10:29:47 UTC 2026",
+        "Last Access": "UNKNOWN",
+        "Created By": "Spark",
+        "Type": "MANAGED",
+        "Provider": "deltasharing",
+        "Comment": "The workspaces system table is a slow-changing dimension table of metadata for all the workspaces in your account.",
+        "Table Properties": "[delta.autoOptimize.autoCompact=auto, delta.autoOptimize.optimizeWrite=true, delta.enableDeletionVectors=false, delta.lastCommitTimestamp=1747983572000, delta.lastUpdateVersion=38, delta.minReaderVersion=1, delta.minWriterVersion=2]",
+        "Statistics": "227900991 bytes, 102888 rows",
+        "Location": "uc-deltasharing://system.access.workspaces_latest#system.access.workspaces_latest",
+        "Legacy UC Partitioned DELTASHARING Table": "true"
+      }
+    },
+    {
+      "table": "system.compute.warehouses",
+      "rows": 30,
+      "statistics": "529558881 bytes, 11329265 rows",
+      "metadata": {
+        "warehouse_id": "string",
+        "workspace_id": "string",
+        "account_id": "string",
+        "warehouse_name": "string",
+        "warehouse_type": "string",
+        "warehouse_channel": "string",
+        "warehouse_size": "string",
+        "min_clusters": "int",
+        "max_clusters": "int",
+        "auto_stop_minutes": "int",
+        "tags": "map<string,string>",
+        "change_time": "timestamp",
+        "delete_time": "timestamp",
+        "created_by": "string",
+        "Catalog": "system",
+        "Database": "compute",
+        "Table": "warehouses",
+        "Owner": "System user",
+        "Created Time": "Wed May 27 23:29:53 UTC 2026",
+        "Last Access": "UNKNOWN",
+        "Created By": "Spark",
+        "Type": "MANAGED",
+        "Provider": "deltasharing",
+        "Comment": "The Warehouses table contains the full history of configurations over time for any SQL warehouse.",
+        "Table Properties": "[delta.autoOptimize.autoCompact=auto, delta.autoOptimize.optimizeWrite=true, delta.enableChangeDataFeed=true, delta.lastCommitTimestamp=1784123195000, delta.lastUpdateVersion=188817, delta.minReaderVersion=1, delta.minWriterVersion=4]",
+        "Statistics": "529558881 bytes, 11329265 rows",
+        "Location": "uc-deltasharing://system.compute.warehouses#system.compute.warehouses",
+        "Legacy UC Partitioned DELTASHARING Table": "true"
+      }
+    },
+    {
+      "table": "system.lakeflow.job_run_timeline",
+      "rows": 38,
+      "statistics": "5315351504 bytes, 90029929 rows",
+      "metadata": {
+        "account_id": "string",
+        "workspace_id": "string",
+        "job_id": "string",
+        "run_id": "string",
+        "period_start_time": "timestamp",
+        "period_end_time": "timestamp",
+        "trigger_type": "string",
+        "result_state": "string",
+        "run_type": "string",
+        "run_name": "string",
+        "compute_ids": "array<string>",
+        "termination_code": "string",
+        "job_parameters": "map<string,map<string,string>>",
+        "source_task_run_id": "string",
+        "root_task_run_id": "string",
+        "compute": "array<struct<type:string,cluster_id:string,warehouse_id:string>>",
+        "termination_type": "string",
+        "setup_duration_seconds": "bigint",
+        "queue_duration_seconds": "bigint",
+        "run_duration_seconds": "bigint",
+        "cleanup_duration_seconds": "bigint",
+        "execution_duration_seconds": "bigint",
+        "Catalog": "system",
+        "Database": "lakeflow",
+        "Table": "job_run_timeline",
+        "Owner": "System user",
+        "Created Time": "Wed May 27 23:29:53 UTC 2026",
+        "Last Access": "UNKNOWN",
+        "Created By": "Spark",
+        "Type": "MANAGED",
+        "Provider": "deltasharing",
+        "Comment": "The `job_run_timeline` table is a fact table that contains slices of ongoing job runs, allowing one to track the run time and metadata related to each job run. Each slice is represented by `period_start_time` and `period_end_time` timestamps. For documentation, example queries, and monitoring usage, see [Lakeflow System Tables](https://docs.databricks.com/en/admin/system-tables/jobs.html#job-run-timeline-table-schema).",
+        "Table Properties": "[delta.autoOptimize.autoCompact=auto, delta.autoOptimize.optimizeWrite=true, delta.enableChangeDataFeed=true, delta.lastCommitTimestamp=1763648764000, delta.lastUpdateVersion=236375, delta.minReaderVersion=1, delta.minWriterVersion=4]",
+        "Statistics": "5315351504 bytes, 90029929 rows",
+        "Location": "uc-deltasharing://system.lakeflow.job_run_timeline#system.lakeflow.job_run_timeline",
+        "Legacy UC Partitioned DELTASHARING Table": "true"
+      }
+    },
+    {
+      "table": "system.access.table_lineage",
+      "rows": 42,
+      "statistics": "15723469889 bytes, 101267277 rows",
+      "metadata": {
+        "account_id": "string",
+        "metastore_id": "string",
+        "workspace_id": "string",
+        "entity_type": "string",
+        "entity_id": "string",
+        "entity_run_id": "string",
+        "source_table_full_name": "string",
+        "source_table_catalog": "string",
+        "source_table_schema": "string",
+        "source_table_name": "string",
+        "source_path": "string",
+        "source_type": "string",
+        "target_table_full_name": "string",
+        "target_table_catalog": "string",
+        "target_table_schema": "string",
+        "target_table_name": "string",
+        "target_path": "string",
+        "target_type": "string",
+        "created_by": "string",
+        "event_time": "timestamp",
+        "event_date": "date",
+        "record_id": "string",
+        "event_id": "string",
+        "statement_id": "string",
+        "entity_metadata": "struct<job_info:struct<job_id:string,job_run_id:string>,dashboard_id:string,legacy_dashboard_id:string,notebook_id:string,sql_query_id:string,dlt_pipeline_info:struct<dlt_pipeline_id:string,dlt_update_id:string>,genie_space_id:string,alert_id:string>",
+        "direct_access": "boolean",
+        "Catalog": "system",
+        "Database": "access",
+        "Table": "table_lineage",
+        "Owner": "System user",
+        "Created Time": "Wed May 27 10:29:47 UTC 2026",
+        "Last Access": "UNKNOWN",
+        "Created By": "Spark",
+        "Type": "MANAGED",
+        "Provider": "deltasharing",
+        "Comment": "The table lineage system table includes a record for each read or write event (Spark operation) on a UC table or path. This includes but is not limited to job, notebook, and dashboard runs. This table can be joined with other system tables such as Query History and Jobs to get additional information about the read/write operation. Please refer to the [documentation](https://docs.databricks.com/en/data-governance/unity-catalog/data-lineage.html#limitations) for limitations.",
+        "Table Properties": "[delta.autoOptimize.autoCompact=auto, delta.autoOptimize.optimizeWrite=true, delta.enableChangeDataFeed=true, delta.lastCommitTimestamp=1775351651000, delta.lastUpdateVersion=414871, delta.minReaderVersion=1, delta.minWriterVersion=4, delta.workloadBasedColumns.optimizerStatistics=`account_id`]",
+        "Statistics": "15723469889 bytes, 101267277 rows",
+        "Location": "uc-deltasharing://system.access.table_lineage#system.access.table_lineage",
+        "Legacy UC Partitioned DELTASHARING Table": "true"
+      }
+    },
+    {
+      "table": "main.lakeload.lakeload_serving_profile",
+      "rows": 22,
+      "statistics": "34600 bytes, 100 rows",
+      "metadata": {
+        "id": "bigint",
+        "segment": "string",
+        "score": "int",
+        "version_token": "string",
+        "updated_at": "timestamp",
+        "Catalog": "main",
+        "Database": "lakeload",
+        "Table": "lakeload_serving_profile",
+        "Created Time": "Sat Aug 08 12:30:37 UTC 2026",
+        "Last Access": "UNKNOWN",
+        "Created By": "Spark",
+        "Statistics": "34600 bytes, 100 rows",
+        "Type": "MANAGED",
+        "Collation": "UTF8_BINARY",
+        "Location": "",
+        "Provider": "delta",
+        "Owner": "7cc17d67-bf07-496d-874c-b3aa7ea10e9c",
+        "Is_managed_location": "true",
+        "Predictive Optimization": "ENABLE (inherited from METASTORE metastore_aws_ap_southeast_2)",
+        "Table Properties": "[delta.checkpoint.writeStatsAsJson=false,delta.checkpoint.writeStatsAsStruct=true,delta.enableChangeDataFeed=true,delta.enableDeletionVectors=true,delta.enableRowTracking=true,delta.feature.appendOnly=supported,delta.feature.changeDataFeed=supported,delta.feature.deletionVectors=supported,delta.feature.domainMetadata=supported,delta.feature.invariants=supported,delta.feature.rowTracking=supported,delta.minReaderVersion=3,delta.minWriterVersion=7,delta.parquet.compression.codec=zstd,delta.parquet.format.version=2.12.0,delta.parquet.format.version.afe.internal=2.12.0,delta.rowTracking.materializedRowCommitVersionColumnName=_row-commit-version-col-f289cd77-48bc-414a-929d-33ce90212e8c,delta.rowTracking.materializedRowIdColumnName=_row-id-col-81c065cb-3a17-4991-92ce-3130297a4596]"
+      }
+    }
+  ],
+  "describedSummary": {
+    "attempted": 12,
+    "errored": 0,
+    "withAStatisticsRow": 11,
+    "statisticsValues": {
+      "140251663055 bytes, 1970658704 rows": 1,
+      "1074947198 bytes, 65397877 rows": 1,
+      "289469 bytes, 1000000 rows": 1,
+      "48357 bytes, 10000 rows": 1,
+      "1152717386074 bytes, 5312248625 rows": 1,
+      "154189 bytes, 1000000 rows": 1,
+      "227900991 bytes, 102888 rows": 1,
+      "529558881 bytes, 11329265 rows": 1,
+      "5315351504 bytes, 90029929 rows": 1,
+      "15723469889 bytes, 101267277 rows": 1,
+      "34600 bytes, 100 rows": 1
+    },
+    "withAStatisticsRowAndNoAnalyzeRecord": 7,
+    "withAnAnalyzeRecordAndNoStatisticsRow": 0
+  },
+  "scannedTablesAgainstAnalyzeHistory": {
+    "analyseHistoryRead": true,
+    "scanned": 12,
+    "inTheAnalyzeHistory": 4,
+    "inIt": [
+      "main.lakeload.lakeload_account",
+      "main.lakeload.lakeload_product",
+      "main.lakeload.account",
+      "main.lakeload.lakeload_serving_profile"
+    ],
+    "notInIt": [
+      "system.billing.usage",
+      "system.billing.list_prices",
+      "system.query.history",
+      "system.access.audit",
+      "system.access.workspaces_latest",
+      "system.compute.warehouses",
+      "system.lakeflow.job_run_timeline",
+      "system.access.table_lineage"
+    ]
+  },
+  "probes": [
+    {
+      "label": "information_schema.tables",
+      "ok": true,
+      "rows": [
+        {
+          "table_catalog": "main",
+          "table_schema": "lakeload",
+          "table_name": "lakeload_account",
+          "table_type": "MANAGED",
+          "data_source_format": "DELTA",
+          "last_altered": "2026-08-08T12:57:20.154Z"
+        },
+        {
+          "table_catalog": "main",
+          "table_schema": "lakeload",
+          "table_name": "lakeload_serving_profile",
+          "table_type": "MANAGED",
+          "data_source_format": "DELTA",
+          "last_altered": "2026-08-08T13:09:45.289Z"
+        },
+        {
+          "table_catalog": "main",
+          "table_schema": "lakeload",
+          "table_name": "lakeload_product",
+          "table_type": "MANAGED",
+          "data_source_format": "DELTA",
+          "last_altered": "2026-08-08T23:42:11.155Z"
+        },
+        {
+          "table_catalog": "system",
+          "table_schema": "billing",
+          "table_name": "list_prices",
+          "table_type": "MANAGED",
+          "data_source_format": "DELTASHARING",
+          "last_altered": "2026-08-11T20:23:27.869Z"
+        },
+        {
+          "table_catalog": "system",
+          "table_schema": "lakeflow",
+          "table_name": "job_run_timeline",
+          "table_type": "MANAGED",
+          "data_source_format": "DELTASHARING",
+          "last_altered": "2026-08-11T20:23:38.336Z"
+        },
+        {
+          "table_catalog": "system",
+          "table_schema": "access",
+          "table_name": "workspaces_latest",
+          "table_type": "MANAGED",
+          "data_source_format": "DELTASHARING",
+          "last_altered": "2026-08-11T20:23:35.998Z"
+        },
+        {
+          "table_catalog": "system",
+          "table_schema": "query",
+          "table_name": "history",
+          "table_type": "MANAGED",
+          "data_source_format": "DELTASHARING",
+          "last_altered": "2026-08-11T20:22:45.881Z"
+        },
+        {
+          "table_catalog": "system",
+          "table_schema": "access",
+          "table_name": "audit",
+          "table_type": "MANAGED",
+          "data_source_format": "DELTASHARING",
+          "last_altered": "2026-08-11T20:23:35.478Z"
+        },
+        {
+          "table_catalog": "main",
+          "table_schema": "lakeload",
+          "table_name": "account",
+          "table_type": "MANAGED",
+          "data_source_format": "DELTA",
+          "last_altered": "2026-08-08T08:03:45.475Z"
+        },
+        {
+          "table_catalog": "system",
+          "table_schema": "access",
+          "table_name": "table_lineage",
+          "table_type": "MANAGED",
+          "data_source_format": "DELTASHARING",
+          "last_altered": "2026-08-11T20:23:39.497Z"
+        },
+        {
+          "table_catalog": "system",
+          "table_schema": "compute",
+          "table_name": "warehouses",
+          "table_type": "MANAGED",
+          "data_source_format": "DELTASHARING",
+          "last_altered": "2026-08-11T20:23:37.242Z"
+        },
+        {
+          "table_catalog": "system",
+          "table_schema": "billing",
+          "table_name": "usage",
+          "table_type": "MANAGED",
+          "data_source_format": "DELTASHARING",
+          "last_altered": "2026-08-11T20:23:26.529Z"
+        }
+      ]
+    },
+    {
+      "label": "information_schema.columns has a stats column",
+      "ok": true,
+      "rows": [
+        {
+          "col_name": "table_catalog",
+          "data_type": "string",
+          "comment": "Catalog that contains the relation."
+        },
+        {
+          "col_name": "table_schema",
+          "data_type": "string",
+          "comment": "Schema that contains the relation."
+        },
+        {
+          "col_name": "table_name",
+          "data_type": "string",
+          "comment": "Name of the relation the column is part of."
+        },
+        {
+          "col_name": "column_name",
+          "data_type": "string",
+          "comment": "Name of the column."
+        },
+        {
+          "col_name": "ordinal_position",
+          "data_type": "int",
+          "comment": "The position (numbered from 1) of the column within the relation."
+        },
+        {
+          "col_name": "column_default",
+          "data_type": "string",
+          "comment": "The default value used when the column is not specified in an INSERT, NULL if undefined."
+        },
+        {
+          "col_name": "is_nullable",
+          "data_type": "string",
+          "comment": "YES if column is nullable, NO otherwise."
+        },
+        {
+          "col_name": "full_data_type",
+          "data_type": "string",
+          "comment": "The data type as specified in the column definition."
+        },
+        {
+          "col_name": "data_type",
+          "data_type": "string",
+          "comment": "The simple data type name of the column, or STRUCT, or ARRAY."
+        },
+        {
+          "col_name": "character_maximum_length",
+          "data_type": "bigint",
+          "comment": "Always NULL, reserved for future use."
+        },
+        {
+          "col_name": "character_octet_length",
+          "data_type": "bigint",
+          "comment": "Always NULL, reserved for future use."
+        },
+        {
+          "col_name": "numeric_precision",
+          "data_type": "int",
+          "comment": "For base-2 integral numeric types, FLOAT, and DOUBLE, the number of supported bits. For DECIMAL the number of digits, NULL otherwise."
+        },
+        {
+          "col_name": "numeric_precision_radix",
+          "data_type": "int",
+          "comment": "For DECIMAL 10, for all other numeric types 2, NULL otherwise."
+        },
+        {
+          "col_name": "numeric_scale",
+          "data_type": "int",
+          "comment": "For integral numeric types 0, for DECIMAL the number of digits to the right of the decimal point, NULL otherwise."
+        },
+        {
+          "col_name": "datetime_precision",
+          "data_type": "int",
+          "comment": "For DATE 0, for TIMESTAMP, and INTERVAL … SECOND 6, any other INTERVAL 0, NULL otherwise."
+        },
+        {
+          "col_name": "interval_type",
+          "data_type": "string",
+          "comment": "For INTERVAL the unit portion of the interval, e.g. 'YEAR TO MONTH', NULL otherwise."
+        },
+        {
+          "col_name": "interval_precision",
+          "data_type": "int",
+          "comment": "Always NULL, reserved for future use."
+        },
+        {
+          "col_name": "maximum_cardinality",
+          "data_type": "bigint",
+          "comment": "Always NULL, reserved for future use."
+        },
+        {
+          "col_name": "is_identity",
+          "data_type": "string",
+          "comment": "Always 'NO', reserved for future use."
+        },
+        {
+          "col_name": "identity_generation",
+          "data_type": "string",
+          "comment": "Always NULL, reserved for future use."
+        },
+        {
+          "col_name": "identity_start",
+          "data_type": "string",
+          "comment": "Always NULL, reserved for future use."
+        },
+        {
+          "col_name": "identity_increment",
+          "data_type": "string",
+          "comment": "Always NULL, reserved for future use."
+        },
+        {
+          "col_name": "identity_maximum",
+          "data_type": "string",
+          "comment": "Always NULL, reserved for future use."
+        },
+        {
+          "col_name": "identity_minimum",
+          "data_type": "string",
+          "comment": "Always NULL, reserved for future use."
+        },
+        {
+          "col_name": "identity_cycle",
+          "data_type": "string",
+          "comment": "Always NULL, reserved for future use."
+        },
+        {
+          "col_name": "is_generated",
+          "data_type": "string",
+          "comment": "Always NULL, reserved for future use."
+        },
+        {
+          "col_name": "generation_expression",
+          "data_type": "string",
+          "comment": "Always NULL, reserved for future use."
+        },
+        {
+          "col_name": "is_system_time_period_start",
+          "data_type": "string",
+          "comment": "Always NO, reserved for future use."
+        },
+        {
+          "col_name": "is_system_time_period_end",
+          "data_type": "string",
+          "comment": "Always NO, reserved for future use."
+        },
+        {
+          "col_name": "system_time_period_timestamp_generation",
+          "data_type": "string",
+          "comment": "Always NULL, reserved for future use."
+        },
+        {
+          "col_name": "is_updatable",
+          "data_type": "string",
+          "comment": "YES if column is updatable, NO otherwise."
+        },
+        {
+          "col_name": "partition_index",
+          "data_type": "int",
+          "comment": "Position (numbered from 1) of the column in the partition, NULL if not a partitioning column."
+        },
+        {
+          "col_name": "comment",
+          "data_type": "string",
+          "comment": "Optional description of the column."
+        }
+      ]
+    },
+    {
+      "label": "predictive_optimization_operations_history operation types",
+      "ok": true,
+      "rows": [
+        {
+          "operation_type": "ANALYZE",
+          "runs": "38",
+          "latest": "2026-08-11T11:56:42.437Z"
+        }
+      ]
+    },
+    {
+      "label": "ANALYZE in query history",
+      "ok": true,
+      "rows": [
+        {
+          "statements": "1",
+          "texts": "1",
+          "latest": "2026-07-31T11:14:59.744Z"
+        }
+      ]
+    },
+    {
+      "label": "table_metrics_history carries a write time",
+      "ok": true,
+      "rows": [
+        {
+          "col_name": "snapshot_date",
+          "data_type": "date",
+          "comment": "The UTC date when the record was captured."
+        },
+        {
+          "col_name": "account_id",
+          "data_type": "string",
+          "comment": "The account identifier (UUID)."
+        },
+        {
+          "col_name": "metastore_id",
+          "data_type": "string",
+          "comment": "The metastore identifier (UUID)."
+        },
+        {
+          "col_name": "table_id",
+          "data_type": "string",
+          "comment": "The table identifier (UUID)."
+        },
+        {
+          "col_name": "catalog_name",
+          "data_type": "string",
+          "comment": "The name of the catalog containing the table."
+        },
+        {
+          "col_name": "schema_name",
+          "data_type": "string",
+          "comment": "The name of the schema containing the table."
+        },
+        {
+          "col_name": "table_name",
+          "data_type": "string",
+          "comment": "The name of the table."
+        },
+        {
+          "col_name": "table_type",
+          "data_type": "string",
+          "comment": "The type of table."
+        },
+        {
+          "col_name": "clone_details",
+          "data_type": "struct<parent_id:string,type:string>",
+          "comment": "Details about the clone source table, if this table is a shallow clone."
+        },
+        {
+          "col_name": "table_owner",
+          "data_type": "string",
+          "comment": "The owner of the table."
+        },
+        {
+          "col_name": "active_bytes",
+          "data_type": "bigint",
+          "comment": "Size of active table data in bytes."
+        },
+        {
+          "col_name": "active_files",
+          "data_type": "bigint",
+          "comment": "Number of active files in the table."
+        },
+        {
+          "col_name": "table_creation_time",
+          "data_type": "timestamp",
+          "comment": "The timestamp when the table was created in UTC."
+        },
+        {
+          "col_name": "table_dropped_time",
+          "data_type": "timestamp",
+          "comment": "The timestamp when the table was dropped, if applicable."
+        },
+        {
+          "col_name": "predictive_optimization_enabled",
+          "data_type": "boolean",
+          "comment": "Whether predictive optimization is enabled for this table."
+        },
+        {
+          "col_name": "record_generation_time",
+          "data_type": "timestamp",
+          "comment": "The UTC timestamp when this record was generated."
+        }
+      ]
+    },
+    {
+      "label": "which tables predictive optimization analysed",
+      "ok": true,
+      "rows": [
+        {
+          "table_name": "main.lakeload.lakeload_account",
+          "runs": "2",
+          "latest": "2026-08-08T12:57:17.788Z"
+        },
+        {
+          "table_name": "main.lakeload.lakeload_product",
+          "runs": "2",
+          "latest": "2026-08-08T23:42:08.296Z"
+        },
+        {
+          "table_name": "main.lakeload.lakeload_serving_profile",
+          "runs": "2",
+          "latest": "2026-08-08T13:09:43.292Z"
+        },
+        {
+          "table_name": "df03_02.lactalis_demo._rec_staging",
+          "runs": "2",
+          "latest": "2026-08-11T01:41:53.392Z"
+        },
+        {
+          "table_name": "workshop_demo.automotive_mobility.service_orders",
+          "runs": "1",
+          "latest": "2026-08-11T11:43:22.754Z"
+        },
+        {
+          "table_name": "df03_02.lactalis_demo.dim_product",
+          "runs": "1",
+          "latest": "2026-08-11T01:11:26.101Z"
+        },
+        {
+          "table_name": "workshop_demo.automotive_mobility.vehicle_ownership",
+          "runs": "1",
+          "latest": "2026-08-11T11:43:17.924Z"
+        },
+        {
+          "table_name": "workshop_demo.automotive_mobility.sales_transactions",
+          "runs": "1",
+          "latest": "2026-08-11T11:43:25.086Z"
+        },
+        {
+          "table_name": "df03_02.lactalis_demo.fact_recommendation_feedback",
+          "runs": "1",
+          "latest": "2026-08-11T00:56:57.419Z"
+        },
+        {
+          "table_name": "main.lakeload.event_log_45b7bf67_9229_4ac0_982e_fede9262c203",
+          "runs": "1",
+          "latest": "2026-08-08T13:42:47.152Z"
+        },
+        {
+          "table_name": "workshop_demo.automotive_mobility.telematics_events",
+          "runs": "1",
+          "latest": "2026-08-11T11:43:13.284Z"
+        },
+        {
+          "table_name": "workshop_demo.automotive_mobility.dealers",
+          "runs": "1",
+          "latest": "2026-08-11T11:43:10.154Z"
+        },
+        {
+          "table_name": "main.lakeload.lakeload_history",
+          "runs": "1",
+          "latest": "2026-08-08T11:11:31.463Z"
+        },
+        {
+          "table_name": "workshop_demo.automotive_mobility.campaign_vehicles",
+          "runs": "1",
+          "latest": "2026-08-11T11:43:08.024Z"
+        },
+        {
+          "table_name": "df03_02.lactalis_demo._rec_ai_v2",
+          "runs": "1",
+          "latest": "2026-08-11T01:41:58.043Z"
+        },
+        {
+          "table_name": "workshop_demo.automotive_mobility.vehicles",
+          "runs": "1",
+          "latest": "2026-08-11T11:43:29.681Z"
+        },
+        {
+          "table_name": "workshop_demo.automotive_mobility.customers",
+          "runs": "1",
+          "latest": "2026-08-11T11:43:20.168Z"
+        },
+        {
+          "table_name": "df03_02.lactalis_demo.signal_calendar",
+          "runs": "1",
+          "latest": "2026-08-11T01:11:38.009Z"
+        },
+        {
+          "table_name": "workshop_demo.automotive_mobility.service_order_parts",
+          "runs": "1",
+          "latest": "2026-08-11T11:43:03.761Z"
+        },
+        {
+          "table_name": "df03_02.lactalis_demo.fact_recommendations",
+          "runs": "1",
+          "latest": "2026-08-11T00:56:52.676Z"
+        },
+        {
+          "table_name": "workshop_demo.automotive_mobility.warranty_claims",
+          "runs": "1",
+          "latest": "2026-08-11T11:43:15.641Z"
+        },
+        {
+          "table_name": "workshop_demo.automotive_mobility.parts",
+          "runs": "1",
+          "latest": "2026-08-11T11:43:27.370Z"
+        },
+        {
+          "table_name": "df03_02.lactalis_demo.signal_weather",
+          "runs": "1",
+          "latest": "2026-08-11T01:11:42.561Z"
+        },
+        {
+          "table_name": "main.lakeload.account",
+          "runs": "1",
+          "latest": "2026-08-08T03:40:08.260Z"
+        },
+        {
+          "table_name": "df03_02.lactalis_demo.fact_transactions",
+          "runs": "1",
+          "latest": "2026-08-11T01:11:33.632Z"
+        },
+        {
+          "table_name": "workshop_demo.automotive_mobility.suppliers",
+          "runs": "1",
+          "latest": "2026-08-11T11:56:37.781Z"
+        },
+        {
+          "table_name": "df03_02.lactalis_demo.dim_customer",
+          "runs": "1",
+          "latest": "2026-08-11T01:11:40.091Z"
+        },
+        {
+          "table_name": "df03_02.lactalis_demo._rec_ai",
+          "runs": "1",
+          "latest": "2026-08-11T00:57:08.297Z"
+        },
+        {
+          "table_name": "df03_02.lactalis_demo.fact_inventory",
+          "runs": "1",
+          "latest": "2026-08-11T01:11:44.773Z"
+        },
+        {
+          "table_name": "main.lakeload.product",
+          "runs": "1",
+          "latest": "2026-08-08T03:40:10.481Z"
+        },
+        {
+          "table_name": "main.lakeload.history",
+          "runs": "1",
+          "latest": "2026-08-08T03:40:04.144Z"
+        },
+        {
+          "table_name": "workshop_demo.automotive_mobility.parts_inventory",
+          "runs": "1",
+          "latest": "2026-08-11T11:56:42.437Z"
+        },
+        {
+          "table_name": "df03_02.lactalis_demo.signal_fuel_price",
+          "runs": "1",
+          "latest": "2026-08-11T01:11:35.808Z"
+        },
+        {
+          "table_name": "df03_02.lactalis_demo.ecom_favorites",
+          "runs": "1",
+          "latest": "2026-08-11T01:11:30.509Z"
+        }
+      ]
+    },
+    {
+      "label": "every DESCRIBE EXTENDED row of system.billing.usage",
+      "ok": true,
+      "rows": [
+        {
+          "col_name": "account_id",
+          "data_type": "string",
+          "comment": "ID of the account this report was generated for"
+        },
+        {
+          "col_name": "workspace_id",
+          "data_type": "string",
+          "comment": "ID of the Workspace this usage was associated with"
+        },
+        {
+          "col_name": "record_id",
+          "data_type": "string",
+          "comment": "Unique ID for this usage record"
+        },
+        {
+          "col_name": "sku_name",
+          "data_type": "string",
+          "comment": "Name of the SKU"
+        },
+        {
+          "col_name": "cloud",
+          "data_type": "string",
+          "comment": "Cloud this usage is relevant for. Possible values are AWS, AZURE, and GCP."
+        },
+        {
+          "col_name": "usage_start_time",
+          "data_type": "timestamp",
+          "comment": "The start time relevant to this usage record. Timezone information is recorded at the end of the value with +00:00 representing UTC timezone."
+        },
+        {
+          "col_name": "usage_end_time",
+          "data_type": "timestamp",
+          "comment": "The end time relevant to this usage record. Timezone information is recorded at the end of the value with +00:00 representing UTC timezone."
+        },
+        {
+          "col_name": "usage_date",
+          "data_type": "date",
+          "comment": "Date of the usage record, this field can be used for faster aggregation by date"
+        },
+        {
+          "col_name": "custom_tags",
+          "data_type": "map<string,string>",
+          "comment": "Tags applied by the users to this usage. Includes compute resource tags and jobs tags."
+        },
+        {
+          "col_name": "usage_unit",
+          "data_type": "string",
+          "comment": "Unit this usage is measured in. Possible values include DBUs."
+        },
+        {
+          "col_name": "usage_quantity",
+          "data_type": "decimal(38,18)",
+          "comment": "Number of units consumed for this record."
+        },
+        {
+          "col_name": "usage_metadata",
+          "data_type": "struct<cluster_id:string,job_id:string,warehouse_id:string,instance_pool_id:string,node_type:string,job_run_id:string,notebook_id:string,dlt_pipeline_id:string,endpoint_name:string,endpoint_id:string,dlt_update_id:string,dlt_maintenance_id:string,run_name:string,job_name:string,notebook_path:string,central_clean_room_id:string,source_region:string,destination_region:string,app_id:string,app_name:string,metastore_id:string,private_endpoint_name:string,storage_api_type:string,budget_policy_id:string,ai_runtime_pool_id:string,... 28 more fields>",
+          "comment": "System-provided metadata about the usage, including IDs for compute resources and jobs (if applicable). See [Analyze usage metadata](https://docs.databricks.com/en/admin/system-tables/billing.html#usage-metadata)."
+        },
+        {
+          "col_name": "identity_metadata",
+          "data_type": "struct<run_as:string,created_by:string,owned_by:string,run_by:string>",
+          "comment": "System-provided metadata about the identities involved in the usage. See [Analyze identity metadata](https://docs.databricks.com/en/admin/system-tables/billing.html#identity-metadata)."
+        },
+        {
+          "col_name": "record_type",
+          "data_type": "string",
+          "comment": "Whether the record is original, a retraction, or a restatement. The value is ORIGINAL unless the record is related to a correction. See [Analyze correction records](https://docs.databricks.com/en/admin/system-tables/billing.html#record-type)."
+        },
+        {
+          "col_name": "ingestion_date",
+          "data_type": "date",
+          "comment": "Date the record was ingested into the usage table."
+        },
+        {
+          "col_name": "billing_origin_product",
+          "data_type": "string",
+          "comment": "The product that originated the usage. Some products can be billed as different SKUs. For possible values, see [View information about the product associated with the usage](https://docs.databricks.com/en/admin/system-tables/billing.html#features)."
+        },
+        {
+          "col_name": "product_features",
+          "data_type": "struct<jobs_tier:string,sql_tier:string,dlt_tier:string,is_serverless:boolean,is_photon:boolean,serving_type:string,networking:struct<connectivity_type:string>,ai_runtime:struct<compute_type:string>,model_serving:struct<offering_type:string>,ai_gateway:struct<feature_type:string>,serverless_gpu:struct<workload_type:string>,performance_target:string,agent_bricks:struct<problem_type:string,workload_type:string>,ai_functions:struct<ai_function:string>,apps:struct<compute_size:string>,lakeflow_connect:struct<task_type:string,zerobus_request_type:string>,lakebase:struct<compute_type:string,storage_type:string>,ai_bi_genie:struct<capability_type:string,offering_type:string>,genie:struct<offering_type:string>>",
+          "comment": "Details about the specific product features used."
+        },
+        {
+          "col_name": "usage_type",
+          "data_type": "string",
+          "comment": "The type of usage attributed to the product or workload for billing purposes. Possible values are COMPUTE_TIME, STORAGE_SPACE, NETWORK_BYTES, API_CALLS, TOKEN, or GPU_TIME."
+        },
+        {
+          "col_name": "",
+          "data_type": "",
+          "comment": ""
+        },
+        {
+          "col_name": "# Detailed Table Information",
+          "data_type": "",
+          "comment": ""
+        },
+        {
+          "col_name": "Catalog",
+          "data_type": "system",
+          "comment": ""
+        },
+        {
+          "col_name": "Database",
+          "data_type": "billing",
+          "comment": ""
+        },
+        {
+          "col_name": "Table",
+          "data_type": "usage",
+          "comment": ""
+        },
+        {
+          "col_name": "Owner",
+          "data_type": "System user",
+          "comment": ""
+        },
+        {
+          "col_name": "Created Time",
+          "data_type": "Wed May 27 23:29:53 UTC 2026",
+          "comment": ""
+        },
+        {
+          "col_name": "Last Access",
+          "data_type": "UNKNOWN",
+          "comment": ""
+        },
+        {
+          "col_name": "Created By",
+          "data_type": "Spark ",
+          "comment": ""
+        },
+        {
+          "col_name": "Type",
+          "data_type": "MANAGED",
+          "comment": ""
+        },
+        {
+          "col_name": "Provider",
+          "data_type": "deltasharing",
+          "comment": ""
+        },
+        {
+          "col_name": "Comment",
+          "data_type": "The [usage table](https://docs.databricks.com/admin/system-tables/billing.html) gives you access to account-wide billable usage data. The data is centralized and routed to all the regions.",
+          "comment": ""
+        },
+        {
+          "col_name": "Table Properties",
+          "data_type": "[delta.autoOptimize.autoCompact=auto, delta.autoOptimize.optimizeWrite=true, delta.enableChangeDataFeed=true, delta.lastCommitTimestamp=1785299133000, delta.lastUpdateVersion=163309, delta.minReaderVersion=1, delta.minWriterVersion=4, delta.workloadBasedColumns.deltaFileStatistics=`usage_metadata`.`sharing_materialization_id`]",
+          "comment": ""
+        },
+        {
+          "col_name": "Statistics",
+          "data_type": "140260733906 bytes, 1970699748 rows",
+          "comment": ""
+        },
+        {
+          "col_name": "Location",
+          "data_type": "uc-deltasharing://system.billing.usage#system.billing.usage",
+          "comment": ""
+        },
+        {
+          "col_name": "Legacy UC Partitioned DELTASHARING Table",
+          "data_type": "true",
+          "comment": ""
+        }
+      ]
+    },
+    {
+      "label": "every DESCRIBE EXTENDED row of system.billing.list_prices",
+      "ok": true,
+      "rows": [
+        {
+          "col_name": "account_id",
+          "data_type": "string",
+          "comment": "ID of the account this report was generated for"
+        },
+        {
+          "col_name": "price_start_time",
+          "data_type": "timestamp",
+          "comment": "The time this price became effective in UTC"
+        },
+        {
+          "col_name": "price_end_time",
+          "data_type": "timestamp",
+          "comment": "The time this price stopped being effective in UTC"
+        },
+        {
+          "col_name": "sku_name",
+          "data_type": "string",
+          "comment": "Name of the SKU"
+        },
+        {
+          "col_name": "cloud",
+          "data_type": "string",
+          "comment": "Name of the Cloud this price is applicable to. Possible values are AWS, AZURE, and GCP."
+        },
+        {
+          "col_name": "currency_code",
+          "data_type": "string",
+          "comment": "The currency this price is expressed in"
+        },
+        {
+          "col_name": "usage_unit",
+          "data_type": "string",
+          "comment": "The unit of measurement that is monetized."
+        },
+        {
+          "col_name": "pricing",
+          "data_type": "struct<default:decimal(38,18),promotional:struct<default:decimal(38,18)>,effective_list:struct<default:decimal(38,18)>>",
+          "comment": "A structured data field that includes pricing info at the published list price rate. The key default will always return a single price that can be used for simple long-term estimates. The key promotional represents a temporary promotional price that all customers get which could be used for cost estimation during the temporary period. The key effective_list resolves list and promotional price, and contains the effective list price used for calculating the cost."
+        },
+        {
+          "col_name": "",
+          "data_type": "",
+          "comment": ""
+        },
+        {
+          "col_name": "# Detailed Table Information",
+          "data_type": "",
+          "comment": ""
+        },
+        {
+          "col_name": "Catalog",
+          "data_type": "system",
+          "comment": ""
+        },
+        {
+          "col_name": "Database",
+          "data_type": "billing",
+          "comment": ""
+        },
+        {
+          "col_name": "Table",
+          "data_type": "list_prices",
+          "comment": ""
+        },
+        {
+          "col_name": "Owner",
+          "data_type": "System user",
+          "comment": ""
+        },
+        {
+          "col_name": "Created Time",
+          "data_type": "Wed May 27 23:29:53 UTC 2026",
+          "comment": ""
+        },
+        {
+          "col_name": "Last Access",
+          "data_type": "UNKNOWN",
+          "comment": ""
+        },
+        {
+          "col_name": "Created By",
+          "data_type": "Spark ",
+          "comment": ""
+        },
+        {
+          "col_name": "Type",
+          "data_type": "MANAGED",
+          "comment": ""
+        },
+        {
+          "col_name": "Provider",
+          "data_type": "deltasharing",
+          "comment": ""
+        },
+        {
+          "col_name": "Comment",
+          "data_type": "The [pricing table](https://docs.databricks.com/admin/system-tables/pricing.html) gives you access to a historical log of SKU pricing. A record gets added each time there is a change to a SKU price.",
+          "comment": ""
+        },
+        {
+          "col_name": "Table Properties",
+          "data_type": "[delta.autoOptimize.autoCompact=auto, delta.autoOptimize.optimizeWrite=true, delta.lastCommitTimestamp=1751639197000, delta.lastUpdateVersion=17312, delta.minReaderVersion=1, delta.minWriterVersion=2]",
+          "comment": ""
+        },
+        {
+          "col_name": "Statistics",
+          "data_type": "1074947198 bytes, 65397877 rows",
+          "comment": ""
+        },
+        {
+          "col_name": "Location",
+          "data_type": "uc-deltasharing://system.billing.list_prices#system.billing.list_prices",
+          "comment": ""
+        },
+        {
+          "col_name": "Legacy UC Partitioned DELTASHARING Table",
+          "data_type": "true",
+          "comment": ""
+        }
+      ]
+    },
+    {
+      "label": "last ANALYZE against last write",
+      "ok": true,
+      "rows": [
+        {
+          "full_name": "main.lakeload.event_log_45b7bf67_9229_4ac0_982e_fede9262c203",
+          "analysed_at": "2026-08-08T13:42:47.152Z",
+          "analyze_runs": "1",
+          "written_at": "2026-08-10T06:11:21.678Z",
+          "write_events": "2503",
+          "hours_written_after_analyse": "40"
+        },
+        {
+          "full_name": "main.lakeload.account",
+          "analysed_at": "2026-08-08T03:40:08.260Z",
+          "analyze_runs": "1",
+          "written_at": "2026-08-08T08:17:14.009Z",
+          "write_events": "6",
+          "hours_written_after_analyse": "4"
+        },
+        {
+          "full_name": "main.lakeload.history",
+          "analysed_at": "2026-08-08T03:40:04.144Z",
+          "analyze_runs": "1",
+          "written_at": "2026-08-08T08:17:14.944Z",
+          "write_events": "6",
+          "hours_written_after_analyse": "4"
+        },
+        {
+          "full_name": "main.lakeload.product",
+          "analysed_at": "2026-08-08T03:40:10.481Z",
+          "analyze_runs": "1",
+          "written_at": "2026-08-08T08:17:14.493Z",
+          "write_events": "6",
+          "hours_written_after_analyse": "4"
+        },
+        {
+          "full_name": "main.lakeload.lakeload_history",
+          "analysed_at": "2026-08-08T11:11:31.463Z",
+          "analyze_runs": "1",
+          "written_at": "2026-08-08T12:30:36.124Z",
+          "write_events": "9",
+          "hours_written_after_analyse": "1"
+        },
+        {
+          "full_name": "main.lakeload.lakeload_serving_profile",
+          "analysed_at": "2026-08-08T13:09:43.292Z",
+          "analyze_runs": "2",
+          "written_at": "2026-08-08T12:37:56.734Z",
+          "write_events": "20",
+          "hours_written_after_analyse": "0"
+        },
+        {
+          "full_name": "df03_02.lactalis_demo._rec_ai",
+          "analysed_at": "2026-08-11T00:57:08.297Z",
+          "analyze_runs": "1",
+          "written_at": "2026-08-11T00:38:06.768Z",
+          "write_events": "2",
+          "hours_written_after_analyse": "0"
+        },
+        {
+          "full_name": "workshop_demo.automotive_mobility.parts_inventory",
+          "analysed_at": "2026-08-11T11:56:42.437Z",
+          "analyze_runs": "1",
+          "written_at": "2026-08-11T11:29:24.624Z",
+          "write_events": "1",
+          "hours_written_after_analyse": "0"
+        },
+        {
+          "full_name": "workshop_demo.automotive_mobility.parts",
+          "analysed_at": "2026-08-11T11:43:27.370Z",
+          "analyze_runs": "1",
+          "written_at": "2026-08-11T11:25:33.326Z",
+          "write_events": "1",
+          "hours_written_after_analyse": "0"
+        },
+        {
+          "full_name": "workshop_demo.automotive_mobility.warranty_claims",
+          "analysed_at": "2026-08-11T11:43:15.641Z",
+          "analyze_runs": "1",
+          "written_at": "2026-08-11T11:29:19.940Z",
+          "write_events": "3",
+          "hours_written_after_analyse": "0"
+        },
+        {
+          "full_name": "workshop_demo.automotive_mobility.customers",
+          "analysed_at": "2026-08-11T11:43:20.168Z",
+          "analyze_runs": "1",
+          "written_at": "2026-08-11T11:27:19.683Z",
+          "write_events": "1",
+          "hours_written_after_analyse": "0"
+        },
+        {
+          "full_name": "df03_02.lactalis_demo.dim_customer",
+          "analysed_at": "2026-08-11T01:11:40.091Z",
+          "analyze_runs": "1",
+          "written_at": "2026-08-11T00:27:41.081Z",
+          "write_events": "2",
+          "hours_written_after_analyse": "0"
+        },
+        {
+          "full_name": "workshop_demo.automotive_mobility.vehicles",
+          "analysed_at": "2026-08-11T11:43:29.681Z",
+          "analyze_runs": "1",
+          "written_at": "2026-08-11T11:28:14.141Z",
+          "write_events": "1",
+          "hours_written_after_analyse": "0"
+        },
+        {
+          "full_name": "df03_02.lactalis_demo.fact_inventory",
+          "analysed_at": "2026-08-11T01:11:44.773Z",
+          "analyze_runs": "1",
+          "written_at": "2026-08-11T00:27:42.904Z",
+          "write_events": "2",
+          "hours_written_after_analyse": "0"
+        },
+        {
+          "full_name": "df03_02.lactalis_demo.signal_weather",
+          "analysed_at": "2026-08-11T01:11:42.561Z",
+          "analyze_runs": "1",
+          "written_at": "2026-08-11T00:30:19.675Z",
+          "write_events": "10",
+          "hours_written_after_analyse": "0"
+        },
+        {
+          "full_name": "df03_02.lactalis_demo.signal_calendar",
+          "analysed_at": "2026-08-11T01:11:38.009Z",
+          "analyze_runs": "1",
+          "written_at": "2026-08-11T00:28:23.368Z",
+          "write_events": "5",
+          "hours_written_after_analyse": "0"
+        },
+        {
+          "full_name": "workshop_demo.automotive_mobility.sales_transactions",
+          "analysed_at": "2026-08-11T11:43:25.086Z",
+          "analyze_runs": "1",
+          "written_at": "2026-08-11T11:28:59.847Z",
+          "write_events": "1",
+          "hours_written_after_analyse": "0"
+        },
+        {
+          "full_name": "workshop_demo.automotive_mobility.service_order_parts",
+          "analysed_at": "2026-08-11T11:43:03.761Z",
+          "analyze_runs": "1",
+          "written_at": "2026-08-11T11:29:13.082Z",
+          "write_events": "2",
+          "hours_written_after_analyse": "0"
+        },
+        {
+          "full_name": "workshop_demo.automotive_mobility.vehicle_ownership",
+          "analysed_at": "2026-08-11T11:43:17.924Z",
+          "analyze_runs": "1",
+          "written_at": "2026-08-11T11:28:40.417Z",
+          "write_events": "1",
+          "hours_written_after_analyse": "0"
+        },
+        {
+          "full_name": "workshop_demo.automotive_mobility.dealers",
+          "analysed_at": "2026-08-11T11:43:10.154Z",
+          "analyze_runs": "1",
+          "written_at": "2026-08-11T11:25:15.369Z",
+          "write_events": "1",
+          "hours_written_after_analyse": "0"
+        },
+        {
+          "full_name": "df03_02.lactalis_demo.fact_transactions",
+          "analysed_at": "2026-08-11T01:11:33.632Z",
+          "analyze_runs": "1",
+          "written_at": "2026-08-11T00:28:43.659Z",
+          "write_events": "44",
+          "hours_written_after_analyse": "0"
+        },
+        {
+          "full_name": "df03_02.lactalis_demo.fact_recommendations",
+          "analysed_at": "2026-08-11T00:56:52.676Z",
+          "analyze_runs": "1",
+          "written_at": "2026-08-11T01:42:04.753Z",
+          "write_events": "22",
+          "hours_written_after_analyse": "0"
+        },
+        {
+          "full_name": "df03_02.lactalis_demo._rec_staging",
+          "analysed_at": "2026-08-11T01:41:53.392Z",
+          "analyze_runs": "2",
+          "written_at": "2026-08-11T01:16:54.574Z",
+          "write_events": "16",
+          "hours_written_after_analyse": "0"
+        },
+        {
+          "full_name": "workshop_demo.automotive_mobility.campaign_vehicles",
+          "analysed_at": "2026-08-11T11:43:08.024Z",
+          "analyze_runs": "1",
+          "written_at": "2026-08-11T11:29:32.353Z",
+          "write_events": "1",
+          "hours_written_after_analyse": "0"
+        },
+        {
+          "full_name": "df03_02.lactalis_demo.fact_recommendation_feedback",
+          "analysed_at": "2026-08-11T00:56:57.419Z",
+          "analyze_runs": "1",
+          "written_at": "2026-08-11T01:16:31.145Z",
+          "write_events": "7",
+          "hours_written_after_analyse": "0"
+        },
+        {
+          "full_name": "workshop_demo.automotive_mobility.suppliers",
+          "analysed_at": "2026-08-11T11:56:37.781Z",
+          "analyze_runs": "1",
+          "written_at": "2026-08-11T11:25:20.176Z",
+          "write_events": "1",
+          "hours_written_after_analyse": "0"
+        },
+        {
+          "full_name": "df03_02.lactalis_demo.signal_fuel_price",
+          "analysed_at": "2026-08-11T01:11:35.808Z",
+          "analyze_runs": "1",
+          "written_at": "2026-08-11T00:28:16.709Z",
+          "write_events": "5",
+          "hours_written_after_analyse": "0"
+        },
+        {
+          "full_name": "df03_02.lactalis_demo.dim_product",
+          "analysed_at": "2026-08-11T01:11:26.101Z",
+          "analyze_runs": "1",
+          "written_at": "2026-08-11T00:27:39.178Z",
+          "write_events": "2",
+          "hours_written_after_analyse": "0"
+        },
+        {
+          "full_name": "df03_02.lactalis_demo.ecom_favorites",
+          "analysed_at": "2026-08-11T01:11:30.509Z",
+          "analyze_runs": "1",
+          "written_at": "2026-08-11T00:27:44.756Z",
+          "write_events": "2",
+          "hours_written_after_analyse": "0"
+        },
+        {
+          "full_name": "df03_02.lactalis_demo._rec_ai_v2",
+          "analysed_at": "2026-08-11T01:41:58.043Z",
+          "analyze_runs": "1",
+          "written_at": "2026-08-11T01:18:08.882Z",
+          "write_events": "1",
+          "hours_written_after_analyse": "0"
+        },
+        {
+          "full_name": "workshop_demo.automotive_mobility.service_orders",
+          "analysed_at": "2026-08-11T11:43:22.754Z",
+          "analyze_runs": "1",
+          "written_at": "2026-08-11T11:29:05.871Z",
+          "write_events": "2",
+          "hours_written_after_analyse": "0"
+        },
+        {
+          "full_name": "main.lakeload.lakeload_account",
+          "analysed_at": "2026-08-08T12:57:17.788Z",
+          "analyze_runs": "2",
+          "written_at": "2026-08-08T12:30:31.039Z",
+          "write_events": "9",
+          "hours_written_after_analyse": "0"
+        },
+        {
+          "full_name": "workshop_demo.automotive_mobility.telematics_events",
+          "analysed_at": "2026-08-11T11:43:13.284Z",
+          "analyze_runs": "1",
+          "written_at": "2026-08-11T11:29:41.120Z",
+          "write_events": "1",
+          "hours_written_after_analyse": "0"
+        },
+        {
+          "full_name": "main.lakeload.lakeload_product",
+          "analysed_at": "2026-08-08T23:42:08.296Z",
+          "analyze_runs": "2",
+          "written_at": "2026-08-08T12:30:33.552Z",
+          "write_events": "9",
+          "hours_written_after_analyse": "-11"
+        }
+      ]
+    }
+  ]
+}

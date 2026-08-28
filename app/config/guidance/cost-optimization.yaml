@@ -1,0 +1,2174 @@
+# Answering guidance for the questions in this pillar.
+#
+# Keyed by control id, flat rather than nested by principle: the catalogue owns that structure.
+# Scaffolded by scripts/scaffold-guidance.mjs, which never edits an entry that already exists.
+# Held to config/guidance/guidance.schema.json by scripts/check-guidance.mjs.
+#
+# docs/design/guidance-authoring.md fixes the voice and works one entry through end to end.
+pillar: cost-optimization
+entries:
+  # Use SQL warehouse for SQL workloads
+  # Q: When someone needs to run SQL, is a SQL warehouse the path of least resistance — or is it easier for them to start an all-purpose cluster?
+  CO-01-03:
+    status: authored
+    last_reviewed: '2026-08-03'
+    owner_role: Platform administrator, with the analytics lead
+    means: >-
+      An analyst who wants to run a query reaches a SQL warehouse without asking anybody, and starting
+      an all-purpose cluster to do the same work is either harder or not permitted.
+    matters: >-
+      All-purpose compute bills at roughly twice the rate of a SQL warehouse for the same query, starts
+      in minutes rather than seconds, and holds its cost while somebody reads the result. The spend is
+      not the whole loss: the analyst waits, so they run fewer queries and keep the cluster alive
+      between them.
+    good:
+      - A warehouse exists that analysts can use without raising a request, and they know its name.
+      - BI tools and SQL editors point at warehouses rather than at all-purpose clusters.
+      - Cluster policies make an all-purpose cluster the harder path for someone whose work is SQL.
+      - The all-purpose share of DBUs is small, and somebody can say what the remainder is doing.
+      - Warehouses auto-stop, so the easy path is not also the wasteful one.
+    examples:
+      strong: >-
+        Analysts and BI tools connect to serverless SQL warehouses that auto-stop after ten minutes.
+        Cluster policies restrict all-purpose compute to the engineering groups that need notebooks
+        against libraries a warehouse cannot load, and all-purpose is under a tenth of DBUs.
+      partial: >-
+        Warehouses exist and the BI tool uses one, but analysts who work in notebooks still start
+        all-purpose clusters because nothing stops them and the warehouse cannot run their Python cells.
+      weak: >-
+        Everything runs on all-purpose clusters. Somebody started one for a dashboard refresh, it has
+        never been stopped, and the dashboard is the reason nobody wants to stop it.
+    verify:
+      - how: sql
+        where: |-
+          select billing_origin_product, round(sum(usage_quantity), 1) as dbus
+          from system.billing.usage
+          where usage_date > current_date() - 30 and usage_unit = 'DBU'
+          group by all order by dbus desc
+        expect: >-
+          SQL work sitting under the SQL line. A large interactive figure you cannot attribute to
+          development at a keyboard is the finding
+        caveat: >-
+          Bucketed on `billing_origin_product`, not the SKU name: the SKU carries the compute shape and not
+          the workload, and on one estate every DBU whose SKU said `ALL_PURPOSE` was app serving — which
+          this expectation would have had a reader write up as untracked interactive work. The unit filter
+          keeps GB of networking and DSUs of storage out of a column named for DBUs.
+      - how: sql
+        where: |-
+          select coalesce(compute.type, 'unrecorded') as compute_type, client_application,
+          count(*) as queries from system.query.history
+          where end_time > current_timestamp() - interval 30 days group by all order by queries desc
+        expect: >-
+          BI tools and SQL editors among the clients, rather than notebook traffic carrying the query load.
+        caveat: >-
+          `compute.type` is selected on purpose: this table records queries on SQL warehouses and on
+          serverless notebook and job compute, and nothing at all from classic all-purpose or classic job
+          clusters. If every row says `WAREHOUSE`, the SQL running on classic compute is invisible here
+          rather than absent, and the finding has to come from the Spark UI instead
+      - how: ui
+        where: Compute > Policies, and whether a policy limits who may create all-purpose compute
+        expect: A policy that makes the warehouse the path of least resistance rather than a convention
+    pitfalls:
+      - >-
+        A warehouse that exists and that nobody can use without a permission request, which is the same
+        as no warehouse from the analyst's side.
+      - >-
+        Moving the BI tool to a warehouse and leaving every notebook and scheduled query on all-purpose,
+        which moves the visible workload and not the spend.
+      - >-
+        Counting warehouse adoption by warehouses created rather than by DBUs moved. An estate can run
+        six warehouses and still put most of its SQL through all-purpose clusters.
+    partial_when: >-
+      Warehouses are in use for some SQL — usually the BI tool — while notebooks, scheduled queries or a
+      particular team still run theirs on all-purpose compute.
+    references:
+      - https://docs.databricks.com/aws/en/compute/sql-warehouse/
+      - https://docs.databricks.com/aws/en/admin/clusters/policies
+    advice:
+      start_from: >-
+        One serverless SQL warehouse per team that runs SQL, auto-stopping after ten minutes, that
+        anybody in the team can use without raising a request — and a cluster policy that makes
+        all-purpose compute the harder path for work a warehouse could do.
+      depends_on:
+        - >-
+          Notebooks that mix SQL with Python libraries a warehouse cannot load need all-purpose
+          compute, so the policy carves out the group that does that rather than the practice.
+        - >-
+          A workload with a hard concurrency floor may want a pro warehouse with a fixed cluster count
+          instead of serverless, which trades the start-up saving for a predictable one.
+        - >-
+          Where serverless is not available in the region, the same shape holds with a pro warehouse
+          and a shorter auto-stop, because the idle cost is now yours rather than the platform's.
+      path:
+        - >-
+          Attribute the current all-purpose spend before changing anything: bucket DBUs by billing
+          origin product, and find out what the interactive share is actually doing. On one estate
+          every DBU whose SKU said all-purpose turned out to be app serving.
+        - >-
+          Stand up the warehouses and point the BI tool and the SQL editors at them. This is most of
+          the saving and none of the argument, because nobody defends a dashboard's compute choice.
+        - >-
+          Then move the policy: restrict all-purpose to the groups whose work needs it, and let the
+          remaining users discover the warehouse is already there. Doing this before the warehouses
+          exist is how a cost programme becomes a shadow-IT programme.
+      costs:
+        - >-
+          Serverless bills at a higher rate per DBU than a classic warehouse, so an estate whose
+          queries are long and continuous rather than bursty can spend more, not less.
+        - >-
+          Cluster policies are somebody's ongoing job — a new team needs a policy, and a policy that
+          blocks legitimate work gets an exception that is never removed.
+        - >-
+          A ten-minute auto-stop costs a few seconds of resume on the first query after a quiet spell,
+          which analysts notice and mention.
+      retain: >-
+        A dated breakdown of DBUs by billing origin product, from before and after, with the
+        all-purpose share on it and a sentence saying what the remainder is. It is the same query the
+        verification step above runs, saved.
+      revisit: >-
+        A new team onboarding, a BI tool changing, or the all-purpose share rising two months running.
+        Otherwise quarterly — the mix moves on its own as workloads are added, and nothing announces it.
+
+  # Use the right instance type
+  # Q: Is instance type chosen deliberately for each workload class, or does new work inherit whatever the last person used?
+  CO-01-07:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: Platform administrator, with the data engineering lead
+    means: >-
+      The instance family behind a workload was chosen for what the workload does — memory for shuffles,
+      storage-optimised for caching, GPU for training — rather than copied from the cluster next to it.
+    matters: >-
+      An instance family mismatched to the work costs twice in the same bill: the wrong resource is paid
+      for and the scarce one throttles the job, so it runs longer at the higher rate. Because it still
+      completes, nothing reports the mismatch, and the shape gets copied into the next workload.
+    good:
+      - Workload classes are named — ETL, interactive, ML training, serving — and each has a default instance family.
+      - The defaults are in cluster policies or bundle templates, so a new workload inherits a decision rather than a habit.
+      - Somebody can say why the ETL default is what it is, in terms of the work rather than the price list.
+      - Latest-generation instances are used where they are available, since they are usually cheaper per unit of work.
+      - Photon is on where the workload is SQL or Delta-heavy, and off where it would not pay.
+    examples:
+      strong: >-
+        Three cluster policies cover ETL, interactive and ML, each pinning an instance family with a
+        recorded reason. New jobs are created from bundle templates that reference them, and the last
+        instance-generation review moved ETL onto a newer family after measuring the change.
+      partial: >-
+        A default family was chosen deliberately for the main ETL fleet, but the ML and interactive
+        clusters were created ad hoc and use whatever was picked at the time.
+      weak: >-
+        Every cluster uses the same general-purpose type because it was the console default, and the type
+        has not changed in two years while three instance generations have shipped.
+    verify:
+      - how: sql
+        where: |-
+          with current_clusters as (
+            select * from system.compute.clusters
+            qualify row_number() over (
+              partition by workspace_id, cluster_id order by change_time desc) = 1
+          )
+          select worker_node_type, driver_node_type, count(*) as clusters
+          from current_clusters where delete_time is null group by all order by clusters desc
+        expect: >-
+          A small set of types you can map to workload classes, rather than one type for everything or
+          twenty types for twenty clusters.
+        caveat: >-
+          The `qualify` is not decoration: this table keeps a row per edit, so `count(*)` counts versions
+          and not clusters, and filtering `delete_time is null` without taking the latest row per cluster
+          reports deleted clusters as live — on the estate this was written against, that difference was ten
+          clusters against none
+      - how: ui
+        where: Compute > Policies, and whether each policy fixes or constrains the node type
+        expect: A node type family per workload class, rather than every type left to the creator
+      - how: by-hand
+        where: Ask why the main ETL fleet uses the family it uses
+        expect: An answer about shuffle, memory or IO — rather than "that is what we have always used"
+    pitfalls:
+      - >-
+        Choosing memory-optimised because a job once failed with an out-of-memory error, when the cause
+        was a skewed join that the extra memory only hides at a higher hourly rate.
+      - >-
+        Pinning an instance type in a policy and never revisiting it, which converts a good decision into
+        a two-generation-old default nobody may override.
+      - >-
+        Comparing types on hourly price rather than on cost per run. A dearer instance that halves the
+        runtime is the cheaper instance.
+    partial_when: >-
+      One workload class — usually the main ETL fleet — has a deliberate instance choice while the others
+      inherited theirs, or the choices were deliberate and have not been revisited across instance
+      generations.
+    references:
+      - https://docs.databricks.com/aws/en/compute/cluster-config-best-practices
+      - https://docs.databricks.com/aws/en/admin/clusters/policy-definition
+
+  # Choose the most efficient compute size
+  # Q: Has anyone tested whether your production workloads run on smaller compute than they are currently given?
+    advice:
+      start_from: >-
+        Name the workload classes you actually run — ETL, interactive, ML — and pin each to an
+        instance family in a cluster policy or bundle template, with a one-line reason tied to
+        shuffle, memory or IO rather than habit.
+      depends_on:
+        - >-
+          A skewed join that once OOM'd needs a fix more than a forever-larger memory family.
+        - >-
+          Latest-generation types are usually cheaper per unit of work where available — revisit
+          pins when a generation ships.
+        - >-
+          Photon belongs where the work is SQL or Delta-heavy; it is not a substitute for the wrong
+          instance family.
+      path:
+        - >-
+          Inventory current node types against named workload classes.
+        - >-
+          Encode the defaults in policies/templates the next create must use.
+        - >-
+          Measure cost per run when changing a family, not hourly price alone.
+      costs:
+        - >-
+          Wrong-sizing from a bad pin costs more than leaving a temporary exception.
+        - >-
+          Policy updates restart clusters when applied to running fleets.
+      retain: >-
+        The workload-class to instance-family map with dates and reasons.
+      revisit: >-
+        A new instance generation, or a fleet still on a type nobody can justify. Failing those,
+        annually.
+
+  CO-01-08:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: Data engineering lead
+    means: >-
+      Somebody has run a production workload on less compute and compared what happened. Not reasoned
+      about it — run it, and kept the numbers.
+    matters: >-
+      Compute is sized upward when something is slow and never downward when it stops being slow, so a
+      fleet only ever ratchets. The overshoot is invisible because the job succeeds: nothing in the
+      platform reports that a job which finished in forty minutes on twelve workers would have finished
+      in forty-four on six.
+    good:
+      - At least one production workload has been run at a smaller size, and the result is written down.
+      - Utilisation is looked at, so the ones worth testing are chosen rather than guessed.
+      - Autoscaling bounds were set from observed behaviour rather than left at the defaults.
+      - A size reduction has actually shipped, which is the difference between an exercise and a practice.
+      - Somebody can say which workloads are sized for a deadline and are therefore meant to be generous.
+    examples:
+      strong: >-
+        The ten largest jobs by spend are reviewed each quarter. Candidates are re-run at a smaller size
+        in staging with the runtime recorded, and the last review reduced four of them and left two
+        because the runtime cost more than the compute saved.
+      partial: >-
+        One expensive job was tested and halved after a cost review last year. Nothing else has been
+        tested, and no cadence exists.
+      weak: >-
+        Sizes are what they were when each job was written. Every change has been upward, each after an
+        incident, and nobody has tried a reduction.
+    verify:
+      - how: sql
+        where: |-
+          select cluster_id, round(avg(cpu_user_percent + cpu_system_percent), 1) as cpu,
+          round(avg(mem_used_percent), 1) as mem from system.compute.node_timeline
+          where start_time > current_timestamp() - interval 14 days group by all order by cpu asc
+        expect: >-
+          The low-cpu clusters at the top are the candidates. No rows means no classic compute reported,
+          so size serverless workloads from run duration instead
+      - how: ui
+        where: A job's run history, comparing duration across runs where the cluster size changed
+        expect: A size change with a duration you can compare it against, rather than one size throughout
+      - how: by-hand
+        where: Ask for the last workload whose compute was made smaller, and what it cost in runtime
+        expect: A named workload and a number, rather than "we could probably trim some"
+    pitfalls:
+      - >-
+        Testing on a smaller input as well as smaller compute, which measures nothing: the job that must
+        fit is the production one.
+      - >-
+        Reading low CPU as headroom on a workload that is IO-bound or shuffle-bound, where fewer workers
+        will cost more in spill than they save in DBUs.
+      - >-
+        Reducing the size of the job that runs against a downstream deadline. The cheapest run that
+        misses the SLA is not a saving.
+    partial_when: >-
+      Sizing was tested once during a cost exercise and has not been repeated, or utilisation is
+      monitored and no reduction has ever actually shipped from it.
+    references:
+      - https://docs.databricks.com/aws/en/compute/cluster-config-best-practices
+      - https://docs.databricks.com/aws/en/admin/system-tables/compute
+
+  # Right-size compute resources at deployment
+  # Q: Do new workloads get sized against a measured baseline before they go to production, or sized generously and left?
+    advice:
+      start_from: >-
+        Treat clusters that average under about 5% combined CPU across a long sample window as
+        oversized until proven otherwise — shrink workers or instance size after confirming the
+        window covered normal work, not a quiet week.
+      depends_on:
+        - >-
+          This reading only ever demonstrates failure: no idle cluster is unmeasured, not a pass,
+          because mid-range CPU still cannot prove right-sizing.
+        - >-
+          IO- or shuffle-bound jobs can look idle on CPU and still need their width — do not shrink
+          from CPU alone.
+        - >-
+          Empty node_timeline (common on serverless-only estates) is unmeasured; size those from
+          run duration instead.
+      path:
+        - >-
+          List idle clusters from the finding (or node_timeline ordered by low CPU).
+        - >-
+          Re-run one production job at a smaller size in staging with duration recorded.
+        - >-
+          Ship the reductions that save more in compute than they cost in runtime.
+      costs:
+        - >-
+          Undersizing a deadline job is not a saving.
+        - >-
+          Re-testing production volume takes engineering time.
+      retain: >-
+        The dated idle-cluster list and before/after cost×duration for each reduction shipped.
+      revisit: >-
+        New clusters averaging near-zero CPU for a full window, or utilisation reviews with no
+        shipped change. Failing those, quarterly.
+
+  CO-01-09:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: Data engineering lead, with the platform owner
+    means: >-
+      A workload's size at the moment it goes to production came from a measurement — a run against
+      representative data — rather than from a guess made generous enough to be safe.
+    matters: >-
+      Whatever a workload is given on its first day is what it keeps. There is never a later moment when
+      somebody revisits it, because it is running and it is not failing, so the guess made under
+      deployment pressure becomes the permanent cost of that workload.
+    good:
+      - A new pipeline is run at representative volume before it ships, and the size comes from that run.
+      - The starting size is recorded with the workload, so a later reader knows whether it was measured or assumed.
+      - Templates or bundles carry a default size, so the guess is at least a considered one.
+      - Autoscaling bounds are set from the measured run rather than left wide to absorb the uncertainty.
+      - Somebody reviews the first weeks of runs, when the real volume arrives.
+    examples:
+      strong: >-
+        Pipelines are load-tested in staging against a production-scale sample. The size, the observed
+        runtime and the date go into the bundle alongside the job definition, and the first month of
+        production runs is reviewed against that baseline.
+      partial: >-
+        New jobs start from a bundle template with a sensible default size, but nothing is measured before
+        deployment and the default is only revisited if the job becomes slow.
+      weak: >-
+        Sizes are chosen at deployment by picking something comfortably larger than the developer's
+        laptop-scale test, and left.
+    verify:
+      - how: by-hand
+        where: Take the three most recently deployed pipelines and ask where their size came from
+        expect: A measured run for each, rather than "that seemed about right"
+      - how: ui
+        where: A recent job's run list, comparing the first week's durations against the current ones
+        expect: >-
+          Durations consistent with the size chosen, rather than a job finishing in two minutes on compute
+          sized for twenty
+      - how: sql
+        where: |-
+          with runs as (
+            select job_id, run_id,
+            datediff(second, min(period_start_time), max(period_end_time)) as seconds
+            from system.lakeflow.job_run_timeline
+            where period_start_time > current_timestamp() - interval 30 days
+            group by job_id, run_id)
+          select job_id, count(*) as runs, round(avg(seconds)) as avg_seconds
+          from runs group by all order by avg_seconds desc
+        expect: >-
+          Short average durations on large compute are the candidates for a size that was never measured
+        caveat: >-
+          Aggregated to the run before averaging. This table records a row per period of a run, so
+          averaging the periods directly returns the length of a typical hour of work rather than of a
+          run, and understates exactly the long jobs being looked for.
+    pitfalls:
+      - >-
+        Sizing against the development sample rather than production volume, which produces a size that is
+        wrong in whichever direction the sample was unrepresentative.
+      - >-
+        A generous size justified as headroom for growth, when autoscaling is the mechanism for growth and
+        a high floor is not.
+      - >-
+        Measuring once at deployment and treating the number as permanent, when the volume the workload
+        was sized for is the one thing certain to change.
+    partial_when: >-
+      New workloads inherit a considered default from a template without being measured, or they are
+      measured and nobody looks again once real volume arrives.
+    references:
+      - https://docs.databricks.com/aws/en/compute/cluster-config-best-practices
+      - https://docs.databricks.com/aws/en/dev-tools/bundles/
+
+  # Set up budgets and alerts to enable monitoring of account spending
+  # Q: Are budgets set with alert thresholds that reach a named person, and has an alert actually been acted on?
+    advice:
+      start_from: >-
+        Require a measured run against representative volume before a workload's first production
+        size is merged — record the size, runtime and date beside the job definition.
+      depends_on:
+        - >-
+          Bundle defaults are better than laptop guesses but are not a measurement — still load-test
+          the expensive ones.
+        - >-
+          Autoscaling is for growth after a measured floor, not a substitute for never measuring.
+        - >-
+          CO-01-08 catches idle classics later; this row is about not shipping the generous guess.
+      path:
+        - >-
+          Add a sizing checklist step to the deploy path for new pipelines.
+        - >-
+          Load-test the next three launches against production-scale samples.
+        - >-
+          Review the first weeks of production runs against that baseline.
+      costs:
+        - >-
+          Staging at production volume spends real compute once to avoid months of overspend.
+        - >-
+          Checklist friction is real; apply it where DBU will matter.
+      retain: >-
+        The sizing note (size, runtime, date, data volume) stored with the workload.
+      revisit: >-
+        A new pipeline shipped without a sizing note, or volume that has clearly left the baseline.
+        Failing those, each major launch and quarterly for the top spenders.
+
+  CO-03-02:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: Account admin, with the budget owner
+    means: >-
+      A budget exists with a threshold, the alert goes to somebody who is expected to act on it, and at
+      least once somebody has acted.
+    matters: >-
+      Without an alert, an overrun is found when finance reconciles the month, which is between two and
+      six weeks after the change that caused it. By then the runaway cluster has run for a month and the
+      person who started it has forgotten they did.
+    good:
+      - Budgets exist at the granularity somebody is accountable for, not one budget for the account.
+      - Thresholds fire before the overrun rather than at it, so the alert leaves room to act.
+      - The alert reaches a named person or a monitored channel, not a shared mailbox nobody reads.
+      - An alert has fired and something changed as a result, and somebody can describe it.
+      - The budget figure is revisited as the estate grows, so it stops being either ignored or always breached.
+    examples:
+      strong: >-
+        Budgets are set per business unit with alerts at 70 and 90 per cent to the owning team's channel
+        and the platform team. Two fired last quarter; one found a forgotten all-purpose cluster and the
+        other led to a raised budget, and both are recorded.
+      partial: >-
+        An account-wide budget with an alert at 100 per cent goes to the platform mailbox. It has fired
+        twice and both times the month was already over.
+      weak: >-
+        No budget. Spend is discovered when finance asks about the invoice.
+    verify:
+      - how: ui
+        where: Account console > Usage > Budgets, and the recipients on each
+        expect: Budgets with thresholds below 100 per cent and named recipients
+      - how: api
+        where: GET /api/2.1/accounts/{account_id}/budgets
+        expect: One or more budgets with alert configurations, rather than an empty list
+      - how: by-hand
+        where: Ask when an alert last fired and what changed because of it
+        expect: A date and an action, rather than a filter rule that files them
+    pitfalls:
+      - >-
+        A threshold at 100 per cent, which alerts on an overrun rather than warning of one. By the time it
+        fires the money is spent.
+      - >-
+        Alerts to a distribution list where everybody assumes somebody else owns it, which is functionally
+        the same as no alert.
+      - >-
+        A budget set once and never raised, so it breaches every month, everybody learns to ignore it, and
+        the alert that matters arrives looking like the ones that did not.
+    partial_when: >-
+      Budgets and alerts exist but fire too late or reach nobody accountable, or they are well configured
+      and no alert has ever produced an action.
+    references:
+      - https://docs.databricks.com/aws/en/admin/account-settings/budgets
+      - https://docs.databricks.com/aws/en/admin/system-tables/billing
+
+  # Monitor costs to align spending with expectations
+  # Q: Does someone compare actual spend against what was expected on a regular cadence, and does that comparison have consequences?
+    advice:
+      start_from: >-
+        Create budgets at the granularity somebody owns (team or product), with alerts at about 70%
+        and 90% to a monitored channel that includes a named responder — not only at 100% to a shared
+        mailbox.
+      depends_on:
+        - >-
+          Without tags or budget policies (CO-03-01), account-wide budgets are all you can set — fix
+          attribution in parallel.
+        - >-
+          An alert that has never produced an action is incomplete; the practice includes acting.
+        - >-
+          Budgets that always breach train people to ignore them — raise the figure when growth is
+          real.
+      path:
+        - >-
+          Stand up one budget for the highest-spend unit with sub-100% thresholds.
+        - >-
+          Route alerts to the owning channel plus platform.
+        - >-
+          When one fires, record what changed; use that as the template for the next units.
+      costs:
+        - >-
+          Budget upkeep as the estate grows is somebody's recurring job.
+        - >-
+          Noisy alerts at the wrong threshold get muted — calibrate once.
+      retain: >-
+        Budget ids, thresholds, recipients, and the last alert that produced an action with date.
+      revisit: >-
+        A month with no budget coverage for a new team, or alerts ignored twice running. Failing
+        those, each quarter when forecasts refresh.
+
+  CO-03-03:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: Platform owner, with finance
+    means: >-
+      On a stated cadence somebody puts actual spend next to expected spend, at a granularity where the
+      difference can be attributed, and the gap is discussed with the people who own the workloads.
+    matters: >-
+      Cost drift is gradual and each month looks like the last, so an estate can double in cost without
+      any single month looking wrong. Without a comparison against an expectation there is nothing to
+      notice — the number always looks like the number.
+    good:
+      - Spend is attributable to a team, a product or a workload, which usually means tags are in place and enforced.
+      - There is an expectation to compare against, per unit of attribution rather than for the account.
+      - The comparison happens on a cadence somebody owns, and the last one has a date.
+      - A gap produces a conversation with the workload owner rather than a line in a report.
+      - Unattributable spend is a known and shrinking share, not a rounding error nobody has measured.
+    examples:
+      strong: >-
+        Tags carry team and workload, enforced by cluster policy. A monthly review compares actual against
+        forecast per team; last month's found a 40 per cent rise in one team's spend and traced it to a
+        dashboard refreshing hourly rather than daily.
+      partial: >-
+        A dashboard shows spend by tag and somebody looks at it monthly, but there is no forecast to
+        compare against, so it reports what happened rather than whether it was expected.
+      weak: >-
+        Spend is a single monthly number from finance. Nobody can say which team or workload it belongs to.
+    verify:
+      - how: sql
+        where: |-
+          select case when exists(map_keys(custom_tags),
+            k -> k not ilike 'databricks%') then 'tagged by the organisation'
+            else 'no tag the organisation chose' end as tagging,
+          round(sum(usage_quantity), 1) as dbus
+          from system.billing.usage
+          where usage_date > current_date() - 30 and usage_unit = 'DBU'
+          group by all order by dbus desc
+        expect: >-
+          Most DBUs under the tagged line. A large untagged figure is spend that cannot be attributed, and
+          unattributable spend cannot be compared against anybody's expectation.
+        caveat: >-
+          The filter removes `databricks-*` keys only, and the platform injects others it misses:
+          `EndpointId` and `ServingType` on serving, `BudgetPolicyId`, `LakehouseMonitoring*`, and
+          `Vendor`, `ClusterId` and `JobId` on classic. Each counts as a tag the organisation chose, so
+          read the tagged line as an upper bound and check the keys in the next step.
+      - how: sql
+        where: |-
+          select tag.key, count(*) as usage_rows, count(distinct tag.value) as distinct_values
+          from system.billing.usage lateral view explode(custom_tags) tag
+          where usage_date > current_date() - 30 group by all order by usage_rows desc
+        expect: >-
+          Keys that identify a team, a cost centre or a workload, each with enough distinct values to
+          separate one owner from another. A key with a single value across the estate is a tag that was
+          applied rather than chosen
+      - how: by-hand
+        where: Ask for the last cost review and what it changed
+        expect: A date and a change, rather than a recurring meeting with no outcome
+    pitfalls:
+      - >-
+        Monitoring spend without an expectation, which produces a trend line everybody watches rise and
+        nobody can call wrong.
+      - >-
+        Tags applied by convention rather than enforced by policy, so the workloads that skip them are
+        exactly the unowned ones whose spend most needs attributing.
+      - >-
+        A review that ends at the platform team. The people who can change a workload are its owners, and
+        a finding they never hear changes nothing.
+    partial_when: >-
+      Spend is attributable and monitored without an expectation to compare against, or the comparison
+      happens and stops at a report rather than reaching the workload owners.
+    references:
+      - https://docs.databricks.com/aws/en/admin/system-tables/billing
+      - https://docs.databricks.com/aws/en/admin/account-settings/usage-detail-tags
+
+  # Manage costs to align usage with organizational needs
+  # Q: When spend on a workload turns out not to be worth it, is there a route by which that workload changes or stops?
+    advice:
+      start_from: >-
+        Run a monthly comparison of actual versus expected spend per owning unit, with a named host,
+        and require a conversation with workload owners when a gap appears — not only a dashboard
+        view.
+      depends_on:
+        - >-
+          Attribution tags or budget policies (CO-03-01) must exist or the comparison has nowhere to
+          land.
+        - >-
+          An expectation (forecast or prior baseline) is required; a trend line alone cannot be
+          "wrong".
+        - >-
+          CO-03-04 is the route from finding to change; this row is the cadence that surfaces the
+          gap.
+      path:
+        - >-
+          Publish the per-team expectation for the next month.
+        - >-
+          Meet once with actuals beside it; assign owners for outliers.
+        - >-
+          Track whether last month's actions moved the next reading.
+      costs:
+        - >-
+          A standing review consumes calendar time; cancel it only when the artefacts still appear.
+        - >-
+          Bad forecasts create permanent "gaps" that teams learn to dismiss.
+      retain: >-
+        The dated actual-vs-expected pack and the decisions taken from it.
+      revisit: >-
+        Spend rising two months without a review, or reviews that end with no owner actions. Failing
+        those, monthly.
+
+  CO-03-04:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: Platform owner, with the workload owners
+    means: >-
+      When a workload's cost is found to exceed its value, something happens: it is resized, its schedule
+      changes, or it is turned off. There is a route from the finding to the change, and somebody can walk
+      it.
+    matters: >-
+      Monitoring without a route to act produces a cost report and no saving. The failure is
+      organisational rather than technical: nobody wants to be the person who turned off somebody else's
+      dashboard, so an unowned workload runs forever and its cost is treated as a fact about the platform.
+    good:
+      - Every significant workload has a named owner who can decide to change or stop it.
+      - Findings from cost review reach that owner as a decision to make, with a date.
+      - Something has actually been turned off or reduced, and somebody can name it.
+      - Unowned workloads have a route to being retired rather than being left because nobody claims them.
+      - The decision weighs value as well as cost, so a dear workload that earns its cost is kept deliberately.
+    examples:
+      strong: >-
+        Workloads carry an owner tag. The quarterly review sends each owner their spend and asks for a
+        keep, resize or retire decision with a deadline. Last quarter retired two dashboards and moved
+        three jobs off hourly schedules.
+      partial: >-
+        Costly workloads are identified and their owners told, but there is no expectation of a decision,
+        so most of them continue unchanged.
+      weak: >-
+        Nothing is ever turned off. Several jobs run on schedules nobody chose, feeding dashboards nobody
+        can name a user for.
+    verify:
+      - how: sql
+        where: |-
+          select job_id, count(distinct run_id) as runs from system.lakeflow.job_run_timeline
+          where period_start_time > current_timestamp() - interval 30 days group by all order by runs desc
+        expect: >-
+          High-frequency jobs you can attribute to a purpose. A job running hourly that nobody can name a
+          consumer for is the case this question is about.
+        caveat: >-
+          `count(distinct run_id)`, because this table records a row per period of a run and counting rows
+          would inflate the long-running jobs into looking like the frequent ones
+      - how: ui
+        where: A dashboard's usage, comparing its refresh schedule against when it was last viewed
+        expect: Refresh frequency proportionate to use, rather than hourly refreshes nobody reads
+      - how: by-hand
+        where: Ask what was last turned off or reduced on cost grounds, and who decided
+        expect: A workload and a person, rather than "we should look at that"
+    pitfalls:
+      - >-
+        A cost review whose output is a report rather than a set of decisions with owners and dates. It
+        produces the appearance of management and none of the effect.
+      - >-
+        Treating a workload as untouchable because it is in production, when the question is whether
+        anybody consumes what it produces.
+      - >-
+        Optimising the cheap workloads because their owners are responsive, while the expensive one nobody
+        will claim keeps running.
+    partial_when: >-
+      Costly workloads are identified and their owners informed without any expectation of a decision, or
+      decisions get made for the workloads with responsive owners and unowned ones continue.
+    references:
+      - https://docs.databricks.com/aws/en/lakehouse-architecture/cost-optimization/best-practices
+      - https://docs.databricks.com/aws/en/admin/system-tables/jobs
+    advice:
+      start_from: >-
+        Give every significant workload a named owner who must answer keep, resize or retire on a
+        deadline when cost review flags it — and retire unowned workloads by a published route rather
+        than leaving them forever.
+      depends_on:
+        - >-
+          Monitoring without this route (CO-03-03 alone) produces reports and no saving.
+        - >-
+          Value matters: dear workloads that earn their cost should be kept deliberately, not cut by
+          reflex.
+        - >-
+          Owner tags from CO-03-01 make the routing possible.
+      path:
+        - >-
+          Attach owners to the top spenders missing them.
+        - >-
+          Send last quarter's outliers with a keep/resize/retire deadline.
+        - >-
+          Execute retires and schedule changes; publish what stopped.
+      costs:
+        - >-
+          Turning something off creates political cost; document the consumer search first.
+        - >-
+          Chasing only friendly owners leaves the expensive unowned jobs running.
+      retain: >-
+        The decision log (workload, owner, keep/resize/retire, date) from each review.
+      revisit: >-
+        A costly job nobody will claim, or a review cycle with no retires or resizes despite rising
+        spend. Failing those, each quarterly review.
+
+
+  # Use performance optimized data formats
+  # Never put to a person. Guidance here explains a finding rather than enabling an answer.
+  # Alias open-table-formats with REL-01-01 (ACID), DG-03-03, IU-02-01 — here: read/scan cost.
+  CO-01-01:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: Data engineering lead, with the platform owner
+    means: >-
+      Production tables use Delta or Iceberg so readers pay for scans that use statistics and file
+      skipping, rather than full-directory listings of CSV, JSON or bare Parquet.
+    matters: >-
+      A cheap format to write becomes an expensive format to read every day after. Without column
+      statistics and data skipping, every dashboard and job that touches the table re-reads more of
+      it than it needs, and that cost compounds with every consumer.
+    good:
+      - At least 95% of tables that store a format are Delta or Iceberg (pass); below 70% fails.
+      - New pipelines write Delta (or Iceberg) by default rather than Parquet "for simplicity".
+      - Remaining non-Delta tables are landing zones or partner drops, not query targets.
+      - Readers hit Delta/Iceberg tables, not a parallel Parquet copy kept "for BI".
+      - Views, metric views and foreign tables are out of the denominator — they have no storage format to choose.
+    examples:
+      strong: >-
+        Effectively every table is Delta. Partner CSV drops land in a raw schema and convert before
+        anything joins them. Scan times and DBU on wide tables fell after the last conversions.
+      partial: >-
+        Most tables are Delta after a migration; a handful of Parquet fact tables still feed
+        production dashboards because nobody scheduled the convert.
+      weak: >-
+        CSV and bare Parquet everywhere. Jobs list directories; warehouses pay for full scans.
+    verify:
+      - how: sql
+        where: |-
+          select data_source_format, count(*) as tables
+          from system.information_schema.tables
+          where table_schema <> 'information_schema'
+            and table_type not in ('VIEW', 'METRIC_VIEW', 'FOREIGN')
+          group by all order by tables desc
+        expect: >-
+          Delta and Iceberg carrying nearly all of it; other formats small enough to name
+        caveat: >-
+          Views, metric views and foreign tables report no choosable format and are out of the
+          denominator. The query above already drops them. Same census as REL-01-01, DG-03-03 and
+          IU-02-01; here the question is whether readers pay for an efficient format.
+          `hive_metastore` tables are invisible to this view.
+      - how: ui
+        where: Catalog Explorer > a non-Delta table from the query above > sample query cost
+        expect: A reason it stays outside Delta, rather than "we never converted it"
+      - how: by-hand
+        where: Pick the largest Parquet/CSV table still queried in production and ask why
+        expect: A dated migration plan or a partner-drop exception — not silence
+    pitfalls:
+      - >-
+        Converting storage while BI still reads the old Parquet path, so spend never moves.
+      - >-
+        Counting Iceberg/Delta tables created while writers still dump CSV beside them for "speed".
+      - >-
+        Treating format adoption as a reliability or governance win only — those pillars share the
+        measurement; the bill is why this entry exists.
+    partial_when: >-
+      Delta or Iceberg covers most tables while production readers still scan Parquet or CSV for a
+      material share of DBU — a migration underway rather than finished.
+    references:
+      - https://docs.databricks.com/aws/en/delta/
+      - https://docs.databricks.com/aws/en/ingestion/data-migration/convert-to-delta
+    advice:
+      start_from: >-
+        Make Delta the default write format in every pipeline template, and convert the tables that
+        already burn the most DBU on full scans — partner drops may stay raw until they convert.
+      depends_on:
+        - >-
+          An external writer that cannot speak Delta needs a convert step before expensive readers
+          hit the path.
+        - >-
+          REL-01-01 (recoverable commits), DG-03-03 and IU-02-01 share this census — convert once;
+          do not run three programmes for three pillars.
+        - >-
+          Iceberg only where another engine must read the files; otherwise Delta is the cheaper
+          default on this platform.
+      path:
+        - >-
+          Rank non-Delta tables by query and scan cost; convert the expensive readers first.
+        - >-
+          Change templates so new tables cannot land as bare Parquet or CSV.
+        - >-
+          Retire parallel Parquet copies once consumers point at Delta.
+      costs:
+        - >-
+          CONVERT TO DELTA rewrites data; both copies exist while it runs.
+        - >-
+          Writers that assumed directory-replace semantics need a MERGE or overwrite rewrite.
+      retain: >-
+        The dated format census and the list of remaining non-Delta tables with why each stays.
+      revisit: >-
+        A new Parquet landing path queried in production, or warehouse DBU rising on tables still
+        outside Delta. Failing those, annually.
+
+  # Use job compute
+  # Never put to a person. Guidance here explains a finding rather than enabling an answer.
+  CO-01-02:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: Platform administrator, with the data engineering lead
+    means: >-
+      Scheduled work runs on job compute (or serverless jobs), not on all-purpose clusters that
+      stay billed between runs and at a higher rate.
+    matters: >-
+      A job pinned to all-purpose pays twice: the higher SKU and the idle hours between schedules.
+      The waste scales with how often the job runs, which is why the app measures priced job spend
+      on all-purpose — not cluster counts.
+    good:
+      - Almost none of choice-spend attributed to jobs sits on all-purpose (pass ≥98%; partial ≥85%).
+      - New jobs get a job cluster or serverless tasks rather than an existing interactive cluster id.
+      - Shared "ETL" all-purpose clusters are not the default home for nightly work.
+      - Remaining all-purpose job spend has a named reason (library, notebook debug path).
+      - Price coverage is complete enough that the share is not an incomplete bill.
+    examples:
+      strong: >-
+        Production jobs use job clusters or serverless tasks. All-purpose is for people at a
+        keyboard. Job-attributed all-purpose spend is effectively zero.
+      partial: >-
+        Most jobs moved; a few high-frequency jobs still point at a long-lived all-purpose cluster
+        because rewriting the tasks was deferred.
+      weak: >-
+        Nightly and hourly jobs share interactive clusters that never stop.
+    verify:
+      - how: sql
+        where: |-
+          select billing_origin_product, sku_name,
+          round(sum(usage_quantity), 1) as dbus
+          from system.billing.usage
+          where usage_date > current_date() - 30 and usage_unit = 'DBU'
+          and billing_origin_product in ('JOBS', 'ALL_PURPOSE', 'INTERACTIVE')
+          group by all order by dbus desc
+        expect: >-
+          Job-origin spend on job or serverless SKUs, not all-purpose interactive SKUs carrying
+          scheduled work
+        caveat: >-
+          The app scores priced cost: job-attributed spend on all-purpose over choice-spend (jobs,
+          all-purpose, SQL, pipelines), not raw DBU and not the whole bill. Incomplete price-list
+          coverage is unmeasured. Serving, Lakebase and storage are outside the denominator.
+      - how: ui
+        where: Workflows > Jobs > a frequent job > task compute
+        expect: Job cluster or serverless — not an existing all-purpose cluster id
+      - how: by-hand
+        where: Ask which production jobs still use existing_cluster_id and why
+        expect: A short exception list, not "that is how we always did it"
+    pitfalls:
+      - >-
+        Counting clusters instead of spend — a monthly job on all-purpose is noise; an hourly one is
+        the finding.
+      - >-
+        Moving the job definition while leaving a schedule that still attaches to interactive
+        compute.
+      - >-
+        Treating serverless-only products as proof jobs are off all-purpose; they never had that
+        choice.
+    partial_when: >-
+      Most scheduled spend is on job or serverless compute while a material share of job-attributed
+      cost still sits on all-purpose clusters that stay up between runs.
+    not_applicable_when: >-
+      Nothing in the window was billed on jobs, all-purpose, SQL or pipelines, so there was no
+      compute shape to choose for scheduled work.
+    references:
+      - https://docs.databricks.com/aws/en/jobs/compute
+      - https://docs.databricks.com/aws/en/compute/configure
+    advice:
+      start_from: >-
+        Give every scheduled task a job cluster or no cluster (serverless) — never an interactive
+        all-purpose cluster id — and remove shared "batch" all-purpose clusters from job settings.
+      depends_on:
+        - >-
+          Init scripts, custom containers or pinned instance types may need a classic job cluster
+          rather than serverless.
+        - >-
+          Interactive debugging on all-purpose is fine; copying that cluster id into the production
+          job is not.
+        - >-
+          If list prices do not cover the SKUs in the window, fix price coverage before trusting the
+          share.
+      path:
+        - >-
+          Rank jobs by all-purpose-attributed spend and move the expensive schedules first.
+        - >-
+          Change job templates so new tasks cannot select an existing interactive cluster.
+        - >-
+          Retire the shared all-purpose "ETL" clusters once nothing points at them.
+      costs:
+        - >-
+          Rewriting tasks and validating libraries on job compute is real engineering time.
+        - >-
+          Serverless jobs trade cluster ops for a different DBU rate — measure the expensive jobs.
+      retain: >-
+        The dated job-on-all-purpose spend figure and the exception list of jobs that must stay.
+      revisit: >-
+        A new job created with existing_cluster_id, or job-attributed all-purpose spend rising two
+        months running. Failing those, quarterly.
+
+  # Use up-to-date runtimes for your workloads
+  # Never put to a person. Guidance here explains a finding rather than enabling an answer.
+  CO-01-04:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: Platform administrator
+    means: >-
+      Classic all-purpose clusters run Databricks Runtime 14 or later, so they pick up performance
+      work that landed after older majors — the same job finishes with less DBU.
+    matters: >-
+      An old runtime is not only a support risk; it is a tax on every scan and join that newer
+      engines improved. The estate pays that tax until somebody edits the cluster.
+    good:
+      - At least 90% of all-purpose clusters are on DBR 14+ (pass); below 60% fails.
+      - Policies or templates pin a current LTS rather than leaving the creator's habit.
+      - Oldest clusters in the finding are named and scheduled for upgrade.
+      - Serverless estates with no classic all-purpose clusters are satisfied by architecture.
+      - Job clusters are out of this population — the measure is interactive all-purpose only.
+    examples:
+      strong: >-
+        All-purpose clusters that remain are on a current LTS. Policies refuse older majors.
+        Everything else is serverless and upgraded by the platform.
+      partial: >-
+        Most clusters moved to 14+; a few long-lived interactive clusters are still on 13.x because
+        a library pin blocked the edit.
+      weak: >-
+        Interactive fleets still on DBR 11–12. Nobody owns the upgrade calendar.
+    verify:
+      - how: sql
+        where: |-
+          with current_clusters as (
+            select * from system.compute.clusters
+            qualify row_number() over (
+              partition by workspace_id, cluster_id order by change_time desc) = 1
+          )
+          select spark_version, count(*) as clusters
+          from current_clusters
+          where delete_time is null and cluster_source = 'UI'
+          group by all order by clusters desc
+        expect: >-
+          Majors 14 and above dominating interactive all-purpose clusters
+        caveat: >-
+          The app scores all-purpose only, major version ≥14 from the catalogue. No classic
+          all-purpose clusters is satisfied-by-architecture (serverless is platform-upgraded), not a
+          fail. This is a different question from supported-runtime hardening in security.
+      - how: ui
+        where: Compute > an all-purpose cluster > Configuration > Databricks runtime
+        expect: DBR 14 LTS or newer, matching policy defaults
+      - how: by-hand
+        where: Ask which library or image still pins the oldest major in the finding
+        expect: A dated unblock plan, not an open-ended exception
+    pitfalls:
+      - >-
+        Upgrading a warehouse's Photon toggle and calling runtime work done — warehouses are not
+        this population.
+      - >-
+        Editing a running cluster without a window; the restart is the cost of the upgrade.
+      - >-
+        Pinning "latest" in a policy and never moving the pin when a new LTS ships.
+    partial_when: >-
+      Most all-purpose clusters are on DBR 14+ while a material share remains on older majors that
+      still run production interactive work.
+    not_applicable_when: >-
+      The estate ran no classic all-purpose clusters in the window, so there is no runtime version
+      for you to keep current.
+    references:
+      - https://docs.databricks.com/aws/en/release-notes/runtime/
+      - https://docs.databricks.com/aws/en/compute/configure
+    advice:
+      start_from: >-
+        Pin all-purpose policies to the current DBR LTS at major 14 or newer, and upgrade every
+        interactive cluster still below that major in a maintenance window.
+      depends_on:
+        - >-
+          A library or custom image that only builds on an older major stays classic until the pin
+          moves — list it; do not freeze the whole fleet.
+        - >-
+          Serverless needs no action here; do not recreate classic clusters to have something to
+          upgrade.
+        - >-
+          Security's supported-runtime control is a different bar; clearing cost does not clear that
+          one automatically if the floors differ.
+      path:
+        - >-
+          Raise the policy default to the target LTS.
+        - >-
+          Edit or recreate the oldest all-purpose clusters named in the finding.
+        - >-
+          Remove unrestricted create so new clusters cannot pick a stale major.
+      costs:
+        - >-
+          Cluster edits restart workloads — schedule them.
+        - >-
+          Compatibility testing for pinned libraries is the real calendar item.
+      retain: >-
+        The dated major-version census of all-purpose clusters and the policy pin in force.
+      revisit: >-
+        A new LTS release, or an all-purpose cluster created below the pin. Failing those, each LTS
+        cycle.
+
+  # Only use GPUs for the right workloads
+  # Never put to a person. Guidance here explains a finding rather than enabling an answer.
+  CO-01-05:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: Platform administrator, with the ML lead
+    means: >-
+      GPU node types appear only on clusters that train or serve models that need them — not on
+      general ETL or notebook fleets copied from an ML template.
+    matters: >-
+      GPU SKUs are among the dearest shapes on the price list. A cluster that never runs GPU kernels
+      still bills as one, and because jobs succeed on CPU paths nobody notices the mismatch.
+    good:
+      - Zero GPU clusters is a pass — there is nothing to misuse.
+      - Any GPU cluster is named in the finding and reviewed with its owner (reported partial).
+      - Policies make GPU types opt-in for ML groups, not the estate default.
+      - ETL and SQL work stay on CPU instance families.
+      - Serverless-only estates with no classic clusters have nothing here to get wrong.
+    examples:
+      strong: >-
+        No GPU clusters, or the two that exist run training jobs whose owners can show GPU
+        utilisation. Policies hide GPU types from everyone else.
+      partial: >-
+        A few GPU clusters exist; owners have not yet confirmed each workload needs them — which is
+        exactly what this check can say.
+      weak: >-
+        Interactive "data science" clusters use GPU types for notebooks that never call a GPU
+        library.
+    verify:
+      - how: sql
+        where: |-
+          with current_clusters as (
+            select * from system.compute.clusters
+            qualify row_number() over (
+              partition by workspace_id, cluster_id order by change_time desc) = 1
+          )
+          select cluster_name, worker_node_type, driver_node_type
+          from current_clusters
+          where delete_time is null
+          and (worker_node_type ilike '%gpu%' or driver_node_type ilike '%gpu%'
+            or worker_node_type ilike '%g4%' or worker_node_type ilike '%g5%'
+            or worker_node_type ilike '%p3%' or worker_node_type ilike '%p4%')
+          order by cluster_name
+        expect: >-
+          An empty list, or a short list you can map to training or GPU serving
+        caveat: >-
+          The app never fails this control from configuration alone: no GPUs passes; any GPU cluster
+          is partial with names. Justification is by-hand. Classic compute only.
+      - how: ui
+        where: Compute > each GPU cluster > Metrics / Spark UI during a typical run
+        expect: GPU activity for training or inference — not idle GPUs beside CPU-only Spark jobs
+      - how: by-hand
+        where: Ask each GPU cluster owner whether the workload trains or serves on GPU
+        expect: Yes with evidence, or a plan to move to CPU nodes
+    pitfalls:
+      - >-
+        Copying an ML cluster policy for ETL "just in case", which permanently selects GPU types.
+      - >-
+        Reading this partial as a fail — the check cannot see whether the GPU is earned.
+      - >-
+        Leaving GPU types selectable in the default all-purpose policy.
+    partial_when: >-
+      GPU-backed clusters exist and configuration cannot show whether each workload needs them —
+      confirm with owners; absence of GPUs is the pass, not a banded share.
+    references:
+      - https://docs.databricks.com/aws/en/compute/gpu
+      - https://docs.databricks.com/aws/en/admin/clusters/policies
+    advice:
+      start_from: >-
+        Keep GPU node types out of default policies; grant a dedicated ML policy only to teams that
+        train or serve on GPU, and move any GPU cluster used for ordinary Spark to the CPU equivalent.
+      depends_on:
+        - >-
+          Genuine deep-learning training and GPU model serving stay on GPU — do not "optimise" them
+          onto CPU to clear a partial.
+        - >-
+          Spot or capacity-excess on GPU fleets is a separate cost lever (CO-04-02) once the shape is
+          justified.
+        - >-
+          No classic clusters means nothing to review here.
+      path:
+        - >-
+          List GPU clusters from the finding and interview owners this week.
+        - >-
+          Retype unjustified clusters to CPU and restart in a window.
+        - >-
+          Lock GPU types behind the ML policy and remove them from general policies.
+      costs:
+        - >-
+          Wrongly moving a real GPU job to CPU burns runtime far beyond the instance saving.
+        - >-
+          Policy changes surprise teams that relied on an accidental GPU default.
+      retain: >-
+        The named GPU cluster list with owner and workload justification dates.
+      revisit: >-
+        A new GPU cluster created outside the ML policy, or a quarterly owner re-confirmation.
+        Failing those, twice a year.
+
+  # Use serverless services for your workloads
+  # Never put to a person. Guidance here explains a finding rather than enabling an answer.
+  # Alias serverless-adoption with REL-01-06, PE-02-01, IU-03-02 — here: spend and idle cost.
+  CO-01-06:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: Platform owner
+    means: >-
+      Most of the spend that can choose serverless already runs there, so you stop paying for idle
+      classic capacity and for sizing mistakes on work the platform can host.
+    matters: >-
+      Classic compute bills while it waits. Serverless releases when idle and removes a class of
+      over-provisioning. An estate that keeps movable work on classic pays for capacity it does not
+      use — which is a cost finding even when the clusters are healthy.
+    good:
+      - At least 80% of choice-spend is serverless (pass); partial from 30% because migration is a programme.
+      - New jobs, warehouses and pipelines default to serverless unless a named exception blocks them.
+      - Classic remainder has written reasons — GPU, custom image, regional gap.
+      - The share is over choice-spend, not the whole bill including serving and storage.
+      - Incomplete price coverage is treated as unmeasured, not as low adoption.
+    examples:
+      strong: >-
+        Jobs, SQL and notebooks that can be serverless are. Classic left is a GPU training job and a
+        custom container, both listed. Choice-spend is overwhelmingly serverless.
+      partial: >-
+        Warehouses moved; production jobs still on classic job clusters, or new work is serverless
+        while the old estate was never migrated.
+      weak: >-
+        Interactive and scheduled work stays on classic clusters sized for peak.
+    verify:
+      - how: sql
+        where: |-
+          select billing_origin_product,
+          coalesce(product_features.is_serverless, false) as serverless,
+          round(sum(usage_quantity), 1) as dbus
+          from system.billing.usage
+          where usage_date > current_date() - 30 and usage_unit = 'DBU'
+          and billing_origin_product in ('JOBS', 'ALL_PURPOSE', 'INTERACTIVE', 'SQL', 'DLT')
+          group by all order by dbus desc
+        expect: >-
+          Serverless carrying most DBU among products that have a classic form
+        caveat: >-
+          The app scores priced serverless choice-cost over choice-spend, not raw DBU and not the
+          whole invoice. Serving, Lakebase, Apps and storage are excluded either way. Same
+          measurement as REL-01-06, PE-02-01 and IU-03-02; here the question is idle spend and
+          sizing tax, not failure ownership or time-to-first-query. Missing list prices → unmeasured.
+      - how: ui
+        where: Compute / Jobs / SQL warehouses — whether new work defaults to serverless
+        expect: Serverless as the default path; classic as a named exception
+      - how: by-hand
+        where: Ask what classic capacity still exists only to absorb idle between bursts
+        expect: A short exception list with dates to move or accept
+    pitfalls:
+      - >-
+        Counting model serving as serverless adoption — it has no classic form to leave.
+      - >-
+        Moving SQL only and leaving the job fleet on classic, where most idle spend often sits.
+      - >-
+        Forcing serverless onto workloads that need init scripts or GPUs, then "accepting" classic
+        without measuring the cost of the exception.
+    partial_when: >-
+      Serverless carries a real share of choice-spend while a material fraction of movable jobs or
+      warehouses still run on classic capacity that sits idle between bursts.
+    not_applicable_when: >-
+      Nothing in the window was billed on jobs, all-purpose, SQL or pipelines — products with a
+      serverless option — so there was no classic form to move away from.
+    references:
+      - https://docs.databricks.com/aws/en/compute/serverless/
+      - https://docs.databricks.com/aws/en/jobs/run-serverless-jobs
+    advice:
+      start_from: >-
+        Default new jobs, warehouses and pipelines to serverless, and migrate classic work that is
+        idle between bursts — keep classic only where GPU, custom containers or missing regional
+        support force it.
+      depends_on:
+        - >-
+          Init scripts, custom images and GPUs stay classic; price that exception rather than
+          spreading it.
+        - >-
+          Long continuous jobs may cost more per DBU on serverless — measure before moving, but do
+          not keep classic only from habit.
+        - >-
+          Reliability and performance pillars share this share; one migration programme serves all
+          three angles.
+      path:
+        - >-
+          Move SQL warehouses and interactive workloads that wait on cluster start times.
+        - >-
+          Make serverless the job template default so classic stops growing.
+        - >-
+          Migrate high-idle classic job fleets; record GPU and custom-image exceptions.
+      costs:
+        - >-
+          Serverless can cost more per DBU than a well-packed always-on classic fleet.
+        - >-
+          Cold start after idle is a latency trade for not owning idle capacity.
+      retain: >-
+        The dated serverless share of choice-spend and the classic exception register with reasons.
+      revisit: >-
+        A new classic cluster created for work serverless could run, or choice-spend serverless
+        share falling two months running. Failing those, quarterly.
+
+  # Evaluate performance-optimized query engines
+  # Never put to a person. Guidance here explains a finding rather than enabling an answer.
+  CO-01-10:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: Data engineering lead, with the analytics lead
+    means: >-
+      Eligible SQL and Delta spend runs on Photon (or on serverless, which runs the vectorised
+      engine by design), so the estate pays for faster execution where the engine can help.
+    matters: >-
+      Without a vectorised engine, SQL-heavy work burns more DBU for the same result. Photon costs
+      more per DBU and earns it back only when the workload finishes sooner — which is the comparison
+      to keep, not the sticker rate alone.
+    good:
+      - At least 70% of Photon-eligible spend is on Photon (pass); partial from 30%.
+      - ≥95% serverless on eligible spend is satisfied by architecture — no separate Photon SKU.
+      - Warehouses and pipelines that stay classic have Photon enabled where SQL/Delta dominates.
+      - Python-UDF-heavy jobs are not forced onto Photon as a cargo cult.
+      - Incomplete prices are unmeasured rather than scored as zero Photon.
+    examples:
+      strong: >-
+        Warehouses and classic SQL clusters run Photon; serverless jobs need no toggle. Eligible
+        spend is mostly Photon or serverless.
+      partial: >-
+        Some warehouses have Photon on; large classic ETL clusters still run standard Spark on
+        SQL-heavy jobs.
+      weak: >-
+        Photon off everywhere on classic compute; serverless share of eligible spend is low, so the
+        architecture credit does not fire.
+    verify:
+      - how: sql
+        where: |-
+          select sku_name, billing_origin_product,
+          round(sum(usage_quantity), 1) as dbus
+          from system.billing.usage
+          where usage_date > current_date() - 30 and usage_unit = 'DBU'
+          group by all order by dbus desc
+        expect: >-
+          Photon SKUs or serverless SQL/jobs carrying the SQL-heavy lines
+        caveat: >-
+          The app scores Photon cost over photon-eligible cost. If serverless is ≥95% of that
+          eligible spend, the control is satisfied by architecture (serverless runs the vectorised
+          engine without a Photon SKU). Same family as PE-03-08. Price gaps → unmeasured.
+      - how: ui
+        where: SQL warehouses and classic clusters > Photon / runtime engine
+        expect: Photon on for SQL/Delta-heavy classic compute
+      - how: by-hand
+        where: Compare job cost and duration before/after Photon on one expensive SQL job
+        expect: A measured change, not an assumption either direction
+    pitfalls:
+      - >-
+        Scoring Photon against the whole bill including serving — eligible spend is the denominator.
+      - >-
+        Enabling Photon on UDF-heavy Python jobs and declaring a win from the rate card alone.
+      - >-
+        Failing a serverless estate for "no Photon SKU" — that is the architecture credit path.
+    partial_when: >-
+      Photon covers some eligible classic spend while a material share of SQL/Delta work still runs
+      on non-Photon classic engines, and serverless is not yet almost all of the eligible spend.
+    not_applicable_when: >-
+      No spend in the window was on compute where Photon is an option.
+    references:
+      - https://docs.databricks.com/aws/en/compute/photon
+      - https://docs.databricks.com/aws/en/compute/sql-warehouse/
+    advice:
+      start_from: >-
+        Turn Photon on for SQL warehouses and classic clusters whose work is SQL or Delta-heavy, and
+        prefer serverless for new SQL work so the vectorised engine arrives without a separate toggle.
+      depends_on:
+        - >-
+          Workloads dominated by Python UDFs outside the engine may not repay Photon — measure
+          before mandating it.
+        - >-
+          An estate already ≥95% serverless on eligible spend needs no Photon programme.
+        - >-
+          Performance-efficiency shares this measurement; one enablement pass serves both.
+      path:
+        - >-
+          Enable Photon on the warehouses and clusters that burn the most SQL DBU.
+        - >-
+          Move eligible interactive SQL to serverless where regional support allows.
+        - >-
+          Spot-check cost×duration on the top jobs before and after.
+      costs:
+        - >-
+          Higher DBU rate until runtime drops enough to compensate.
+        - >-
+          Compatibility quirks on rare operators — keep a rollback on the first wave.
+      retain: >-
+        The dated Photon share of eligible spend (or the serverless architecture credit evidence).
+      revisit: >-
+        A new classic SQL fleet created with Photon off, or eligible serverless share falling below
+        the credit threshold. Failing those, quarterly.
+
+  # Use auto-scaling compute
+  # Never put to a person. Guidance here explains a finding rather than enabling an answer.
+  # Alias compute-autoscaling with REL-03-01 — here: idle cost between peaks.
+  CO-02-01:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: Platform administrator, with the data engineering lead
+    means: >-
+      All-purpose clusters autoscale and SQL warehouses scale out or are serverless, so you size for
+      typical load and let capacity grow for peaks instead of paying peak size all day.
+    matters: >-
+      Fixed peak capacity is idle cost for every hour that is not the peak. Autoscaling is how the
+      bill tracks demand; a fixed worker count tracks whoever last had an incident.
+    good:
+      - At least 80% of all-purpose clusters plus warehouses are elastic (pass); partial from 40%.
+      - Autoscale ranges have min below max — not a fixed size wearing an autoscale label.
+      - Warehouses either scale out (max clusters > min) or are serverless.
+      - Serverless-only estates are satisfied by architecture.
+      - Job clusters are outside the all-purpose half of this population.
+    examples:
+      strong: >-
+        Interactive clusters autoscale; warehouses scale out or are serverless. Month-end peaks raise
+        capacity without a permanently high floor.
+      partial: >-
+        Warehouses scale while half the all-purpose clusters remain fixed at a size chosen for a
+        one-time crunch.
+      weak: >-
+        Fixed clusters and single-cluster warehouses sized for the worst day of the year.
+    verify:
+      - how: sql
+        where: |-
+          with clusters as (
+            select * from system.compute.clusters
+            qualify row_number() over (
+              partition by workspace_id, cluster_id order by change_time desc) = 1)
+          select cluster_name, min_autoscale_workers, max_autoscale_workers, worker_count
+          from clusters
+          where delete_time is null and cluster_source = 'UI'
+          and (max_autoscale_workers is null
+            or max_autoscale_workers <= coalesce(min_autoscale_workers, 0))
+          order by cluster_name
+        expect: >-
+          Few interactive all-purpose clusters left without a real autoscale range
+        caveat: >-
+          The app's share is all-purpose clusters that autoscale plus warehouses that are serverless
+          or have max_clusters > min_clusters, over that combined population. Same measurement as
+          REL-03-01; here the question is idle spend between peaks, not surge absorption for uptime.
+          REL-03-02 is warehouses-only.
+      - how: ui
+        where: Compute > cluster autoscaling; SQL warehouses > scaling
+        expect: Ranges with headroom, not min equal to max
+      - how: by-hand
+        where: Ask what the floor workers are for on a quiet afternoon
+        expect: A number below peak, with autoscaling covering the difference
+    pitfalls:
+      - >-
+        Autoscale with min equal to max — fixed cost with extra YAML.
+      - >-
+        Raising min workers "so it never scales from zero" until the floor is the old peak.
+      - >-
+        Fixing only warehouses for reliability optics while interactive clusters stay fixed — the
+        alias scores both.
+    partial_when: >-
+      Warehouses or clusters scale while the other half of the combined population stays fixed, so
+      some idle hours are gone and others are still paid at peak size.
+    not_applicable_when: >-
+      There are no classic clusters or SQL warehouses — serverless scales without a capacity setting.
+    references:
+      - https://docs.databricks.com/aws/en/compute/configure
+      - https://docs.databricks.com/aws/en/compute/sql-warehouse/create
+    advice:
+      start_from: >-
+        Put a real autoscale range on every long-lived all-purpose cluster, and warehouses with max
+        clusters above min (or serverless), so quiet hours do not pay for month-end size.
+      depends_on:
+        - >-
+          Interactive workloads that hate cold workers may keep a small min — still below peak.
+        - >-
+          Reliability shares this measurement; set max high enough for surges or you traded idle
+          cost for queueing.
+        - >-
+          Serverless already satisfies the intent — do not recreate classic capacity to autoscale it.
+      path:
+        - >-
+          Lower fixed worker counts into autoscale ranges on the costliest interactive clusters.
+        - >-
+          Enable warehouse scaling or serverless on warehouses that serve bursty BI.
+        - >-
+          Revisit mins after a quiet week and a peak week so the floor tracks reality.
+      costs:
+        - >-
+          Scale-up delay during a spike is the trade for not paying peak all day.
+        - >-
+          A max set too low caps savings talk and still fails the surge.
+      retain: >-
+        The dated elastic share (clusters + warehouses) and the min/max pairs on the top spenders.
+      revisit: >-
+        A new fixed-size interactive cluster in production, or idle DBU rising while peaks are
+        unchanged. Failing those, quarterly.
+
+  # Use auto termination
+  # Never put to a person. Guidance here explains a finding rather than enabling an answer.
+  CO-02-02:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: Platform administrator
+    means: >-
+      Every all-purpose cluster auto-terminates and every SQL warehouse auto-stops, so idle compute
+      releases instead of billing until someone notices.
+    matters: >-
+      An interactive cluster without auto-termination is the most common avoidable line on a bill:
+      somebody walked away, the cluster stayed up, and finance found it weeks later.
+    good:
+      - 100% of all-purpose clusters auto-terminate and warehouses auto-stop (pass); partial from 70%.
+      - Policies cap autotermination_minutes so creators cannot clear the field.
+      - Job clusters are excluded — they end with the run by construction.
+      - Serverless-only estates are satisfied by architecture.
+      - Offenders in the finding are named and fixed or deleted.
+    examples:
+      strong: >-
+        Every interactive cluster and warehouse stops after a short idle window. Policy enforces it.
+        Nothing in the offender list.
+      partial: >-
+        Most terminate; a few "always on" analyst clusters and one warehouse still lack a stop.
+      weak: >-
+        Interactive clusters run for days with no auto-termination; warehouses never auto-stop.
+    verify:
+      - how: sql
+        where: |-
+          with clusters as (
+            select * from system.compute.clusters
+            qualify row_number() over (
+              partition by workspace_id, cluster_id order by change_time desc) = 1)
+          select cluster_name, autotermination_minutes
+          from clusters
+          where delete_time is null and cluster_source = 'UI'
+          and coalesce(autotermination_minutes, 0) = 0
+          order by cluster_name
+        expect: >-
+          No interactive all-purpose clusters left without auto-termination
+        caveat: >-
+          The app also requires SQL warehouses to auto-stop, in the same share over clusters plus
+          warehouses. Pass needs all of them. Job clusters are out. No long-running classic compute
+          is satisfied-by-architecture.
+      - how: ui
+        where: Compute > cluster > Auto termination; SQL warehouses > Auto stop
+        expect: A positive idle window on every long-lived resource
+      - how: cli
+        where: databricks clusters list / warehouses list — autotermination / auto_stop fields
+        expect: No zeros on interactive compute people leave running
+    pitfalls:
+      - >-
+        Setting auto-termination on job clusters and calling the estate done — they were never the
+        population.
+      - >-
+        A 12-hour timeout that is "on" but still burns a working day of idle.
+      - >-
+        Exempting a team's cluster forever after one complaint, then copying the exemption.
+    partial_when: >-
+      Most interactive clusters and warehouses stop when idle while a minority still run unbounded —
+      usually "always-on" analyst boxes or a warehouse left for a dashboard.
+    not_applicable_when: >-
+      There is no long-running classic compute to terminate — serverless releases when idle without
+      a setting.
+    references:
+      - https://docs.databricks.com/aws/en/compute/configure
+      - https://docs.databricks.com/aws/en/admin/clusters/policies
+    advice:
+      start_from: >-
+        Require auto-termination on every all-purpose policy (≤30–60 minutes idle) and auto-stop on
+        every warehouse, then fix or delete the offenders the scan names.
+      depends_on:
+        - >-
+          A true always-on serving shape should not be an interactive all-purpose cluster — move it
+          to a product meant to stay up.
+        - >-
+          Very short timeouts annoy analysts; very long ones erase the saving — pick per audience.
+        - >-
+          Serverless needs no toggle here.
+      path:
+        - >-
+          Turn on termination/stop on every resource in the offender list today.
+        - >-
+          Encode the maximum idle window in cluster and warehouse policies.
+        - >-
+          Remove unrestricted create so the field cannot be cleared again.
+      costs:
+        - >-
+          Resume latency after idle is the user-visible price of the saving.
+        - >-
+          Chasing exceptions is ongoing policy work.
+      retain: >-
+        The dated count of clusters/warehouses without termination and the policy definition that
+        forbids clearing it.
+      revisit: >-
+        Any new interactive cluster or warehouse created with termination disabled. Failing those,
+        monthly until the offender list stays empty, then quarterly.
+
+  # Use compute policies to control costs
+  # Never put to a person. Guidance here explains a finding rather than enabling an answer.
+  # Related to OE-02-02 / IU-03-03 compute-templates — here: bounds on spend and size.
+  CO-02-03:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: Platform administrator
+    means: >-
+      Classic all-purpose clusters are created under policies that bound instance type, size,
+      runtime and auto-termination, so cost controls hold after the first cleanup instead of drifting
+      with every new cluster.
+    matters: >-
+      Without policies, every other compute cost fix is temporary: the next unrestricted create
+      brings back oversized nodes, missing auto-stop and untagged spend. Policies are how the other
+      controls survive.
+    good:
+      - At least 90% of all-purpose clusters were created under a policy (pass); partial from 50%.
+      - Policies require cost tags, auto-termination and size caps — not empty shells.
+      - Unrestricted cluster creation is not the default grant for builders.
+      - Serverless estates with no classic all-purpose clusters are satisfied by architecture.
+      - Pre-policy clusters are recreated or edited so the share reflects the live fleet.
+    examples:
+      strong: >-
+        Classic all-purpose clusters that remain were created from policies that cap workers,
+        require tags and force auto-termination. Everyone else is on serverless.
+      partial: >-
+        Policies cover roughly half to nine-tenths; older unrestricted clusters still burn spend, or
+        policies exist but omit cost bounds.
+      weak: >-
+        Freehand clusters with no policy. Cost cleanups regress within a sprint.
+    verify:
+      - how: ui
+        where: Compute > all-purpose clusters > Policy column; Compute > Policies
+        expect: A policy on clusters in active use, or no classic all-purpose clusters at all
+        caveat: >-
+          The app scores all-purpose only (pass ≥90%, partial ≥50%). Same observation OE-02-02 and
+          IU-03-03 use for templates; here the angle is whether spend bounds hold over time, not
+          on-call consistency or empty-form onboarding. No all-purpose classic compute is
+          satisfied-by-architecture.
+      - how: cli
+        where: databricks clusters list --output json
+        expect: policy_id set on all-purpose clusters that still exist
+      - how: by-hand
+        where: Open the busiest policy JSON — tags, autotermination, max workers
+        expect: Cost controls present, not only a name
+    pitfalls:
+      - >-
+        A policy nobody is granted, so builders still use unrestricted create.
+      - >-
+        Counting job or serverless compute into this share — wrong population.
+      - >-
+        Leaving old unrestricted clusters forever; policies do not rewrite them.
+    partial_when: >-
+      Policies cover some all-purpose clusters while others remain freehand, so cost bounds exist on
+      paper and leak wherever unrestricted create still wins.
+    not_applicable_when: >-
+      There are no classic all-purpose clusters, so there is no configuration a policy would bound.
+    references:
+      - https://docs.databricks.com/aws/en/admin/clusters/policies
+      - https://docs.databricks.com/aws/en/compute/configure
+    advice:
+      start_from: >-
+        Publish policies that cap workers, require cost-centre tags and force auto-termination, grant
+        them to the groups that create classic compute, and remove unrestricted create once those
+        groups can work.
+      depends_on:
+        - >-
+          OE-02-02 cares about operational sameness; IU-03-03 about the empty form — the same
+          policies serve all three if they are used and include cost bounds.
+        - >-
+          GPU or oversized exceptions need their own capped policies, not a hole in the default.
+        - >-
+          Serverless spend is bounded with budget policies, not cluster policies.
+      path:
+        - >-
+          Add cost bounds to the policy the largest team already uses.
+        - >-
+          Recreate or edit unrestricted clusters onto that policy.
+        - >-
+          Remove unrestricted create and watch for the first exception request.
+      costs:
+        - >-
+          Policy maintenance is recurring; abandoned policies recreate freehand spend.
+        - >-
+          Recreating clusters restarts workloads and reattaches libraries.
+      retain: >-
+        The policy definitions (with cost caps) and the dated with-vs-without-policy cluster count.
+      revisit: >-
+        A freehand production cluster, or unrestricted create granted again. Failing those, each
+        time autotermination or tag rules change.
+
+  # Setup tagging for cost attribution
+  # Never put to a person. Guidance here explains a finding rather than enabling an answer.
+  CO-03-01:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: Platform owner, with finance
+    means: >-
+      Most spend carries a custom tag that attributes it to a team, product or cost centre, so
+      somebody owns the line when it grows.
+    matters: >-
+      Untagged spend has no owner, which is what makes it nobody's to reduce. Resource ids alone
+      tell you which cluster burned money, not which budget should care.
+    good:
+      - At least 80% of list-priced spend carries a custom tag (pass); partial from 30%.
+      - Keys identify owners (team, cost_centre) with more than one value across the estate.
+      - Cluster policies require those tags; serverless uses budget policies for attribution.
+      - Platform-injected keys are not mistaken for organisational tags.
+      - Incomplete price coverage is unmeasured, not a low tagging share.
+    examples:
+      strong: >-
+        Policies require cost_centre and owner. Custom-tagged spend is high. Serverless is covered by
+        budget policies. Reviews can name a team for almost every spike.
+      partial: >-
+        Interactive clusters are tagged; jobs and serverless lines are mostly bare, or tags exist
+        with a single value estate-wide.
+      weak: >-
+        Almost no custom tags. Finance sees one invoice line.
+    verify:
+      - how: sql
+        where: |-
+          select case when exists(map_keys(custom_tags),
+            k -> k not ilike 'databricks%') then 'tagged by the organisation'
+            else 'no tag the organisation chose' end as tagging,
+          round(sum(usage_quantity), 1) as dbus
+          from system.billing.usage
+          where usage_date > current_date() - 30 and usage_unit = 'DBU'
+          group by all order by dbus desc
+        expect: >-
+          Most DBUs under an organisational tag line
+        caveat: >-
+          The app scores custom-tagged priced cost over list cost. Identifiable resource ids can
+          exceed custom tags — that is attribution to a resource, not to a team. Serverless needs
+          budget policies. Price gaps → unmeasured.
+      - how: ui
+        where: Account console > usage detail tags / budget policies; Compute > Policies > tag rules
+        expect: Required keys for classic create; budget policy coverage for serverless
+      - how: by-hand
+        where: Pick last month's top untagged spend lines and ask who owns them
+        expect: Names you can act on, or a plan to enforce tags there
+    pitfalls:
+      - >-
+        Treating Databricks-injected keys as proof the organisation tagged the spend.
+      - >-
+        Enforcing tags only on clusters while serverless becomes the majority of the bill.
+      - >-
+        A single tag value for the whole company — applied, not attributing.
+    partial_when: >-
+      Some spend carries useful custom tags while a material share — often serverless or older jobs —
+      remains unattributable to a team or cost centre.
+    not_applicable_when: >-
+      No billable usage was recorded in the window, so there is no spend to attribute.
+    references:
+      - https://docs.databricks.com/aws/en/admin/account-settings/usage-detail-tags
+      - https://docs.databricks.com/aws/en/admin/usage/budget-policies
+    advice:
+      start_from: >-
+        Require cost_centre and owner (or equivalent) on every classic compute policy, and attach
+        budget policies for serverless so the majority of the bill has a human owner.
+      depends_on:
+        - >-
+          Tag keys must match how finance charges back — inventing parallel vocabularies creates
+          untagged-looking spend in their tools.
+        - >-
+          Monitoring (CO-03-03) and management (CO-03-04) need this attribution; do not skip tags and
+          expect those reviews to work.
+        - >-
+          Incomplete list prices must be fixed before arguing about the share.
+      path:
+        - >-
+          Add required tags to policies; stop unrestricted create for groups that ignore them.
+        - >-
+          Cover serverless with budget policies.
+        - >-
+          Backfill the top untagged spenders by editing jobs and clusters.
+      costs:
+        - >-
+          Retagging live jobs is noisy and needs owners engaged.
+        - >-
+          Wrong keys create a second cleanup later.
+      retain: >-
+        The dated custom-tag share of spend and the required key list in policies/budget policies.
+      revisit: >-
+        Untagged share rising two months running, or a new serverless product without a budget
+        policy. Failing those, quarterly.
+
+  # Monitor storage volume, cost and growth
+  # Never put to a person. Guidance here explains a finding rather than enabling an answer.
+  CO-03-05:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: Platform owner, with the data engineering lead
+    means: >-
+      Active table bytes and file counts are measured so storage growth and small-file pressure are
+      visible before the cloud bill surprises anyone.
+    matters: >-
+      Storage is a standing charge that grows without a decision to grow it. Bytes alone hide
+      small-file estates that inflate listing and scan cost even when the byte total looks fine.
+    good:
+      - Volume is readable from the platform snapshot or the sampled Delta detail pass.
+      - Largest tables are named; growth can be compared month to month.
+      - Small-file pressure is reviewed alongside bytes (partial when files are too small on average).
+      - Readers know unreferenced files in the bucket are outside this number.
+      - A sample pass is labelled as a sample — not silently treated as the whole metastore.
+    examples:
+      strong: >-
+        Storage snapshot (or a documented sample) is reviewed monthly. Large tables and fragmented
+        ones have owners. OPTIMIZE or predictive optimization addresses file sizing.
+      partial: >-
+        Volume is known but files average well below the target size on measured tables, or only a
+        sample was readable and nobody compared growth.
+      weak: >-
+        Nobody can say how large the lake is. Finance sees object-storage growth with no table map.
+    verify:
+      - how: sql
+        where: |-
+          select table_id, size_in_bytes, num_files
+          from system.storage.tables
+          order by size_in_bytes desc
+          limit 20
+        expect: >-
+          A stable top-N you can name owners for; watch size and file count together
+        caveat: >-
+          Prefer the platform per-table snapshot when it has rows; otherwise the app samples via
+          DESCRIBE DETAIL and says so. Neither includes unreferenced files still in the bucket.
+          Fragmentation yields partial, not fail — the control is that volume is measured.
+      - how: ui
+        where: Catalog Explorer > large tables > details; cloud console for external location totals
+        expect: Table-level sizes that reconcile directionally with the bill
+      - how: by-hand
+        where: Compare this month's total to last month's and explain the delta
+        expect: Named tables or pipelines, not "storage just grew"
+    pitfalls:
+      - >-
+        Optimising only the byte total while ten-thousand-file tables punish every query.
+      - >-
+        Treating a sampled pass as proof every table is healthy.
+      - >-
+        Ignoring cloud-side orphan files because the UC snapshot looked fine.
+    partial_when: >-
+      Volume is measured but average file size on the reading is below the target (small-file
+      pressure), or the reading is only a sample and growth has not been compared over time.
+    references:
+      - https://docs.databricks.com/aws/en/tables/operations/optimize
+      - https://docs.databricks.com/aws/en/admin/system-tables/
+    advice:
+      start_from: >-
+        Put a monthly storage reading on the same calendar as compute cost review — top tables by
+        bytes and by file count — and run OPTIMIZE or enable predictive optimization where files are
+        too small.
+      depends_on:
+        - >-
+          External locations need a cloud-side measure for orphans; the app does not require that
+          credential.
+        - >-
+          VACUUM and retention (CO-03-06, CO-03-07) change what bytes remain — read them together.
+        - >-
+          A sample pass is enough to start; complete snapshot coverage is the upgrade path.
+      path:
+        - >-
+          Capture the current total and top tables with dates.
+        - >-
+          Fix the worst small-file tables with OPTIMIZE / liquid clustering / PO.
+        - >-
+          Add the cloud bucket total for locations you own if finance's number still diverges.
+      costs:
+        - >-
+          OPTIMIZE rewrites files and spends compute to save future reads and metadata load.
+        - >-
+          Full metastore detail collection is heavier than a sample — budget it.
+      retain: >-
+        The dated volume figure, basis (snapshot vs sample), and top-table list with owners.
+      revisit: >-
+        A month where bytes or file counts jump without a known pipeline change. Failing those,
+        monthly.
+
+  # Run VACUUM to reclaim storage from stale files
+  # Never put to a person. Guidance here explains a finding rather than enabling an answer.
+  CO-03-06:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: Data engineering lead
+    means: >-
+      Tables outside predictive optimization reclaim stale Delta files with VACUUM on an expected
+      cadence, so storage you no longer need is not paid for indefinitely.
+    matters: >-
+      Delta keeps files that left the current version until VACUUM removes them. Without that step —
+      or PO doing it — every overwrite leaves billable debris behind.
+    good:
+      - Predictive optimization enabled on catalogs with managed tables → satisfied by architecture.
+      - Tables not on PO show VACUUM within about 30 days when maintenance is visible.
+      - Manual VACUUM is not demanded where PO is on and simply had nothing eligible to reclaim.
+      - Retention windows are understood before VACUUM shortens time travel (see CO-03-07).
+      - Notebook VACUUM on classic clusters may be invisible to query history — check before panicking.
+    examples:
+      strong: >-
+        Every catalog with managed tables has predictive optimization on. Manual VACUUM is reserved
+        for external tables outside that cover.
+      partial: >-
+        PO covers some catalogs; others rely on manual VACUUM that is late or only partly visible, or
+        PO is partial and no VACUUM was seen for the rest.
+      weak: >-
+        PO off, no VACUUM observed, storage growing from overwritten tables.
+    verify:
+      - how: ui
+        where: Catalog Explorer > catalog > Details > Predictive optimization
+        expect: On for catalogs that hold managed tables you care about
+      - how: sql
+        where: |-
+          select * from system.storage.predictive_optimization_operations_history
+          where operation_type ilike '%VACUUM%'
+          and start_time > current_timestamp() - interval 30 days
+          order by start_time desc
+          limit 50
+        expect: >-
+          Recent VACUUM from predictive optimization where PO is on; otherwise investigate manual
+          maintenance
+        caveat: >-
+          Enablement is the test for PO, not a mandatory run in a quiet window. Query history misses
+          classic notebook commands. Unresolvable VACUUM targets are unmeasured rather than pass/fail.
+      - how: by-hand
+        where: For catalogs without PO, ask who vacuums and how often
+        expect: A schedule or a decision to enable PO — not "Delta cleans itself"
+    pitfalls:
+      - >-
+        Failing an estate because PO ran zero VACUUMs in a quiet window — eligibility drives runs.
+      - >-
+        VACUUM with a retention shorter than recovery needs without agreeing that trade (CO-03-07 /
+        REL-04-05).
+      - >-
+        Assuming query history proves no VACUUM when jobs run on classic clusters.
+    partial_when: >-
+      Predictive optimization covers only part of managed tables and the remainder shows no timely
+      VACUUM, or manual VACUUM exists but is older than the expected interval.
+    references:
+      - https://docs.databricks.com/aws/en/tables/operations/vacuum
+      - https://docs.databricks.com/aws/en/optimizations/predictive-optimization
+    advice:
+      start_from: >-
+        Enable predictive optimization on every catalog that holds managed tables; only schedule
+        manual VACUUM for tables that stay outside that cover.
+      depends_on:
+        - >-
+          Shortening retention to reclaim faster storage is a recovery decision — align with
+          CO-03-07 before aggressive VACUUM.
+        - >-
+          External tables never get managed-table PO; they need an explicit job if you own the files.
+        - >-
+          Classic notebook maintenance may not appear in history — verify before building a second
+          scheduler.
+      path:
+        - >-
+          Turn PO on per catalog for managed tables.
+        - >-
+          Inventory tables outside PO and add VACUUM jobs or convert them to managed where possible.
+        - >-
+          Confirm retention properties match the reclaim vs restore trade you want.
+      costs:
+        - >-
+          VACUUM permanently drops files older than retention — restore dies with them.
+        - >-
+          PO is the lower-ops path; manual fleets are ongoing job ownership.
+      retain: >-
+        Catalog PO settings and the dated list of tables still on manual VACUUM.
+      revisit: >-
+        A new catalog created with PO off, or storage growth from tables known to overwrite heavily.
+        Failing those, quarterly.
+
+  # Manage Delta history and time-travel retention
+  # Never put to a person. Guidance here explains a finding rather than enabling an answer.
+  # Alias delta-history-retention with REL-04-05 — here: storage cost of retained files.
+  CO-03-07:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: Data engineering lead, with the platform owner
+    means: >-
+      Tables set Delta log and deleted-file retention deliberately so you do not pay forever for
+      history nobody will restore, while still keeping enough reachable window for mistakes you will.
+    matters: >-
+      Unbounded or accidental retention is a storage bill. Defaults are defensible; shortened windows
+      below seven days and mismatched log-vs-file settings are how estates either lose recovery or
+      pay for files no history can use.
+    good:
+      - No sampled table has a reachable window under seven days (below that fails).
+      - Critical tables set both retention properties explicitly rather than only inheriting.
+      - Log and file retention align when log is raised — no year of log against a week of files.
+      - VACUUM / PO behaviour is understood so the bill matches the window you think you keep.
+      - Somebody can name why a table keeps thirty days versus seven.
+    examples:
+      strong: >-
+        Critical tables set both properties to a chosen window (for example thirty days). Nothing is
+        shortened below seven days. Storage review can explain the retained bytes.
+      partial: >-
+        Nothing is below seven days, but almost everything inherits defaults only, or log was raised
+        without raising file retention.
+      weak: >-
+        Some tables shortened deleted-file retention below seven days to "save storage", leaving bad
+        writes unrestorable and still unclear on the bill.
+    verify:
+      - how: sql
+        where: |-
+          show tblproperties <a large production table>
+        expect: >-
+          delta.logRetentionDuration and delta.deletedFileRetentionDuration present and aligned when
+          raised
+        caveat: >-
+          Same sampled DESCRIBE DETAIL path as REL-04-05. Fail = reachable window below seven days;
+          partial = overstated log vs files, or only defaults everywhere. Here the reader cares about
+          bytes retained; reliability cares about restore. VACUUM must have run for settings to match
+          reality.
+      - how: sql
+        where: describe history <a large production table>
+        expect: History depth consistent with the retention you intend to pay for
+      - how: by-hand
+        where: Ask which tables keep more than thirty days of history and why
+        expect: Named recovery needs — not "we never set it"
+    pitfalls:
+      - >-
+        Shortening file retention for cost without accepting that restore dies with it.
+      - >-
+        Raising only log retention — you pay for metadata promises the files cannot keep.
+      - >-
+        Treating this as only a reliability topic; the alias is scored once and the bill is why cost
+        owns a copy of the guidance.
+    partial_when: >-
+      Storage still looks fine while history depth was never chosen — every large table inherits
+      defaults — or log was lengthened alone so deleted files (and their bill) may not match the
+      window the log claims.
+    references:
+      - https://docs.databricks.com/aws/en/tables/history
+      - https://docs.databricks.com/aws/en/tables/operations/vacuum
+    advice:
+      start_from: >-
+        Keep at least seven days reachable on every table, set both retention properties explicitly
+        on large or critical tables to the shortest window you will actually restore from, and let
+        VACUUM/PO reclaim beyond that.
+      depends_on:
+        - >-
+          Tables whose incidents are found after weeks need a longer paid window — defaults alone
+          under-serve them and over-serve noisy staging tables.
+        - >-
+          REL-04-05 shares this measurement; do not lengthen for restore in one pillar and shorten
+          for cost in the other without one decision.
+        - >-
+          Use week-or-smaller interval forms Delta documents; unparsed forms are not scored as days.
+      path:
+        - >-
+          Raise any table below seven days first — those are fails and false savings.
+        - >-
+          On the largest tables, set matching log and file retention to the chosen window.
+        - >-
+          Align VACUUM/PO so retained bytes match that window.
+      costs:
+        - >-
+          Longer windows keep deleted files — that is the recovery price on the storage bill.
+        - >-
+          Mass ALTER of tblproperties is scriptable; discovering mismatch in an incident is not.
+      retain: >-
+        The dated sample of retention properties on the largest tables and the written window each
+        class of table is allowed to keep.
+      revisit: >-
+        A storage drive to shorten retention, a restore that needed more history than you keep, or
+        growth in deleted-file bytes without a policy change. Failing those, annually.
+
+  # Balance always-on and triggered streaming
+  # Never put to a person. Guidance here explains a finding rather than enabling an answer.
+  CO-04-01:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: Data engineering lead
+    means: >-
+      Streaming jobs that do not need sub-minute freshness use triggered or available-now execution
+      on a schedule, so compute runs when data arrives rather than continuously.
+    matters: >-
+      A continuous stream holds compute for the whole time it is up. Hourly data on a continuous job
+      pays for twenty-four hours of readiness every day.
+    good:
+      - Continuous jobs are a small share of the job inventory (fail above 25% continuous).
+      - Each continuous job has a named latency requirement that needs it.
+      - Triggered / available-now streams cover the rest with checkpoints preserved.
+      - Zero continuous jobs is a pass.
+      - Configuration cannot prove latency need — owners confirm the named continuous set.
+    examples:
+      strong: >-
+        Almost no jobs are continuous. The two that are feed sub-minute alerting. Everything else
+        uses available-now on a schedule matching arrival.
+      partial: >-
+        Continuous share is at most a quarter of jobs; some of those look like hourly pipelines that
+        never needed to be always on.
+      weak: >-
+        Many jobs run continuous=true out of template habit, including batch-shaped feeds.
+    verify:
+      - how: sql
+        where: |-
+          with current_jobs as (
+            select job_id, name, continuous, delete_time
+            from system.lakeflow.jobs
+            qualify row_number() over (
+              partition by workspace_id, job_id order by change_time desc) = 1
+          )
+          select job_id, name, continuous from current_jobs
+          where delete_time is null and continuous = true
+          order by name
+        expect: >-
+          A short list you can justify with latency needs
+        caveat: >-
+          The `qualify` is required: this table keeps a row per edit. The app passes when none are
+          continuous; otherwise partial if continuous share ≤25%, else fail. It cannot see whether
+          latency requires continuous — that is the by-hand step.
+      - how: ui
+        where: Workflows > Jobs > a continuous job > schedule / continuous settings
+        expect: A real sub-minute consumer, or a plan to switch to available-now
+      - how: by-hand
+        where: Ask what breaks if each continuous job ran once an hour instead
+        expect: A latency SLO — not "that is the default template"
+    pitfalls:
+      - >-
+        Copying continuous from a tutorial into hourly CDC.
+      - >-
+        Switching to triggered without keeping the checkpoint — causing a full reprocess.
+      - >-
+        Counting streaming notebooks outside Jobs inventory as if this control saw them.
+    partial_when: >-
+      Some jobs run continuously and the continuous share is still within the allowed band — confirm
+      each named job needs that freshness; above the band is fail.
+    not_applicable_when: >-
+      There are no jobs in the workspace, so there is no trigger choice to assess.
+    references:
+      - https://docs.databricks.com/aws/en/structured-streaming/triggers
+      - https://docs.databricks.com/aws/en/jobs/triggers
+    advice:
+      start_from: >-
+        Use available-now (or scheduled triggered) streams for anything that tolerates minutes-to-hours
+        of latency; reserve continuous for workloads with a written sub-minute requirement.
+      depends_on:
+        - >-
+          Downstream consumers waiting on near-real-time features keep continuous — measure that
+          need; do not demote them to clear a finding.
+        - >-
+          Checkpoint directories must survive the switch so you resume rather than reprocess.
+        - >-
+          Cost of continuous is compute time up; if serverless continuous is used, still question
+          the always-on shape.
+      path:
+        - >-
+          List continuous jobs from the finding and classify latency need this week.
+        - >-
+          Convert the hourly-or-looser set to available-now plus a matching schedule.
+        - >-
+          Leave the true sub-minute set documented as accepted continuous cost.
+      costs:
+        - >-
+          Triggered runs add schedule lag — that is the saving's price.
+        - >-
+          Mis-migrating checkpoints is a correctness incident, not a cost win.
+      retain: >-
+        The continuous-job list with latency justification dates and the jobs converted.
+      revisit: >-
+        A new continuous job without a latency note, or continuous share rising. Failing those,
+        quarterly.
+
+  # Balance between on-demand and capacity excess instances
+  # Never put to a person. Guidance here explains a finding rather than enabling an answer.
+  CO-04-02:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: Platform administrator, with the data engineering lead
+    means: >-
+      Interruption-tolerant classic workloads use spot or capacity-excess workers (with a safe
+      driver), so batch spend does not sit entirely on on-demand prices.
+    matters: >-
+      On-demand everywhere is simple and expensive. Spot is wrong for latency-critical drivers and
+      right for many fault-tolerant batches — the band is low because a modest share is often correct.
+    good:
+      - At least half of clusters with an availability setting use spot/capacity-excess (pass);
+        partial from 20%.
+      - Drivers stay on-demand (first_on_demand / equivalent) so a reclaim loses workers, not the run.
+      - Latency-critical and non-restartable jobs stay on-demand deliberately.
+      - Serverless estates without availability settings are not-applicable.
+      - A low share can be intentional — the finding asks for a reason, not maximal spot.
+    examples:
+      strong: >-
+        Fault-tolerant ETL job clusters use spot with fallback; drivers on-demand. Interactive and
+        strict-SLA jobs stay on-demand. Share sits comfortably in band.
+      partial: >-
+        Some job clusters use spot; most batch fleets remain on-demand from template habit.
+      weak: >-
+        Every classic cluster is on-demand, including nightly restartable batches.
+    verify:
+      - how: sql
+        where: |-
+          with current_clusters as (
+            select * from system.compute.clusters
+            qualify row_number() over (
+              partition by workspace_id, cluster_id order by change_time desc) = 1
+          )
+          select cluster_name, aws_attributes.availability,
+            azure_attributes.availability, gcp_attributes.use_preemptible_executors
+          from current_clusters
+          where delete_time is null
+          order by cluster_name
+        expect: >-
+          Spot / preemptible / lowest-price patterns on interruption-tolerant fleets
+        caveat: >-
+          Population is clusters with a recorded availability setting. Pass ≥50%, partial ≥20%.
+          Outcome reason notes a low share may be deliberate. No such classic compute →
+          not-applicable (serverless does not expose the choice).
+      - how: ui
+        where: Job cluster / policy > Instances > Spot / availability
+        expect: Spot with fallback on batch policies; on-demand on interactive
+      - how: by-hand
+        where: Ask which jobs cannot tolerate a worker reclaim mid-run
+        expect: Those stay on-demand; the rest have a spot path
+    pitfalls:
+      - >-
+        Putting the driver on spot — losing the run rather than a worker.
+      - >-
+        Chasing a high spot share into SLA workloads to "pass" the band.
+      - >-
+        Ignoring cloud-specific field names (AWS availability vs Azure vs GCP preemptible).
+    partial_when: >-
+      Some interruption-tolerant fleets use spot while a material share of restartable batch compute
+      remains on-demand without a written reason — or the share is simply still climbing toward the
+      band.
+    not_applicable_when: >-
+      No classic compute with a cloud availability setting was found, so there is no on-demand versus
+      spot balance to assess.
+    references:
+      - https://docs.databricks.com/aws/en/compute/cluster-config-best-practices
+      - https://docs.databricks.com/aws/en/admin/clusters/policies
+    advice:
+      start_from: >-
+        Put spot-with-fallback (or cloud equivalent) on fault-tolerant job cluster policies, keep
+        first_on_demand at 1 for the driver, and leave interactive and strict-SLA jobs on-demand.
+      depends_on:
+        - >-
+          Non-restartable or tightly timed jobs stay on-demand — a low estate share can be correct.
+        - >-
+          GPU fleets need their own judgment; spot GPU reclaim is harsher.
+        - >-
+          Serverless has no spot toggle; do not recreate classic clusters only to use spot.
+      path:
+        - >-
+          Identify restartable batch jobs with the highest DBU.
+        - >-
+          Flip their policies/job clusters to spot with on-demand driver.
+        - >-
+          Watch failovers for a week before widening the policy.
+      costs:
+        - >-
+          Reclaims extend runtime; fallback to on-demand can erase savings on bad days.
+        - >-
+          Policy complexity across clouds is ongoing ownership.
+      retain: >-
+        The dated spot share of clusters with availability set, and the list of workloads forbidden
+        from spot.
+      revisit: >-
+        A new large on-demand-only batch fleet, or reclaim-driven SLA breaches. Failing those,
+        quarterly.

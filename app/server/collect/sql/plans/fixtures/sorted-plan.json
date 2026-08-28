@@ -1,0 +1,2741 @@
+{
+  "_capture": {
+    "capturedAt": "2026-08-11T16:34:04.014Z",
+    "profile": "labs",
+    "script": "scripts/capture-plan-fixtures.mjs",
+    "note": "A statement this script runs, sorting twice: a window function’s sort and an ORDER BY … LIMIT the planner turns into a top-k. It exists because the estate’s widest plan carries no SORT_ORDER, and a promised key with no captured value is the hole 33ih came out of. Node counts here are NOT the counts the API returned.",
+    "request": "?include_plans=true",
+    "status": 200,
+    "responseBytes": 164037,
+    "trimmed": true,
+    "nodesTrimmed": false,
+    "trimRule": "every distinct tag kept, then filled to 60 nodes in original order; edges filtered to kept nodes on from_id/to_id; stage_data to one entry; of the node arrays metrics and expressions, the 18 metrics the parser reads by label are kept and the rest capped to 1 entries; meta_data keeps every key, and values of keys the parser does not read are capped at 120 characters",
+    "statement": "WITH ranked AS (\n      SELECT statement_id, statement_type, total_duration_ms,\n             row_number() OVER (PARTITION BY statement_type ORDER BY total_duration_ms DESC) AS rank\n      FROM system.query.history\n      WHERE start_time >= current_timestamp() - INTERVAL 2 DAYS\n    )\n    SELECT statement_type, count(*) AS runs, sum(total_duration_ms) AS ms\n    FROM ranked WHERE rank <= 100\n    GROUP BY 1 ORDER BY ms DESC LIMIT 20",
+    "original": {
+      "graphEntries": 2,
+      "widestGraphKey": "0",
+      "widestGraphNodes": 20,
+      "distinctTags": [
+        "ADAPTIVE_SPARK_PLAN_EXEC",
+        "PHOTON_ARROW_BATCH_SINK_EXEC",
+        "PHOTON_ARROW_RESULT_STAGE_EXEC",
+        "PHOTON_FILTER_EXEC",
+        "PHOTON_GROUPING_AGG_EXEC",
+        "PHOTON_PARQUET_FILE_SCAN_EXEC",
+        "PHOTON_PROJECT_EXEC",
+        "PHOTON_SHUFFLE_MAP_STAGE_EXEC",
+        "PHOTON_SORT_EXEC",
+        "RESULT_QUERY_STAGE_EXEC",
+        "UNKNOWN.ColumnarToRow",
+        "UNKNOWN.PhotonShuffleExchangeSink",
+        "UNKNOWN.PhotonTopK",
+        "UNKNOWN.PhotonWindow",
+        "WHOLE_STAGE_CODEGEN_EXEC"
+      ],
+      "nodesKept": 20,
+      "edges": 16,
+      "edgesKept": 16,
+      "stageDataEntries": 3,
+      "cappedUnreadFields": {
+        "metrics": 772,
+        "expressions": 26,
+        "meta_data_values": 2
+      }
+    }
+  },
+  "body": {
+    "query_id": "01f195a2-7078-1eb5-830f-7d993f0514df",
+    "status": "FINISHED",
+    "query_text": "-- fixture 2026-08-11T16:33:52.474Z\n\n    WITH ranked AS (\n      SELECT statement_id, statement_type, total_duration_ms,\n             row_number() OVER (PARTITION BY statement_type ORDER BY total_duration_ms DESC) AS rank\n      FROM system.query.history\n      WHERE start_time >= current_timestamp() - INTERVAL 2 DAYS\n    )\n    SELECT statement_type, count(*) AS runs, sum(total_duration_ms) AS ms\n    FROM ranked WHERE rank <= 100\n    GROUP BY 1 ORDER BY ms DESC LIMIT 20",
+    "query_start_time_ms": 1786466032945,
+    "execution_end_time_ms": 1786466037355,
+    "query_end_time_ms": 1786466037320,
+    "user_id": "000000000000000",
+    "user_name": "redacted@example.invalid",
+    "user_display_name": "Redacted User",
+    "endpoint_id": "0123456789abcdef",
+    "rows_produced": 16,
+    "lookup_key": "redacted",
+    "executed_as_user_id": "000000000000000",
+    "executed_as_user_name": "redacted@example.invalid",
+    "executed_as_user_display_name": "Redacted User",
+    "session_id": "00000000-0000-0000-0000-000000000000",
+    "plans": {
+      "0": {
+        "nodes": [
+          {
+            "id": "86",
+            "name": "Adaptive Plan",
+            "tag": "ADAPTIVE_SPARK_PLAN_EXEC",
+            "meta_data": [
+              {
+                "key": "OUTPUT",
+                "label": "Output attributes",
+                "values": [
+                  "ranked.statement_type",
+                  "runs",
+                  "ms"
+                ],
+                "meta_values": [
+                  {
+                    "value": "ranked.statement_type",
+                    "data_type": {
+                      "type_name": "string",
+                      "type_ddl": "string",
+                      "redacted_type_ddl": "string"
+                    }
+                  },
+                  {
+                    "value": "runs",
+                    "data_type": {
+                      "type_name": "long",
+                      "redacted_type_ddl": "bigint"
+                    }
+                  },
+                  {
+                    "value": "ms",
+                    "data_type": {
+                      "type_name": "long",
+                      "redacted_type_ddl": "bigint"
+                    }
+                  }
+                ]
+              }
+            ],
+            "hidden": true,
+            "collapsed": false,
+            "key_metrics": {
+              "rows_num": 0
+            },
+            "expressions": [
+              {
+                "tag": "OUTPUT",
+                "children": [
+                  {
+                    "tag": "01f195a2-7078-1eb5-830f-7d993f0514df",
+                    "sql": "ranked.statement_type",
+                    "data_type": {
+                      "type_name": "string",
+                      "type_ddl": "string",
+                      "redacted_type_ddl": "string"
+                    }
+                  },
+                  {
+                    "tag": "01f195a2-7078-1eb5-830f-7d993f0514df",
+                    "sql": "runs",
+                    "data_type": {
+                      "type_name": "long",
+                      "redacted_type_ddl": "bigint"
+                    }
+                  },
+                  {
+                    "tag": "01f195a2-7078-1eb5-830f-7d993f0514df",
+                    "sql": "ms",
+                    "data_type": {
+                      "type_name": "long",
+                      "redacted_type_ddl": "bigint"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "87",
+            "name": "Result Query Stage",
+            "tag": "RESULT_QUERY_STAGE_EXEC",
+            "meta_data": [
+              {
+                "key": "OUTPUT",
+                "label": "Output attributes",
+                "values": [
+                  "ranked.statement_type",
+                  "runs",
+                  "ms"
+                ],
+                "meta_values": [
+                  {
+                    "value": "ranked.statement_type",
+                    "data_type": {
+                      "type_name": "string",
+                      "type_ddl": "string",
+                      "redacted_type_ddl": "string"
+                    }
+                  },
+                  {
+                    "value": "runs",
+                    "data_type": {
+                      "type_name": "long",
+                      "redacted_type_ddl": "bigint"
+                    }
+                  },
+                  {
+                    "value": "ms",
+                    "data_type": {
+                      "type_name": "long",
+                      "redacted_type_ddl": "bigint"
+                    }
+                  }
+                ]
+              }
+            ],
+            "hidden": false,
+            "collapsed": false,
+            "key_metrics": {
+              "rows_num": 0
+            },
+            "expressions": [
+              {
+                "tag": "OUTPUT",
+                "children": [
+                  {
+                    "tag": "01f195a2-7078-1eb5-830f-7d993f0514df",
+                    "sql": "ranked.statement_type",
+                    "data_type": {
+                      "type_name": "string",
+                      "type_ddl": "string",
+                      "redacted_type_ddl": "string"
+                    }
+                  },
+                  {
+                    "tag": "01f195a2-7078-1eb5-830f-7d993f0514df",
+                    "sql": "runs",
+                    "data_type": {
+                      "type_name": "long",
+                      "redacted_type_ddl": "bigint"
+                    }
+                  },
+                  {
+                    "tag": "01f195a2-7078-1eb5-830f-7d993f0514df",
+                    "sql": "ms",
+                    "data_type": {
+                      "type_name": "long",
+                      "redacted_type_ddl": "bigint"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "89",
+            "name": "Columnar To Row",
+            "tag": "UNKNOWN.ColumnarToRow",
+            "meta_data": [
+              {
+                "key": "OUTPUT",
+                "label": "Output attributes",
+                "values": [
+                  "ranked.statement_type",
+                  "runs",
+                  "ms"
+                ],
+                "meta_values": [
+                  {
+                    "value": "ranked.statement_type",
+                    "data_type": {
+                      "type_name": "string",
+                      "type_ddl": "string",
+                      "redacted_type_ddl": "string"
+                    }
+                  },
+                  {
+                    "value": "runs",
+                    "data_type": {
+                      "type_name": "long",
+                      "redacted_type_ddl": "bigint"
+                    }
+                  },
+                  {
+                    "value": "ms",
+                    "data_type": {
+                      "type_name": "long",
+                      "redacted_type_ddl": "bigint"
+                    }
+                  }
+                ]
+              }
+            ],
+            "metrics": [
+              {
+                "label": "Number of input batches",
+                "metric_type": "SUM_METRIC",
+                "value": 0,
+                "key": "UNKNOWN_KEY",
+                "hidden": true
+              }
+            ],
+            "subgraph_parent": "88",
+            "hidden": true,
+            "collapsed": false,
+            "key_metrics": {
+              "rows_num": 0
+            },
+            "expressions": [
+              {
+                "tag": "OUTPUT",
+                "children": [
+                  {
+                    "tag": "01f195a2-7078-1eb5-830f-7d993f0514df",
+                    "sql": "ranked.statement_type",
+                    "data_type": {
+                      "type_name": "string",
+                      "type_ddl": "string",
+                      "redacted_type_ddl": "string"
+                    }
+                  },
+                  {
+                    "tag": "01f195a2-7078-1eb5-830f-7d993f0514df",
+                    "sql": "runs",
+                    "data_type": {
+                      "type_name": "long",
+                      "redacted_type_ddl": "bigint"
+                    }
+                  },
+                  {
+                    "tag": "01f195a2-7078-1eb5-830f-7d993f0514df",
+                    "sql": "ms",
+                    "data_type": {
+                      "type_name": "long",
+                      "redacted_type_ddl": "bigint"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "92",
+            "name": "Arrow Conversion",
+            "tag": "PHOTON_ARROW_BATCH_SINK_EXEC",
+            "meta_data": [
+              {
+                "key": "IS_PHOTON",
+                "value": "true",
+                "label": "Photonized"
+              },
+              {
+                "key": "OUTPUT",
+                "label": "Output attributes",
+                "values": [
+                  "ranked.statement_type",
+                  "runs",
+                  "ms"
+                ],
+                "meta_values": [
+                  {
+                    "value": "ranked.statement_type",
+                    "data_type": {
+                      "type_name": "string",
+                      "type_ddl": "string",
+                      "redacted_type_ddl": "string"
+                    }
+                  },
+                  {
+                    "value": "runs",
+                    "data_type": {
+                      "type_name": "long",
+                      "redacted_type_ddl": "bigint"
+                    }
+                  },
+                  {
+                    "value": "ms",
+                    "data_type": {
+                      "type_name": "long",
+                      "redacted_type_ddl": "bigint"
+                    }
+                  }
+                ]
+              }
+            ],
+            "metrics": [
+              {
+                "label": "Time spent reallocating the output buffer",
+                "metric_type": "TIMING_METRIC_NS",
+                "value": 0,
+                "key": "UNKNOWN_KEY",
+                "hidden": true
+              }
+            ],
+            "subgraph_parent": "91",
+            "hidden": false,
+            "collapsed": false,
+            "stage_links": [
+              181
+            ],
+            "key_metrics": {
+              "duration_ms": 0,
+              "rows_num": 16
+            },
+            "expressions": [
+              {
+                "tag": "OUTPUT",
+                "children": [
+                  {
+                    "tag": "01f195a2-7078-1eb5-830f-7d993f0514df",
+                    "sql": "ranked.statement_type",
+                    "data_type": {
+                      "type_name": "string",
+                      "type_ddl": "string",
+                      "redacted_type_ddl": "string"
+                    }
+                  },
+                  {
+                    "tag": "01f195a2-7078-1eb5-830f-7d993f0514df",
+                    "sql": "runs",
+                    "data_type": {
+                      "type_name": "long",
+                      "redacted_type_ddl": "bigint"
+                    }
+                  },
+                  {
+                    "tag": "01f195a2-7078-1eb5-830f-7d993f0514df",
+                    "sql": "ms",
+                    "data_type": {
+                      "type_name": "long",
+                      "redacted_type_ddl": "bigint"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "93",
+            "name": "Top K",
+            "tag": "UNKNOWN.PhotonTopK",
+            "meta_data": [
+              {
+                "key": "IS_PHOTON",
+                "value": "true",
+                "label": "Photonized"
+              },
+              {
+                "key": "OUTPUT",
+                "label": "Output attributes",
+                "values": [
+                  "ranked.statement_type",
+                  "runs",
+                  "ms"
+                ],
+                "meta_values": [
+                  {
+                    "value": "ranked.statement_type",
+                    "data_type": {
+                      "type_name": "string",
+                      "type_ddl": "string",
+                      "redacted_type_ddl": "string"
+                    }
+                  },
+                  {
+                    "value": "runs",
+                    "data_type": {
+                      "type_name": "long",
+                      "redacted_type_ddl": "bigint"
+                    }
+                  },
+                  {
+                    "value": "ms",
+                    "data_type": {
+                      "type_name": "long",
+                      "redacted_type_ddl": "bigint"
+                    }
+                  }
+                ]
+              },
+              {
+                "key": "SORT_ORDER",
+                "label": "Sort order",
+                "values": [
+                  "ms DESC NULLS LAST"
+                ],
+                "meta_values": [
+                  {
+                    "value": "ms DESC NULLS LAST",
+                    "data_type": {
+                      "type_name": "long",
+                      "redacted_type_ddl": "bigint"
+                    }
+                  }
+                ]
+              }
+            ],
+            "metrics": [
+              {
+                "label": "Num bytes spilled to disk due to memory pressure",
+                "metric_type": "SIZE_METRIC_BYTES",
+                "value": 0,
+                "key": "UNKNOWN_KEY",
+                "insight_types": [
+                  "DATA_SPILL"
+                ]
+              },
+              {
+                "label": "Number of output batches",
+                "metric_type": "SUM_METRIC",
+                "value": 1,
+                "key": "UNKNOWN_KEY",
+                "hidden": true
+              }
+            ],
+            "subgraph_parent": "91",
+            "hidden": false,
+            "collapsed": false,
+            "stage_links": [
+              181
+            ],
+            "key_metrics": {
+              "duration_ms": 0,
+              "rows_num": 16,
+              "peak_memory_bytes": 8848128
+            },
+            "expressions": [
+              {
+                "tag": "SORT_ORDER",
+                "children": [
+                  {
+                    "tag": "SORT_ORDER",
+                    "sql": "ms DESC NULLS LAST",
+                    "data_type": {
+                      "type_name": "long",
+                      "redacted_type_ddl": "bigint"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "94",
+            "name": "Grouping Aggregate",
+            "tag": "PHOTON_GROUPING_AGG_EXEC",
+            "meta_data": [
+              {
+                "key": "IS_PHOTON",
+                "value": "true",
+                "label": "Photonized"
+              },
+              {
+                "key": "OUTPUT",
+                "label": "Output attributes",
+                "values": [
+                  "ranked.statement_type",
+                  "runs",
+                  "ms"
+                ],
+                "meta_values": [
+                  {
+                    "value": "ranked.statement_type",
+                    "data_type": {
+                      "type_name": "string",
+                      "type_ddl": "string",
+                      "redacted_type_ddl": "string"
+                    }
+                  },
+                  {
+                    "value": "runs",
+                    "data_type": {
+                      "type_name": "long",
+                      "redacted_type_ddl": "bigint"
+                    }
+                  },
+                  {
+                    "value": "ms",
+                    "data_type": {
+                      "type_name": "long",
+                      "redacted_type_ddl": "bigint"
+                    }
+                  }
+                ]
+              },
+              {
+                "key": "GROUPING_EXPRESSIONS",
+                "label": "Grouping expressions",
+                "values": [
+                  "ranked.statement_type"
+                ],
+                "meta_values": [
+                  {
+                    "value": "ranked.statement_type",
+                    "data_type": {
+                      "type_name": "string",
+                      "type_ddl": "string",
+                      "redacted_type_ddl": "string"
+                    }
+                  }
+                ]
+              },
+              {
+                "key": "AGGREGATE_EXPRESSIONS",
+                "label": "Aggregate expressions",
+                "values": [
+                  "count(1)",
+                  "sum(ranked.total_duration_ms)"
+                ],
+                "meta_values": [
+                  {
+                    "value": "count(1)",
+                    "data_type": {
+                      "type_name": "long",
+                      "redacted_type_ddl": "bigint"
+                    }
+                  },
+                  {
+                    "value": "sum(ranked.total_duration_ms)",
+                    "data_type": {
+                      "type_name": "long",
+                      "redacted_type_ddl": "bigint"
+                    }
+                  }
+                ]
+              }
+            ],
+            "metrics": [
+              {
+                "label": "Num bytes spilled to disk due to memory pressure",
+                "metric_type": "SIZE_METRIC_BYTES",
+                "value": 0,
+                "key": "UNKNOWN_KEY",
+                "insight_types": [
+                  "DATA_SPILL"
+                ]
+              },
+              {
+                "label": "Num spill partitions created",
+                "metric_type": "SUM_METRIC",
+                "value": 1,
+                "key": "UNKNOWN_KEY",
+                "hidden": true
+              }
+            ],
+            "subgraph_parent": "91",
+            "hidden": false,
+            "collapsed": false,
+            "stage_links": [
+              181
+            ],
+            "key_metrics": {
+              "duration_ms": 0,
+              "rows_num": 16,
+              "peak_memory_bytes": 6291456
+            },
+            "expressions": [
+              {
+                "tag": "AGGREGATE_EXPRESSIONS",
+                "children": [
+                  {
+                    "tag": "AGGREGATE_EXPRESSION",
+                    "sql": "count(1)",
+                    "data_type": {
+                      "type_name": "long",
+                      "redacted_type_ddl": "bigint"
+                    }
+                  },
+                  {
+                    "tag": "AGGREGATE_EXPRESSION",
+                    "sql": "sum(ranked.total_duration_ms)",
+                    "data_type": {
+                      "type_name": "long",
+                      "redacted_type_ddl": "bigint"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "95",
+            "name": "Project",
+            "tag": "PHOTON_PROJECT_EXEC",
+            "meta_data": [
+              {
+                "key": "IS_PHOTON",
+                "value": "true",
+                "label": "Photonized"
+              },
+              {
+                "key": "OUTPUT",
+                "label": "Output attributes",
+                "values": [
+                  "system.query.history.statement_type",
+                  "system.query.history.total_duration_ms"
+                ],
+                "meta_values": [
+                  {
+                    "value": "system.query.history.statement_type",
+                    "data_type": {
+                      "type_name": "string",
+                      "type_ddl": "string",
+                      "redacted_type_ddl": "string"
+                    }
+                  },
+                  {
+                    "value": "system.query.history.total_duration_ms",
+                    "data_type": {
+                      "type_name": "long",
+                      "redacted_type_ddl": "bigint"
+                    }
+                  }
+                ]
+              },
+              {
+                "key": "PROJECTION",
+                "label": "Projected columns",
+                "values": [
+                  "system.query.history.statement_type",
+                  "system.query.history.total_duration_ms"
+                ],
+                "meta_values": [
+                  {
+                    "value": "system.query.history.statement_type",
+                    "data_type": {
+                      "type_name": "string",
+                      "type_ddl": "string",
+                      "redacted_type_ddl": "string"
+                    }
+                  },
+                  {
+                    "value": "system.query.history.total_duration_ms",
+                    "data_type": {
+                      "type_name": "long",
+                      "redacted_type_ddl": "bigint"
+                    }
+                  }
+                ]
+              }
+            ],
+            "metrics": [
+              {
+                "label": "Jni fallback expression evaluation time (ns)",
+                "metric_type": "TIMING_METRIC_NS",
+                "value": 0,
+                "key": "UNKNOWN_KEY",
+                "hidden": true
+              }
+            ],
+            "subgraph_parent": "91",
+            "hidden": true,
+            "collapsed": false,
+            "stage_links": [
+              181
+            ],
+            "key_metrics": {
+              "duration_ms": 0,
+              "rows_num": 661
+            },
+            "expressions": [
+              {
+                "tag": "PROJECT_LIST",
+                "children": [
+                  {
+                    "tag": "ATTRIBUTE_REFERENCE",
+                    "sql": "system.query.history.statement_type",
+                    "data_type": {
+                      "type_name": "string",
+                      "type_ddl": "string",
+                      "redacted_type_ddl": "string"
+                    }
+                  },
+                  {
+                    "tag": "ATTRIBUTE_REFERENCE",
+                    "sql": "system.query.history.total_duration_ms",
+                    "data_type": {
+                      "type_name": "long",
+                      "redacted_type_ddl": "bigint"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "96",
+            "name": "Filter",
+            "tag": "PHOTON_FILTER_EXEC",
+            "meta_data": [
+              {
+                "key": "IS_PHOTON",
+                "value": "true",
+                "label": "Photonized"
+              },
+              {
+                "key": "OUTPUT",
+                "label": "Output attributes",
+                "values": [
+                  "system.query.history.statement_type",
+                  "system.query.history.total_duration_ms",
+                  "rank"
+                ],
+                "meta_values": [
+                  {
+                    "value": "system.query.history.statement_type",
+                    "data_type": {
+                      "type_name": "string",
+                      "type_ddl": "string",
+                      "redacted_type_ddl": "string"
+                    }
+                  },
+                  {
+                    "value": "system.query.history.total_duration_ms",
+                    "data_type": {
+                      "type_name": "long",
+                      "redacted_type_ddl": "bigint"
+                    }
+                  },
+                  {
+                    "value": "rank",
+                    "data_type": {
+                      "type_name": "integer",
+                      "redacted_type_ddl": "int"
+                    }
+                  }
+                ]
+              },
+              {
+                "key": "FILTER_CONDITION",
+                "label": "Filter condition",
+                "values": [
+                  "(ranked.rank <= 100)"
+                ],
+                "meta_values": [
+                  {
+                    "value": "(ranked.rank <= 100)",
+                    "data_type": {
+                      "type_name": "boolean",
+                      "redacted_type_ddl": "boolean"
+                    }
+                  }
+                ]
+              }
+            ],
+            "metrics": [
+              {
+                "label": "Jni fallback expression evaluation time (ns)",
+                "metric_type": "TIMING_METRIC_NS",
+                "value": 0,
+                "key": "UNKNOWN_KEY",
+                "hidden": true
+              }
+            ],
+            "subgraph_parent": "91",
+            "hidden": false,
+            "collapsed": false,
+            "stage_links": [
+              181
+            ],
+            "key_metrics": {
+              "duration_ms": 0,
+              "rows_num": 661
+            },
+            "expressions": [
+              {
+                "tag": "FILTERS",
+                "children": [
+                  {
+                    "tag": "LESS_THAN_OR_EQUAL",
+                    "sql": "(ranked.rank <= 100)",
+                    "data_type": {
+                      "type_name": "boolean",
+                      "redacted_type_ddl": "boolean"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "97",
+            "name": "Window",
+            "tag": "UNKNOWN.PhotonWindow",
+            "meta_data": [
+              {
+                "key": "IS_PHOTON",
+                "value": "true",
+                "label": "Photonized"
+              },
+              {
+                "key": "OUTPUT",
+                "label": "Output attributes",
+                "values": [
+                  "system.query.history.statement_type",
+                  "system.query.history.total_duration_ms",
+                  "rank"
+                ],
+                "meta_values": [
+                  {
+                    "value": "system.query.history.statement_type",
+                    "data_type": {
+                      "type_name": "string",
+                      "type_ddl": "string",
+                      "redacted_type_ddl": "string"
+                    }
+                  },
+                  {
+                    "value": "system.query.history.total_duration_ms",
+                    "data_type": {
+                      "type_name": "long",
+                      "redacted_type_ddl": "bigint"
+                    }
+                  },
+                  {
+                    "value": "rank",
+                    "data_type": {
+                      "type_name": "integer",
+                      "redacted_type_ddl": "int"
+                    }
+                  }
+                ]
+              },
+              {
+                "key": "ALIASES",
+                "label": "Aliases",
+                "values": [
+                  "row_number() OVER (PARTITION BY system.query.history.statement_type ORDER BY system.query.history.total_duration_ms DESC…[capped]"
+                ],
+                "meta_values": [
+                  {
+                    "value": "row_number() OVER (PARTITION BY system.query.history.statement_type ORDER BY system.query.history.total_duration_ms DESC NULLS LAST ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS rank",
+                    "data_type": {
+                      "type_name": "integer",
+                      "redacted_type_ddl": "int"
+                    }
+                  }
+                ]
+              },
+              {
+                "key": "SORT_ORDER",
+                "label": "Sort order",
+                "values": [
+                  "system.query.history.total_duration_ms DESC NULLS LAST"
+                ],
+                "meta_values": [
+                  {
+                    "value": "system.query.history.total_duration_ms DESC NULLS LAST",
+                    "data_type": {
+                      "type_name": "long",
+                      "redacted_type_ddl": "bigint"
+                    }
+                  }
+                ]
+              }
+            ],
+            "metrics": [
+              {
+                "label": "Num bytes spilled to disk due to memory pressure",
+                "metric_type": "SIZE_METRIC_BYTES",
+                "value": 0,
+                "key": "UNKNOWN_KEY",
+                "insight_types": [
+                  "DATA_SPILL"
+                ]
+              },
+              {
+                "label": "Time spent comparing values for determining bounds for range frames",
+                "metric_type": "TIMING_METRIC_NS",
+                "value": 0,
+                "key": "UNKNOWN_KEY",
+                "hidden": true
+              }
+            ],
+            "subgraph_parent": "91",
+            "hidden": false,
+            "collapsed": false,
+            "stage_links": [
+              181
+            ],
+            "key_metrics": {
+              "duration_ms": 0,
+              "rows_num": 1574,
+              "peak_memory_bytes": 2275171
+            },
+            "expressions": [
+              {
+                "tag": "ATTRIBUTE_REFERENCE",
+                "children": [
+                  {
+                    "tag": "ATTRIBUTE_REFERENCE",
+                    "sql": "system.query.history.statement_type",
+                    "data_type": {
+                      "type_name": "string",
+                      "type_ddl": "string",
+                      "redacted_type_ddl": "string"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "98",
+            "name": "Sort",
+            "tag": "PHOTON_SORT_EXEC",
+            "meta_data": [
+              {
+                "key": "IS_PHOTON",
+                "value": "true",
+                "label": "Photonized"
+              },
+              {
+                "key": "OUTPUT",
+                "label": "Output attributes",
+                "values": [
+                  "system.query.history.statement_type",
+                  "system.query.history.total_duration_ms"
+                ],
+                "meta_values": [
+                  {
+                    "value": "system.query.history.statement_type",
+                    "data_type": {
+                      "type_name": "string",
+                      "type_ddl": "string",
+                      "redacted_type_ddl": "string"
+                    }
+                  },
+                  {
+                    "value": "system.query.history.total_duration_ms",
+                    "data_type": {
+                      "type_name": "long",
+                      "redacted_type_ddl": "bigint"
+                    }
+                  }
+                ]
+              },
+              {
+                "key": "SORT_ORDER",
+                "label": "Sort order",
+                "values": [
+                  "system.query.history.statement_type ASC NULLS FIRST",
+                  "system.query.history.total_duration_ms DESC NULLS LAST"
+                ],
+                "meta_values": [
+                  {
+                    "value": "system.query.history.statement_type ASC NULLS FIRST",
+                    "data_type": {
+                      "type_name": "string",
+                      "type_ddl": "string",
+                      "redacted_type_ddl": "string"
+                    }
+                  },
+                  {
+                    "value": "system.query.history.total_duration_ms DESC NULLS LAST",
+                    "data_type": {
+                      "type_name": "long",
+                      "redacted_type_ddl": "bigint"
+                    }
+                  }
+                ]
+              }
+            ],
+            "metrics": [
+              {
+                "label": "Num bytes spilled to disk due to memory pressure",
+                "metric_type": "SIZE_METRIC_BYTES",
+                "value": 0,
+                "key": "UNKNOWN_KEY",
+                "insight_types": [
+                  "DATA_SPILL"
+                ]
+              },
+              {
+                "label": "Max column batch size (bytes) sort spilled",
+                "metric_type": "SIZE_METRIC_BYTES",
+                "value": 0,
+                "key": "UNKNOWN_KEY",
+                "hidden": true
+              },
+              {
+                "label": "Max batch size (rows) produced in the sort node",
+                "metric_type": "AVERAGE_METRIC",
+                "key": "UNKNOWN_KEY",
+                "hidden": true
+              },
+              {
+                "label": "Number of spill buffers allocated for a merge tree",
+                "metric_type": "AVERAGE_METRIC",
+                "key": "UNKNOWN_KEY",
+                "hidden": true
+              }
+            ],
+            "subgraph_parent": "91",
+            "hidden": false,
+            "collapsed": false,
+            "stage_links": [
+              181
+            ],
+            "key_metrics": {
+              "duration_ms": 0,
+              "rows_num": 1574,
+              "peak_memory_bytes": 29360128
+            },
+            "expressions": [
+              {
+                "tag": "SORT_ORDER",
+                "children": [
+                  {
+                    "tag": "SORT_ORDER",
+                    "sql": "system.query.history.statement_type ASC NULLS FIRST",
+                    "data_type": {
+                      "type_name": "string",
+                      "type_ddl": "string",
+                      "redacted_type_ddl": "string"
+                    }
+                  },
+                  {
+                    "tag": "SORT_ORDER",
+                    "sql": "system.query.history.total_duration_ms DESC NULLS LAST",
+                    "data_type": {
+                      "type_name": "long",
+                      "redacted_type_ddl": "bigint"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "99",
+            "name": "Shuffle",
+            "tag": "UNKNOWN.PhotonShuffleExchangeSink",
+            "meta_data": [
+              {
+                "key": "PARTITIONING_TYPE",
+                "value": "Hash",
+                "label": "Partitioning strategy"
+              },
+              {
+                "key": "SHUFFLE_ATTRIBUTES",
+                "label": "Shuffle attributes",
+                "values": [
+                  "system.query.history.statement_type"
+                ],
+                "meta_values": [
+                  {
+                    "value": "system.query.history.statement_type",
+                    "data_type": {
+                      "type_name": "string",
+                      "type_ddl": "string",
+                      "redacted_type_ddl": "string"
+                    }
+                  }
+                ]
+              },
+              {
+                "key": "IS_PHOTON",
+                "value": "true",
+                "label": "Photonized"
+              },
+              {
+                "key": "OUTPUT",
+                "label": "Output attributes",
+                "values": [
+                  "system.query.history.statement_type",
+                  "system.query.history.total_duration_ms"
+                ],
+                "meta_values": [
+                  {
+                    "value": "system.query.history.statement_type",
+                    "data_type": {
+                      "type_name": "string",
+                      "type_ddl": "string",
+                      "redacted_type_ddl": "string"
+                    }
+                  },
+                  {
+                    "value": "system.query.history.total_duration_ms",
+                    "data_type": {
+                      "type_name": "long",
+                      "redacted_type_ddl": "bigint"
+                    }
+                  }
+                ]
+              }
+            ],
+            "metrics": [
+              {
+                "label": "AQEShuffleRead - Number of coalesced partitions",
+                "metric_type": "SUM_METRIC",
+                "value": 1,
+                "key": "UNKNOWN_KEY",
+                "hidden": true
+              },
+              {
+                "label": "AQEShuffleRead - Number of partitions",
+                "metric_type": "SUM_METRIC",
+                "value": 1,
+                "key": "UNKNOWN_KEY"
+              },
+              {
+                "label": "AQEShuffleRead - Skew handled by",
+                "metric_type": "SUM_METRIC",
+                "value": 0,
+                "key": "UNKNOWN_KEY",
+                "hidden": true
+              },
+              {
+                "label": "MapStage - Number of output rows",
+                "metric_type": "SUM_METRIC",
+                "value": 0,
+                "key": "NUMBER_OUTPUT_ROWS",
+                "hidden": true,
+                "insight_types": [
+                  "EXPLODING_JOIN",
+                  "SELECTIVE_JOIN",
+                  "REDUNDANT_AGGREGATION",
+                  "EXPLODING_COUNT_DISTINCT"
+                ]
+              },
+              {
+                "label": "MapStage - Skew non-empty median partition size",
+                "metric_type": "SUM_METRIC",
+                "value": 2539,
+                "key": "UNKNOWN_KEY",
+                "hidden": true
+              },
+              {
+                "label": "MapStage - Skew num empty partitions",
+                "metric_type": "SUM_METRIC",
+                "value": 20,
+                "key": "UNKNOWN_KEY",
+                "hidden": true
+              },
+              {
+                "label": "MapStage - Skew num skewed partitions",
+                "metric_type": "SUM_METRIC",
+                "value": 0,
+                "key": "UNKNOWN_KEY",
+                "hidden": true
+              },
+              {
+                "label": "MapStage - Skew max to non-empty median ratio",
+                "metric_type": "SUM_METRIC",
+                "value": 6,
+                "key": "UNKNOWN_KEY",
+                "hidden": true
+              },
+              {
+                "label": "MapStage - EnsureRequirementsDP estimated NDV",
+                "metric_type": "UNKNOWN_TYPE",
+                "value": 1,
+                "key": "UNKNOWN_KEY",
+                "hidden": true
+              },
+              {
+                "label": "MapStage - Skew skewed data size ratio",
+                "metric_type": "SUM_METRIC",
+                "value": 0,
+                "key": "UNKNOWN_KEY",
+                "hidden": true
+              },
+              {
+                "label": "Source - Prism server before queue time",
+                "metric_type": "TIMING_METRIC_NS",
+                "value": 0,
+                "key": "UNKNOWN_KEY",
+                "hidden": true
+              }
+            ],
+            "subgraph_parent": "91",
+            "stage_links": [
+              181,
+              179
+            ],
+            "key_metrics": {
+              "duration_ms": 8,
+              "rows_num": 1574,
+              "peak_memory_bytes": 1803757360
+            },
+            "expressions": [
+              {
+                "tag": "OUTPUT",
+                "children": [
+                  {
+                    "tag": "01f195a2-7078-1eb5-830f-7d993f0514df",
+                    "sql": "system.query.history.statement_type",
+                    "data_type": {
+                      "type_name": "string",
+                      "type_ddl": "string",
+                      "redacted_type_ddl": "string"
+                    }
+                  },
+                  {
+                    "tag": "01f195a2-7078-1eb5-830f-7d993f0514df",
+                    "sql": "system.query.history.total_duration_ms",
+                    "data_type": {
+                      "type_name": "long",
+                      "redacted_type_ddl": "bigint"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "109",
+            "name": "Scan system.query.history",
+            "tag": "PHOTON_PARQUET_FILE_SCAN_EXEC",
+            "meta_data": [
+              {
+                "key": "IS_PHOTON",
+                "value": "true",
+                "label": "Photonized"
+              },
+              {
+                "key": "SCAN_DATABASE",
+                "value": "query",
+                "label": "Database",
+                "hidden": true
+              },
+              {
+                "key": "SCAN_TABLE",
+                "value": "history",
+                "label": "Table",
+                "hidden": true
+              },
+              {
+                "key": "SCAN_IDENTIFIER",
+                "value": "system.query.history",
+                "label": "Identifier"
+              },
+              {
+                "key": "IS_DELTA",
+                "value": "true",
+                "label": "Uses Delta"
+              },
+              {
+                "key": "SCAN_CATALOG_TABLE_TYPE",
+                "value": "MANAGED",
+                "label": "Catalog table type",
+                "hidden": true
+              },
+              {
+                "key": "SCAN_PARTITIONS",
+                "label": "Partition attributes",
+                "values": [
+                  "account_id",
+                  "workspace_id"
+                ],
+                "meta_values": [
+                  {
+                    "value": "account_id",
+                    "data_type": {
+                      "type_name": "struct",
+                      "type_ddl": "account_id STRING COMMENT 'ID of the account.',workspace_id STRING COMMENT 'The ID of the workspace where the query was run.'",
+                      "redacted_type_ddl": "struct<string,string>"
+                    }
+                  },
+                  {
+                    "value": "workspace_id",
+                    "data_type": {
+                      "type_name": "struct",
+                      "type_ddl": "account_id STRING COMMENT 'ID of the account.',workspace_id STRING COMMENT 'The ID of the workspace where the query was run.'",
+                      "redacted_type_ddl": "struct<string,string>"
+                    }
+                  }
+                ]
+              },
+              {
+                "key": "SCAN_FILE_INDEX_NAME",
+                "value": "RemoteDeltaSnapshotFileIndex",
+                "label": "File index name",
+                "hidden": true
+              },
+              {
+                "key": "SCAN_FILE_PATHS",
+                "label": "Paths",
+                "values": [
+                  "uc-deltasharing://system.query.history#system.query.history"
+                ],
+                "hidden": true,
+                "meta_values": [
+                  {
+                    "value": "uc-deltasharing://system.query.history#system.query.history"
+                  }
+                ]
+              },
+              {
+                "key": "SCAN_RELATION_NAME",
+                "value": "HadoopFsRelation",
+                "label": "Relation",
+                "hidden": true
+              },
+              {
+                "key": "SCAN_RELATION_DESC",
+                "value": "parquet",
+                "label": "Format",
+                "hidden": true
+              },
+              {
+                "key": "OUTPUT",
+                "label": "Output attributes",
+                "values": [
+                  "statement_type",
+                  "total_duration_ms",
+                  "start_time",
+                  "account_id",
+                  "workspace_id"
+                ],
+                "meta_values": [
+                  {
+                    "value": "statement_type",
+                    "data_type": {
+                      "type_name": "string",
+                      "type_ddl": "string",
+                      "redacted_type_ddl": "string"
+                    }
+                  },
+                  {
+                    "value": "total_duration_ms",
+                    "data_type": {
+                      "type_name": "long",
+                      "redacted_type_ddl": "bigint"
+                    }
+                  },
+                  {
+                    "value": "start_time",
+                    "data_type": {
+                      "type_name": "timestamp",
+                      "redacted_type_ddl": "timestamp"
+                    }
+                  },
+                  {
+                    "value": "account_id",
+                    "data_type": {
+                      "type_name": "string",
+                      "type_ddl": "string",
+                      "redacted_type_ddl": "string"
+                    }
+                  },
+                  {
+                    "value": "workspace_id",
+                    "data_type": {
+                      "type_name": "string",
+                      "type_ddl": "string",
+                      "redacted_type_ddl": "string"
+                    }
+                  }
+                ]
+              },
+              {
+                "key": "FILTERS",
+                "label": "Filters",
+                "values": [
+                  "(system.query.history.start_time IS NOT NULL)",
+                  "(system.query.history.start_time >= TIMESTAMP '2026-08-09 16:33:53.698186')"
+                ],
+                "meta_values": [
+                  {
+                    "value": "(system.query.history.start_time IS NOT NULL)",
+                    "data_type": {
+                      "type_name": "boolean",
+                      "redacted_type_ddl": "boolean"
+                    }
+                  },
+                  {
+                    "value": "(system.query.history.start_time >= TIMESTAMP '2026-08-09 16:33:53.698186')",
+                    "data_type": {
+                      "type_name": "boolean",
+                      "redacted_type_ddl": "boolean"
+                    }
+                  }
+                ]
+              }
+            ],
+            "metrics": [
+              {
+                "label": "Scan - Size of a row of all columns in the relation (estimated)",
+                "metric_type": "SIZE_METRIC_BYTES",
+                "value": 2157,
+                "key": "UNKNOWN_KEY",
+                "hidden": true
+              },
+              {
+                "label": "Scan - Size of a row of scanned columns (estimated)",
+                "metric_type": "SIZE_METRIC_BYTES",
+                "value": 36,
+                "key": "UNKNOWN_KEY",
+                "hidden": true
+              },
+              {
+                "label": "Scan - Compressed bytes read for DELTA_BYTE_ARRAY encoding",
+                "metric_type": "SIZE_METRIC_BYTES",
+                "value": 0,
+                "key": "UNKNOWN_KEY",
+                "hidden": true
+              }
+            ],
+            "subgraph_parent": "102",
+            "hidden": false,
+            "collapsed": false,
+            "stage_links": [
+              179
+            ],
+            "key_metrics": {
+              "duration_ms": 2118,
+              "rows_num": 4958,
+              "peak_memory_bytes": 167976960
+            },
+            "expressions": [
+              {
+                "tag": "DATA_FILTERS",
+                "children": [
+                  {
+                    "tag": "IS_NOT_NULL",
+                    "sql": "(system.query.history.start_time IS NOT NULL)",
+                    "data_type": {
+                      "type_name": "boolean",
+                      "redacted_type_ddl": "boolean"
+                    }
+                  },
+                  {
+                    "tag": "GREATER_THAN_OR_EQUAL",
+                    "sql": "(system.query.history.start_time >= TIMESTAMP '2026-08-09 16:33:53.698186')",
+                    "data_type": {
+                      "type_name": "boolean",
+                      "redacted_type_ddl": "boolean"
+                    }
+                  }
+                ]
+              }
+            ],
+            "insight_ids": [
+              "c193ca22-bb98-4ab9-bae1-dddfe8749617"
+            ]
+          },
+          {
+            "id": "102",
+            "name": "Shuffle Map Stage",
+            "tag": "PHOTON_SHUFFLE_MAP_STAGE_EXEC",
+            "meta_data": [
+              {
+                "key": "IS_PHOTON",
+                "value": "true",
+                "label": "Photonized"
+              },
+              {
+                "key": "PARTITIONING_TYPE",
+                "value": "Hash",
+                "label": "Partitioning strategy"
+              },
+              {
+                "key": "OUTPUT",
+                "label": "Output attributes",
+                "values": [
+                  "system.query.history.statement_type",
+                  "system.query.history.total_duration_ms"
+                ],
+                "meta_values": [
+                  {
+                    "value": "system.query.history.statement_type",
+                    "data_type": {
+                      "type_name": "string",
+                      "type_ddl": "string",
+                      "redacted_type_ddl": "string"
+                    }
+                  },
+                  {
+                    "value": "system.query.history.total_duration_ms",
+                    "data_type": {
+                      "type_name": "long",
+                      "redacted_type_ddl": "bigint"
+                    }
+                  }
+                ]
+              },
+              {
+                "key": "SHUFFLE_ATTRIBUTES",
+                "label": "Shuffle attributes",
+                "values": [
+                  "system.query.history.statement_type"
+                ],
+                "meta_values": [
+                  {
+                    "value": "system.query.history.statement_type",
+                    "data_type": {
+                      "type_name": "string",
+                      "type_ddl": "string",
+                      "redacted_type_ddl": "string"
+                    }
+                  }
+                ]
+              }
+            ],
+            "hidden": false,
+            "collapsed": false,
+            "expressions": [
+              {
+                "tag": "ATTRIBUTE_REFERENCE",
+                "children": [
+                  {
+                    "tag": "ATTRIBUTE_REFERENCE",
+                    "sql": "system.query.history.statement_type",
+                    "data_type": {
+                      "type_name": "string",
+                      "type_ddl": "string",
+                      "redacted_type_ddl": "string"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "91",
+            "name": "Arrow Result Stage",
+            "tag": "PHOTON_ARROW_RESULT_STAGE_EXEC",
+            "meta_data": [
+              {
+                "key": "IS_PHOTON",
+                "value": "true",
+                "label": "Photonized"
+              },
+              {
+                "key": "OUTPUT",
+                "label": "Output attributes",
+                "values": [
+                  "ranked.statement_type",
+                  "runs",
+                  "ms"
+                ],
+                "meta_values": [
+                  {
+                    "value": "ranked.statement_type",
+                    "data_type": {
+                      "type_name": "string",
+                      "type_ddl": "string",
+                      "redacted_type_ddl": "string"
+                    }
+                  },
+                  {
+                    "value": "runs",
+                    "data_type": {
+                      "type_name": "long",
+                      "redacted_type_ddl": "bigint"
+                    }
+                  },
+                  {
+                    "value": "ms",
+                    "data_type": {
+                      "type_name": "long",
+                      "redacted_type_ddl": "bigint"
+                    }
+                  }
+                ]
+              }
+            ],
+            "metrics": [
+              {
+                "label": "Peak memory usage",
+                "metric_type": "SIZE_METRIC_BYTES",
+                "value": 163578112,
+                "key": "PEAK_MEMORY_USAGE",
+                "hidden": true
+              }
+            ],
+            "hidden": false,
+            "collapsed": false,
+            "stage_links": [
+              181
+            ],
+            "key_metrics": {
+              "rows_num": 0,
+              "peak_memory_bytes": 163578112
+            },
+            "expressions": [
+              {
+                "tag": "OUTPUT",
+                "children": [
+                  {
+                    "tag": "01f195a2-7078-1eb5-830f-7d993f0514df",
+                    "sql": "ranked.statement_type",
+                    "data_type": {
+                      "type_name": "string",
+                      "type_ddl": "string",
+                      "redacted_type_ddl": "string"
+                    }
+                  },
+                  {
+                    "tag": "01f195a2-7078-1eb5-830f-7d993f0514df",
+                    "sql": "runs",
+                    "data_type": {
+                      "type_name": "long",
+                      "redacted_type_ddl": "bigint"
+                    }
+                  },
+                  {
+                    "tag": "01f195a2-7078-1eb5-830f-7d993f0514df",
+                    "sql": "ms",
+                    "data_type": {
+                      "type_name": "long",
+                      "redacted_type_ddl": "bigint"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "88",
+            "name": "Whole Stage Codegen",
+            "tag": "WHOLE_STAGE_CODEGEN_EXEC",
+            "meta_data": [
+              {
+                "key": "OUTPUT",
+                "label": "Output attributes",
+                "values": [
+                  "ranked.statement_type",
+                  "runs",
+                  "ms"
+                ],
+                "meta_values": [
+                  {
+                    "value": "ranked.statement_type",
+                    "data_type": {
+                      "type_name": "string",
+                      "type_ddl": "string",
+                      "redacted_type_ddl": "string"
+                    }
+                  },
+                  {
+                    "value": "runs",
+                    "data_type": {
+                      "type_name": "long",
+                      "redacted_type_ddl": "bigint"
+                    }
+                  },
+                  {
+                    "value": "ms",
+                    "data_type": {
+                      "type_name": "long",
+                      "redacted_type_ddl": "bigint"
+                    }
+                  }
+                ]
+              }
+            ],
+            "metrics": [
+              {
+                "label": "Duration",
+                "metric_type": "TIMING_METRIC_MS",
+                "value": 0,
+                "key": "DURATION",
+                "hidden": true
+              }
+            ],
+            "hidden": false,
+            "collapsed": false,
+            "key_metrics": {
+              "duration_ms": 0,
+              "rows_num": 0
+            },
+            "expressions": [
+              {
+                "tag": "OUTPUT",
+                "children": [
+                  {
+                    "tag": "01f195a2-7078-1eb5-830f-7d993f0514df",
+                    "sql": "ranked.statement_type",
+                    "data_type": {
+                      "type_name": "string",
+                      "type_ddl": "string",
+                      "redacted_type_ddl": "string"
+                    }
+                  },
+                  {
+                    "tag": "01f195a2-7078-1eb5-830f-7d993f0514df",
+                    "sql": "runs",
+                    "data_type": {
+                      "type_name": "long",
+                      "redacted_type_ddl": "bigint"
+                    }
+                  },
+                  {
+                    "tag": "01f195a2-7078-1eb5-830f-7d993f0514df",
+                    "sql": "ms",
+                    "data_type": {
+                      "type_name": "long",
+                      "redacted_type_ddl": "bigint"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "104",
+            "name": "Project",
+            "tag": "PHOTON_PROJECT_EXEC",
+            "meta_data": [
+              {
+                "key": "IS_PHOTON",
+                "value": "true",
+                "label": "Photonized"
+              },
+              {
+                "key": "OUTPUT",
+                "label": "Output attributes",
+                "values": [
+                  "system.query.history.statement_type",
+                  "system.query.history.total_duration_ms"
+                ],
+                "meta_values": [
+                  {
+                    "value": "system.query.history.statement_type",
+                    "data_type": {
+                      "type_name": "string",
+                      "type_ddl": "string",
+                      "redacted_type_ddl": "string"
+                    }
+                  },
+                  {
+                    "value": "system.query.history.total_duration_ms",
+                    "data_type": {
+                      "type_name": "long",
+                      "redacted_type_ddl": "bigint"
+                    }
+                  }
+                ]
+              },
+              {
+                "key": "PROJECTION",
+                "label": "Projected columns",
+                "values": [
+                  "system.query.history.statement_type",
+                  "system.query.history.total_duration_ms"
+                ],
+                "meta_values": [
+                  {
+                    "value": "system.query.history.statement_type",
+                    "data_type": {
+                      "type_name": "string",
+                      "type_ddl": "string",
+                      "redacted_type_ddl": "string"
+                    }
+                  },
+                  {
+                    "value": "system.query.history.total_duration_ms",
+                    "data_type": {
+                      "type_name": "long",
+                      "redacted_type_ddl": "bigint"
+                    }
+                  }
+                ]
+              }
+            ],
+            "metrics": [
+              {
+                "label": "Jni fallback expression evaluation time (ns)",
+                "metric_type": "TIMING_METRIC_NS",
+                "value": 0,
+                "key": "UNKNOWN_KEY",
+                "hidden": true
+              }
+            ],
+            "subgraph_parent": "102",
+            "hidden": true,
+            "collapsed": false,
+            "stage_links": [
+              179
+            ],
+            "key_metrics": {
+              "duration_ms": 0,
+              "rows_num": 1574
+            },
+            "expressions": [
+              {
+                "tag": "PROJECT_LIST",
+                "children": [
+                  {
+                    "tag": "ATTRIBUTE_REFERENCE",
+                    "sql": "system.query.history.statement_type",
+                    "data_type": {
+                      "type_name": "string",
+                      "type_ddl": "string",
+                      "redacted_type_ddl": "string"
+                    }
+                  },
+                  {
+                    "tag": "ATTRIBUTE_REFERENCE",
+                    "sql": "system.query.history.total_duration_ms",
+                    "data_type": {
+                      "type_name": "long",
+                      "redacted_type_ddl": "bigint"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "105",
+            "name": "Filter",
+            "tag": "PHOTON_FILTER_EXEC",
+            "meta_data": [
+              {
+                "key": "IS_PHOTON",
+                "value": "true",
+                "label": "Photonized"
+              },
+              {
+                "key": "OUTPUT",
+                "label": "Output attributes",
+                "values": [
+                  "system.query.history.statement_type",
+                  "system.query.history.total_duration_ms",
+                  "_local_row_number"
+                ],
+                "meta_values": [
+                  {
+                    "value": "system.query.history.statement_type",
+                    "data_type": {
+                      "type_name": "string",
+                      "type_ddl": "string",
+                      "redacted_type_ddl": "string"
+                    }
+                  },
+                  {
+                    "value": "system.query.history.total_duration_ms",
+                    "data_type": {
+                      "type_name": "long",
+                      "redacted_type_ddl": "bigint"
+                    }
+                  },
+                  {
+                    "value": "_local_row_number",
+                    "data_type": {
+                      "type_name": "integer",
+                      "redacted_type_ddl": "int"
+                    }
+                  }
+                ]
+              },
+              {
+                "key": "FILTER_CONDITION",
+                "label": "Filter condition",
+                "values": [
+                  "(_local_row_number <= 100)"
+                ],
+                "meta_values": [
+                  {
+                    "value": "(_local_row_number <= 100)",
+                    "data_type": {
+                      "type_name": "boolean",
+                      "redacted_type_ddl": "boolean"
+                    }
+                  }
+                ]
+              }
+            ],
+            "metrics": [
+              {
+                "label": "Jni fallback expression evaluation time (ns)",
+                "metric_type": "TIMING_METRIC_NS",
+                "value": 0,
+                "key": "UNKNOWN_KEY",
+                "hidden": true
+              }
+            ],
+            "subgraph_parent": "102",
+            "hidden": false,
+            "collapsed": false,
+            "stage_links": [
+              179
+            ],
+            "key_metrics": {
+              "duration_ms": 0,
+              "rows_num": 1574
+            },
+            "expressions": [
+              {
+                "tag": "FILTERS",
+                "children": [
+                  {
+                    "tag": "LESS_THAN_OR_EQUAL",
+                    "sql": "(_local_row_number <= 100)",
+                    "data_type": {
+                      "type_name": "boolean",
+                      "redacted_type_ddl": "boolean"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "106",
+            "name": "Window",
+            "tag": "UNKNOWN.PhotonWindow",
+            "meta_data": [
+              {
+                "key": "IS_PHOTON",
+                "value": "true",
+                "label": "Photonized"
+              },
+              {
+                "key": "OUTPUT",
+                "label": "Output attributes",
+                "values": [
+                  "system.query.history.statement_type",
+                  "system.query.history.total_duration_ms",
+                  "_local_row_number"
+                ],
+                "meta_values": [
+                  {
+                    "value": "system.query.history.statement_type",
+                    "data_type": {
+                      "type_name": "string",
+                      "type_ddl": "string",
+                      "redacted_type_ddl": "string"
+                    }
+                  },
+                  {
+                    "value": "system.query.history.total_duration_ms",
+                    "data_type": {
+                      "type_name": "long",
+                      "redacted_type_ddl": "bigint"
+                    }
+                  },
+                  {
+                    "value": "_local_row_number",
+                    "data_type": {
+                      "type_name": "integer",
+                      "redacted_type_ddl": "int"
+                    }
+                  }
+                ]
+              },
+              {
+                "key": "ALIASES",
+                "label": "Aliases",
+                "values": [
+                  "row_number() OVER (PARTITION BY system.query.history.statement_type ORDER BY system.query.history.total_duration_ms DESC…[capped]"
+                ],
+                "meta_values": [
+                  {
+                    "value": "row_number() OVER (PARTITION BY system.query.history.statement_type ORDER BY system.query.history.total_duration_ms DESC NULLS LAST ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS _local_row_number",
+                    "data_type": {
+                      "type_name": "integer",
+                      "redacted_type_ddl": "int"
+                    }
+                  }
+                ]
+              },
+              {
+                "key": "SORT_ORDER",
+                "label": "Sort order",
+                "values": [
+                  "system.query.history.total_duration_ms DESC NULLS LAST"
+                ],
+                "meta_values": [
+                  {
+                    "value": "system.query.history.total_duration_ms DESC NULLS LAST",
+                    "data_type": {
+                      "type_name": "long",
+                      "redacted_type_ddl": "bigint"
+                    }
+                  }
+                ]
+              }
+            ],
+            "metrics": [
+              {
+                "label": "Num bytes spilled to disk due to memory pressure",
+                "metric_type": "SIZE_METRIC_BYTES",
+                "value": 0,
+                "key": "UNKNOWN_KEY",
+                "insight_types": [
+                  "DATA_SPILL"
+                ]
+              },
+              {
+                "label": "Time spent comparing values for determining bounds for range frames",
+                "metric_type": "TIMING_METRIC_NS",
+                "value": 0,
+                "key": "UNKNOWN_KEY",
+                "hidden": true
+              }
+            ],
+            "subgraph_parent": "102",
+            "hidden": false,
+            "collapsed": false,
+            "stage_links": [
+              179
+            ],
+            "key_metrics": {
+              "duration_ms": 2,
+              "rows_num": 4958,
+              "peak_memory_bytes": 22751710
+            },
+            "expressions": [
+              {
+                "tag": "ATTRIBUTE_REFERENCE",
+                "children": [
+                  {
+                    "tag": "ATTRIBUTE_REFERENCE",
+                    "sql": "system.query.history.statement_type",
+                    "data_type": {
+                      "type_name": "string",
+                      "type_ddl": "string",
+                      "redacted_type_ddl": "string"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "107",
+            "name": "Sort",
+            "tag": "PHOTON_SORT_EXEC",
+            "meta_data": [
+              {
+                "key": "IS_PHOTON",
+                "value": "true",
+                "label": "Photonized"
+              },
+              {
+                "key": "OUTPUT",
+                "label": "Output attributes",
+                "values": [
+                  "system.query.history.statement_type",
+                  "system.query.history.total_duration_ms"
+                ],
+                "meta_values": [
+                  {
+                    "value": "system.query.history.statement_type",
+                    "data_type": {
+                      "type_name": "string",
+                      "type_ddl": "string",
+                      "redacted_type_ddl": "string"
+                    }
+                  },
+                  {
+                    "value": "system.query.history.total_duration_ms",
+                    "data_type": {
+                      "type_name": "long",
+                      "redacted_type_ddl": "bigint"
+                    }
+                  }
+                ]
+              },
+              {
+                "key": "SORT_ORDER",
+                "label": "Sort order",
+                "values": [
+                  "system.query.history.statement_type ASC NULLS FIRST",
+                  "system.query.history.total_duration_ms DESC NULLS LAST"
+                ],
+                "meta_values": [
+                  {
+                    "value": "system.query.history.statement_type ASC NULLS FIRST",
+                    "data_type": {
+                      "type_name": "string",
+                      "type_ddl": "string",
+                      "redacted_type_ddl": "string"
+                    }
+                  },
+                  {
+                    "value": "system.query.history.total_duration_ms DESC NULLS LAST",
+                    "data_type": {
+                      "type_name": "long",
+                      "redacted_type_ddl": "bigint"
+                    }
+                  }
+                ]
+              }
+            ],
+            "metrics": [
+              {
+                "label": "Num bytes spilled to disk due to memory pressure",
+                "metric_type": "SIZE_METRIC_BYTES",
+                "value": 0,
+                "key": "UNKNOWN_KEY",
+                "insight_types": [
+                  "DATA_SPILL"
+                ]
+              },
+              {
+                "label": "Max column batch size (bytes) sort spilled",
+                "metric_type": "SIZE_METRIC_BYTES",
+                "value": 0,
+                "key": "UNKNOWN_KEY",
+                "hidden": true
+              },
+              {
+                "label": "Max batch size (rows) produced in the sort node",
+                "metric_type": "AVERAGE_METRIC",
+                "value": 495,
+                "min_value": 6,
+                "med_value": 495,
+                "max_value": 2660,
+                "key": "UNKNOWN_KEY",
+                "hidden": true
+              },
+              {
+                "label": "Number of spill buffers allocated for a merge tree",
+                "metric_type": "AVERAGE_METRIC",
+                "key": "UNKNOWN_KEY",
+                "hidden": true
+              }
+            ],
+            "subgraph_parent": "102",
+            "hidden": false,
+            "collapsed": false,
+            "stage_links": [
+              179
+            ],
+            "key_metrics": {
+              "duration_ms": 12,
+              "rows_num": 4958,
+              "peak_memory_bytes": 293601280
+            },
+            "expressions": [
+              {
+                "tag": "SORT_ORDER",
+                "children": [
+                  {
+                    "tag": "SORT_ORDER",
+                    "sql": "system.query.history.statement_type ASC NULLS FIRST",
+                    "data_type": {
+                      "type_name": "string",
+                      "type_ddl": "string",
+                      "redacted_type_ddl": "string"
+                    }
+                  },
+                  {
+                    "tag": "SORT_ORDER",
+                    "sql": "system.query.history.total_duration_ms DESC NULLS LAST",
+                    "data_type": {
+                      "type_name": "long",
+                      "redacted_type_ddl": "bigint"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "108",
+            "name": "Project",
+            "tag": "PHOTON_PROJECT_EXEC",
+            "meta_data": [
+              {
+                "key": "IS_PHOTON",
+                "value": "true",
+                "label": "Photonized"
+              },
+              {
+                "key": "OUTPUT",
+                "label": "Output attributes",
+                "values": [
+                  "system.query.history.statement_type",
+                  "system.query.history.total_duration_ms"
+                ],
+                "meta_values": [
+                  {
+                    "value": "system.query.history.statement_type",
+                    "data_type": {
+                      "type_name": "string",
+                      "type_ddl": "string",
+                      "redacted_type_ddl": "string"
+                    }
+                  },
+                  {
+                    "value": "system.query.history.total_duration_ms",
+                    "data_type": {
+                      "type_name": "long",
+                      "redacted_type_ddl": "bigint"
+                    }
+                  }
+                ]
+              },
+              {
+                "key": "PROJECTION",
+                "label": "Projected columns",
+                "values": [
+                  "system.query.history.statement_type",
+                  "system.query.history.total_duration_ms"
+                ],
+                "meta_values": [
+                  {
+                    "value": "system.query.history.statement_type",
+                    "data_type": {
+                      "type_name": "string",
+                      "type_ddl": "string",
+                      "redacted_type_ddl": "string"
+                    }
+                  },
+                  {
+                    "value": "system.query.history.total_duration_ms",
+                    "data_type": {
+                      "type_name": "long",
+                      "redacted_type_ddl": "bigint"
+                    }
+                  }
+                ]
+              }
+            ],
+            "metrics": [
+              {
+                "label": "Jni fallback expression evaluation time (ns)",
+                "metric_type": "TIMING_METRIC_NS",
+                "value": 0,
+                "key": "UNKNOWN_KEY",
+                "hidden": true
+              }
+            ],
+            "subgraph_parent": "102",
+            "hidden": true,
+            "collapsed": false,
+            "stage_links": [
+              179
+            ],
+            "key_metrics": {
+              "duration_ms": 3,
+              "rows_num": 4958
+            },
+            "expressions": [
+              {
+                "tag": "PROJECT_LIST",
+                "children": [
+                  {
+                    "tag": "ATTRIBUTE_REFERENCE",
+                    "sql": "system.query.history.statement_type",
+                    "data_type": {
+                      "type_name": "string",
+                      "type_ddl": "string",
+                      "redacted_type_ddl": "string"
+                    }
+                  },
+                  {
+                    "tag": "ATTRIBUTE_REFERENCE",
+                    "sql": "system.query.history.total_duration_ms",
+                    "data_type": {
+                      "type_name": "long",
+                      "redacted_type_ddl": "bigint"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "edges": [
+          {
+            "from_id": "86",
+            "to_id": "87"
+          },
+          {
+            "from_id": "87",
+            "to_id": "89"
+          },
+          {
+            "from_id": "89",
+            "to_id": "92"
+          },
+          {
+            "from_id": "92",
+            "to_id": "93"
+          },
+          {
+            "from_id": "93",
+            "to_id": "94"
+          },
+          {
+            "from_id": "94",
+            "to_id": "95"
+          },
+          {
+            "from_id": "95",
+            "to_id": "96"
+          },
+          {
+            "from_id": "96",
+            "to_id": "97"
+          },
+          {
+            "from_id": "97",
+            "to_id": "98"
+          },
+          {
+            "from_id": "98",
+            "to_id": "99"
+          },
+          {
+            "from_id": "99",
+            "to_id": "104"
+          },
+          {
+            "from_id": "104",
+            "to_id": "105"
+          },
+          {
+            "from_id": "105",
+            "to_id": "106"
+          },
+          {
+            "from_id": "106",
+            "to_id": "107"
+          },
+          {
+            "from_id": "107",
+            "to_id": "108"
+          },
+          {
+            "from_id": "108",
+            "to_id": "109"
+          }
+        ],
+        "stage_data": [
+          {
+            "stage_id": 179,
+            "start_time_ms": 1786466036573,
+            "end_time_ms": 1786466036948,
+            "key_metrics": {
+              "duration_ms": 375
+            },
+            "status": "COMPLETE",
+            "attempt_id": 0,
+            "num_tasks": 10,
+            "num_complete_tasks": 10,
+            "num_failed_tasks": 0,
+            "num_killed_tasks": 0,
+            "num_completed_indices": 10,
+            "submission_time": 1786466036556,
+            "first_task_launched_time": 1786466036573,
+            "completion_time": 1786466036948,
+            "name": "mapPartitionsInternal at PhotonExec.scala:870",
+            "description": "-- fixture 2026-08-11T16:33:52.474Z\n\n    WITH ranked AS (\n      SELECT statement_id, statement_type, total_duration_ms,\n             row_number() OVER (PARTITION BY statement_type ORDER BY total_duration_ms DESC) AS rank\n      FROM system.query.history\n      WHERE start_time >= current_timestamp() - INTERVAL 2 DAYS\n    )\n    SELECT statement_type, count(*) AS runs, sum(total_duration_ms) AS ms\n    FROM ranked WHERE rank <= 100\n    GROUP BY 1 ORDER BY ms DESC LIMIT 20",
+            "details": "org.apache.spark.rdd.RDD.mapPartitionsInternal(RDD.scala:1027)\ncom.databricks.photon.PhotonShuffleExchangeExec.$anonfun$shuffleDependency$1(PhotonExec.scala:870)\ncom.databricks.spark.util.FrameProfiler$.$anonfun$record$1(FrameProfiler.scala:114)\ncom.databricks.spark.util.FrameProfilerExporter$.maybeExportFrameProfiler(FrameProfilerExporter.scala:146)\ncom.databricks.spark.util.FrameProfiler$.record(FrameProfiler.scala:105)\ncom.databricks.photon.PhotonShuffleExchangeExec.shuffleDependency$lzycompute(PhotonExec.scala:868)\ncom.databricks.photon.PhotonShuffleExchangeExec.shuffleDependency(PhotonExec.scala:860)\ncom.databricks.photon.PhotonShuffleExchangeExec.shuffleId(PhotonExec.scala:844)\norg.apache.spark.sql.execution.exchange.ShuffleExchangeLike.$anonfun$prepareFuture$3(ShuffleExchangeExec.scala:207)\nscala.runtime.java8.JFunction0$mcI$sp.apply(JFunction0$mcI$sp.scala:17)\norg.apache.spark.sql.execution.SparkPlan$.org$apache$spark$sql$execution$SparkPlan$$withExecuteQueryLogging(SparkPlan.scala:150)\norg.apache.spark.sql.execution.SparkPlan.$anonfun$executeQuery$1(SparkPlan.scala:450)\norg.apache.spark.rdd.RDDOperationScope$.withScope(RDDOperationScope.scala:165)\norg.apache.spark.sql.execution.SparkPlan.executeQuery(SparkPlan.scala:446)\norg.apache.spark.sql.execution.exchange.ShuffleExchangeLike.$anonfun$prepareFuture$2(ShuffleExchangeExec.scala:207)\norg.apache.spark.sql.catalyst.QueryPlanningTracker$.withTracker(QueryPlanningTracker.scala:275)\norg.apache.spark.sql.execution.exchange.ShuffleExchangeLike.$anonfun$prepareFuture$1(ShuffleExchangeExec.scala:200)\norg.apache.spark.sql.SparkSession.withActive(SparkSession.scala:866)\norg.apache.spark.sql.execution.SQLExecutionThreadLocalCaptured.$anonfun$runWith$9(SQLExecution.scala:151)\ncom.databricks.util.LexicalThreadLocal$Handle.runWith(LexicalThreadLocal.scala:63)",
+            "scheduling_pool": "thriftserver-session-01f195a2-7071-1093-9fdb-8a915eeb9768",
+            "executor_run_time_ms": 2292,
+            "disk_bytes_spilled": 0,
+            "remote_bytes_read": 0
+          }
+        ],
+        "source": "QUERY_EXECUTION_END",
+        "execution_id": "207",
+        "time_submitted_ms": 1786466033807,
+        "time_completed_ms": 1786466037222
+      },
+      "1": {
+        "nodes": [
+          {
+            "id": "84",
+            "name": "Local Table Scan",
+            "tag": "UNKNOWN.LocalTableScan",
+            "meta_data": [
+              {
+                "key": "OUTPUT",
+                "label": "Output attributes",
+                "values": [
+                  "url",
+                  "id",
+                  "partitionValues",
+                  "size",
+                  "stats",
+                  "version",
+                  "timestamp",
+                  "expirationTimestamp"
+                ],
+                "meta_values": [
+                  {
+                    "value": "url",
+                    "data_type": {
+                      "type_name": "string",
+                      "type_ddl": "string",
+                      "redacted_type_ddl": "string"
+                    }
+                  },
+                  {
+                    "value": "id",
+                    "data_type": {
+                      "type_name": "string",
+                      "type_ddl": "string",
+                      "redacted_type_ddl": "string"
+                    }
+                  },
+                  {
+                    "value": "partitionValues",
+                    "data_type": {
+                      "type_name": "map",
+                      "type_ddl": "map<string,string>",
+                      "redacted_type_ddl": "map<string,string>"
+                    }
+                  },
+                  {
+                    "value": "size",
+                    "data_type": {
+                      "type_name": "long",
+                      "redacted_type_ddl": "bigint"
+                    }
+                  },
+                  {
+                    "value": "stats",
+                    "data_type": {
+                      "type_name": "string",
+                      "type_ddl": "string",
+                      "redacted_type_ddl": "string"
+                    }
+                  },
+                  {
+                    "value": "version",
+                    "data_type": {
+                      "type_name": "long",
+                      "redacted_type_ddl": "bigint"
+                    }
+                  },
+                  {
+                    "value": "timestamp",
+                    "data_type": {
+                      "type_name": "long",
+                      "redacted_type_ddl": "bigint"
+                    }
+                  },
+                  {
+                    "value": "expirationTimestamp",
+                    "data_type": {
+                      "type_name": "long",
+                      "redacted_type_ddl": "bigint"
+                    }
+                  }
+                ]
+              }
+            ],
+            "metrics": [
+              {
+                "label": "Number of output rows",
+                "metric_type": "SUM_METRIC",
+                "value": 291,
+                "key": "NUMBER_OUTPUT_ROWS",
+                "hidden": true,
+                "insight_types": [
+                  "EXPLODING_JOIN",
+                  "SELECTIVE_JOIN",
+                  "REDUNDANT_AGGREGATION",
+                  "EXPLODING_COUNT_DISTINCT"
+                ]
+              }
+            ],
+            "hidden": false,
+            "collapsed": false,
+            "key_metrics": {
+              "rows_num": 291
+            },
+            "expressions": [
+              {
+                "tag": "ATTRIBUTE_REFERENCE",
+                "children": [
+                  {
+                    "tag": "ATTRIBUTE_REFERENCE",
+                    "sql": "url",
+                    "data_type": {
+                      "type_name": "string",
+                      "type_ddl": "string",
+                      "redacted_type_ddl": "string"
+                    }
+                  }
+                ]
+              },
+              {
+                "tag": "ATTRIBUTE_REFERENCE",
+                "children": [
+                  {
+                    "tag": "ATTRIBUTE_REFERENCE",
+                    "sql": "id",
+                    "data_type": {
+                      "type_name": "string",
+                      "type_ddl": "string",
+                      "redacted_type_ddl": "string"
+                    }
+                  }
+                ]
+              },
+              {
+                "tag": "ATTRIBUTE_REFERENCE",
+                "children": [
+                  {
+                    "tag": "ATTRIBUTE_REFERENCE",
+                    "sql": "partitionValues",
+                    "data_type": {
+                      "type_name": "map",
+                      "type_ddl": "map<string,string>",
+                      "redacted_type_ddl": "map<string,string>"
+                    }
+                  }
+                ]
+              },
+              {
+                "tag": "ATTRIBUTE_REFERENCE",
+                "children": [
+                  {
+                    "tag": "ATTRIBUTE_REFERENCE",
+                    "sql": "size",
+                    "data_type": {
+                      "type_name": "long",
+                      "redacted_type_ddl": "bigint"
+                    }
+                  }
+                ]
+              },
+              {
+                "tag": "ATTRIBUTE_REFERENCE",
+                "children": [
+                  {
+                    "tag": "ATTRIBUTE_REFERENCE",
+                    "sql": "stats",
+                    "data_type": {
+                      "type_name": "string",
+                      "type_ddl": "string",
+                      "redacted_type_ddl": "string"
+                    }
+                  }
+                ]
+              },
+              {
+                "tag": "ATTRIBUTE_REFERENCE",
+                "children": [
+                  {
+                    "tag": "ATTRIBUTE_REFERENCE",
+                    "sql": "version",
+                    "data_type": {
+                      "type_name": "long",
+                      "redacted_type_ddl": "bigint"
+                    }
+                  }
+                ]
+              },
+              {
+                "tag": "ATTRIBUTE_REFERENCE",
+                "children": [
+                  {
+                    "tag": "ATTRIBUTE_REFERENCE",
+                    "sql": "timestamp",
+                    "data_type": {
+                      "type_name": "long",
+                      "redacted_type_ddl": "bigint"
+                    }
+                  }
+                ]
+              },
+              {
+                "tag": "ATTRIBUTE_REFERENCE",
+                "children": [
+                  {
+                    "tag": "ATTRIBUTE_REFERENCE",
+                    "sql": "expirationTimestamp",
+                    "data_type": {
+                      "type_name": "long",
+                      "redacted_type_ddl": "bigint"
+                    }
+                  }
+                ]
+              },
+              {
+                "tag": "OUTPUT",
+                "children": [
+                  {
+                    "tag": "01f195a2-7078-1eb5-830f-7d993f0514df",
+                    "sql": "url",
+                    "data_type": {
+                      "type_name": "string",
+                      "type_ddl": "string",
+                      "redacted_type_ddl": "string"
+                    }
+                  },
+                  {
+                    "tag": "01f195a2-7078-1eb5-830f-7d993f0514df",
+                    "sql": "id",
+                    "data_type": {
+                      "type_name": "string",
+                      "type_ddl": "string",
+                      "redacted_type_ddl": "string"
+                    }
+                  },
+                  {
+                    "tag": "01f195a2-7078-1eb5-830f-7d993f0514df",
+                    "sql": "partitionValues",
+                    "data_type": {
+                      "type_name": "map",
+                      "type_ddl": "map<string,string>",
+                      "redacted_type_ddl": "map<string,string>"
+                    }
+                  },
+                  {
+                    "tag": "01f195a2-7078-1eb5-830f-7d993f0514df",
+                    "sql": "size",
+                    "data_type": {
+                      "type_name": "long",
+                      "redacted_type_ddl": "bigint"
+                    }
+                  },
+                  {
+                    "tag": "01f195a2-7078-1eb5-830f-7d993f0514df",
+                    "sql": "stats",
+                    "data_type": {
+                      "type_name": "string",
+                      "type_ddl": "string",
+                      "redacted_type_ddl": "string"
+                    }
+                  },
+                  {
+                    "tag": "01f195a2-7078-1eb5-830f-7d993f0514df",
+                    "sql": "version",
+                    "data_type": {
+                      "type_name": "long",
+                      "redacted_type_ddl": "bigint"
+                    }
+                  },
+                  {
+                    "tag": "01f195a2-7078-1eb5-830f-7d993f0514df",
+                    "sql": "timestamp",
+                    "data_type": {
+                      "type_name": "long",
+                      "redacted_type_ddl": "bigint"
+                    }
+                  },
+                  {
+                    "tag": "01f195a2-7078-1eb5-830f-7d993f0514df",
+                    "sql": "expirationTimestamp",
+                    "data_type": {
+                      "type_name": "long",
+                      "redacted_type_ddl": "bigint"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "source": "QUERY_EXECUTION_END",
+        "execution_id": "208",
+        "time_submitted_ms": 1786466036500,
+        "time_completed_ms": 1786466036527,
+        "photon_explain": [
+          {
+            "reason": "UNIMPLEMENTED_OPERATOR",
+            "params": [
+              {
+                "param_name": "OPERATOR",
+                "param_value": "LocalTableScan [url#13959, id#13960, partitionValues#13961, size#13962L, stats#13963, version#13964L, timestamp#13965L, expirationTimestamp#13966L]"
+              }
+            ],
+            "category": "OPERATOR"
+          }
+        ]
+      }
+    },
+    "is_final": true,
+    "channel_used": {
+      "name": "CHANNEL_NAME_CURRENT",
+      "dbsql_version": "2026.20"
+    },
+    "plans_state": "EXISTS",
+    "statement_type": "SELECT",
+    "warehouse_id": "0123456789abcdef",
+    "duration": 4375,
+    "canSubscribeToLiveQuery": true,
+    "client_application": "node",
+    "query_source": {},
+    "is_cancelable": false
+  }
+}

@@ -1,0 +1,31 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /app
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+    # AppKit is pre-1.0 and ships roughly weekly minors. Minor bumps can carry
+    # breaking changes, so they are reviewed individually rather than grouped
+    # with routine dependency noise.
+    groups:
+      appkit:
+        patterns:
+          - "@databricks/*"
+        update-types:
+          - patch
+      dev-dependencies:
+        dependency-type: development
+        update-types:
+          - patch
+          - minor
+    labels:
+      - dependencies
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    labels:
+      - dependencies
+      - ci

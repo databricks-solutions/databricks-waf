@@ -1,0 +1,1545 @@
+{
+  "runFinishedAt": "2026-08-10T22:04:13.197Z",
+  "profile": "labs",
+  "lookbackDays": 30,
+  "workspaceId": "",
+  "samples": 5,
+  "bucketing": {
+    "compute_cluster_inventory": {
+      "column": "cluster_id",
+      "predicateAtScan": true,
+      "scanFilterLines": [
+        "RequiredDataFilters: [(pmod(hash(cluster_id#115152, 42), 4) = 1), workspace_id#115151 IN (7000000000000023,7000000000000026,7000000000000020,7000000000000013,7000000000000021,7000000000000011,7000000000000008)]"
+      ],
+      "buckets": 4,
+      "wholeNodes": [
+        "(1) PhotonScan parquet system.compute.clusters",
+        "(2) PhotonProject",
+        "(3) PhotonSort",
+        "(4) PhotonWindow",
+        "(5) PhotonFilter",
+        "(6) PhotonProject",
+        "(7) PhotonShuffleExchangeSink",
+        "(8) PhotonShuffleMapStage",
+        "(9) PhotonShuffleExchangeSource",
+        "(10) PhotonSort",
+        "(11) PhotonWindow",
+        "(12) PhotonFilter",
+        "(13) PhotonProject",
+        "(14) PhotonShuffleExchangeSink",
+        "(15) PhotonShuffleMapStage",
+        "(16) PhotonShuffleExchangeSource",
+        "(17) PhotonSort",
+        "(18) PhotonColumnarToRow",
+        "(19) PhotonResultStage",
+        "(20) AdaptiveSparkPlan"
+      ],
+      "bucketedNodes": [
+        "(1) PhotonScan parquet system.compute.clusters",
+        "(2) PhotonProject",
+        "(3) PhotonSort",
+        "(4) PhotonWindow",
+        "(5) PhotonFilter",
+        "(6) PhotonProject",
+        "(7) PhotonShuffleExchangeSink",
+        "(8) PhotonShuffleMapStage",
+        "(9) PhotonShuffleExchangeSource",
+        "(10) PhotonSort",
+        "(11) PhotonWindow",
+        "(12) PhotonFilter",
+        "(13) PhotonProject",
+        "(14) PhotonShuffleExchangeSink",
+        "(15) PhotonShuffleMapStage",
+        "(16) PhotonShuffleExchangeSource",
+        "(17) PhotonSort",
+        "(18) PhotonColumnarToRow",
+        "(19) PhotonResultStage",
+        "(20) AdaptiveSparkPlan"
+      ],
+      "bucketedPlanChars": 17696
+    },
+    "jobs_inventory": {
+      "column": "job_id",
+      "predicateAtScan": true,
+      "scanFilterLines": [
+        "RequiredDataFilters: [(pmod(hash(job_id#115428, 42), 4) = 1), workspace_id#115427 IN (7000000000000023,7000000000000026,7000000000000020,7000000000000013,7000000000000021,7000000000000011,7000000000000008)]"
+      ],
+      "buckets": 4,
+      "wholeNodes": [
+        "(1) PhotonScan parquet system.lakeflow.jobs",
+        "(2) PhotonProject",
+        "(3) PhotonSort",
+        "(4) PhotonWindow",
+        "(5) PhotonFilter",
+        "(6) PhotonProject",
+        "(7) PhotonShuffleExchangeSink",
+        "(8) PhotonShuffleMapStage",
+        "(9) PhotonShuffleExchangeSource",
+        "(10) PhotonSort",
+        "(11) PhotonWindow",
+        "(12) PhotonFilter",
+        "(13) PhotonProject",
+        "(14) PhotonShuffleExchangeSink",
+        "(15) PhotonShuffleMapStage",
+        "(16) PhotonShuffleExchangeSource",
+        "(17) PhotonSort",
+        "(18) PhotonColumnarToRow",
+        "(19) PhotonResultStage",
+        "(20) AdaptiveSparkPlan"
+      ],
+      "bucketedNodes": [
+        "(1) PhotonScan parquet system.lakeflow.jobs",
+        "(2) PhotonProject",
+        "(3) PhotonSort",
+        "(4) PhotonWindow",
+        "(5) PhotonFilter",
+        "(6) PhotonProject",
+        "(7) PhotonShuffleExchangeSink",
+        "(8) PhotonShuffleMapStage",
+        "(9) PhotonShuffleExchangeSource",
+        "(10) PhotonSort",
+        "(11) PhotonWindow",
+        "(12) PhotonFilter",
+        "(13) PhotonProject",
+        "(14) PhotonShuffleExchangeSink",
+        "(15) PhotonShuffleMapStage",
+        "(16) PhotonShuffleExchangeSource",
+        "(17) PhotonSort",
+        "(18) PhotonColumnarToRow",
+        "(19) PhotonResultStage",
+        "(20) AdaptiveSparkPlan"
+      ],
+      "bucketedPlanChars": 11669
+    },
+    "serverless_job_readiness": {
+      "column": "job_id",
+      "predicateAtScan": true,
+      "scanFilterLines": [
+        "RequiredDataFilters: [isnotnull(period_start_time#116484), (period_start_time#116484 >= 2026-07-11 00:00:00), (pmod(hash(job_id#116482, 42), 4) = 1), workspace_id#116481 IN (7000000000000023,7000000000000026,7000000000000020,7000000000000013,7000000000000021,7000000000000011,7000000000000008)]",
+        "RequiredDataFilters: [isnotnull(period_start_time#116503), isnotnull(workspace_id#116500), isnotnull(job_id#116501), (period_start_time#116503 >= 2026-07-11 00:00:00), (pmod(hash(job_id#116501, 42), 4) = 1), workspace_id#116500 IN (7000000000000023,7000000000000026,7000000000000020,7000000000000013,7000000000000021,7000000000000011,7000000000000008)]",
+        "RequiredDataFilters: [isnotnull(workspace_id#116317), isnotnull(cluster_id#116318), workspace_id#116317 IN (7000000000000023,7000000000000026,7000000000000020,7000000000000013,7000000000000021,7000000000000011,7000000000000008)]"
+      ],
+      "buckets": 4,
+      "wholeNodes": [
+        "(1) PhotonScan parquet system.lakeflow.job_task_run_timeline",
+        "(2) PhotonProject",
+        "(3) PhotonSort",
+        "(4) PhotonWindow",
+        "(5) PhotonFilter",
+        "(6) PhotonProject",
+        "(7) PhotonShuffleExchangeSink",
+        "(8) PhotonShuffleMapStage",
+        "(9) PhotonShuffleExchangeSource",
+        "(10) PhotonSort",
+        "(11) PhotonWindow",
+        "(12) PhotonFilter",
+        "(13) PhotonProject",
+        "(14) PhotonGroupingAgg",
+        "(15) PhotonShuffleExchangeSink",
+        "(16) PhotonShuffleMapStage",
+        "(17) PhotonShuffleExchangeSource",
+        "(18) PhotonGroupingAgg",
+        "(19) PhotonGroupingAgg",
+        "(20) PhotonShuffleExchangeSink",
+        "(21) PhotonShuffleMapStage",
+        "(22) PhotonShuffleExchangeSource",
+        "(23) PhotonGroupingAgg",
+        "(24) PhotonScan parquet system.lakeflow.job_task_run_timeline",
+        "(25) PhotonProject",
+        "(26) PhotonSort",
+        "(27) PhotonWindow",
+        "(28) PhotonFilter",
+        "(29) PhotonProject",
+        "(30) PhotonShuffleExchangeSink",
+        "(31) PhotonShuffleMapStage",
+        "(32) PhotonShuffleExchangeSource",
+        "(33) PhotonSort",
+        "(34) PhotonWindow",
+        "(35) PhotonFilter",
+        "(36) PhotonProject",
+        "(37) PhotonGenerate",
+        "(38) PhotonShuffleExchangeSink",
+        "(39) PhotonShuffleMapStage",
+        "(40) PhotonShuffleExchangeSource",
+        "(41) PhotonScan parquet system.compute.clusters",
+        "(42) PhotonProject",
+        "(43) PhotonSort",
+        "(44) PhotonWindow",
+        "(45) PhotonFilter",
+        "(46) PhotonProject",
+        "(47) PhotonShuffleExchangeSink",
+        "(48) PhotonShuffleMapStage",
+        "(49) PhotonShuffleExchangeSource",
+        "(50) PhotonSort",
+        "(51) PhotonWindow",
+        "(52) PhotonFilter",
+        "(53) PhotonProject",
+        "(54) PhotonShuffledHashJoin",
+        "(55) PhotonProject",
+        "(56) PhotonShuffleExchangeSink",
+        "(57) PhotonShuffleMapStage",
+        "(58) PhotonShuffleExchangeSource",
+        "(59) PhotonShuffledHashJoin",
+        "(60) PhotonProject",
+        "(61) PhotonExpand",
+        "(62) PhotonProject",
+        "(63) PhotonShuffleExchangeSink",
+        "(64) PhotonShuffleMapStage",
+        "(65) PhotonShuffleExchangeSource",
+        "(66) PhotonGroupingAgg",
+        "(67) PhotonGroupingAgg",
+        "(68) PhotonShuffleExchangeSink",
+        "(69) PhotonShuffleMapStage",
+        "(70) PhotonShuffleExchangeSource",
+        "(71) PhotonGroupingAgg",
+        "(72) PhotonShuffleExchangeSink",
+        "(73) PhotonShuffleMapStage",
+        "(74) PhotonShuffleExchangeSource",
+        "(75) PhotonSort",
+        "(76) PhotonColumnarToRow",
+        "(77) PhotonResultStage",
+        "(78) AdaptiveSparkPlan"
+      ],
+      "bucketedNodes": [
+        "(1) PhotonScan parquet system.lakeflow.job_task_run_timeline",
+        "(2) PhotonProject",
+        "(3) PhotonSort",
+        "(4) PhotonWindow",
+        "(5) PhotonFilter",
+        "(6) PhotonProject",
+        "(7) PhotonShuffleExchangeSink",
+        "(8) PhotonShuffleMapStage",
+        "(9) PhotonShuffleExchangeSource",
+        "(10) PhotonSort",
+        "(11) PhotonWindow",
+        "(12) PhotonFilter",
+        "(13) PhotonProject",
+        "(14) PhotonGroupingAgg",
+        "(15) PhotonShuffleExchangeSink",
+        "(16) PhotonShuffleMapStage",
+        "(17) PhotonShuffleExchangeSource",
+        "(18) PhotonGroupingAgg",
+        "(19) PhotonGroupingAgg",
+        "(20) PhotonShuffleExchangeSink",
+        "(21) PhotonShuffleMapStage",
+        "(22) PhotonShuffleExchangeSource",
+        "(23) PhotonGroupingAgg",
+        "(24) PhotonScan parquet system.lakeflow.job_task_run_timeline",
+        "(25) PhotonProject",
+        "(26) PhotonSort",
+        "(27) PhotonWindow",
+        "(28) PhotonFilter",
+        "(29) PhotonProject",
+        "(30) PhotonShuffleExchangeSink",
+        "(31) PhotonShuffleMapStage",
+        "(32) PhotonShuffleExchangeSource",
+        "(33) PhotonSort",
+        "(34) PhotonWindow",
+        "(35) PhotonFilter",
+        "(36) PhotonProject",
+        "(37) PhotonGenerate",
+        "(38) PhotonShuffleExchangeSink",
+        "(39) PhotonShuffleMapStage",
+        "(40) PhotonShuffleExchangeSource",
+        "(41) PhotonScan parquet system.compute.clusters",
+        "(42) PhotonProject",
+        "(43) PhotonSort",
+        "(44) PhotonWindow",
+        "(45) PhotonFilter",
+        "(46) PhotonProject",
+        "(47) PhotonShuffleExchangeSink",
+        "(48) PhotonShuffleMapStage",
+        "(49) PhotonShuffleExchangeSource",
+        "(50) PhotonSort",
+        "(51) PhotonWindow",
+        "(52) PhotonFilter",
+        "(53) PhotonProject",
+        "(54) PhotonShuffledHashJoin",
+        "(55) PhotonProject",
+        "(56) PhotonShuffleExchangeSink",
+        "(57) PhotonShuffleMapStage",
+        "(58) PhotonShuffleExchangeSource",
+        "(59) PhotonShuffledHashJoin",
+        "(60) PhotonProject",
+        "(61) PhotonExpand",
+        "(62) PhotonProject",
+        "(63) PhotonShuffleExchangeSink",
+        "(64) PhotonShuffleMapStage",
+        "(65) PhotonShuffleExchangeSource",
+        "(66) PhotonGroupingAgg",
+        "(67) PhotonGroupingAgg",
+        "(68) PhotonShuffleExchangeSink",
+        "(69) PhotonShuffleMapStage",
+        "(70) PhotonShuffleExchangeSource",
+        "(71) PhotonGroupingAgg",
+        "(72) PhotonShuffleExchangeSink",
+        "(73) PhotonShuffleMapStage",
+        "(74) PhotonShuffleExchangeSource",
+        "(75) PhotonSort",
+        "(76) PhotonColumnarToRow",
+        "(77) PhotonResultStage",
+        "(78) AdaptiveSparkPlan"
+      ],
+      "bucketedPlanChars": 80714
+    },
+    "serverless_job_spend": {
+      "column": "job_id",
+      "predicateAtScan": true,
+      "scanFilterLines": [
+        "RequiredDataFilters: [isnotnull(usage_date#117408), (usage_date#117408 >= 2026-07-11), isnotnull(usage_unit#117410), isnotnull(usage_metadata#117412.job_id), (usage_unit#117410 = DBU), (pmod(hash(usage_metadata#117412.job_id, 42), 4) = 1), workspace_id#117402 IN (7000000000000023,7000000000000026,7000000000000020,7000000000000013,7000000000000021,7000000000000011,7000000000000008)]",
+        "RequiredDataFilters: [isnotnull(price_start_time#117420), isnotnull(sku_name#117422)]",
+        "RequiredDataFilters: [isnotnull(usage_date#117390), (usage_date#117390 >= 2026-07-11), isnotnull(sku_name#117386), isnotnull(usage_unit#117392), isnotnull(workspace_id#117384), Contains(sku_name#117386, SERVERLESS), (usage_unit#117392 = DBU), workspace_id#117384 IN (7000000000000023,7000000000000026,7000000000000020,7000000000000013,7000000000000021,7000000000000011,7000000000000008)]",
+        "RequiredDataFilters: [isnull(price_end_time#117377), isnotnull(sku_name#117378), RLIKE(sku_name#117378, _JOBS_SERVERLESS_COMPUTE_), NOT (regexp_extract(sku_name#117378, _JOBS_SERVERLESS_COMPUTE_(.+)$, 1) = )]",
+        "RequiredDataFilters: [isnull(price_end_time#117491), isnotnull(sku_name#117492), isnotnull(currency_code#117494), RLIKE(sku_name#117492, _JOBS_SERVERLESS_COMPUTE_), isnotnull(regexp_extract(sku_name#117492, ^(ENTERPRISE|PREMIUM|STANDARD)_, 1)), isnotnull(regexp_extract(sku_name#117492, _JOBS_SERVERLESS_COMPUTE_(.+)$, 1))]"
+      ],
+      "buckets": 4,
+      "wholeNodes": [
+        "(1) PhotonScan parquet system.billing.usage",
+        "(2) PhotonProject",
+        "(3) PhotonShuffleExchangeSink",
+        "(4) PhotonShuffleMapStage",
+        "(5) PhotonShuffleExchangeSource",
+        "(6) PhotonScan parquet system.billing.list_prices",
+        "(7) PhotonProject",
+        "(8) PhotonShuffleExchangeSink",
+        "(9) PhotonShuffleMapStage",
+        "(10) PhotonShuffleExchangeSource",
+        "(11) PhotonShuffledHashJoin",
+        "(12) PhotonProject",
+        "(13) PhotonShuffleExchangeSink",
+        "(14) PhotonShuffleMapStage",
+        "(15) PhotonShuffleExchangeSource",
+        "(16) PhotonScan parquet system.billing.usage",
+        "(17) PhotonProject",
+        "(18) PhotonGroupingAgg",
+        "(19) PhotonShuffleExchangeSink",
+        "(20) PhotonShuffleMapStage",
+        "(21) PhotonShuffleExchangeSource",
+        "(22) PhotonGroupingAgg",
+        "(23) PhotonGroupingAgg",
+        "(24) PhotonScan parquet system.billing.list_prices",
+        "(25) PhotonProject",
+        "(26) PhotonGroupingAgg",
+        "(27) PhotonShuffleExchangeSink",
+        "(28) PhotonShuffleMapStage",
+        "(29) PhotonShuffleExchangeSource",
+        "(30) PhotonGroupingAgg",
+        "(31) PhotonCartesianProduct",
+        "(32) PhotonProject",
+        "(33) PhotonGroupingAgg",
+        "(34) PhotonShuffleExchangeSink",
+        "(35) PhotonShuffleMapStage",
+        "(36) PhotonShuffleExchangeSource",
+        "(37) PhotonGroupingAgg",
+        "(38) PhotonProject",
+        "(39) PhotonSort",
+        "(40) PhotonWindow",
+        "(41) PhotonFilter",
+        "(42) PhotonProject",
+        "(43) PhotonShuffleExchangeSink",
+        "(44) PhotonShuffleMapStage",
+        "(45) PhotonShuffleExchangeSource",
+        "(46) PhotonSort",
+        "(47) PhotonWindow",
+        "(48) PhotonFilter",
+        "(49) PhotonProject",
+        "(50) PhotonShuffledHashJoin",
+        "(51) PhotonProject",
+        "(52) PhotonShuffleExchangeSink",
+        "(53) PhotonShuffleMapStage",
+        "(54) PhotonShuffleExchangeSource",
+        "(55) PhotonScan parquet system.billing.list_prices",
+        "(56) PhotonProject",
+        "(57) PhotonGroupingAgg",
+        "(58) PhotonShuffleExchangeSink",
+        "(59) PhotonShuffleMapStage",
+        "(60) PhotonShuffleExchangeSource",
+        "(61) PhotonGroupingAgg",
+        "(62) PhotonShuffledHashJoin",
+        "(63) PhotonProject",
+        "(64) PhotonProject",
+        "(65) PhotonShuffleExchangeSink",
+        "(66) PhotonShuffleMapStage",
+        "(67) PhotonShuffleExchangeSource",
+        "(68) PhotonGroupingAgg",
+        "(69) PhotonFilter",
+        "(70) PhotonProject",
+        "(71) PhotonShuffleExchangeSink",
+        "(72) PhotonShuffleMapStage",
+        "(73) PhotonShuffleExchangeSource",
+        "(74) PhotonSort",
+        "(75) PhotonColumnarToRow",
+        "(76) PhotonResultStage",
+        "(77) AdaptiveSparkPlan"
+      ],
+      "bucketedNodes": [
+        "(1) PhotonScan parquet system.billing.usage",
+        "(2) PhotonProject",
+        "(3) PhotonShuffleExchangeSink",
+        "(4) PhotonShuffleMapStage",
+        "(5) PhotonShuffleExchangeSource",
+        "(6) PhotonScan parquet system.billing.list_prices",
+        "(7) PhotonProject",
+        "(8) PhotonShuffleExchangeSink",
+        "(9) PhotonShuffleMapStage",
+        "(10) PhotonShuffleExchangeSource",
+        "(11) PhotonShuffledHashJoin",
+        "(12) PhotonProject",
+        "(13) PhotonShuffleExchangeSink",
+        "(14) PhotonShuffleMapStage",
+        "(15) PhotonShuffleExchangeSource",
+        "(16) PhotonScan parquet system.billing.usage",
+        "(17) PhotonProject",
+        "(18) PhotonGroupingAgg",
+        "(19) PhotonShuffleExchangeSink",
+        "(20) PhotonShuffleMapStage",
+        "(21) PhotonShuffleExchangeSource",
+        "(22) PhotonGroupingAgg",
+        "(23) PhotonGroupingAgg",
+        "(24) PhotonScan parquet system.billing.list_prices",
+        "(25) PhotonProject",
+        "(26) PhotonGroupingAgg",
+        "(27) PhotonShuffleExchangeSink",
+        "(28) PhotonShuffleMapStage",
+        "(29) PhotonShuffleExchangeSource",
+        "(30) PhotonGroupingAgg",
+        "(31) PhotonCartesianProduct",
+        "(32) PhotonProject",
+        "(33) PhotonGroupingAgg",
+        "(34) PhotonShuffleExchangeSink",
+        "(35) PhotonShuffleMapStage",
+        "(36) PhotonShuffleExchangeSource",
+        "(37) PhotonGroupingAgg",
+        "(38) PhotonProject",
+        "(39) PhotonSort",
+        "(40) PhotonWindow",
+        "(41) PhotonFilter",
+        "(42) PhotonProject",
+        "(43) PhotonShuffleExchangeSink",
+        "(44) PhotonShuffleMapStage",
+        "(45) PhotonShuffleExchangeSource",
+        "(46) PhotonSort",
+        "(47) PhotonWindow",
+        "(48) PhotonFilter",
+        "(49) PhotonProject",
+        "(50) PhotonShuffledHashJoin",
+        "(51) PhotonProject",
+        "(52) PhotonShuffleExchangeSink",
+        "(53) PhotonShuffleMapStage",
+        "(54) PhotonShuffleExchangeSource",
+        "(55) PhotonScan parquet system.billing.list_prices",
+        "(56) PhotonProject",
+        "(57) PhotonGroupingAgg",
+        "(58) PhotonShuffleExchangeSink",
+        "(59) PhotonShuffleMapStage",
+        "(60) PhotonShuffleExchangeSource",
+        "(61) PhotonGroupingAgg",
+        "(62) PhotonShuffledHashJoin",
+        "(63) PhotonProject",
+        "(64) PhotonProject",
+        "(65) PhotonShuffleExchangeSink",
+        "(66) PhotonShuffleMapStage",
+        "(67) PhotonShuffleExchangeSource",
+        "(68) PhotonGroupingAgg",
+        "(69) PhotonFilter",
+        "(70) PhotonProject",
+        "(71) PhotonShuffleExchangeSink",
+        "(72) PhotonShuffleMapStage",
+        "(73) PhotonShuffleExchangeSource",
+        "(74) PhotonSort",
+        "(75) PhotonColumnarToRow",
+        "(76) PhotonResultStage",
+        "(77) AdaptiveSparkPlan"
+      ],
+      "bucketedPlanChars": 32852
+    }
+  },
+  "variance": {
+    "workspace_directory": {
+      "readings": [
+        6475,
+        4557,
+        6368,
+        6517,
+        6654
+      ],
+      "min": 4557,
+      "median": 6475,
+      "max": 6654,
+      "spreadRatio": 1.46
+    },
+    "auth_login_paths": {
+      "readings": [
+        11985,
+        7828,
+        7760,
+        7757,
+        7804
+      ],
+      "min": 7757,
+      "median": 7804,
+      "max": 11985,
+      "spreadRatio": 1.55
+    },
+    "compute_cluster_inventory": {
+      "readings": [
+        3419,
+        3420,
+        3416,
+        3380,
+        3419
+      ],
+      "min": 3380,
+      "median": 3419,
+      "max": 3420,
+      "spreadRatio": 1.01
+    },
+    "compute_warehouse_inventory": {
+      "readings": [
+        4526,
+        4154,
+        4484,
+        4513,
+        4233
+      ],
+      "min": 4154,
+      "median": 4484,
+      "max": 4526,
+      "spreadRatio": 1.09
+    },
+    "cost_attribution_coverage": {
+      "readings": [
+        7124,
+        7027,
+        7002,
+        6878,
+        7348
+      ],
+      "min": 6878,
+      "median": 7027,
+      "max": 7348,
+      "spreadRatio": 1.07
+    },
+    "cost_compute_mix": {
+      "readings": [
+        7163,
+        7282,
+        6792,
+        6929,
+        6500
+      ],
+      "min": 6500,
+      "median": 6929,
+      "max": 7282,
+      "spreadRatio": 1.12
+    },
+    "estate_compute_profile": {
+      "readings": [
+        3454,
+        3416,
+        3422,
+        3447,
+        3190
+      ],
+      "min": 3190,
+      "median": 3422,
+      "max": 3454,
+      "spreadRatio": 1.08
+    },
+    "governance_audit_coverage": {
+      "readings": [
+        8486,
+        7880,
+        7135,
+        7076,
+        8006
+      ],
+      "min": 7076,
+      "median": 7880,
+      "max": 8486,
+      "spreadRatio": 1.2
+    },
+    "jobs_inventory": {
+      "readings": [
+        3401,
+        3435,
+        3630,
+        3514,
+        3490
+      ],
+      "min": 3401,
+      "median": 3490,
+      "max": 3630,
+      "spreadRatio": 1.07
+    },
+    "lakeflow_pipeline_inventory": {
+      "readings": [
+        7199,
+        6823,
+        7398,
+        6677,
+        6627
+      ],
+      "min": 6627,
+      "median": 6823,
+      "max": 7398,
+      "spreadRatio": 1.12
+    },
+    "maintenance_recency": {
+      "readings": [
+        5172,
+        4916,
+        5296,
+        5474,
+        4735
+      ],
+      "min": 4735,
+      "median": 5172,
+      "max": 5474,
+      "spreadRatio": 1.16
+    },
+    "node_utilization": {
+      "readings": [
+        3283,
+        3284,
+        3282,
+        3245,
+        3395
+      ],
+      "min": 3245,
+      "median": 3283,
+      "max": 3395,
+      "spreadRatio": 1.05
+    },
+    "serverless_job_readiness": {
+      "readings": [
+        4779,
+        4686,
+        4673,
+        4721,
+        4802
+      ],
+      "min": 4673,
+      "median": 4721,
+      "max": 4802,
+      "spreadRatio": 1.03
+    },
+    "serverless_job_spend": {
+      "readings": [
+        8020,
+        8279,
+        8696,
+        8153,
+        7750
+      ],
+      "min": 7750,
+      "median": 8153,
+      "max": 8696,
+      "spreadRatio": 1.12
+    },
+    "storage_sample_selection": {
+      "readings": [
+        3752,
+        3782,
+        3884,
+        4413,
+        3898
+      ],
+      "min": 3752,
+      "median": 3884,
+      "max": 4413,
+      "spreadRatio": 1.18
+    },
+    "storage_table_metrics": {
+      "readings": [
+        5249,
+        4935,
+        4707,
+        4589,
+        5159
+      ],
+      "min": 4589,
+      "median": 4935,
+      "max": 5249,
+      "spreadRatio": 1.14
+    },
+    "uc_asset_census": {
+      "readings": [
+        1712,
+        1601,
+        1502,
+        1625,
+        1516
+      ],
+      "min": 1502,
+      "median": 1601,
+      "max": 1712,
+      "spreadRatio": 1.14
+    },
+    "uc_catalog_inventory": {
+      "readings": [
+        1184,
+        1053,
+        1080,
+        1021,
+        1086
+      ],
+      "min": 1021,
+      "median": 1080,
+      "max": 1184,
+      "spreadRatio": 1.16
+    },
+    "uc_discovery_metadata": {
+      "readings": [
+        7436,
+        9291,
+        6821,
+        6842,
+        8932
+      ],
+      "min": 6821,
+      "median": 7436,
+      "max": 9291,
+      "spreadRatio": 1.36
+    },
+    "uc_lineage_coverage": {
+      "readings": [
+        4557,
+        4386,
+        4186,
+        4208,
+        4321
+      ],
+      "min": 4186,
+      "median": 4321,
+      "max": 4557,
+      "spreadRatio": 1.09
+    },
+    "uc_platform_census": {
+      "readings": [
+        2720,
+        2791,
+        2700,
+        2683,
+        2639
+      ],
+      "min": 2639,
+      "median": 2700,
+      "max": 2791,
+      "spreadRatio": 1.06
+    },
+    "uc_schema_census": {
+      "readings": [
+        1087,
+        1094,
+        1093,
+        1087,
+        1044
+      ],
+      "min": 1044,
+      "median": 1087,
+      "max": 1094,
+      "spreadRatio": 1.05
+    },
+    "workload_query_shapes": {
+      "readings": [
+        13109,
+        11606,
+        14254,
+        12442,
+        12139
+      ],
+      "min": 11606,
+      "median": 12442,
+      "max": 14254,
+      "spreadRatio": 1.23
+    },
+    "workload_sql_paths": {
+      "readings": [
+        7766,
+        8084,
+        7397,
+        7122,
+        7419
+      ],
+      "min": 7122,
+      "median": 7419,
+      "max": 8084,
+      "spreadRatio": 1.14
+    },
+    "workload_warehouse_pressure": {
+      "readings": [
+        10527,
+        12499,
+        9741,
+        11866,
+        14073
+      ],
+      "min": 9741,
+      "median": 11866,
+      "max": 14073,
+      "spreadRatio": 1.44
+    }
+  },
+  "cost": {
+    "compute_cluster_inventory": {
+      "column": "cluster_id",
+      "buckets": 4,
+      "whole": {
+        "statementId": "01f19504-f8a2-1f16-be92-2887a5824100",
+        "durationMs": 3365,
+        "rows": 0,
+        "readBytes": 0,
+        "readFiles": 0,
+        "executionMs": 2236
+      },
+      "pieces": [
+        {
+          "statementId": "01f19504-faa9-1245-a5af-37d91407a4bc",
+          "durationMs": 3516,
+          "rows": 0,
+          "readBytes": 12668,
+          "readFiles": 1,
+          "executionMs": 2353
+        },
+        {
+          "statementId": "01f19504-fcbd-14c4-aff4-5bf051fa8b2b",
+          "durationMs": 3446,
+          "rows": 0,
+          "readBytes": 12668,
+          "readFiles": 1,
+          "executionMs": 2370
+        },
+        {
+          "statementId": "01f19504-feca-1a66-b383-0f20fa9ece01",
+          "durationMs": 3352,
+          "rows": 0,
+          "readBytes": 12668,
+          "readFiles": 1,
+          "executionMs": 2258
+        },
+        {
+          "statementId": "01f19505-00cb-18ca-8413-4537ba545612",
+          "durationMs": 3646,
+          "rows": 0,
+          "readBytes": 12668,
+          "readFiles": 1,
+          "executionMs": 2337
+        }
+      ],
+      "rowsWhole": 0,
+      "rowsBucketed": 0,
+      "readBytesWhole": 0,
+      "readBytesBucketed": 50672
+    },
+    "jobs_inventory": {
+      "column": "job_id",
+      "buckets": 4,
+      "whole": {
+        "statementId": "01f19505-02f7-1d9e-8661-b540e79f9acc",
+        "durationMs": 3627,
+        "rows": 3,
+        "readBytes": 14672,
+        "readFiles": 1,
+        "executionMs": 2340
+      },
+      "pieces": [
+        {
+          "statementId": "01f19505-0520-135d-9cac-f40d7bc91ff5",
+          "durationMs": 3377,
+          "rows": 0,
+          "readBytes": 14672,
+          "readFiles": 1,
+          "executionMs": 2279
+        },
+        {
+          "statementId": "01f19505-0724-17d9-a478-713df0a2ba4c",
+          "durationMs": 3316,
+          "rows": 0,
+          "readBytes": 14672,
+          "readFiles": 1,
+          "executionMs": 2211
+        },
+        {
+          "statementId": "01f19505-091e-1803-8920-bb1c5014395b",
+          "durationMs": 4014,
+          "rows": 3,
+          "readBytes": 14672,
+          "readFiles": 1,
+          "executionMs": 2368
+        },
+        {
+          "statementId": "01f19505-0b7f-1eb4-9626-2bb442efa6e4",
+          "durationMs": 3588,
+          "rows": 0,
+          "readBytes": 14672,
+          "readFiles": 1,
+          "executionMs": 2459
+        }
+      ],
+      "rowsWhole": 3,
+      "rowsBucketed": 3,
+      "readBytesWhole": 14672,
+      "readBytesBucketed": 58688,
+      "readAmplification": 4
+    },
+    "serverless_job_readiness": {
+      "column": "job_id",
+      "buckets": 4,
+      "whole": {
+        "statementId": "01f19505-0da7-1941-9ae6-0e3fc2c7d060",
+        "durationMs": 5062,
+        "rows": 6,
+        "readBytes": 30172,
+        "readFiles": 2,
+        "executionMs": 2853
+      },
+      "pieces": [
+        {
+          "statementId": "01f19505-10a7-16e9-8f97-b117e4289e19",
+          "durationMs": 4965,
+          "rows": 2,
+          "readBytes": 30172,
+          "readFiles": 2,
+          "executionMs": 2994
+        },
+        {
+          "statementId": "01f19505-139e-1bfb-afef-8262fac6c7b8",
+          "durationMs": 4856,
+          "rows": 0,
+          "readBytes": 15086,
+          "readFiles": 1,
+          "executionMs": 2968
+        },
+        {
+          "statementId": "01f19505-1685-125a-8216-1a65d88e0112",
+          "durationMs": 4690,
+          "rows": 4,
+          "readBytes": 30172,
+          "readFiles": 2,
+          "executionMs": 2667
+        },
+        {
+          "statementId": "01f19505-1950-1adb-8e10-7d7fd455dd8f",
+          "durationMs": 4372,
+          "rows": 0,
+          "readBytes": 15086,
+          "readFiles": 1,
+          "executionMs": 2513
+        }
+      ],
+      "rowsWhole": 6,
+      "rowsBucketed": 6,
+      "readBytesWhole": 30172,
+      "readBytesBucketed": 90516,
+      "readAmplification": 3
+    },
+    "serverless_job_spend": {
+      "column": "job_id",
+      "buckets": 4,
+      "whole": {
+        "statementId": "01f19505-1bec-1492-bf2e-39c5507e7fba",
+        "durationMs": 8145,
+        "rows": 6,
+        "readBytes": 2075405,
+        "readFiles": 15,
+        "executionMs": 5203
+      },
+      "pieces": [
+        {
+          "statementId": "01f19505-20c3-1f79-955b-dfb83f14cf64",
+          "durationMs": 7991,
+          "rows": 2,
+          "readBytes": 2075686,
+          "readFiles": 15,
+          "executionMs": 5074
+        },
+        {
+          "statementId": "01f19505-2584-11a0-a2c7-757f115c833e",
+          "durationMs": 5715,
+          "rows": 0,
+          "readBytes": 1651678,
+          "readFiles": 15,
+          "executionMs": 2909
+        },
+        {
+          "statementId": "01f19505-28f3-1ea2-b6fb-bfbc6ffc2edc",
+          "durationMs": 7531,
+          "rows": 4,
+          "readBytes": 2075686,
+          "readFiles": 15,
+          "executionMs": 4539
+        },
+        {
+          "statementId": "01f19505-2d6e-125f-83e7-255e0d509b8f",
+          "durationMs": 5594,
+          "rows": 0,
+          "readBytes": 694212,
+          "readFiles": 15,
+          "executionMs": 2887
+        }
+      ],
+      "rowsWhole": 6,
+      "rowsBucketed": 6,
+      "readBytesWhole": 2075405,
+      "readBytesBucketed": 6497262,
+      "readAmplification": 3.13
+    }
+  },
+  "scanning": {
+    "workspace_directory": {
+      "starLines": [],
+      "scans": [
+        {
+          "relation": "system.access.workspaces_latest",
+          "columns": 6
+        },
+        {
+          "relation": "system.billing.usage",
+          "columns": 6
+        }
+      ],
+      "scansPerRelation": {
+        "system.access.workspaces_latest": 1,
+        "system.billing.usage": 1
+      },
+      "repeatedRelations": {},
+      "widestScanColumns": 6,
+      "localScans": 0,
+      "localScansOnEmptyRelation": 0,
+      "answersRepeatedScans": true
+    },
+    "auth_login_paths": {
+      "starLines": [],
+      "scans": [
+        {
+          "relation": "system.access.audit",
+          "columns": 6
+        }
+      ],
+      "scansPerRelation": {
+        "system.access.audit": 1
+      },
+      "repeatedRelations": {},
+      "widestScanColumns": 6,
+      "localScans": 0,
+      "localScansOnEmptyRelation": 0,
+      "answersRepeatedScans": true
+    },
+    "compute_cluster_inventory": {
+      "starLines": [
+        "*,",
+        "SELECT *"
+      ],
+      "scans": [
+        {
+          "relation": "system.compute.clusters",
+          "columns": 21
+        }
+      ],
+      "scansPerRelation": {
+        "system.compute.clusters": 1
+      },
+      "repeatedRelations": {},
+      "widestScanColumns": 21,
+      "localScans": 0,
+      "localScansOnEmptyRelation": 0,
+      "answersRepeatedScans": true
+    },
+    "compute_warehouse_inventory": {
+      "starLines": [
+        "*,",
+        "SELECT * FROM ranked WHERE recency = 1 AND delete_time IS NULL"
+      ],
+      "scans": [
+        {
+          "relation": "system.compute.warehouses",
+          "columns": 13
+        }
+      ],
+      "scansPerRelation": {
+        "system.compute.warehouses": 1
+      },
+      "repeatedRelations": {},
+      "widestScanColumns": 13,
+      "localScans": 0,
+      "localScansOnEmptyRelation": 0,
+      "answersRepeatedScans": true
+    },
+    "cost_attribution_coverage": {
+      "starLines": [],
+      "scans": [
+        {
+          "relation": "system.billing.usage",
+          "columns": 10
+        },
+        {
+          "relation": "system.billing.list_prices",
+          "columns": 6
+        }
+      ],
+      "scansPerRelation": {
+        "system.billing.usage": 1,
+        "system.billing.list_prices": 1
+      },
+      "repeatedRelations": {},
+      "widestScanColumns": 10,
+      "localScans": 0,
+      "localScansOnEmptyRelation": 0,
+      "answersRepeatedScans": true
+    },
+    "cost_compute_mix": {
+      "starLines": [],
+      "scans": [
+        {
+          "relation": "system.billing.usage",
+          "columns": 11
+        },
+        {
+          "relation": "system.billing.list_prices",
+          "columns": 6
+        }
+      ],
+      "scansPerRelation": {
+        "system.billing.usage": 1,
+        "system.billing.list_prices": 1
+      },
+      "repeatedRelations": {},
+      "widestScanColumns": 11,
+      "localScans": 0,
+      "localScansOnEmptyRelation": 0,
+      "answersRepeatedScans": true
+    },
+    "estate_compute_profile": {
+      "starLines": [],
+      "scans": [
+        {
+          "relation": "system.billing.usage",
+          "columns": 8
+        }
+      ],
+      "scansPerRelation": {
+        "system.billing.usage": 1
+      },
+      "repeatedRelations": {},
+      "widestScanColumns": 8,
+      "localScans": 0,
+      "localScansOnEmptyRelation": 0,
+      "answersRepeatedScans": true
+    },
+    "governance_audit_coverage": {
+      "starLines": [],
+      "scans": [
+        {
+          "relation": "system.access.audit",
+          "columns": 7
+        }
+      ],
+      "scansPerRelation": {
+        "system.access.audit": 1
+      },
+      "repeatedRelations": {},
+      "widestScanColumns": 7,
+      "localScans": 0,
+      "localScansOnEmptyRelation": 0,
+      "answersRepeatedScans": true
+    },
+    "jobs_inventory": {
+      "starLines": [
+        "*,",
+        "SELECT *"
+      ],
+      "scans": [
+        {
+          "relation": "system.lakeflow.jobs",
+          "columns": 14
+        }
+      ],
+      "scansPerRelation": {
+        "system.lakeflow.jobs": 1
+      },
+      "repeatedRelations": {},
+      "widestScanColumns": 14,
+      "localScans": 0,
+      "localScansOnEmptyRelation": 0,
+      "answersRepeatedScans": true
+    },
+    "lakeflow_pipeline_inventory": {
+      "starLines": [
+        "*,",
+        "SELECT *"
+      ],
+      "scans": [
+        {
+          "relation": "system.lakeflow.pipelines",
+          "columns": 10
+        },
+        {
+          "relation": "system.lakeflow.pipeline_update_timeline",
+          "columns": 6
+        }
+      ],
+      "scansPerRelation": {
+        "system.lakeflow.pipelines": 1,
+        "system.lakeflow.pipeline_update_timeline": 1
+      },
+      "repeatedRelations": {},
+      "widestScanColumns": 10,
+      "localScans": 0,
+      "localScansOnEmptyRelation": 0,
+      "answersRepeatedScans": true
+    },
+    "maintenance_recency": {
+      "starLines": [],
+      "scans": [
+        {
+          "relation": "system.storage.predictive_optimization_operations_history",
+          "columns": 8
+        },
+        {
+          "relation": "system.query.history",
+          "columns": 7
+        }
+      ],
+      "scansPerRelation": {
+        "system.storage.predictive_optimization_operations_history": 1,
+        "system.query.history": 1
+      },
+      "repeatedRelations": {},
+      "widestScanColumns": 8,
+      "localScans": 2,
+      "localScansOnEmptyRelation": 0,
+      "answersRepeatedScans": true
+    },
+    "node_utilization": {
+      "starLines": [],
+      "scans": [
+        {
+          "relation": "system.compute.node_timeline",
+          "columns": 3
+        },
+        {
+          "relation": "system.compute.node_timeline",
+          "columns": 6
+        },
+        {
+          "relation": "system.compute.node_timeline",
+          "columns": 3
+        }
+      ],
+      "scansPerRelation": {
+        "system.compute.node_timeline": 3
+      },
+      "repeatedRelations": {
+        "system.compute.node_timeline": 3
+      },
+      "widestScanColumns": 6,
+      "localScans": 0,
+      "localScansOnEmptyRelation": 0,
+      "answersRepeatedScans": true
+    },
+    "serverless_job_readiness": {
+      "starLines": [
+        "runs AS (SELECT * FROM task_runs WHERE recency = 1),",
+        "SELECT * FROM ("
+      ],
+      "scans": [
+        {
+          "relation": "system.lakeflow.job_task_run_timeline",
+          "columns": 9
+        },
+        {
+          "relation": "system.lakeflow.job_task_run_timeline",
+          "columns": 9
+        },
+        {
+          "relation": "system.compute.clusters",
+          "columns": 15
+        }
+      ],
+      "scansPerRelation": {
+        "system.lakeflow.job_task_run_timeline": 2,
+        "system.compute.clusters": 1
+      },
+      "repeatedRelations": {
+        "system.lakeflow.job_task_run_timeline": 2
+      },
+      "widestScanColumns": 15,
+      "localScans": 0,
+      "localScansOnEmptyRelation": 0,
+      "answersRepeatedScans": true
+    },
+    "serverless_job_spend": {
+      "starLines": [],
+      "scans": [
+        {
+          "relation": "system.billing.usage",
+          "columns": 10
+        },
+        {
+          "relation": "system.billing.list_prices",
+          "columns": 6
+        },
+        {
+          "relation": "system.billing.usage",
+          "columns": 6
+        },
+        {
+          "relation": "system.billing.list_prices",
+          "columns": 3
+        },
+        {
+          "relation": "system.billing.list_prices",
+          "columns": 5
+        }
+      ],
+      "scansPerRelation": {
+        "system.billing.usage": 2,
+        "system.billing.list_prices": 3
+      },
+      "repeatedRelations": {
+        "system.billing.usage": 2,
+        "system.billing.list_prices": 3
+      },
+      "widestScanColumns": 10,
+      "localScans": 0,
+      "localScansOnEmptyRelation": 0,
+      "answersRepeatedScans": true
+    },
+    "storage_sample_selection": {
+      "starLines": [],
+      "scans": [
+        {
+          "relation": "system.access.table_lineage",
+          "columns": 6
+        }
+      ],
+      "scansPerRelation": {
+        "system.access.table_lineage": 1
+      },
+      "repeatedRelations": {},
+      "widestScanColumns": 6,
+      "localScans": 2,
+      "localScansOnEmptyRelation": 0,
+      "answersRepeatedScans": true
+    },
+    "storage_table_metrics": {
+      "starLines": [
+        "SELECT * FROM system.storage.table_metrics_history"
+      ],
+      "scans": [],
+      "scansPerRelation": {},
+      "repeatedRelations": {},
+      "widestScanColumns": 0,
+      "localScans": 1,
+      "localScansOnEmptyRelation": 1,
+      "answersRepeatedScans": false,
+      "unanswerableBecause": "a relation is empty on this estate, so the plan has no read to inspect"
+    },
+    "uc_asset_census": {
+      "starLines": [],
+      "scans": [],
+      "scansPerRelation": {},
+      "repeatedRelations": {},
+      "widestScanColumns": 0,
+      "localScans": 6,
+      "localScansOnEmptyRelation": 0,
+      "answersRepeatedScans": false,
+      "unanswerableBecause": "every read is metastore-served and arrives as a local relation, which no plan exposes as a scan"
+    },
+    "uc_catalog_inventory": {
+      "starLines": [],
+      "scans": [],
+      "scansPerRelation": {},
+      "repeatedRelations": {},
+      "widestScanColumns": 0,
+      "localScans": 2,
+      "localScansOnEmptyRelation": 0,
+      "answersRepeatedScans": false,
+      "unanswerableBecause": "every read is metastore-served and arrives as a local relation, which no plan exposes as a scan"
+    },
+    "uc_discovery_metadata": {
+      "starLines": [],
+      "scans": [
+        {
+          "relation": "system.access.table_lineage",
+          "columns": 6
+        }
+      ],
+      "scansPerRelation": {
+        "system.access.table_lineage": 1
+      },
+      "repeatedRelations": {},
+      "widestScanColumns": 6,
+      "localScans": 6,
+      "localScansOnEmptyRelation": 1,
+      "answersRepeatedScans": true
+    },
+    "uc_lineage_coverage": {
+      "starLines": [],
+      "scans": [
+        {
+          "relation": "system.access.table_lineage",
+          "columns": 10
+        }
+      ],
+      "scansPerRelation": {
+        "system.access.table_lineage": 1
+      },
+      "repeatedRelations": {},
+      "widestScanColumns": 10,
+      "localScans": 8,
+      "localScansOnEmptyRelation": 0,
+      "answersRepeatedScans": true
+    },
+    "uc_platform_census": {
+      "starLines": [],
+      "scans": [],
+      "scansPerRelation": {},
+      "repeatedRelations": {},
+      "widestScanColumns": 0,
+      "localScans": 21,
+      "localScansOnEmptyRelation": 10,
+      "answersRepeatedScans": false,
+      "unanswerableBecause": "a relation is empty on this estate, so the plan has no read to inspect"
+    },
+    "uc_schema_census": {
+      "starLines": [],
+      "scans": [],
+      "scansPerRelation": {},
+      "repeatedRelations": {},
+      "widestScanColumns": 0,
+      "localScans": 2,
+      "localScansOnEmptyRelation": 0,
+      "answersRepeatedScans": false,
+      "unanswerableBecause": "every read is metastore-served and arrives as a local relation, which no plan exposes as a scan"
+    },
+    "workload_query_shapes": {
+      "starLines": [
+        "*,"
+      ],
+      "scans": [
+        {
+          "relation": "system.query.history",
+          "columns": 8
+        },
+        {
+          "relation": "system.query.history",
+          "columns": 7
+        },
+        {
+          "relation": "system.query.history",
+          "columns": 8
+        },
+        {
+          "relation": "system.query.history",
+          "columns": 8
+        },
+        {
+          "relation": "system.query.history",
+          "columns": 19
+        },
+        {
+          "relation": "system.query.history",
+          "columns": 10
+        },
+        {
+          "relation": "system.query.history",
+          "columns": 9
+        },
+        {
+          "relation": "system.query.history",
+          "columns": 9
+        }
+      ],
+      "scansPerRelation": {
+        "system.query.history": 8
+      },
+      "repeatedRelations": {
+        "system.query.history": 8
+      },
+      "widestScanColumns": 19,
+      "localScans": 0,
+      "localScansOnEmptyRelation": 0,
+      "answersRepeatedScans": true
+    },
+    "workload_sql_paths": {
+      "starLines": [
+        "SELECT * FROM history WHERE is_self = 0"
+      ],
+      "scans": [
+        {
+          "relation": "system.query.history",
+          "columns": 13
+        },
+        {
+          "relation": "system.compute.clusters",
+          "columns": 5
+        },
+        {
+          "relation": "system.query.history",
+          "columns": 8
+        },
+        {
+          "relation": "system.compute.clusters",
+          "columns": 4
+        }
+      ],
+      "scansPerRelation": {
+        "system.query.history": 2,
+        "system.compute.clusters": 2
+      },
+      "repeatedRelations": {
+        "system.query.history": 2,
+        "system.compute.clusters": 2
+      },
+      "widestScanColumns": 13,
+      "localScans": 0,
+      "localScansOnEmptyRelation": 0,
+      "answersRepeatedScans": true
+    },
+    "workload_warehouse_pressure": {
+      "starLines": [
+        "SELECT * FROM history WHERE is_self = 0"
+      ],
+      "scans": [
+        {
+          "relation": "system.query.history",
+          "columns": 13
+        },
+        {
+          "relation": "system.compute.warehouse_events",
+          "columns": 5
+        },
+        {
+          "relation": "system.compute.warehouse_events",
+          "columns": 5
+        },
+        {
+          "relation": "system.query.history",
+          "columns": 10
+        },
+        {
+          "relation": "system.query.history",
+          "columns": 7
+        },
+        {
+          "relation": "system.compute.warehouse_events",
+          "columns": 5
+        }
+      ],
+      "scansPerRelation": {
+        "system.query.history": 3,
+        "system.compute.warehouse_events": 3
+      },
+      "repeatedRelations": {
+        "system.query.history": 3,
+        "system.compute.warehouse_events": 3
+      },
+      "widestScanColumns": 13,
+      "localScans": 0,
+      "localScansOnEmptyRelation": 0,
+      "answersRepeatedScans": true
+    }
+  }
+}

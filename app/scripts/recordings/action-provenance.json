@@ -1,0 +1,373 @@
+{
+  "source": "app/shared/api/contract.ts, from AdvisoryPayload",
+  "run": "AdvisoryPayload",
+  "declared": {
+    "identity": [
+      "rule",
+      "ruleId"
+    ],
+    "narrative": [
+      "headline",
+      "detail",
+      "docUrl",
+      "rationale"
+    ]
+  },
+  "chains": [
+    {
+      "advisor": "jobs",
+      "finding": "JobFindingPayload",
+      "levels": [
+        {
+          "property": "jobs",
+          "type": "JobsPayload",
+          "repeated": false
+        },
+        {
+          "property": "jobs",
+          "type": "JobHealthPayload",
+          "repeated": true
+        },
+        {
+          "property": "findings",
+          "type": "JobFindingPayload",
+          "repeated": true
+        }
+      ],
+      "identity": {
+        "property": "rule",
+        "closed": false
+      },
+      "version": [
+        {
+          "property": "rulesVersion",
+          "at": "JobsPayload"
+        }
+      ],
+      "resource": [
+        {
+          "property": "workspaceId",
+          "at": "JobHealthPayload"
+        },
+        {
+          "property": "jobId",
+          "at": "JobHealthPayload"
+        }
+      ],
+      "baseline": [
+        {
+          "property": "evidence",
+          "through": "WorkloadEvidencePayload"
+        }
+      ],
+      "prose": [
+        "action"
+      ]
+    },
+    {
+      "advisor": "serverless",
+      "finding": "ServerlessReasonPayload",
+      "levels": [
+        {
+          "property": "serverless",
+          "type": "ServerlessReadinessPayload",
+          "repeated": false
+        },
+        {
+          "property": "jobs",
+          "type": "ServerlessJobPayload",
+          "repeated": true
+        },
+        {
+          "property": "reasons",
+          "type": "ServerlessReasonPayload",
+          "repeated": true
+        }
+      ],
+      "identity": {
+        "property": "ruleId",
+        "closed": false
+      },
+      "version": [],
+      "resource": [
+        {
+          "property": "workspaceId",
+          "at": "ServerlessJobPayload"
+        },
+        {
+          "property": "jobId",
+          "at": "ServerlessJobPayload"
+        }
+      ],
+      "baseline": [
+        {
+          "property": "evidence",
+          "through": "WorkloadEvidencePayload"
+        }
+      ],
+      "prose": [
+        "action",
+        "observed"
+      ]
+    },
+    {
+      "advisor": "serverless",
+      "finding": "ServerlessReasonPayload",
+      "levels": [
+        {
+          "property": "serverless",
+          "type": "ServerlessReadinessPayload",
+          "repeated": false
+        },
+        {
+          "property": "caveat",
+          "type": "ServerlessReasonPayload",
+          "repeated": false
+        }
+      ],
+      "identity": {
+        "property": "ruleId",
+        "closed": false
+      },
+      "version": [],
+      "resource": [],
+      "baseline": [
+        {
+          "property": "evidence",
+          "through": "WorkloadEvidencePayload"
+        }
+      ],
+      "prose": [
+        "action",
+        "observed"
+      ]
+    },
+    {
+      "advisor": "sizing",
+      "finding": "SizingFindingPayload",
+      "levels": [
+        {
+          "property": "sizing",
+          "type": "SizingPayload",
+          "repeated": false
+        },
+        {
+          "property": "warehouses",
+          "type": "WarehouseSizingPayload",
+          "repeated": true
+        },
+        {
+          "property": "findings",
+          "type": "SizingFindingPayload",
+          "repeated": true
+        }
+      ],
+      "identity": {
+        "property": "rule",
+        "closed": false
+      },
+      "version": [
+        {
+          "property": "rulesVersion",
+          "at": "SizingPayload"
+        }
+      ],
+      "resource": [
+        {
+          "property": "workspaceId",
+          "at": "WarehouseSizingPayload"
+        },
+        {
+          "property": "warehouseId",
+          "at": "WarehouseSizingPayload"
+        }
+      ],
+      "baseline": [
+        {
+          "property": "evidence",
+          "through": "WorkloadEvidencePayload"
+        }
+      ],
+      "prose": [
+        "action"
+      ]
+    },
+    {
+      "advisor": "workload",
+      "finding": "WorkloadFindingPayload",
+      "levels": [
+        {
+          "property": "workload",
+          "type": "WorkloadPayload",
+          "repeated": false
+        },
+        {
+          "property": "top",
+          "type": "WorkloadShapePayload",
+          "repeated": true
+        },
+        {
+          "property": "findings",
+          "type": "WorkloadFindingPayload",
+          "repeated": true
+        }
+      ],
+      "identity": {
+        "property": "rule",
+        "closed": false
+      },
+      "version": [
+        {
+          "property": "rankingVersion",
+          "at": "WorkloadPayload"
+        },
+        {
+          "property": "rulesVersion",
+          "at": "WorkloadPayload"
+        }
+      ],
+      "resource": [
+        {
+          "property": "shape",
+          "at": "WorkloadShapePayload"
+        },
+        {
+          "property": "workspaceId",
+          "at": "WorkloadShapePayload"
+        },
+        {
+          "property": "statementId",
+          "at": "WorkloadShapePayload"
+        }
+      ],
+      "baseline": [
+        {
+          "property": "evidence",
+          "through": "WorkloadEvidencePayload"
+        }
+      ],
+      "prose": [
+        "action"
+      ]
+    },
+    {
+      "advisor": "workload",
+      "finding": "WorkloadFindingPayload",
+      "levels": [
+        {
+          "property": "workload",
+          "type": "WorkloadPayload",
+          "repeated": false
+        },
+        {
+          "property": "failing",
+          "type": "WorkloadShapePayload",
+          "repeated": true
+        },
+        {
+          "property": "findings",
+          "type": "WorkloadFindingPayload",
+          "repeated": true
+        }
+      ],
+      "identity": {
+        "property": "rule",
+        "closed": false
+      },
+      "version": [
+        {
+          "property": "rankingVersion",
+          "at": "WorkloadPayload"
+        },
+        {
+          "property": "rulesVersion",
+          "at": "WorkloadPayload"
+        }
+      ],
+      "resource": [
+        {
+          "property": "shape",
+          "at": "WorkloadShapePayload"
+        },
+        {
+          "property": "workspaceId",
+          "at": "WorkloadShapePayload"
+        },
+        {
+          "property": "statementId",
+          "at": "WorkloadShapePayload"
+        }
+      ],
+      "baseline": [
+        {
+          "property": "evidence",
+          "through": "WorkloadEvidencePayload"
+        }
+      ],
+      "prose": [
+        "action"
+      ]
+    },
+    {
+      "advisor": "writes",
+      "finding": "WriteFindingPayload",
+      "levels": [
+        {
+          "property": "writes",
+          "type": "WritePayload",
+          "repeated": false
+        },
+        {
+          "property": "shapes",
+          "type": "WriteShapePayload",
+          "repeated": true
+        },
+        {
+          "property": "findings",
+          "type": "WriteFindingPayload",
+          "repeated": true
+        }
+      ],
+      "identity": {
+        "property": "rule",
+        "closed": false
+      },
+      "version": [
+        {
+          "property": "rulesVersion",
+          "at": "WritePayload"
+        }
+      ],
+      "resource": [
+        {
+          "property": "workspaceId",
+          "at": "WriteShapePayload"
+        },
+        {
+          "property": "shape",
+          "at": "WriteShapePayload"
+        }
+      ],
+      "baseline": [
+        {
+          "property": "evidence",
+          "through": "WorkloadEvidencePayload"
+        }
+      ],
+      "prose": [
+        "action"
+      ]
+    }
+  ],
+  "totals": {
+    "advisors": 5,
+    "withIdentityOnTheFinding": 7,
+    "withVersionAnywhere": 5,
+    "withVersionOnTheFinding": 0,
+    "withResourceAnywhere": 6,
+    "withResourceOnTheFinding": 0,
+    "withNumericBaseline": 7,
+    "withAllFourOnTheFinding": 0
+  },
+  "measuredAt": "2026-08-20T22:41:00.866Z"
+}

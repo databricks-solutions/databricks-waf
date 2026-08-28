@@ -1,0 +1,126 @@
+name: 'databricks-waf-assessment'
+description: 'Assess a Databricks workspace against the seven pillars of the Well-Architected Framework.'
+
+command: ['npm', 'run', 'start']
+
+# Resources are named, never hardcoded. The consuming workspace admin binds a
+# warehouse at install time, which is what lets the same build run in any
+# workspace rather than only the one it was developed in.
+env:
+  - name: DATABRICKS_WAREHOUSE_ID
+    valueFrom: sql-warehouse
+  # Where scan history, attested answers and risk decisions are kept. Lakebase rather than the
+  # Unity Catalog volume ADR 0017 chose: that decision existed because a Marketplace manifest
+  # could not ask a consumer for a database, and ADR 0030 dropped Marketplace. ADR 0031.
+  #
+  # Unlike the warehouse, this binding is not optional in a softer sense — the app refuses to
+  # start without it rather than running with an in-memory history that silently forgets what
+  # somebody attested. `WAF_DEMO_NO_PERSISTENCE=1` is the escape hatch, and it is named so that
+  # nobody sets it thinking they are tuning something.
+  # `LAKEBASE_ENDPOINT` is not a name this app chose. It is what `@databricks/lakebase` reads, and
+  # the platform resolves it from the bound resource to
+  # `projects/<project>/branches/<branch>/endpoints/<endpoint>`, which is what the credential API
+  # wants. PGHOST, PGDATABASE, PGPORT and PGSSLMODE are injected alongside it without being
+  # declared here; a developer running locally sets those four by hand. See CONTRIBUTING.md.
+  - name: LAKEBASE_ENDPOINT
+    valueFrom: postgres
+
+  # Who may change an assessment: start or cancel a scan, answer a requirement only a person can
+  # answer, accept or defer a risk. Everyone who can open the app still reads everything.
+  #
+  # `admins` because this file is read by a deploy that has no other source for it, and a fresh
+  # install should be closed rather than open. It is the narrowest group that exists in every
+  # workspace without anybody creating it. It is not the right answer for long: an install whose
+  # assessors are not workspace admins should name a group of its own, and must, because the
+  # alternative is making assessors administrators.
+  #
+  # A bundle deploy never reads this line. `databricks.yml` sets the same variable from
+  # `var.assessor_group`, and its `config.env` block replaces this whole `env` list rather than
+  # merging with it — so a target that needs a different group overrides it there. The value here is
+  # the floor for a reader that has no bundle, not a default the bundle builds on.
+  #
+  # The app refuses to start when the variable is unset rather than falling open, so a deploy that
+  # sets neither fails loudly instead of letting anybody change an assessment. ADR 0029 records what
+  # this gate does and does not close.
+  - name: WAF_ASSESSOR_GROUP
+    value: 'admins'
+
+  # What this install does about a change it cannot write to the audit trail.
+  #
+  # `0` — the default — performs the change and counts what it could not record, reporting the count
+  # on the diagnostics page. That is deliberate rather than lax: refusing would make one table a
+  # single point of failure for every change in the app, so a database blip would stop somebody
+  # answering a requirement, and the audit gap would then be created by the mechanism meant to close
+  # it. ADR 0046.
+  #
+  # `1` refuses the change instead. For an install whose regime says no unaudited action — where a
+  # counter, however visible, is not what the control asks for. The trail is checked before the
+  # change rather than after, so a refusal means nothing happened; what it cannot promise is a write
+  # that fails after the trail has answered, which shows on diagnostics as a count on a strict
+  # install and is described there. Declared rather than left to a comment because the customer who
+  # needs it is the one who has to find it.
+  - name: WAF_AUDIT_STRICT
+    value: '0'
+
+# Not what grants the scopes, and read all the same. Testing on a real workspace showed the
+# scopes that take effect are the ones on the app object, set through the create/update API and
+# declared in databricks.yml: deploying with this block present left the app holding only the two
+# default iam scopes until they were set through the API. Until ADR 0030 there was a second reader
+# that might have honoured it — a Marketplace install, untestable without a published listing —
+# and that possibility is what justified the duplication.
+#
+# It stays for two better reasons. The app itself reads this list at runtime, in
+# `server/collect/rest/declared-scopes.ts`, to tell a refusal for a scope it never asked for from
+# a refusal for one whose consent predates the request; those two are byte-identical otherwise.
+# And app.yaml is the file a reviewer opens to see what the app asks for, so a list here that
+# disagreed with the effective one would mislead. CI holds the two identical, so it cannot drift
+# into a lie; if it ever does, databricks.yml is the one that is true.
+#
+# Narrowed against what the platform actually grants. `sql` was replaced by
+# `sql.statement-execution` and `sql.warehouses` by `sql.warehouses:read`, both
+# confirmed to survive into effective_user_api_scopes on their own. The broader `sql`
+# silently absorbed `sql.warehouses` when both were requested, which is what prompted
+# checking whether narrower grants existed at all.
+user_api_scopes:
+  # Execute the assessment queries.
+  - sql.statement-execution
+  # Resolve the bound warehouse to run them on.
+  - sql.warehouses:read
+  # System tables are Unity Catalog objects, so reading them needs catalog metadata
+  # read as well as query execution.
+  - catalog.catalogs:read
+  - catalog.schemas:read
+  - catalog.tables:read
+  # Two security controls read the model serving endpoints, which no system table
+  # carries. The only control-plane scope in this list, and the only one of the several
+  # the security pillar needs that the platform will grant an app at all — settings,
+  # authentication, clusters and secrets are all refused by name. ADR 0016.
+  #
+  # Deliberately the whole package rather than `serving.serving-endpoints:read`, which is
+  # the narrower name and the one this app wants. The narrower name passes validation and
+  # then grants nothing: measured live, the call was refused with "does not have required
+  # scopes: model-serving" while that scope was the one requested. Since a scope wider
+  # than the app needs is a fair question at review, check:read-only proves in CI that no
+  # write-shaped call exists to use it, and this reverts to the narrow name the moment the
+  # platform honours it.
+  - model-serving
+  # One security control reads the vector search endpoints. Requested for the same reason as
+  # model-serving and with the same caveat: a whole package, covered by check:read-only.
+  #
+  # Included because the reach probe found it accepted where nine sibling scopes are refused
+  # by name, which makes it the only one of the security pillar's remaining API families that
+  # is available for the asking rather than blocked on the platform. ADR 0016.
+  - vector-search
+  # The operator plan behind a query shape, which no system table carries: `system.query.history`
+  # records what a statement cost and never which table it scanned, so the advisor can say a shape
+  # prunes 0.5% of its files and not which table to cluster. Row 33j reads it.
+  #
+  # The narrow name, and this time the narrow name is the measured one rather than the hopeful one.
+  # `scripts/measure-scope-registry.mjs` probed the registry: `sql.query-history` and
+  # `sql.query-history:read` are both accepted, `sql.history` is refused by name, and the whole `sql`
+  # package would also have been accepted while granting far more than this needs. Declared before
+  # anything reads it on purpose — acceptance at registration is not the same as a minted token
+  # carrying the authority, ADR 0016 found one scope that validated and granted nothing, and the only
+  # way to measure the second direction is from inside an install. The `sql.query-history` family in
+  # `server/collect/rest/reach.ts` asks it, so the next deploy answers it.
+  - sql.query-history:read

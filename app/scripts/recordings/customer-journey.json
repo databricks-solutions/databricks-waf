@@ -1,0 +1,127 @@
+{
+  "what": "The exact pilot customer journeys driven in latest Chrome, joined by customer record ids to the served deployment and durable restart proof.",
+  "recordedAt": "2026-08-24T01:07:42.541Z",
+  "sourceCommit": "dff59459127545bddd1066207cfa0db37998f098",
+  "deployment": {
+    "id": "01f19f54fb1e1a60a7a09ab4f4eedafc",
+    "origin": "https://databricks-waf-assessment-7000000000000023.aws.databricksapps.com"
+  },
+  "browser": {
+    "product": "Chrome/151.0.7922.173",
+    "version": "151.0.7922.173"
+  },
+  "scenarios": {
+    "onePillarSkipped": {
+      "runId": "3e98ae23-fec6-4847-a114-964fcb19d389",
+      "reviewId": "e698c8c5-c41c-4346-8495-8c80ab5864bb",
+      "resultId": "4bd1486e-8a7f-4fcb-b1f2-699542e6caa8",
+      "definition": {
+        "id": "2a3293ac-65c9-4025-ae8d-e2fc66027814",
+        "version": 3,
+        "fingerprint": "sha256:514a9afed8a80db50c12657d3218370af2200f34571680faed3ad2fa8a0aab17"
+      },
+      "pillarDecisions": {
+        "confirmed": 6,
+        "skipped": [
+          "operational-excellence"
+        ]
+      },
+      "report": {
+        "path": "/report/4bd1486e-8a7f-4fcb-b1f2-699542e6caa8",
+        "resultId": "4bd1486e-8a7f-4fcb-b1f2-699542e6caa8"
+      },
+      "export": {
+        "path": "/api/results/4bd1486e-8a7f-4fcb-b1f2-699542e6caa8/export.json",
+        "finalResultId": "4bd1486e-8a7f-4fcb-b1f2-699542e6caa8"
+      },
+      "improvement": {
+        "planId": "dabf884b-5363-45b9-b646-d6bcab9ee115",
+        "actionId": "59021542-0503-4ddb-afda-51fba0ca1838",
+        "raisedFrom": "3e98ae23-fec6-4847-a114-964fcb19d389",
+        "definitionId": "2a3293ac-65c9-4025-ae8d-e2fc66027814",
+        "definitionVersion": 3
+      },
+      "foundation": {
+        "definitionId": "2a3293ac-65c9-4025-ae8d-e2fc66027814",
+        "version": 1,
+        "fingerprint": "sha256:24ff8046fe8afc5e3fc496769c87d2f8530a90a7b52679c244b9d447c68d8507"
+      },
+      "month": {
+        "month": "2026-08",
+        "runId": "3e98ae23-fec6-4847-a114-964fcb19d389",
+        "reviewId": "e698c8c5-c41c-4346-8495-8c80ab5864bb",
+        "finalResultId": "4bd1486e-8a7f-4fcb-b1f2-699542e6caa8",
+        "definitionId": "2a3293ac-65c9-4025-ae8d-e2fc66027814",
+        "definitionVersion": 3
+      },
+      "restartRead": {
+        "runId": "3e98ae23-fec6-4847-a114-964fcb19d389",
+        "reviewId": "e698c8c5-c41c-4346-8495-8c80ab5864bb",
+        "resultId": "4bd1486e-8a7f-4fcb-b1f2-699542e6caa8",
+        "actionId": "59021542-0503-4ddb-afda-51fba0ca1838",
+        "foundationFingerprint": "sha256:24ff8046fe8afc5e3fc496769c87d2f8530a90a7b52679c244b9d447c68d8507"
+      }
+    },
+    "storeFailure": {
+      "currentResult": {
+        "status": 503,
+        "code": "current-result-unreadable",
+        "scoreExposed": false
+      },
+      "monthPreview": {
+        "status": 503,
+        "code": "month-preview-unreadable",
+        "publicationEnabled": false
+      }
+    },
+    "allConfirmed": {
+      "runId": "44cbffa0-be0c-4cba-a5e1-8b855feff264",
+      "reviewId": "7626440e-3e3d-41b7-abe8-9fc5079da92c",
+      "resultId": "d3c55209-a444-418a-9574-24083bac78d3",
+      "definition": {
+        "id": "2a3293ac-65c9-4025-ae8d-e2fc66027814",
+        "version": 3,
+        "fingerprint": "sha256:514a9afed8a80db50c12657d3218370af2200f34571680faed3ad2fa8a0aab17"
+      },
+      "pillarDecisions": {
+        "confirmed": 7,
+        "skipped": []
+      },
+      "report": {
+        "path": "/report/d3c55209-a444-418a-9574-24083bac78d3",
+        "resultId": "d3c55209-a444-418a-9574-24083bac78d3"
+      },
+      "export": {
+        "path": "/api/results/d3c55209-a444-418a-9574-24083bac78d3/export.json",
+        "finalResultId": "d3c55209-a444-418a-9574-24083bac78d3"
+      },
+      "improvement": {
+        "planId": "c17adec8-2efe-4321-83a2-4af862850df8",
+        "actionId": "d88af71a-0693-474f-adc8-0fe5f0806b5e",
+        "raisedFrom": "44cbffa0-be0c-4cba-a5e1-8b855feff264",
+        "definitionId": "2a3293ac-65c9-4025-ae8d-e2fc66027814",
+        "definitionVersion": 3
+      },
+      "foundation": {
+        "definitionId": "2a3293ac-65c9-4025-ae8d-e2fc66027814",
+        "version": 1,
+        "fingerprint": "sha256:24ff8046fe8afc5e3fc496769c87d2f8530a90a7b52679c244b9d447c68d8507"
+      },
+      "month": {
+        "month": "2026-08",
+        "runId": "44cbffa0-be0c-4cba-a5e1-8b855feff264",
+        "reviewId": "7626440e-3e3d-41b7-abe8-9fc5079da92c",
+        "finalResultId": "d3c55209-a444-418a-9574-24083bac78d3",
+        "definitionId": "2a3293ac-65c9-4025-ae8d-e2fc66027814",
+        "definitionVersion": 3
+      },
+      "restartRead": {
+        "runId": "44cbffa0-be0c-4cba-a5e1-8b855feff264",
+        "reviewId": "7626440e-3e3d-41b7-abe8-9fc5079da92c",
+        "resultId": "d3c55209-a444-418a-9574-24083bac78d3",
+        "actionId": "d88af71a-0693-474f-adc8-0fe5f0806b5e",
+        "foundationFingerprint": "sha256:24ff8046fe8afc5e3fc496769c87d2f8530a90a7b52679c244b9d447c68d8507"
+      }
+    }
+  }
+}

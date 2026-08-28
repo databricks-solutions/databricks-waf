@@ -1,0 +1,84 @@
+{
+  "what": "What system.data_quality_monitoring.table_results reports over one estate, for row 78.",
+  "measuredAt": "2026-08-16T16:16:06.858Z",
+  "profile": "large-estate",
+  "host": "https://example.cloud.databricks.com",
+  "warehouseId": "fedcba9876543210",
+  "lookbackDays": 30,
+  "estate_tables": 446914,
+  "estate_catalogs": 2886,
+  "monitored_tables": 12589,
+  "monitored_catalogs": 400,
+  "healthy": 12409,
+  "unhealthy": 1,
+  "training": 151,
+  "errored": 28,
+  "unnamed_status": 0,
+  "freshness_present": 12589,
+  "completeness_present": 12589,
+  "freshness_established": 12417,
+  "completeness_established": 12501,
+  "monitoredShare": 0.028168730449258696,
+  "statusTriples": [
+    {
+      "status": "Healthy",
+      "freshness": "Healthy",
+      "completeness": "Healthy",
+      "results": 51289
+    },
+    {
+      "status": "Training",
+      "freshness": "Unknown",
+      "completeness": "Unknown",
+      "results": 1525
+    },
+    {
+      "status": "Training",
+      "freshness": "Unknown",
+      "completeness": "Healthy",
+      "results": 1271
+    },
+    {
+      "status": "Unhealthy",
+      "freshness": "Unhealthy",
+      "completeness": "Healthy",
+      "results": 378
+    },
+    {
+      "status": "Error",
+      "freshness": "Unknown",
+      "completeness": "Unknown",
+      "results": 279
+    },
+    {
+      "status": "Training",
+      "freshness": "Healthy",
+      "completeness": "Healthy",
+      "results": 221
+    },
+    {
+      "status": "Training",
+      "freshness": "Healthy",
+      "completeness": "Unknown",
+      "results": 93
+    },
+    {
+      "status": "Unhealthy",
+      "freshness": "Healthy",
+      "completeness": "Healthy",
+      "results": 26
+    },
+    {
+      "status": "Unhealthy",
+      "freshness": "Healthy",
+      "completeness": "Unhealthy",
+      "results": 17
+    },
+    {
+      "status": "Error",
+      "freshness": "Healthy",
+      "completeness": "Unknown",
+      "results": 12
+    }
+  ]
+}

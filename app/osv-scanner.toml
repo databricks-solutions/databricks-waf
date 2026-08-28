@@ -1,0 +1,90 @@
+# Exceptions to the OSV dependency scan.
+#
+# Every entry needs a reason that would survive a security review and a date on
+# which it expires. An exception without an expiry is a decision nobody revisits;
+# when the date passes the scan fails again and someone has to look.
+#
+# The bar for an entry here is that the finding cannot be acted on, not that it is
+# inconvenient. Anything reachable from the shipped app is fixed, not ignored.
+
+[[IgnoredVulns]]
+id = "GHSA-mh99-v99m-4gvg"
+ignoreUntil = 2026-10-31
+reason = """
+brace-expansion memory-exhaustion DoS, dev-only and not reachable from anything we ship.
+
+Not in the shipped app. `npm ls brace-expansion --omit=dev` is empty and the \
+production tree reports zero advisories, so no deployed code path contains this \
+package at all. The vulnerable copies are 1.1.16, pulled in by minimatch@3 nested \
+under eslint, @eslint/config-array, @eslint/eslintrc and eslint-plugin-react.
+
+Not exploitable where it is used. The advisory requires attacker-influenced input \
+to reach expand(), and its impact is availability only (CVSS:3.1 C:N/I:N/A:H). The \
+only caller here is eslint matching our own committed config patterns against our \
+own repository paths, at lint time, on a developer machine or a CI runner. There is \
+no request path and no untrusted input.
+
+Cannot be fixed without breaking the linter, which was tested rather than assumed. \
+1.1.16 is the newest 1.x and is affected; there is no patched 1.x. Forcing the \
+patched 5.0.8 through an override removes every vulnerable copy but throws inside \
+minimatch@3's Minimatch constructor, so `npm run lint` fails outright. The override \
+was applied, the failure reproduced, and the override reverted.
+
+Resolves upstream when eslint drops minimatch@3. Revisit at the expiry date: if \
+eslint has moved on, this entry is deleted rather than extended.
+"""
+
+[[IgnoredVulns]]
+id = "GHSA-rgw5-rvv9-x895"
+ignoreUntil = 2026-09-30
+reason = """
+brace-expansion again: the 5.0.8 mitigation for GHSA-mh99-v99m-4gvg was incomplete. \
+Dev-only, same reach, and the fix is not published.
+
+Nothing to upgrade to. The advisory names 1.1.18, 2.1.4, 3.0.6 and 5.0.9 as fixed, \
+and none of them exist on npm: `npm view brace-expansion versions` ends at 1.1.16 on \
+the 1.x line and 5.0.8 on the 5.x line. This is an advisory published ahead of its \
+own remedy, so there is no version bump that would clear it today.
+
+Same reach as the entry above, rechecked rather than assumed. `npm ls brace-expansion \
+--omit=dev` is empty, so no deployed code path contains the package. The affected \
+copies are 1.1.16 under minimatch@3 (eslint and its config packages) and the 5.0.8 \
+top-level copy under the newer minimatch, both of them lint-time only.
+
+Not exploitable where it is used. Impact is availability only (CVSS:3.1 C:N/I:N/A:H) \
+and requires a ~25 KB attacker-chosen brace pattern to reach expand(). The only \
+caller is eslint matching our own committed ignore patterns against our own \
+repository paths. Crashing that crashes a lint run, which is the same outcome as \
+the lint failing.
+
+Short expiry on purpose: the patched versions are expected within weeks, and when \
+they land the fix is a lockfile bump rather than another entry here.
+"""
+
+[[IgnoredVulns]]
+id = "GHSA-7p8r-x3mc-p8w7"
+ignoreUntil = 2026-09-30
+reason = """
+fast-uri host confusion via a backslash authority introducer. Dev-only, reached only \
+by our own schemas, and the fix is not published.
+
+Nothing to upgrade to. The advisory names 2.4.4, 3.1.5 and 4.1.2 as fixed. We hold \
+3.1.4, pinned by `ajv@8.20.0` to `^3.0.1`, and 3.1.5 is not on npm — the published \
+3.x line ends at 3.1.4. Forcing 4.x through an override leaves ajv's range \
+unsatisfied. Another advisory published ahead of its remedy.
+
+Not in the shipped app. `npm ls fast-uri --omit=dev` is empty. The single path is \
+`ajv -> fast-uri`, and ajv is a devDependency used in exactly three places: \
+`scripts/validate-catalogue.mjs`, `scripts/check-guidance.mjs` and \
+`server/guidance/schema.test.ts`. All three validate JSON files committed to this \
+repository against schemas committed to this repository.
+
+Not exploitable where it is used. The vulnerability is a parser disagreement about \
+the host in a URI reference, which matters when one parser authorises a request and \
+another makes it. ajv uses fast-uri to resolve `$ref` and `$id` in a schema. Ours \
+are relative fragments in files we wrote, resolved at build time, and no request is \
+made from the result. There is no attacker-supplied URI anywhere on this path.
+
+Short expiry on purpose: this clears with an ajv release that widens its range, or \
+with 3.1.5, and either is a lockfile bump rather than another entry here.
+"""

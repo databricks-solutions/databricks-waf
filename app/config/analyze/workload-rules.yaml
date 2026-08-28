@@ -1,0 +1,522 @@
+# What is wrong with a query shape, and what to do about it — as data.
+#
+# One entry per rule the advisor can fire, carrying its thresholds, the words a reader sees, and a
+# citation. The conditions stay in server/advise/rules.ts for the reason the serverless ruleset gives:
+# a condition has to be typed against the shape the system tables return, and an expression language in
+# YAML would be a worse version of TypeScript.
+#
+# The thresholds are here rather than in the code, and both design documents ask for exactly that. The
+# query advisor calls its scoring coefficients "versioned in run configuration" (line 606) and the jobs
+# audit is blunter: "use a rules table rather than hardcoding thresholds in the application. This allows
+# different thresholds for batch ETL, streaming, ML training, and maintenance workloads" (line 728). Both
+# expect every number below to be fitted from outcomes later, and a number compiled into a binary cannot
+# be fitted.
+#
+# Where the numbers come from, in order of preference:
+#
+#   1. `docs/design/h6-calibration.md`, where a distribution was measured. This is the only source that
+#      can say a threshold fires on 95% of the estate, and one of them did.
+#   2. `docs/plans/high-value-gaps.md` Part B, ported from databricks-sql-copilot (Apache-2.0, cleared).
+#      Written against a working implementation, so more specific than prose.
+#   3. `docs/design/databricks-query-optimization-advisor.md`, the specification. Its own values are
+#      "screening values to be calibrated, not constants".
+#
+# Every rule carries `provenance`. `design-document` means the rule is one of the thirteen named in the
+# advisor document; `extension` means it is not, and then `rationale` is required — the same distinction
+# the control catalogue already draws, and for the same reason. Two of the rules below are extensions, and
+# they are the two the measured estate put at the top of the page.
+version: 1
+
+# Which coefficient set the ranking was computed under. Read by nothing at load — `ranking.ts` owns the
+# weights — and recorded here so the pair can be seen together, since a ranking and a set of rules are
+# only comparable across runs if both are at the same version.
+ranking_version: advisor-1
+
+rules:
+  # ---------------------------------------------------------------------------
+  # The two the measured estate actually puts at the top. Neither is one of the
+  # thirteen, which is why both carry a rationale.
+  # ---------------------------------------------------------------------------
+  - id: FAILURE_RATE
+    provenance: extension
+    severity: high
+    action: Open a failed execution and fix the error it reports
+    headline: The query fails often
+    detail: >-
+      Runs of this shape end in a failure or a cancellation often enough to be a pattern rather than an
+      accident. That is worth knowing before anything about its speed: a query that does not finish has
+      no performance problem to fix, and the time it spends failing is time nobody gets an answer for.
+      Look at the error the failed runs return — a query that fails on some inputs and not others is
+      usually a data problem rather than a compute one.
+    rationale: >-
+      Not among the thirteen rules the advisor document names, and it should be. Line 545 asks for the
+      failure signal to be "separately displayed rather than hidden in performance score" without naming
+      a rule for it, so the requirement exists and the vocabulary does not. On the estate this was
+      calibrated against, the costliest shape in the whole window failed 1,496 of 7,091 runs — 21% — and
+      an earlier draft of the statement filtered those runs out as hygiene, which made the single most
+      actionable finding in the top eight invisible rather than lower-ranked.
+    doc_url: https://docs.databricks.com/aws/en/sql/user/queries/query-history
+    thresholds:
+      # A rate, not a count, and low. Three per cent of runs failing is not noise on a query somebody
+      # scheduled — it is a query that fails most days. The floor on runs is what keeps it from firing on
+      # a shape that ran twice and failed once, which is not yet a pattern.
+      failure_rate: 0.03
+      min_runs: 5
+      # Past this the shape is not intermittently failing, it is broken.
+      critical_failure_rate: 0.5
+
+  - id: SERIAL_EXECUTION
+    provenance: extension
+    severity: medium
+    action: Remove the single-partition step before adding more compute
+    headline: The work did not parallelise
+    detail: >-
+      Across its runs this shape kept less than one core busy on average, so almost all of its time was
+      spent doing one thing at a time. The number is total task time over execution time: below 1 the
+      work was serial, and the practical consequence is that a bigger warehouse will not make it faster —
+      there is nothing waiting for capacity to run on. What causes it is usually a single-partition step:
+      a window function without a partition key, a non-splittable input file, or a sort or aggregate the
+      planner could not distribute.
+    rationale: >-
+      Not among the thirteen, and it is the counterpart to CAPACITY_WAIT, which is: both say the answer
+      is not a rewrite, about opposite causes. Calibration measured one shape at a parallelism of 0.06
+      over 26.1 hours and four more below 0.35, all of which read as ordinary slowness in every other
+      signal — and the advice for slowness is usually more compute, which for these is money spent on
+      nothing. The same measurement found a shape at parallelism 50.2 that is simply large, so the signal
+      separates two things that look identical.
+    doc_url: https://docs.databricks.com/aws/en/optimizations/spark-ui-guide/
+    thresholds:
+      # Below one core busy on average. Not 1.0 exactly: a shape at 0.98 is parallel work that finished
+      # its parallel phase quickly, and the finding is about work that never had one.
+      parallelism: 0.8
+      # Total time across the window, kept as a floor on aggregate cost.
+      min_ms: 60000
+      # Per run, and this is the threshold the first real workspace corrected.
+      #
+      # `min_ms` alone is aggregate, so any shape run often enough clears a minute — 353 runs of four
+      # seconds is twenty-four minutes — and the rule fired on twelve of twelve shapes, at parallelisms
+      # between 0.01 and 0.42. Every one was a five-second aggregate over a system table, which is serial
+      # because it is small rather than because anything is wrong with it.
+      #
+      # The finding's claim is that a bigger warehouse will not help, so it is only worth making about a
+      # query somebody might plausibly put a bigger warehouse behind. Nobody sizes compute for a
+      # five-second query. Thirty seconds is under the minute that conventionally marks a long-running
+      # query and well over interactive, and it silences all twelve of those without silencing the
+      # calibration shape the rule was written for: 26.1 hours over its runs, at parallelism 0.06.
+      mean_ms: 30000
+      # Five runs, so one unlucky execution is not a pattern.
+      min_runs: 5
+
+  # ---------------------------------------------------------------------------
+  # The planner, which calibration found is where the time actually goes.
+  # ---------------------------------------------------------------------------
+  - id: COMPILATION_DOMINATED
+    provenance: design-document
+    severity: high
+    action: Replace changing SQL literals with parameter markers
+    headline: Most of the time goes to planning, not running
+    detail: >-
+      More of this shape's time is spent compiling the query than executing it. That happens when the
+      same statement is submitted over and over with different literals baked into the text: each one is
+      a new query as far as the planner is concerned, so it is planned again from scratch. The answer is
+      not tuning — the execution is fine — it is to stop asking for a new plan every time, by binding
+      the changing values as parameters instead of formatting them into the SQL.
+    doc_url: https://docs.databricks.com/aws/en/sql/language-manual/sql-ref-parameter-marker
+    thresholds:
+      # Measured at 89.5% on a shape of 121,097 runs and 59.2% on another of 121,105, which is what a
+      # parameterisation problem looks like. Half is the point past which the planner is the workload.
+      compilation_percent: 50
+      critical_compilation_percent: 75
+      # Frequency is part of the pathology. A shape planned once, slowly, is not this.
+      min_runs: 100
+
+  # ---------------------------------------------------------------------------
+  # Capacity, which is a warehouse answer rather than a query one.
+  # ---------------------------------------------------------------------------
+  - id: CAPACITY_WAIT
+    provenance: design-document
+    severity: medium
+    action: Increase the warehouse cluster maximum or move this load to serverless
+    headline: The query waits for capacity before it starts
+    detail: >-
+      A material share of this shape's elapsed time is spent queued, waiting for a warehouse to have room
+      to run it. Nothing about the query is responsible for that and no rewrite will change it: the
+      warehouse is either too small for its concurrent load or is scaling up too late. The advisor
+      document's own words for this are that it is "not a SQL rewrite problem". Look at the warehouse
+      rather than the statement — more clusters in its scaling range, or a serverless warehouse, is what
+      moves this number.
+    doc_url: https://docs.databricks.com/aws/en/compute/sql-warehouse/warehouse-behavior
+    thresholds:
+      # Both, not either. The ported ruleset carries "queue over 5s" and separately a queue-to-execution
+      # ratio over 0.5, and the ratio is the one that distinguishes a scaling problem from a query
+      # problem — five seconds of queue in front of an hour of execution is not the finding.
+      queue_ms: 5000
+      queue_to_execution: 0.3
+      critical_queue_to_execution: 1
+
+  # ---------------------------------------------------------------------------
+  # The five volume rules. Calibration is emphatic that these fire on almost
+  # nothing once REFRESH is excluded — they earn their place from the excluded
+  # half. Kept at their documented thresholds, and not what the page is made of.
+  # ---------------------------------------------------------------------------
+  - id: DATA_SPILL
+    provenance: design-document
+    severity: high
+    action: Reduce the data each task holds before increasing worker memory
+    headline: The query runs out of memory and writes to disk
+    detail: >-
+      This shape spilled a significant volume to local disk, which means an operator needed more memory
+      than it had and paged the difference out. Spill is expensive in a way that does not show up as an
+      error: the query still returns the right answer, just after writing and re-reading data it should
+      have held. The usual causes are a join or aggregate over more data than the workers can hold, or
+      one partition much larger than the rest. Reducing what the query reads is the first move; more
+      memory per worker is the second.
+    doc_url: https://docs.databricks.com/aws/en/optimizations/spark-ui-guide/spark-ui-spill
+    thresholds:
+      # The document's ratio at line ~904, and the ported floor in bytes so a small absolute spill on a
+      # small read does not fire. 100 MB, critical past 500 MB.
+      spill_ratio: 0.05
+      spill_bytes: 104857600
+      critical_spill_bytes: 524288000
+
+  - id: HIGH_SHUFFLE
+    provenance: design-document
+    severity: medium
+    action: Filter earlier and remove unnecessary repartitioning
+    headline: More data moves between workers than the query reads
+    detail: >-
+      This shape shuffles more bytes across the network than it reads from storage, which means the shape
+      of the work is moving data rather than reducing it. Joins on high-cardinality keys, aggregations
+      before filters, and repartitioning that nothing needed are the usual reasons. Filtering earlier, or
+      clustering the tables on the join key so that matching rows are already co-located, is what brings
+      it down.
+    doc_url: https://docs.databricks.com/aws/en/optimizations/spark-ui-guide/spark-ui-shuffle
+    thresholds:
+      # More than a byte shuffled per byte read, and the ported absolute floor of 500 MB so a small query
+      # that shuffles twice what it reads is not a finding.
+      shuffle_ratio: 1
+      shuffle_bytes: 524288000
+
+  - id: LOW_FILE_PRUNING
+    provenance: design-document
+    severity: medium
+    action: Cluster the table on the columns this query filters by
+    headline: The scan reads nearly every file in the table
+    detail: >-
+      Very few of the files this shape's scans considered were skipped, so it is reading close to the
+      whole table on every run regardless of how narrow its filters look. That happens when the filter
+      column is not the one the table is laid out on — file statistics can only skip a file if the values
+      it excludes are outside that file's range. Liquid clustering on the columns this query filters by is
+      the usual fix, and it is a change to the table rather than to the query.
+    doc_url: https://docs.databricks.com/aws/en/delta/clustering
+    thresholds:
+      # Pruning below 30% (ported). Calibration measured 0.5% and 0.6% on real shapes, so the values that
+      # matter are far below the threshold. The file floor keeps it off tables small enough that reading
+      # all of them costs nothing.
+      pruned_percent: 30
+      min_read_files: 1000
+      critical_pruned_percent: 5
+      # Ten gigabytes read, which the first real workspace added.
+      #
+      # The rule fired on shapes reading 1,439 to 18,592 files and reporting exactly 0% pruning — all of
+      # them scans of `system.*` tables, where the pruning columns are populated but the layout is not
+      # the customer's to change and the volume is trivial. A file count alone cannot tell a wide scan of
+      # a large table from a wide scan of a small one, and the advice — cluster the table on the columns
+      # you filter by — is only worth the reader's time when the scan is moving real data.
+      min_read_bytes: 10737418240
+
+  - id: SMALL_FILES
+    provenance: design-document
+    severity: medium
+    action: Compact the table and prevent undersized writes from returning
+    headline: The scan opens a great many very small files
+    detail: >-
+      This shape's scans read many files for the volume of data they returned, so the mean file behind
+      them is small. Every file has a fixed cost to open and to plan around, and past a certain count
+      that overhead is most of the scan. It is a symptom of how the table is written rather than of the
+      query — frequent small appends, or a partitioning scheme finer than the data volume justifies.
+      Compaction, or predictive optimization if the table is managed, is the answer.
+    doc_url: https://docs.databricks.com/aws/en/delta/optimize
+    thresholds:
+      # Mean file under 16 MB against Delta's 1 GB target, with a file-count floor so a query reading
+      # three small files is not a compaction problem.
+      mean_file_bytes: 16777216
+      # Ten thousand files, raised from a thousand by the first real workspace.
+      #
+      # At a thousand this fired on two shapes reading 1,439 and 1,113 files — 210 MB and 50 MB in total.
+      # Both statements were true and neither was worth a reader's attention: the whole scan is about a
+      # second of I/O, and both were reading `system.*` tables, which nobody can compact. Per-file overhead
+      # is a real cost and it is a cost of *many* files; below ten thousand it is not what is making
+      # anything slow. Delta's own guidance on compaction is written about tables with tens of thousands.
+      min_read_files: 10000
+
+  # ---------------------------------------------------------------------------
+  # The first rule that reads an operator plan rather than the window's sums.
+  # Its input is one execution — the representative the shapes statement
+  # nominated — so its words are about what that plan showed and no more.
+  # ---------------------------------------------------------------------------
+  - id: UDF_OR_PYTHON_BOUNDARY
+    provenance: design-document
+    severity: medium
+    action: Replace the UDF with built-in SQL, or apply it after filtering
+    headline: This query crosses a user-defined function boundary
+    detail: >-
+      The plan for one recorded run of this shape contains a user-defined function step. What that costs
+      depends on which kind it is, and the plan names the operator rather than the function: a scalar UDF runs
+      a row at a time outside the vectorised engine, while a vectorised or pandas one works in batches and is
+      usually far cheaper. Either way the optimiser and Photon cannot see inside it to reorder or skip the work
+      it does. Worth checking whether the same result is available from built-in SQL — a CASE expression, a
+      regexp function, a date function, or a join against a mapping table are the usual replacements. Where the
+      function genuinely does something SQL cannot express, applying it to fewer rows helps: filter and
+      aggregate first, then call it. The plan read here is a single execution, so treat this as evidence that
+      the boundary exists in this shape rather than as a measurement of what it costs across the window.
+    doc_url: https://docs.databricks.com/aws/en/udf/
+    thresholds:
+      # A floor on aggregate cost, so a UDF inside a shape that costs a second a week is not a finding
+      # somebody has to triage. One minute over the window's measured runs — cached and unfinished executions
+      # are not in `msNow` — and the same floor SERIAL_EXECUTION uses.
+      min_ms: 60000
+      # Five runs, so one execution is not a pattern. The same floor FAILURE_RATE and SERIAL_EXECUTION carry.
+      min_runs: 5
+      # And deliberately no per-run floor, which is where this rule differs from SERIAL_EXECUTION. That rule
+      # has one because its claim is that a bigger warehouse will not help, and nobody sizes compute for a
+      # five-second query. This rule's claim is that a rewrite may help, and a rewrite pays back per row
+      # rather than per run: a 200 ms statement run ten million times is 23 days of query time, and is exactly
+      # where taking a row-wise function out of the loop is worth the work. A per-run floor here would silence
+      # that case, which is the one the advice fits best. `rules.test.ts` asserts the rule fires there, so the
+      # floor cannot come back without that test failing.
+      #
+      # Nor is there a threshold on the operator's own recorded time. `33ia` measured one UDF operator at
+      # 111,499 ms, and what that number is the sum of — one execution's tasks, or its elapsed time — is not
+      # something this app has established. A threshold on a number whose base is unknown is a number picked.
+
+  # ---------------------------------------------------------------------------
+  # The two rules that read the plan's shape rather than a metric on one of its
+  # operators: how many times the data is redistributed, and whether a sort's
+  # output is ever narrowed. Both counts come from `33id`'s measurement over the
+  # corpus this app ranks, not from the design document's arithmetic on a
+  # single execution.
+  # ---------------------------------------------------------------------------
+  - id: EXCESSIVE_EXCHANGES
+    provenance: design-document
+    severity: medium
+    action: Remove the repartition, aggregation, or join causing each avoidable shuffle
+    headline: The plan redistributes the data many times
+    detail: >-
+      The plan for one recorded run of this shape crosses several shuffle boundaries. Each one writes every
+      row to disk, sends it across the network and reads it back sorted by a new key, so a plan that
+      redistributes the same data repeatedly can spend more time moving it than reading it. Some of that is
+      unavoidable — a join on one key followed by an aggregate on another has to shuffle twice — and the
+      question worth asking of each boundary is which operation asked for it. The usual avoidable causes are
+      an explicit repartition or coalesce that a later step undoes, a sequence of aggregations on different
+      keys that could be computed together, and a join whose smaller side would fit in a broadcast. Clustering
+      or partitioning the table on the key the query joins or groups by removes a boundary rather than making
+      it cheaper. The number counted here is boundaries and not operators: on Photon each boundary appears in
+      the plan twice, as a map stage and as a sink, and both halves are counted once.
+    doc_url: https://docs.databricks.com/aws/en/optimizations/
+    thresholds:
+      # Eight, which is the design document's number at line 978 and is measured rather than ported.
+      #
+      # `33id` counted boundaries over the 36 plans of this app's own shape corpus: 0, 1 and 2 through the
+      # bulk of it, one plan at 5, then 9, 10 and 10. Eight falls in the gap, and what the gap buys is that
+      # the number does not have to be exactly right — a floor of 6, 7, 8 or 9 selects the same three plans,
+      # where 5 selects four and 10 selects two.
+      #
+      # It is eight *boundaries*, and the reading is the load-bearing part. Counting exchange-named operators
+      # instead doubles every Photon plan and selects a fourth plan whose real count is 5 — the rule firing
+      # below its own threshold. `plan-metrics.ts` folds the pair and `plan-metrics.test.ts` holds it.
+      exchanges: 8
+      # One minute over the window's measured runs, and this is a restatement of the design document rather
+      # than a port of it. Line 978 asks for a single execution over a minute. The plan here is a single
+      # execution, but `33id` measured that on the calibration estate the two halves never coincide: the one
+      # shape whose longest run passed a minute has two boundaries, and the three plans at eight or more have
+      # their longest runs at 6, 12 and 36 seconds. A per-execution floor would report nothing.
+      #
+      # The window total is the floor the sibling plan rule uses, and for the reason written there: a rewrite
+      # pays back per run. A six-second query run fifty times a fortnight is four minutes of query time and is
+      # exactly where taking a repartition out of the plan is worth the work.
+      min_ms: 60000
+      # Five runs, so a shape that ran once is not a pattern. The plan is one execution and the evidence says
+      # so; the runs floor is about whether the shape is worth a reader's time, not about the plan.
+      min_runs: 5
+
+  - id: LARGE_SORT
+    provenance: design-document
+    severity: medium
+    action: Remove the full sort or add the limit the reader actually needs
+    headline: A sort orders many rows that nothing afterwards narrows
+    detail: >-
+      The plan for one recorded run of this shape sorts a large number of rows, and no step after the sort
+      reduces how many of them survive — no limit, no top-k, nothing that takes only the first few. A sort
+      that feeds a limit is cheap because the engine only has to find the top rows; a sort whose every row
+      reaches the reader is paying for a total ordering of the whole result. Worth checking whether the
+      ordering is needed at all: an ORDER BY in a subquery or a view that a later step re-sorts is wasted, and
+      so is ordering a result set nobody reads to the end. Where the ordering is wanted, adding the limit the
+      reader actually needs lets the engine stop early. Where a report genuinely needs every row in order,
+      this is the cost of that and there is nothing to fix.
+    doc_url: https://docs.databricks.com/aws/en/sql/language-manual/sql-ref-syntax-qry-select-orderby
+    thresholds:
+      # One million rows through the sort, and this number is an **assumption** rather than a measurement.
+      #
+      # It has to be, and the phase file records why. `33id` measured every sort in the corpus: 14 of them,
+      # across 14 of 36 plans, and the widest ordered 17,010 rows. So the estate available contains no
+      # expensive sort to calibrate against, and the two fields that would have stood in for size cannot:
+      # `peak_memory_bytes` takes two values across all fourteen and is inverted against the row count, and
+      # not one of the fourteen spilled a byte.
+      #
+      # A million is chosen so the rule is quiet on everything measured — the widest sort here is 1.7% of it —
+      # because the failure direction matters. Too high a floor costs a finding nobody sees; too low a floor
+      # fires on all fourteen, which `33id` measured is what the graph condition alone does, and a rule that
+      # fires on 14 of 36 shapes is a census rather than a finding. Re-measuring this against an estate with a
+      # real sort is what would replace the assumption, and until then it is marked as one.
+      sort_rows: 1000000
+      # The same two floors as the sibling plan rules, for the same reason: a sort inside a shape that costs a
+      # second a fortnight is not worth a reader's attention whatever it orders.
+      min_ms: 60000
+      min_runs: 5
+
+  - id: DATA_SKEW
+    provenance: design-document
+    severity: high
+    action: Find the dominant join or group key before changing the query
+    headline: Adaptive execution counted partitions of very uneven size
+    detail: >-
+      On one recorded run of this shape, the engine's adaptive execution reported a count of partitions it
+      considered skewed. That count is what this finding reports and it is all this finding claims. Unevenly
+      sized partitions matter because a few tasks then carry most of the rows: the
+      rest of the cluster finishes early, and elapsed time follows the slowest task rather than the average
+      one. The cause is usually the distribution of values in whichever column the query joins or groups by —
+      a null, a default, or one real value that dominates. Neither the count nor anything else in the plan
+      names the column or the value, so that is the thing to check first: count rows per key on the join or
+      group column and see whether one or two dominate. Where they do, the usual remedies are handling the
+      dominant value separately, pre-aggregating before the join, or salting the key to spread it — each worth
+      doing only once the key distribution has confirmed the cause, because each of them changes the query for
+      a reason that would then be wrong. Where the distribution turns out to be even, this count is not the
+      thing to act on.
+    doc_url: https://docs.databricks.com/aws/en/optimizations/aqe
+    thresholds:
+      # One partition. The threshold is a floor on a counter rather than on a ratio, and `33id` is why.
+      #
+      # It measured all nine skew-named metrics over the 36 plans of this app's own corpus. This counter is
+      # carried by 27 of them and reads **zero on all 60 operators** that carry it — no probe there had skew
+      # designed into it, so zero-on-ordinary-work is exactly what a trigger needs. The metrics that would have
+      # been the obvious choices are not: the max-to-median partition ratio is non-zero on 23 of those 27 with a
+      # p90 of 4, and `Adp reduce-side skew threshold met` reads 1 or 2 on 17 of the 36. A rule wired to either
+      # of those above zero reports skew on roughly half the estate's costliest shapes.
+      #
+      # The design document offers `max/median >= 10` at line 1048, and says in the same sentence that its
+      # screening values are to be confirmed against stage-level evidence before recommending salting or a
+      # partition-key change. On this corpus that value selects one plan out of 36 while the ordinary reading is
+      # 1 to 4, which is what the instruction is about. So the ratio is reported beside the finding and the
+      # counter decides it.
+      #
+      # There is no duration floor here, unlike the two plan rules above. Theirs exist because their triggers
+      # fire on ordinary work; this one fired on nothing in the corpus, so a cost floor could only silence a
+      # true finding on a cheap shape.
+      skewed_partitions: 1
+
+  - id: BROADCAST_CANDIDATE
+    provenance: design-document
+    severity: medium
+    action: Analyze the narrow join side, then confirm Databricks broadcasts it
+    headline: A join shuffles both sides where one of them is narrow
+    detail: >-
+      In the plan for one recorded run of this shape, a join that does not broadcast has a side through which
+      few rows passed. A join that broadcasts sends the narrow side to every worker once and leaves the wide
+      side where it is; a join that does not sends both sides across the network keyed on the join column.
+      Where one side really is small, the second of those is work the first avoids. What this finding counts is
+      rows and not bytes: how much memory that side occupies is not in the plan, and it is the figure the
+      engine's own broadcast threshold is set against, so a wide row could make a narrow side too large to
+      broadcast. Checking the side's size is therefore the first step — a table whose rows are large, or whose
+      row count grows with the data, is one where forcing this costs driver memory rather than saving network.
+      Where the size is comfortable, the engine choosing not to broadcast usually means it did not know: a
+      table without current statistics, or a side whose row count it could only estimate. Running ANALYZE TABLE
+      on the narrow side is the change that lets it decide for itself, and is worth trying before a broadcast
+      hint, which fixes one query and goes stale silently.
+    doc_url: https://docs.databricks.com/aws/en/optimizations/
+    thresholds:
+      # Ten thousand rows on the narrower side, and this number is an **assumption** twice over. `33ifb`
+      # measured both halves of why, and neither is a detail.
+      #
+      # The first: no metric a plan carries sizes a join's side in bytes. Of the three that name a size,
+      # `Aggressive BHJ Extrapolated Size` and `Aggressive BHJ Decision` read zero on all eleven joins in the
+      # corpus that carried them, and `Hashed relation size` is an allocation rather than a size — four distinct
+      # values across those eleven, moving *against* the rows, so a 3,003-row join reports 4,325,376 while a
+      # 9-row join reports 8,519,680. So the condition cannot be the byte size the design document specifies,
+      # and what stands in for it is the row count on the join's inputs, which `33ifb` found on 26 of 26 of them.
+      #
+      # The second: there was nothing to calibrate against. All 13 joins in that corpus already broadcast, so
+      # the population this rule fires on was empty — no threshold read off it would have been a threshold
+      # about anything, and no false positive was available to observe.
+      #
+      # Ten thousand is arithmetic on the engine's own default rather than a reading of the estate: Spark's
+      # `autoBroadcastJoinThreshold` is 10 MB, and 10,000 rows reach it at a kilobyte a row. Rows wider than
+      # that make this too generous, which is the failure direction that matters here — every other rule in this
+      # file recommends changing what a query asks for, and this one recommends changing how the engine runs it,
+      # where being wrong costs driver memory. That is why the detail leads with checking the size and why the
+      # finding's confidence is low. Re-measuring against an estate that has a shuffle join in it is what would
+      # replace the assumption.
+      build_side_rows: 10000
+      # The same two floors as the other plan rules. Unlike `DATA_SKEW`, whose trigger read zero everywhere
+      # measured, a shuffle join with a narrow side is ordinary work — so without a floor this would fire on
+      # every cheap query that joins a lookup table.
+      min_ms: 60000
+      min_runs: 5
+
+  - id: MISSING_OR_STALE_STATS
+    provenance: design-document
+    severity: medium
+    action: Run ANALYZE TABLE on each stale table after its next write
+    headline: A table this reads was written after its statistics were computed
+    detail: >-
+      One or more of the tables in this shape's plan were last written to after the last time anything computed
+      optimizer statistics for them. The planner uses those statistics to choose join order, join algorithm and
+      how much memory to reserve; where they describe an older version of the table, its choices are made
+      against the wrong sizes. Running ANALYZE TABLE ... COMPUTE STATISTICS on this shape's tables is the direct
+      fix, and predictive optimization on the schema they live in is what keeps it from recurring. Two cautions
+      on reading this. The gap is a time between two events and not a measure of how much changed: a
+      write of one row moves it as far as a write of a billion, so the write count beside it is the figure worth
+      looking at first. And this finding is silent for two different reasons — it says nothing where none of
+      this shape's tables are behind, and equally where nothing ever analysed them. The count of tables anything
+      analysed distinguishes the two, and where it is zero this check had nothing to compare.
+    doc_url: https://docs.databricks.com/aws/en/sql/language-manual/sql-ref-syntax-aux-analyze-table
+    thresholds:
+      # Twenty-four hours between a table's last statistics and its last write, and this is an **assumption**.
+      # `33iga` measured the signal and could not measure the threshold: of the 34 tables on labs with an
+      # ANALYZE record, 33 were last written *before* they were analysed, which is predictive optimization
+      # keeping up. One instance is not a population to read a number off.
+      #
+      # A day is chosen for a reason about the mechanism rather than about the estate: predictive optimization
+      # runs its own maintenance continuously, so a table it manages should not stay behind its writes across a
+      # day. A gap wider than that means either that maintenance is not reaching the table or that the writes
+      # outpace it, and both are worth a reader's attention. Shorter than a day would fire on a table analysed
+      # this morning and appended to this afternoon, which is not a problem.
+      #
+      # What would replace the assumption is an estate where the planner's choices can be compared against the
+      # gap — a stale table whose join order improves after ANALYZE. Nothing measured so far has one.
+      stale_hours: 24
+      # The same floors as the other plan rules, and needed here for the same reason as `BROADCAST_CANDIDATE`'s:
+      # a table written since it was analysed is ordinary on any estate that writes, so without a cost floor
+      # this fires on every cheap query against a table that receives appends.
+      min_ms: 60000
+      min_runs: 5
+
+  # ---------------------------------------------------------------------------
+  # Informational. Not a problem, and it changes how the rest should be read.
+  # ---------------------------------------------------------------------------
+  - id: CACHE_HIT
+    provenance: design-document
+    severity: info
+    action: Keep the result cache and judge performance only from executed runs
+    headline: Much of this is served from cache
+    detail: >-
+      A large share of this shape's runs were answered from the result cache rather than executed. That is
+      the platform working as intended and there is nothing to fix. It is shown because it changes what
+      the other numbers on this row mean: every timing here is over the runs that actually executed, so
+      the shape is submitted more often than the figures suggest, and a change to the query or the table
+      it reads will invalidate the cache and expose the true cost.
+    doc_url: https://docs.databricks.com/aws/en/sql/user/queries/query-caching
+    thresholds:
+      # Half. Below that, caching is incidental rather than a fact about the shape.
+      cache_rate: 0.5
+      min_runs: 10

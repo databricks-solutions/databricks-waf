@@ -1,0 +1,39 @@
+{
+  "what": "The development-only customer-system acceptance matrix driven locally through the product-owner-provided in-app Browser before any labs deployment.",
+  "at": "2026-08-22T03:07:50Z",
+  "origin": "http://127.0.0.1:8004",
+  "route": "/preview/acceptance?run=all",
+  "surface": "Codex in-app Browser",
+  "hostChrome": "151.0.7922.173",
+  "cases": 27,
+  "widths": [
+    { "name": "desktop", "width": 1512, "height": 845 },
+    { "name": "laptop", "width": 1280, "height": 800 },
+    { "name": "tablet", "width": 860, "height": 800 },
+    { "name": "mobile", "width": 390, "height": 844 }
+  ],
+  "themes": ["light", "dark"],
+  "renders": 216,
+  "passed": 216,
+  "failed": 0,
+  "testsPassed": 6746,
+  "testsSkipped": 54,
+  "verificationGatesPassed": 43,
+  "productionDependencyColdBoot": "passed",
+  "probes": [
+    "horizontal overflow",
+    "clipped primary action",
+    "missing primary heading",
+    "customer-visible delivery label",
+    "identifier-first heading"
+  ],
+  "visualReview": [
+    "dashboard complete and sparse",
+    "assess review and error",
+    "investigate complete and empty",
+    "improvement complete and changed",
+    "operate attention and clean",
+    "report complete and sparse",
+    "representative desktop and mobile light and dark renders"
+  ]
+}

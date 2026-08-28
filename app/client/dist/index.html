@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Well-Architected assessment</title>
+    <!--
+      Applies the stored theme before first paint. Without this, a user whose explicit choice
+      differs from their operating system sees one frame of the wrong theme, because the
+      bundle that would set it is deferred behind HTML parsing.
+
+      Inline and synchronous by necessity: a module script is deferred and a separate file is a
+      round trip, either of which lands after the first paint this exists to get right. If a
+      platform CSP ever blocks it, the prefers-color-scheme block in wa-theme.css still themes
+      system users correctly and only an explicit override flashes — degraded, not broken.
+
+      Kept to reading a key and writing three attributes. The logic it mirrors lives in
+      lib/theme.ts and theme.test.ts asserts this markup and that module still agree.
+    -->
+    <script>
+      (function () {
+        try {
+          var stored = window.localStorage.getItem('wa-theme');
+          var preference = stored === 'light' || stored === 'dark' ? stored : 'system';
+          var resolved =
+            preference === 'system'
+              ? window.matchMedia('(prefers-color-scheme: dark)').matches
+                ? 'dark'
+                : 'light'
+              : preference;
+          var root = document.documentElement;
+          root.dataset.theme = resolved;
+          root.classList.toggle('dark', resolved === 'dark');
+          root.classList.toggle('light', resolved === 'light');
+          root.style.colorScheme = resolved;
+        } catch (error) {
+          /* Storage or matchMedia unavailable: the stylesheet's media query decides. */
+        }
+      })();
+    </script>
+    <script type="module" crossorigin src="/assets/index-CjKXCW6S.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-DVKLPV_Q.css">
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>

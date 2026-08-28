@@ -1,0 +1,2150 @@
+# Answering guidance for the questions in this pillar.
+#
+# Keyed by control id, flat rather than nested by principle: the catalogue owns that structure.
+# Scaffolded by scripts/scaffold-guidance.mjs, which never edits an entry that already exists.
+# Held to config/guidance/guidance.schema.json by scripts/check-guidance.mjs.
+#
+# docs/design/guidance-authoring.md fixes the voice and works one entry through end to end.
+pillar: operational-excellence
+entries:
+  # Create a dedicated Databricks operations team
+  # Q: Is there a named team or person accountable for the platform itself, distinct from the teams building on it?
+  OE-01-01:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: Platform owner
+    means: >-
+      Somebody's job is the platform rather than the workloads on it — upgrades, policies, cost,
+      access, the shared decisions — and that person or team is named, not implied.
+    matters: >-
+      Without an owner, platform work is done by whoever is between deliverables, which means it is done
+      late and inconsistently. The visible symptoms come later: runtime versions nobody upgraded,
+      policies nobody maintained, and a permission model that is the sum of individual requests.
+    good:
+      - A named team or person owns the platform, and two people from different teams name the same one.
+      - Platform work has capacity allocated to it rather than being absorbed between projects.
+      - Somebody decides shared matters — runtime versions, cluster policies, catalogue structure — rather than each team choosing.
+      - There is a route for a workload team to raise a platform problem, and it has been used.
+      - The owner is accountable for the platform's cost and its upgrades, not only its access requests.
+    examples:
+      strong: >-
+        A three-person platform team owns runtime standards, cluster policies, Unity Catalog structure
+        and cost reporting, with a stated intake path. Workload teams build inside those decisions and
+        escalate through a channel that gets answered.
+      partial: >-
+        One engineer is the de facto platform owner alongside a delivery role. Requests are answered but
+        planned work — runtime upgrades, policy review — slips whenever delivery is busy.
+      weak: >-
+        Nobody owns it. Whoever needs something changes it, and the account has three cluster policies
+        created by three teams that do not agree.
+    verify:
+      - how: by-hand
+        where: Ask two engineers on different teams who owns the platform
+        expect: The same name from both
+      - how: ui
+        where: >-
+          Account console > User management > Users, and which of them hold the account admin role.
+          There is no Roles tab — account admin is a role on an individual user
+        expect: >-
+          A small set consistent with a named owning team, rather than one admin per workload team
+      - how: by-hand
+        where: Ask when the runtime version standard was last reviewed, and by whom
+        expect: A date and a person, rather than "each team picks"
+    pitfalls:
+      - >-
+        An owner named on a slide with no capacity, which produces accountability without the time to act
+        on it — and the first thing to be dropped is the planned work nobody is chasing.
+      - >-
+        A platform team that owns access requests and not cost or upgrades, which leaves the two things
+        that compound unowned.
+      - >-
+        Distributing platform ownership across every team as a principle, which means shared decisions
+        get made several times and the estate is the union of them.
+    partial_when: >-
+      Somebody is the de facto owner alongside another role, so reactive requests are handled and planned
+      platform work slips, or ownership covers access and not cost or upgrades.
+    references:
+      - https://docs.databricks.com/aws/en/lakehouse-architecture/operational-excellence/best-practices
+      - https://docs.databricks.com/aws/en/admin/
+    advice:
+      start_from: >-
+        A named platform owner (person or small team) with capacity on the rota, accountable for
+        runtimes, policies, catalogue layout and cost — not only for access tickets.
+      depends_on:
+        - >-
+          A multi-team estate needs a team rather than a hero; a single delivery squad can start
+          with one named owner beside their delivery role and plan the split.
+        - >-
+          Account-admin sprawl across every workload team means ownership is already distributed
+          wrongly — consolidate admins before inventing a platform charter.
+        - >-
+          Where a managed service partner runs the platform, name their contact and what stays
+          with you; "the partner owns it" without a named person is the weak case.
+      path:
+        - >-
+          Ask two engineers from different teams who owns the platform. If the answers disagree,
+          that is the first finding.
+        - >-
+          Put the name in writing where intake lands, and give that role a recurring capacity
+          block rather than "when delivery is quiet".
+        - >-
+          Move shared decisions (runtime pin, default policies, catalogue boundary) onto that
+          owner's plate with a date for the next review.
+      costs:
+        - >-
+          Capacity taken from delivery is the real cost; without it the role is a title that
+          slips under load.
+        - >-
+          Consolidating account admins removes shortcuts teams have got used to, and the first
+          week produces tickets that used to be self-serve.
+      retain: >-
+        The named owner (or team roster), the intake channel, and the dated last review of the
+        runtime or policy standard.
+      revisit: >-
+        A reorganisation, the owner leaving, or a shared decision made three different ways by
+        three teams. Failing those, twice a year.
+
+  # Use Enterprise source code management (SCM)
+  # Q: Is all production code in enterprise source control, or does some production logic exist only in a workspace notebook?
+  OE-01-02:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: Data engineering lead
+    means: >-
+      Every piece of logic that runs in production exists in your organisation's Git provider. Nothing
+      production depends on lives only in a workspace folder or a notebook's revision history.
+    matters: >-
+      Code that exists only in the workspace has no review, no history a person can read, and no
+      recovery when the workspace is lost or the notebook is overwritten. It is also invisible to
+      everybody who did not write it, so the logic behind a number cannot be found by reading a repo.
+    good:
+      - Production notebooks, pipeline definitions and job configuration all live in a Git repository.
+      - The repository is in the enterprise Git provider, not a personal account.
+      - Workspace folders hold development work, and production reads from Git rather than from them.
+      - Somebody can find the source of any production job by looking in a repository.
+      - Ad-hoc and exploratory notebooks are distinguishable from production ones, so the boundary is visible.
+    examples:
+      strong: >-
+        All production code is in the enterprise GitHub organisation, deployed as bundles. Workspace
+        folders hold exploration only, and a production job whose source is a workspace path fails a
+        deployment check.
+      partial: >-
+        Most production code is in Git, but two long-running jobs run notebooks from a shared workspace
+        folder because they predate the migration.
+      weak: >-
+        Production notebooks live in workspace folders and are edited there. The only history is the
+        notebook's own revision list.
+    verify:
+      - how: ui
+        where: Jobs & Pipelines, and the source of each production job
+        expect: A Git provider and path, rather than a workspace path
+      - how: sql
+        where: |-
+          with current_jobs as (
+            select * from system.lakeflow.jobs
+            qualify row_number() over (
+              partition by workspace_id, job_id order by change_time desc) = 1
+          )
+          select job_id, name, run_as, run_as_user_name from current_jobs
+          where delete_time is null order by name
+        expect: >-
+          Jobs you can trace to a repository. A job nobody can name a repository for is the case this
+          question is about.
+        caveat: >-
+          The `qualify` is required rather than tidy: this table keeps a row per edit and leaves deleted
+          jobs in place, so a plain select lists jobs that no longer exist alongside several versions of
+          ones that do. `run_as_user_name` is blank for jobs not edited since early December 2025, which
+          is why the opaque `run_as` is selected beside it.
+      - how: cli
+        where: databricks workspace list /Shared, and what production depends on inside it
+        expect: Exploration, rather than the notebook a nightly job runs
+    pitfalls:
+      - >-
+        Code in Git and job configuration by hand, so the logic is versioned and the schedule, cluster
+        and permissions that make it run are not.
+      - >-
+        A repository in somebody's personal Git account, which is version control until they leave.
+      - >-
+        Treating notebook revision history as source control. It records changes and supports neither
+        review, branching, nor recovery of a deleted workspace.
+    partial_when: >-
+      Most production code is in Git and a subset — usually older jobs — still runs from workspace paths,
+      or the code is in Git and its configuration is not.
+    references:
+      - https://docs.databricks.com/aws/en/repos/
+      - https://docs.databricks.com/aws/en/dev-tools/bundles/
+    advice:
+      start_from: >-
+        Every production notebook, job definition and pipeline definition in the enterprise Git
+        organisation, with workspace folders reserved for exploration that production does not
+        read.
+      depends_on:
+        - >-
+          Jobs whose definition is already in a bundle still need the notebook or wheel they run
+          to live in the same repository — a bundle pointing at a workspace path is only half.
+        - >-
+          A personal Git account is not enterprise SCM; migrate those repos before treating the
+          control as met.
+        - >-
+          Ad-hoc analysis notebooks can stay in the workspace when they are tagged and never
+          referenced by a job.
+      path:
+        - >-
+          List production jobs whose task source is a workspace path; those are the migration
+          queue, not a catalogue of every notebook.
+        - >-
+          Move the notebook or code into the enterprise repo and repoint the job (or regenerate
+          from a bundle) before deleting the workspace copy.
+        - >-
+          Add a deploy check that fails when a production job still points at a workspace path.
+      costs:
+        - >-
+          Migrating old jobs is calendar time and a chance to break a path nobody documented.
+        - >-
+          Teams lose the habit of "quick edit in the workspace", which is the point and the
+          friction.
+      retain: >-
+        The enterprise org URL, the repositories that own production jobs, and the last deploy
+        that rejected a workspace-path source.
+      revisit: >-
+        A job still running from /Shared, a repository in a personal account, or a new team
+        shipping from the workspace. Failing those, each quarter.
+
+  # Standardize DevOps processes (CI/CD)
+  # Q: Does production code reach production through a pipeline with review and tests, rather than by being edited in place?
+  OE-01-03:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: Platform or data engineering lead
+    means: >-
+      Code that runs in production arrives there from version control, through a pipeline that
+      reviews it and runs tests, and nobody edits it in the production workspace afterwards.
+    matters: >-
+      Where production is edited in place, there is no record of what changed, no way to put it back,
+      and no test between a typo and a wrong number in a report somebody trusts.
+    good:
+      - A merge runs tests, and a failing test stops the deployment rather than warning about it.
+      - Deployment is a pipeline run, so what is in production can be named as a commit.
+      - Nobody, including administrators, has routine write access to production code outside the pipeline.
+      - A change can be reverted by deploying the previous commit, without reconstructing it by hand.
+    examples:
+      strong: >-
+        Jobs are defined in a bundle in Git. A pull request runs unit tests and a dry-run deploy to
+        staging; merging to main deploys to production. Production write access is held by the
+        deployment service principal alone.
+      partial: >-
+        Notebooks are in Git and reviewed, but deployment is a person running `databricks bundle
+        deploy` from a laptop and one team still edits its production job's schedule in the UI.
+      weak: >-
+        Production jobs point at notebooks in a workspace folder, which is where they are edited. A copy
+        of most of them is in Git and has drifted from what runs. There are no tests, and the last
+        rollback was somebody pasting an older version of a cell back in.
+    verify:
+      - how: cli
+        where: databricks bundle validate, run against the repository that owns your production jobs
+        expect: A bundle that resolves, naming the jobs it owns
+      - how: sql
+        where: |-
+          with current_jobs as (
+            select * from system.lakeflow.jobs
+            qualify row_number() over (
+              partition by workspace_id, job_id order by change_time desc) = 1
+          )
+          select coalesce(deployment.kind, 'not bundle-deployed') as deployed_by, count(*) as jobs
+          from current_jobs where delete_time is null group by all order by jobs desc
+        expect: >-
+          Production jobs under `BUNDLE`, which is the platform's own record that a deployment pipeline owns
+          them — a stronger answer than counting creators, since a job created once by a person and deployed
+          ever since by a pipeline still lists the person.
+        caveat: >-
+          Rows emitted before early December 2025 do not carry this field, so treat a large `not bundle-deployed`
+          count on an old estate as a question rather than a verdict
+      - how: ui
+        where: >-
+          The deployment pipeline's own history, and who besides it can write to the production
+          workspace path the jobs run from
+        expect: >-
+          Every recent production change traceable to a pipeline run, and write access held by the
+          deployment principal rather than by the people who use the workspace
+    pitfalls:
+      - >-
+        A deployment step that runs from somebody's machine. It works, and it means the commit in
+        production is whatever was checked out on one laptop, which nobody else can establish afterwards.
+      - >-
+        Tests that run on a pull request but do not block the merge, which reads as CI and stops
+        nothing.
+      - >-
+        A pipeline that deploys but cannot roll back, so the recovery path in an incident is still a
+        person editing production.
+    partial_when: >-
+      Code is in version control and reviewed, but deployment is manual, or a subset of production is
+      still edited in place, or tests run without gating.
+    references:
+      - https://docs.databricks.com/aws/en/dev-tools/bundles/
+      - https://docs.databricks.com/aws/en/dev-tools/ci-cd/
+    advice:
+      start_from: >-
+        Bundle-defined jobs deployed by CI on merge, with tests that block the merge and write
+        access to production paths held by the deployment principal alone.
+      depends_on:
+        - >-
+          A laptop `bundle deploy` is a staging step at best; production still needs the pipeline
+          so the commit in prod is not whoever's checkout.
+        - >-
+          Estates without tests yet should gate on validate and a dry-run deploy first, then add
+          tests — an empty suite that always passes is not a gate.
+        - >-
+          Emergency break-glass write access can exist if it is time-bounded, logged, and rare;
+          standing admin write is the weak case.
+      path:
+        - >-
+          Put the production jobs in a bundle that `databricks bundle validate` accepts.
+        - >-
+          Wire CI so merge deploys and a failing test or validate stops the deploy.
+        - >-
+          Remove routine human write on production job paths; keep break-glass as an exception
+          with an expiry.
+      costs:
+        - >-
+          Building the pipeline is days of platform work before the first safe deploy.
+        - >-
+          Developers wait on CI instead of clicking deploy, which slows the first week and
+          prevents the silent drift that used to follow.
+      retain: >-
+        The pipeline URL, the service principal that deploys, and a recent run that traces a
+        production change to a commit.
+      revisit: >-
+        A production edit made in the UI, a test suite that no longer gates, or a new repo that
+        deploys by hand. Failing those, each major platform change.
+
+  # Standardize MLOps processes
+  # Q: Do models reach production through a defined process — versioned, evaluated, promoted — or by being pointed at from a notebook?
+  OE-01-04:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: ML lead
+    means: >-
+      A model becomes a production model by passing through defined steps — registered, evaluated
+      against a threshold, promoted by somebody or something with authority — rather than by a notebook
+      being pointed at its artefact.
+    matters: >-
+      Without a process, nobody can say what is in production or why it was chosen. The specific
+      failures are recurring: a model promoted on a metric computed differently from the last one, a
+      rollback that means retraining because the previous version was not kept, and an author who is the
+      only person who can reproduce either.
+    good:
+      - Models are registered in Unity Catalog with versions, so "what is in production" has an answer.
+      - Promotion requires an evaluation against a stated threshold, computed the same way each time.
+      - Promotion is recorded — who or what promoted it, when, on what evidence.
+      - The evaluation that justified the last promotion can be produced, rather than recalled.
+      - The process is the same for every model, rather than per team or per author.
+    examples:
+      strong: >-
+        Models are registered in Unity Catalog. A promotion job evaluates a candidate against the
+        incumbent on a held-out set and an agreed metric, records the comparison, and moves an alias only
+        if the candidate wins. Rollback is moving the alias back.
+      partial: >-
+        Models are registered with versions and evaluated, but promotion is a person moving an alias
+        after looking at a notebook, and the evaluation is not recorded anywhere durable.
+      weak: >-
+        Serving points at an artefact path a data scientist wrote to. Rolling back means asking them
+        which run the previous model came from.
+    verify:
+      - how: ui
+        where: Catalog Explorer > Models, and whether production models carry versions and aliases
+        expect: Registered models with aliases, rather than paths in a volume
+      - how: sql
+        where: |-
+          select table_catalog, table_schema, table_name from system.information_schema.tables
+          where table_name ilike '%model%' or table_name ilike '%inference%' order by 1, 2, 3
+        expect: >-
+          Model-related tables you can attribute to a lifecycle, as the starting point for asking how
+          promotion is recorded
+        caveat: >-
+          A naming convention, so an empty result means this estate names them differently rather than that
+          there are no models. The registry itself is the authority; this is a way in when nobody can name
+          one.
+      - how: by-hand
+        where: Ask who promoted the current production model, when, and on what evidence
+        expect: A name, a date and a comparison, rather than "it was the latest one"
+    pitfalls:
+      - >-
+        A registry used as a filing cabinet: versions registered and serving still pointing at a path,
+        so the registry records history and governs nothing.
+      - >-
+        An evaluation computed by the candidate's own author in their own notebook, which makes the
+        threshold a formality rather than a gate.
+      - >-
+        A promotion process with no rollback path, so the first bad promotion is resolved by retraining
+        under pressure.
+    partial_when: >-
+      Models are registered and evaluated while promotion is a manual step nobody records, or the process
+      exists for one team's models and not the others'.
+    not_applicable_when: >-
+      No models are deployed from this platform — it holds analytics and data engineering workloads only.
+    advice:
+      start_from: >-
+        Models registered in Unity Catalog, promotion that moves an alias only after a recorded
+        evaluation against a fixed metric and held-out set, with rollback as moving the alias back.
+      depends_on:
+        - >-
+          Analytics-only estates with no deployed models skip this; do not invent a registry to
+          satisfy the question.
+        - >-
+          A regulated model may need a named approver on the promotion, not only an automated
+          metric gate.
+        - >-
+          Research prototypes can stay unregistered until they are candidates for serving; the
+          gate is production, not every experiment.
+      path:
+        - >-
+          Register the models that are already served and point serving at a version or alias,
+          not a volume path.
+        - >-
+          Write the evaluation job that compares candidate to incumbent and records the numbers.
+        - >-
+          Require that record before the alias moves, and practice one rollback on a non-critical
+          model.
+      costs:
+        - >-
+          Building the evaluation job is real engineering; skipping it leaves promotion as taste.
+        - >-
+          Pinning versions means a retrain does not auto-ship — someone owns the promote step.
+      retain: >-
+        The promotion runbook (metric, threshold, who may promote) and the last recorded
+        candidate-versus-incumbent comparison.
+      revisit: >-
+        A new model family in production, a promotion that could not be explained, or a rollback
+        that needed a retrain. Failing those, annually.
+    references:
+      - https://docs.databricks.com/aws/en/machine-learning/manage-model-lifecycle/
+      - https://docs.databricks.com/aws/en/machine-learning/mlops/mlops-workflow
+
+  # Define environment isolation strategy
+  # Q: Are development, test and production genuinely isolated, such that a mistake in development cannot reach production data?
+  OE-01-05:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: Platform administrator
+    means: >-
+      Development, test and production are separated by something enforced — separate workspaces,
+      separate catalogues, separate credentials — so a mistake made in development cannot write to
+      production data even if the code tries.
+    matters: >-
+      Where isolation is a naming convention, the only thing between a development notebook and a
+      production table is the person's attention. The failure is not usually malicious or even careless:
+      it is a parameter that defaulted, a notebook copied between environments with one path unchanged.
+    good:
+      - Environments are separate workspaces, or at minimum separate catalogues with separate credentials.
+      - A development identity cannot write to production data — verified, not assumed.
+      - Environment is a deployment parameter rather than something edited inside a notebook.
+      - Production data in development, where it exists at all, is a masked or sampled copy.
+      - Somebody has tried to write to production from development and been refused.
+    examples:
+      strong: >-
+        Three workspaces with separate catalogues and separate storage credentials. Bundle targets set
+        the environment, and the development service principal has no grant on the production catalogue —
+        tested, and the test is part of the release checklist.
+      partial: >-
+        Separate catalogues in one workspace, with grants intended to keep them apart. Nobody has
+        verified that a development identity is actually refused, and two engineers hold grants on both.
+      weak: >-
+        One workspace, one catalogue, schemas named `dev_` and `prod_`. The separation is a naming
+        convention and every engineer can write to both.
+    verify:
+      - how: sql
+        where: |-
+          select table_catalog, count(*) as tables from system.information_schema.tables
+          where table_schema not in ('information_schema') group by all order by 1
+        expect: >-
+          Catalogues that distinguish environments, rather than one catalogue holding development and
+          production side by side
+      - how: ui
+        where: Catalog Explorer > the production catalogue > Permissions
+        expect: No development group or identity among the grantees
+      - how: by-hand
+        where: From a development identity, attempt a write to a production table
+        expect: A permission error, rather than a successful write
+    pitfalls:
+      - >-
+        Isolation by naming convention, which reads as a strategy in a document and enforces nothing at
+        the moment it matters.
+      - >-
+        Separate environments with shared credentials, where the storage credential a development
+        cluster holds can reach the production bucket regardless of the catalogue.
+      - >-
+        A full unmasked copy of production data in development, which isolates the write path and copies
+        the exposure it was protecting.
+    partial_when: >-
+      Environments are separated by catalogue and grants without the separation having been tested, or
+      they are properly isolated and a few individuals hold access to both.
+    references:
+      - https://docs.databricks.com/aws/en/dev-tools/bundles/deployment-modes
+      - https://docs.databricks.com/aws/en/data-governance/unity-catalog/best-practices
+    advice:
+      start_from: >-
+        Separate catalogs per environment with separate storage credentials, bundle targets that
+        select the environment, and a verified deny of production writes from development
+        identities.
+      depends_on:
+        - >-
+          Highly regulated estates may need separate workspaces (or accounts) as well as catalogs;
+          catalog isolation alone is the minimum, not the ceiling.
+        - >-
+          Shared credentials across "separate" catalogs defeat the boundary — fix credentials
+          before adding more catalog names.
+        - >-
+          A single-team sandbox can start with catalogs and grants, then split workspaces when a
+          second team arrives.
+      path:
+        - >-
+          Create distinct catalogs (and credentials) for prod versus non-prod if they do not
+          exist.
+        - >-
+          Strip development principals from production grants and prove a write is refused.
+        - >-
+          Make environment a bundle target parameter so notebooks stop hard-coding catalog names.
+      costs:
+        - >-
+          Splitting storage and credentials is cloud work and a cutover window.
+        - >-
+          Engineers lose convenient dual access; that inconvenience is the control working.
+      retain: >-
+        The environment map (workspace/catalog/credential), the dated deny test from a development
+        identity, and the bundle target names.
+      revisit: >-
+        A grant that reopened production to a development group, a new workspace, or a credential
+        shared across environments. Failing those, twice a year.
+
+  # Use automated and event-driven file ingestion
+  # Q: Does file ingestion react to arrival, or does it poll on a schedule and hope the file is there?
+  OE-02-05:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: Data engineering lead
+    means: >-
+      Ingestion starts because a file arrived, rather than because a clock struck and the file was
+      probably there by then. In practice this means Auto Loader with managed file events, or a
+      file-arrival trigger.
+    matters: >-
+      A schedule guesses at arrival. Guess early and the run processes nothing while reporting success;
+      guess late and every downstream deadline carries the padding. Both are silent, and the first is
+      worse: a job that finds no file and succeeds looks identical to one that had nothing to do.
+    good:
+      - Ingestion is triggered by arrival — managed file events, notification mode, or a file-arrival job trigger.
+      - File events are enabled on the external locations the landing zones sit in, so one queue serves every stream reading them.
+      - A file that arrives late is picked up when it arrives rather than at the next scheduled run.
+      - Directory listing is not the mechanism at volume, since its cost grows with the directory.
+      - A run that processes zero files is distinguishable from one that had files to process.
+      - Somebody knows what happens when a source is silent, and it is not silent success.
+    examples:
+      strong: >-
+        Auto Loader with managed file events on every landing zone, with file-arrival triggers on the
+        jobs that depend on them. A source silent past its expected window raises an alert rather than
+        producing a successful empty run.
+      partial: >-
+        Auto Loader handles ingestion, which makes it incremental and exactly-once, but it is invoked on
+        a schedule — so a late file waits for the next run and an early run reports success on nothing.
+      weak: >-
+        A nightly job lists a directory and processes what it finds. A late file is missed until somebody
+        downstream notices, and an empty directory is a successful run.
+    verify:
+      - how: ui
+        where: A production ingestion job's trigger type
+        expect: File arrival or continuous, rather than a cron expression against a landing zone
+      - how: by-hand
+        where: >-
+          The Auto Loader options in the ingestion code — `cloudFiles.useManagedFileEvents`, or
+          `cloudFiles.useNotifications` on streams written before it existed
+        expect: >-
+          Managed file events where the external location supports them, classic notifications where it does
+          not, and directory listing only on low-volume sources.
+        caveat: >-
+          Managed file events is the current recommendation and uses one shared queue per external location
+          rather than a queue and subscription per stream, so an estate on it will not mention
+          `useNotifications` at all
+      - how: sql
+        where: |-
+          select date_trunc('day', period_start_time) as day, job_id,
+          count(distinct run_id) as runs from system.lakeflow.job_run_timeline
+          where period_start_time > current_timestamp() - interval 7 days
+          group by all order by job_id, day
+        expect: >-
+          Run counts that track arrivals for event-driven jobs, rather than a fixed count per day
+          regardless of whether anything arrived
+        caveat: >-
+          Grouped by day, because a seven-day total is a single number and the finding is a shape — the
+          same count every day whether or not anything arrived. Counted distinctly because a row here is a
+          period of a run, so one long run would otherwise read as several.
+    pitfalls:
+      - >-
+        Using Auto Loader on a schedule and calling ingestion event-driven. Auto Loader gives incremental
+        exactly-once processing; what makes it event-driven is the trigger, and a cron trigger is a clock.
+      - >-
+        A zero-file run that reports success, which makes a silent source indistinguishable from a
+        healthy one and is the failure this practice mostly prevents.
+      - >-
+        Directory listing on a landing zone that accumulates, where the listing cost grows with history
+        and the job slows for a reason unrelated to how much new data arrived.
+    partial_when: >-
+      Ingestion is incremental and exactly-once via Auto Loader but invoked on a schedule rather than by
+      arrival, or notification mode is used on some sources and listing on the rest.
+    references:
+      - https://docs.databricks.com/aws/en/ingestion/cloud-object-storage/auto-loader/file-detection-modes
+      - https://docs.databricks.com/aws/en/jobs/file-arrival-triggers
+    advice:
+      start_from: >-
+        Auto Loader with managed file events on every landing zone, and file-arrival (or continuous)
+        triggers on the jobs that depend on those paths — not a cron that hopes the file is there.
+      depends_on:
+        - >-
+          External locations that do not yet support managed file events stay on classic
+          notifications until they can move; directory listing only for low-volume paths.
+        - >-
+          A feed that must land by a wall-clock SLA can keep a schedule *and* an arrival trigger;
+          schedule-alone is what this control rejects.
+        - >-
+          Sources that truly arrive once a day on a reliable clock can stay scheduled if empty
+          runs alert rather than succeed silently.
+      path:
+        - >-
+          Enable file events on the external locations that hold landing zones.
+        - >-
+          Switch ingestion jobs from cron to file-arrival (or continuous) where the work is
+          "when the file appears".
+        - >-
+          Alert when a source is silent past its expected window so success-on-zero stops being
+          the only signal.
+      costs:
+        - >-
+          Notification or file-event infrastructure is a cloud cost and an operations object to
+          own.
+        - >-
+          Rewiring triggers risks a missed window during cutover; run both briefly or cut over in
+          a quiet period.
+      retain: >-
+        The list of landing locations with file events on, and the trigger type on each production
+        ingestion job.
+      revisit: >-
+        A new landing zone, a silent-source incident that looked like a successful empty run, or a
+        directory listing that slowed as history grew. Failing those, each new source onboard.
+
+  # Follow the deploy-code approach for ML workloads
+  # Q: Is the artefact promoted between environments the training code, or a model binary built in one environment and copied?
+  OE-02-07:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: ML lead, with the platform owner
+    means: >-
+      Training code is what moves between environments, and the production model is trained in
+      production against production data — rather than a binary trained in development being copied
+      forward.
+    matters: >-
+      A model trained in development was trained on development data: a sample, or a stale copy, or one
+      with different preprocessing. Promoting the binary promotes those differences, and they surface as
+      a model that performed well in evaluation and worse in production for reasons nobody can locate.
+    good:
+      - The versioned artefact between environments is code, and production training is a production job.
+      - Training runs in production against production data, on the same code that ran in staging.
+      - Where a binary must be promoted, that is a stated exception with a reason.
+      - The training run in production is tracked, so the production model traces to production data.
+      - Feature computation is the same code in training and serving rather than reimplemented.
+    examples:
+      strong: >-
+        Training code is deployed by bundle to staging and production. The production model comes from a
+        production training job against the production feature tables, tracked in MLflow, and promotion
+        compares that run against the incumbent.
+      partial: >-
+        Training code is versioned and deployed, but the model currently in production was trained in
+        staging during the initial release and copied forward, and nobody has retrained it in place.
+      weak: >-
+        Data scientists train in development and register the artefact. Production serves a binary
+        trained against a development copy of the data.
+    verify:
+      - how: ui
+        where: The MLflow run behind the production model, and which workspace and data it ran in
+        expect: A production run against production tables, rather than a development run
+      - how: cli
+        where: databricks bundle validate against the ML repository, and its targets
+        expect: Training defined as a job the bundle deploys per environment
+      - how: by-hand
+        where: Ask where the current production model was trained
+        expect: In production, rather than "in dev and then promoted"
+    pitfalls:
+      - >-
+        Deploying training code and never retraining in production, which leaves a development-trained
+        binary in place with a code pipeline around it that has never been used for what it exists for.
+      - >-
+        Different feature code in training and serving, which is the most common cause of a model
+        performing worse in production than in evaluation and is invisible to both.
+      - >-
+        Treating deploy-code as a rule for all models. A model trained on data only available in one
+        environment is a legitimate exception, and pretending otherwise produces a workaround instead of
+        a documented decision.
+    partial_when: >-
+      Training code is versioned and deployed per environment while the model in production was trained
+      elsewhere and copied, or the approach holds for new models and not for the ones already deployed.
+    not_applicable_when: >-
+      No models are trained or deployed from this platform.
+    advice:
+      start_from: >-
+        Training code deployed by bundle to each environment, with the production model trained in
+        production against production feature tables — binaries copied forward only as a written
+        exception.
+      depends_on:
+        - >-
+          No ML on the platform means this control does not apply.
+        - >-
+          Data that cannot leave a restricted environment forces train-there; document it rather
+          than quietly copying weights.
+        - >-
+          Foundation-model fine-tunes that must run on specialised hardware still promote code and
+          config; the exception is the hardware, not a habit of promoting binaries.
+      path:
+        - >-
+          Put training under the same bundle targets as the rest of the ML repo.
+        - >-
+          Run one production retrain against production tables and register that run as the
+          serving candidate.
+        - >-
+          List any binary still promoted as an exception with an owner and a retrain date.
+      costs:
+        - >-
+          Production training spends production data and compute; that is the price of a model
+          that matches production.
+        - >-
+          Teams lose the comfort of "it worked in staging, ship the file", which is the defect
+          mode.
+      retain: >-
+        The bundle that deploys training, the MLflow run id of the production-trained model, and
+        the exception list for any copied binaries.
+      revisit: >-
+        A model still serving a staging-trained artefact, a new training path, or a feature-code
+        mismatch between train and serve. Failing those, each major model release.
+    references:
+      - https://docs.databricks.com/aws/en/machine-learning/mlops/mlops-workflow
+      - https://docs.databricks.com/aws/en/dev-tools/bundles/
+
+  # Use a model registry to decouple code and model lifecycle
+  # Q: Are production models referenced through a registry with versions and stages, rather than by path?
+  OE-02-08:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: ML lead
+    means: >-
+      Whatever consumes a model — a serving endpoint, a batch job — refers to it through the registry by
+      name and alias, so a new version can be promoted without changing the consumer.
+    matters: >-
+      A path reference couples the model's lifecycle to its consumers': promoting a model becomes a code
+      change in every job that reads it, and rolling back becomes the same change in reverse under
+      incident pressure. The registry exists so that promotion is one operation.
+    good:
+      - Consumers reference `catalog.schema.model@alias` rather than a run id or a volume path.
+      - Promoting a version is moving an alias, and no consumer changes.
+      - Versions are retained, so rollback is moving the alias back.
+      - Lineage from the model to its training run is intact, so a version can be traced.
+      - Nothing production reads a model artefact from a path.
+    examples:
+      strong: >-
+        Models live in Unity Catalog. Serving endpoints and batch scoring jobs reference the `@champion`
+        alias, promotion moves the alias, and rollback last month was one operation with no deployment.
+      partial: >-
+        Models are registered and versioned, but two batch scoring jobs load by run id because they were
+        written before the registry was adopted.
+      weak: >-
+        Models are written to a volume and loaded by path. Promotion is editing the path in three jobs.
+    verify:
+      - how: ui
+        where: Catalog Explorer > Models, and the aliases on the production models
+        expect: Aliases pointing at versions, rather than models with none
+      - how: by-hand
+        where: Search the production repository for `mlflow.pyfunc.load_model` and what it is given
+        expect: A `models:/` URI with an alias, rather than a path or a run id
+      - how: api
+        where: GET /api/2.0/serving-endpoints, and the entity each version serves
+        expect: A registered model and alias, rather than an artefact URI
+    pitfalls:
+      - >-
+        Registering models and loading them by run id, which keeps the history and none of the
+        decoupling — promotion is still a code change.
+      - >-
+        An alias moved by hand with nothing recording that it moved, so the registry knows which version
+        is current and not when it became current or why.
+      - >-
+        Deleting old versions to tidy up, which removes the rollback target the alias mechanism exists
+        to make available.
+    partial_when: >-
+      Models are registered and versioned while some consumers still load by run id or path, so
+      promotion is one operation for part of the estate and a code change for the rest.
+    not_applicable_when: >-
+      No models are deployed from this platform.
+    advice:
+      start_from: >-
+        Consumers reference `catalog.schema.model@alias` (or a pinned version), never a volume
+        path or run id, so promotion is one alias move.
+      depends_on:
+        - >-
+          No deployed models means skip this control.
+        - >-
+          Foundation and external models on serving are resolved by the platform and are not this
+          registry question — focus on custom models you own.
+        - >-
+          Batch jobs written before the registry need a migration pass; leaving them on run ids
+          keeps promotion as a code change.
+      path:
+        - >-
+          Register served models and point endpoints at an alias or version.
+        - >-
+          Search repositories for path or run-id loads and repoint them.
+        - >-
+          Keep prior versions so rollback is an alias move, not a hunt through volumes.
+      costs:
+        - >-
+          Repointing old jobs is coordination across owners who thought the path was fine.
+        - >-
+          Retaining versions costs storage; deleting them to tidy removes the rollback target.
+      retain: >-
+        The alias map for production models and a dated note of the last alias-only promotion or
+        rollback.
+      revisit: >-
+        A consumer still loading by path or run id, a version purge, or a new serving endpoint.
+        Failing those, twice a year.
+    references:
+      - https://docs.databricks.com/aws/en/machine-learning/manage-model-lifecycle/
+      - https://docs.databricks.com/aws/en/machine-learning/model-serving/
+
+  # Automate ML experiment tracking
+  # Q: Are training runs tracked automatically, so a production model can be traced to the run and data that produced it?
+  OE-02-09:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: ML lead
+    means: >-
+      Every training run records itself — parameters, metrics, code version, data version — without the
+      author having to remember to log it, and a production model can be traced back to its run.
+    matters: >-
+      Tracking that depends on remembering is tracking that exists for the runs that went well. When a
+      production model needs explaining — to an auditor, or to whoever is debugging its behaviour — the
+      run behind it is the answer, and an untracked run means reconstructing it from somebody's memory.
+    good:
+      - Autologging is on, so a run is recorded whether or not the author thought about it.
+      - Runs record the code version and the data version, not only parameters and metrics.
+      - A production model traces to a run, and the run traces to the data it read.
+      - Experiments are organised so a run is findable by somebody who did not create it.
+      - The trace has been followed at least once for a real question.
+    examples:
+      strong: >-
+        Autologging is enabled in the training environment. Runs carry the git commit and the Delta
+        versions of their input tables, models link to their producing run, and last quarter a
+        performance question was answered by comparing two runs' input versions.
+      partial: >-
+        Autologging captures parameters and metrics, but nothing records which data version was read, so
+        two runs with identical parameters and different results cannot be distinguished.
+      weak: >-
+        Runs are logged when the author remembers. The production model's run cannot be identified.
+    verify:
+      - how: ui
+        where: An MLflow experiment for a production model, and a recent run's recorded fields
+        expect: Parameters, metrics, a code version and a data version
+      - how: by-hand
+        where: Take the production model and follow it back to its run and its input data
+        expect: A complete trace, rather than a dead end at the artefact
+      - how: sql
+        where: |-
+          select target_table_full_name, source_table_full_name, max(event_time) as last_seen
+          from system.access.table_lineage where event_time > current_timestamp() - interval 30 days
+          group by all order by last_seen desc
+        expect: >-
+          Lineage into the tables training reads, which is the platform's half of the trace the run
+          should complete
+    pitfalls:
+      - >-
+        Autologging on and no data version recorded, which produces a reproducible-looking run that
+        cannot be reproduced because its input has moved.
+      - >-
+        Tracking in a personal experiment folder, so the run exists and nobody else can find it.
+      - >-
+        Assuming the trace works because the fields are populated. It is worth following once end to end;
+        that is what finds the link that was never actually written.
+    partial_when: >-
+      Runs are tracked automatically without a data version, or the trace exists and is broken at one
+      link — usually between the registered model and its run.
+    not_applicable_when: >-
+      No models are trained on this platform.
+    advice:
+      start_from: >-
+        Autologging on in the training environment, with code version and data version on every
+        run, so a production model traces to a run without relying on memory.
+      depends_on:
+        - >-
+          No training on the platform means this does not apply.
+        - >-
+          Runs started only from notebooks are normal during research; production and candidate
+          retrains should be job-started so the source tag is automatic.
+        - >-
+          Direct REST logging without a source tag is invisible to share metrics — prefer the
+          client autolog path.
+      path:
+        - >-
+          Turn on Databricks autologging (or equivalent) in the shared training image or cluster
+          policy.
+        - >-
+          Record git commit and Delta versions (or table version) on training jobs.
+        - >-
+          Follow one production model end to end to its run and inputs; fix the first broken link.
+      costs:
+        - >-
+          Autologging adds a little overhead and a lot of artefacts to organise.
+        - >-
+          Personal experiment folders hide runs from everyone else — organising experiments is
+          process cost.
+      retain: >-
+        A dated end-to-end trace from a production model to run to input versions, and the
+        autologging setting in the training environment.
+      revisit: >-
+        A production model with no findable run, a new training stack, or an audit ask for
+        lineage. Failing those, annually.
+    references:
+      - https://docs.databricks.com/aws/en/mlflow/tracking
+      - https://docs.databricks.com/aws/en/mlflow/databricks-autologging
+
+  # Reuse the same infrastructure to manage ML pipelines
+  # Q: Do ML pipelines run on the same managed infrastructure as data pipelines, or on separately maintained compute?
+  OE-02-10:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: ML platform lead, with the platform owner
+    means: >-
+      ML training and inference run as jobs on the same platform, under the same policies, monitoring
+      and deployment mechanism as data pipelines — rather than on compute the ML team maintains itself.
+    matters: >-
+      Separately maintained ML compute is separately patched, separately monitored and separately
+      governed, and it is maintained by people whose job is models. The predictable outcome is an
+      environment a version or two behind, outside the cost reporting, with access granted directly
+      because the shared policies did not cover it.
+    good:
+      - ML work runs as jobs and pipelines, under the same cluster policies as everything else.
+      - The same deployment mechanism deploys ML code as data code.
+      - ML compute appears in the same cost and monitoring views as the rest of the estate.
+      - Long-lived interactive clusters for ML are the exception, and somebody can say why each exists.
+      - The platform team's upgrades cover ML compute rather than stopping at the data pipelines.
+    examples:
+      strong: >-
+        Training and batch inference are jobs deployed by the same bundles as the data pipelines, under
+        the same policies, appearing in the same cost reporting. GPU work has its own policy and the same
+        deployment path.
+      partial: >-
+        Training runs as jobs, but the team keeps two long-lived interactive clusters outside the
+        policies for experimentation, and those are not in the cost reporting.
+      weak: >-
+        The ML team maintains its own clusters and its own deployment scripts. Neither appears in the
+        platform team's monitoring, and the runtime is two versions behind.
+    verify:
+      - how: sql
+        where: |-
+          select billing_origin_product, round(sum(usage_quantity), 1) as dbus
+          from system.billing.usage
+          where usage_date > current_date() - 30 and usage_unit = 'DBU'
+          group by all order by dbus desc
+        expect: >-
+          ML work under a managed product line rather than under all-purpose compute, which is compute
+          somebody is maintaining by hand.
+        caveat: >-
+          `billing_origin_product` splits this more cleanly than matching on SKU name, and `usage_unit =
+          'DBU'` matters because not every row in this table is measured in DBUs — summing without it adds
+          storage and network quantities into a figure labelled DBUs
+      - how: ui
+        where: Compute, and whether long-lived clusters exist outside the policies
+        expect: Policy-governed compute, rather than clusters created outside them
+      - how: by-hand
+        where: Ask who patches and upgrades the compute ML training runs on
+        expect: The platform team, rather than the ML team
+    pitfalls:
+      - >-
+        Treating shared infrastructure as a constraint on ML rather than as the thing that keeps it
+        patched and visible, which produces a shadow environment justified as necessary flexibility.
+      - >-
+        Running training as jobs while experimentation happens on unmanaged clusters that quietly become
+        production dependencies.
+      - >-
+        ML compute outside cost attribution, which makes it the part of the estate nobody can reason
+        about — usually the part with GPUs in it.
+    partial_when: >-
+      Training and inference run as managed jobs while experimentation happens on unmanaged long-lived
+      compute, or the compute is shared and ML is outside the cost and monitoring views.
+    not_applicable_when: >-
+      No ML workloads run on this platform.
+    advice:
+      start_from: >-
+        ML training and batch inference as jobs under the same cluster policies, bundles and
+        cost views as data pipelines — long-lived interactive ML clusters only as named
+        exceptions.
+      depends_on:
+        - >-
+          No ML workloads means skip this.
+        - >-
+          GPU work gets its own policy on the same deployment path, not a shadow account.
+        - >-
+          Experimentation clusters can exist if they auto-stop, sit under a policy, and never
+          become silent production dependencies.
+      path:
+        - >-
+          Move scheduled training and batch inference onto jobs deployed like data jobs.
+        - >-
+          Attach ML compute to the shared policies and cost reporting.
+        - >-
+          List remaining unmanaged clusters with an owner and a kill-or-justify date.
+      costs:
+        - >-
+          ML teams lose pet clusters; platform teams take on GPU policy maintenance.
+        - >-
+          Migrating a training script into a job is a day or two per pipeline the first time.
+      retain: >-
+        The policy names ML uses, the bundle or job ids for training and inference, and the
+        exception list of interactive clusters.
+      revisit: >-
+        A new unmanaged GPU cluster, ML spend missing from cost views, or a runtime left behind
+        on ML compute. Failing those, twice a year.
+    references:
+      - https://docs.databricks.com/aws/en/machine-learning/mlops/mlops-workflow
+      - https://docs.databricks.com/aws/en/admin/clusters/policies
+
+  # Manage service limits and quotas
+  # Q: Do you know which platform limits and quotas you are near, and does someone watch them before they bite?
+  OE-03-01:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: Platform administrator
+    means: >-
+      Somebody knows which limits this estate is closest to — API rate limits, cloud instance quotas,
+      concurrent runs, IP addresses in a subnet — and watches them rather than discovering them.
+    matters: >-
+      A limit is discovered as an incident, and it is the kind of incident that arrives at the worst
+      moment: quotas bite when volume is high, which is when the workload matters. Subnet exhaustion is
+      the classic case, because it presents as clusters failing to start for no visible reason.
+    good:
+      - The limits this estate is nearest to are known and written down, rather than being a general awareness.
+      - Cloud quotas — instances, addresses, subnet size — have headroom somebody has measured.
+      - Concurrency limits on jobs and warehouses are known, and queueing behaviour at the limit is understood.
+      - Growth is compared against the limits, so approach is visible before arrival.
+      - A limit has been raised in advance of hitting it at least once.
+    examples:
+      strong: >-
+        A register of the limits this estate is near, with current usage against each, reviewed
+        quarterly. Subnet sizing was raised last year when the review showed address use passing 60 per
+        cent, before any cluster failed to start.
+      partial: >-
+        Cloud quotas are known and monitored, but nobody has looked at API rate limits or job concurrency
+        and the first of those to bind will be a surprise.
+      weak: >-
+        Limits are discovered when something fails. Nobody can say how many addresses the workspace
+        subnets have left.
+    verify:
+      - how: ui
+        where: The cloud console's quota page for the account and region the workspace uses
+        expect: Usage against each quota, with headroom you can state as a number
+      - how: sql
+        where: |-
+          select date_trunc('day', period_start_time) as day, count(distinct run_id) as runs
+          from system.lakeflow.job_run_timeline
+          where period_start_time > current_timestamp() - interval 30 days group by all order by day
+        expect: >-
+          A run rate you can compare against the concurrency limits, and a trend rather than a single
+          figure
+        caveat: >-
+          Counted distinctly because a row here is a period of a run, so counting rows reports a rate the
+          estate is not running at.
+      - how: by-hand
+        where: Ask how many free IP addresses the production workspace's subnets have
+        expect: A number, rather than an assumption that it is enough
+    pitfalls:
+      - >-
+        Monitoring cloud quotas and not platform limits. API rate limits and concurrency ceilings are not
+        in the cloud console and bind first in a busy estate.
+      - >-
+        Subnet sizing chosen at deployment for the initial workload, which cannot be changed later
+        without redeploying the workspace — the limit whose fix is a migration.
+      - >-
+        Requesting a quota increase during the incident, when the increase takes a cloud provider's
+        support turnaround rather than a minute.
+    partial_when: >-
+      Cloud quotas are monitored and platform limits are not, or the limits are known and nobody compares
+      growth against them, so approach is invisible until arrival.
+    references:
+      - https://docs.databricks.com/aws/en/resources/limits
+      - https://docs.databricks.com/aws/en/security/network/classic/customer-managed-vpc
+    advice:
+      start_from: >-
+        A short register of the limits this estate is nearest to — cloud instance and address
+        quotas, job and warehouse concurrency, API rate limits — with measured headroom and an
+        owner who reviews it before volume spikes.
+      depends_on:
+        - >-
+          Customer-managed VPC estates must treat subnet size as a hard limit whose fix is a
+          workspace migration; measure addresses early.
+        - >-
+          Serverless-heavy estates still hit API and concurrency ceilings even when instance
+          quotas look fine.
+        - >-
+          Multi-region estates need the register per region; a spare quota in another region does
+          not help a stuck cluster start.
+      path:
+        - >-
+          Pull cloud quota usage for the workspace's account and region; write the three tightest
+          numbers down.
+        - >-
+          Compare recent job and warehouse concurrency from system tables against known limits.
+        - >-
+          Raise the tightest limit before the next expected peak, not during the incident.
+      costs:
+        - >-
+          Quota increases take provider turnaround; planning them is calendar time.
+        - >-
+          Keeping the register current is a recurring chore somebody must own.
+      retain: >-
+        The dated limits register with headroom figures, and at least one quota raise done ahead
+        of a peak.
+      revisit: >-
+        A failed cluster start, a concurrency queue spike, a new region, or a major workload
+        onboard. Failing those, quarterly.
+
+  # Invest in capacity planning
+  # Q: Is there a forward view of capacity and cost — growth, seasonality, new workloads — rather than reacting to invoices?
+  OE-03-02:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: Platform owner, with finance
+    means: >-
+      Somebody maintains a forward view: what this estate will need in six or twelve months, given known
+      growth, seasonality and the workloads about to arrive — and it is compared against what happens.
+    matters: >-
+      Without a forward view, every capacity and cost conversation is retrospective, and the estate is
+      always adapting to a position it has already reached. The consequences are a commitment negotiated
+      on last year's usage, a quota raised after it bound, and a new workload onboarded into whatever
+      capacity happened to be spare.
+    good:
+      - A forward view exists with numbers in it — volume, spend, or both — over a stated horizon.
+      - It accounts for seasonality where the business has any, rather than extrapolating a straight line.
+      - New workloads are added to it before they arrive rather than after.
+      - It is compared against actuals, and the comparison is written down where the next revision starts from.
+      - Somebody owns it, and the last revision has a date.
+    examples:
+      strong: >-
+        A rolling twelve-month view of DBUs and spend by workload, revised quarterly against actuals,
+        with a seasonal peak modelled explicitly. The last revision moved a commitment discussion three
+        months earlier than it would otherwise have happened.
+      partial: >-
+        Growth is projected annually for the commitment conversation and not revisited, so it is a
+        negotiating input rather than a planning tool and drifts from reality within a quarter.
+      weak: >-
+        Capacity is what it is until something breaks or an invoice is questioned.
+    verify:
+      - how: sql
+        where: |-
+          select date_trunc('month', usage_date) as month, round(sum(usage_quantity)) as dbus
+          from system.billing.usage
+          where usage_date > current_date() - 365 and usage_unit = 'DBU'
+          group by all order by month
+        expect: >-
+          A trend you can project from, and a seasonal shape if the business has one. This is the input
+          the forward view should be built on. Filtered to DBUs because this table also carries storage
+          and network rows, and a total that mixes units is not a quantity of anything
+      - how: by-hand
+        where: Ask for the current capacity forecast, its horizon and when it was last revised
+        expect: A document with numbers and a recent date
+      - how: by-hand
+        where: Compare the last forecast against what actually happened
+        expect: A comparison somebody has already made, rather than one you are the first to attempt
+    pitfalls:
+      - >-
+        A forecast produced once for a commitment negotiation and never revised, which is a procurement
+        artefact rather than a plan and is wrong within a quarter.
+      - >-
+        Straight-line extrapolation over a business with a seasonal peak, which under-provisions exactly
+        when the workload matters most.
+      - >-
+        Forecasting spend without forecasting the limits that spend runs into — the quota and the subnet
+        bind before the budget does.
+    partial_when: >-
+      A forward view exists and is produced annually for procurement rather than maintained, or it is
+      maintained and never compared against actuals so it does not improve.
+    references:
+      - https://docs.databricks.com/aws/en/admin/system-tables/billing
+      - https://docs.databricks.com/aws/en/lakehouse-architecture/operational-excellence/best-practices
+    advice:
+      start_from: >-
+        A rolling twelve-month view of DBUs and spend by major workload, revised quarterly against
+        actuals, with seasonality modelled where the business has it and new workloads added before
+        they land.
+      depends_on:
+        - >-
+          Commitment negotiations need the same view — do not maintain a separate spreadsheet that
+          drifts.
+        - >-
+          Estates without seasonality can use a simpler trend; inventing a seasonal model where
+          none exists wastes trust.
+        - >-
+          Capacity planning without quota and subnet headroom (OE-03-01) plans spend that cannot
+          be consumed.
+      path:
+        - >-
+          Build the trend from `system.billing.usage` (DBU-filtered) for the last year.
+        - >-
+          Overlay known upcoming workloads and the seasonal peak if any, and name an owner.
+        - >-
+          Each quarter, write the forecast-versus-actual delta and adjust the next revision from
+          that, not from scratch.
+      costs:
+        - >-
+          Somebody's recurring time to revise; an untouched annual deck is not a plan.
+        - >-
+          Wrong forecasts move money and quotas; the comparison step is what makes the cost worth
+          paying.
+      retain: >-
+        The dated forecast with horizon, the last actuals comparison, and who owns the next
+        revision.
+      revisit: >-
+        A commitment cycle, a new large workload, a missed seasonal peak, or a quarter where
+        actuals diverged sharply. Failing those, quarterly.
+
+  # Define catalog strategy for your enterprise
+  # Never put to a person. Caps at partial: more than one catalog is visible, the intended boundary is not.
+  OE-01-06:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: Platform administrator
+    means: >-
+      Assets are organised across catalogs along a chosen boundary — environment, domain or team —
+      rather than living in one undifferentiated catalog. The scan can see that more than one catalog
+      holds tables; it cannot read which boundary you meant.
+    matters: >-
+      One catalog for everything forces environment separation, ownership and catalog-level grants
+      down to the schema layer or not at all. The shape appears when nobody decided a boundary, and
+      it is expensive to undo once tables and jobs are wired to it.
+    good:
+      - More than one catalog holds the estate's tables, not a single catch-all.
+      - The boundary is written down — environment, domain or team — and two people name the same one.
+      - Catalogs have owners, so a grant or a rename has somebody to ask.
+      - New tables land in the catalog the boundary implies, not wherever the author had USE.
+      - A single-catalog estate is treated as a strategy failure, not as "simpler".
+    examples:
+      strong: >-
+        Catalogs split by environment (and domain schemas inside), owners set, and the boundary is
+        in the platform standard. The scan still caps at partial because intent is not in the
+        metastore; the attestation records which boundary it is.
+      partial: >-
+        Several catalogs exist and tables are spread across them, but nobody can say whether the
+        split is environment or team, and two domains share a catalog for historical reasons.
+      weak: >-
+        Every table sits in one catalog. Schemas named `dev_` and `prod_` are the only separation,
+        and catalog-level grants cannot express an environment boundary.
+    verify:
+      - how: sql
+        where: |-
+          select table_catalog, count(*) as tables
+          from system.information_schema.tables
+          where table_schema not in ('information_schema')
+          group by all order by tables desc
+        expect: >-
+          Tables across more than one catalog. A single catalog holding everything is the fail this
+          control catches
+        caveat: >-
+          The app caps at partial when catalog count is greater than one: the metastore shows a
+          spread, not whether the boundary is the one you intended. One catalog is fail; empty
+          metastores are not-applicable or unestablished rather than fail
+      - how: ui
+        where: Catalog Explorer, the list of catalogs and their owners
+        expect: >-
+          Several catalogs with owners, rather than one catalog owned by the account admin who
+          created the workspace
+      - how: by-hand
+        where: Ask which boundary the catalogs follow — environment, domain or team
+        expect: The same answer from two people, matching what the names imply
+    pitfalls:
+      - >-
+        Many schemas inside one catalog presented as a strategy. Schema sprawl is not a catalog
+        boundary, and it cannot use catalog-level grants for environment isolation.
+      - >-
+        Catalogs created per project with no written boundary, so the next team invents a third
+        pattern.
+      - >-
+        Treating a partial finding as a pass. The app never passes this control on telemetry alone;
+        the attestation is what records the intended boundary.
+    partial_when: >-
+      Tables are spread across catalogs while the boundary is unstated or inconsistently applied —
+      which is also the best outcome the scan can give, because intent is not in the metastore.
+    not_applicable_when: >-
+      The metastore contains no tables yet, so there is no asset estate to organise.
+    references:
+      - https://docs.databricks.com/aws/en/catalogs/
+      - https://docs.databricks.com/aws/en/data-governance/unity-catalog/best-practices
+    advice:
+      start_from: >-
+        Catalogs per environment, schemas per domain inside them, with owners set — and the
+        boundary written in the platform standard before the estate grows into a single catalog.
+      depends_on:
+        - >-
+          Large multi-team estates may prefer domain catalogs with environment schemas (or separate
+          metastores); pick one pattern and document it rather than mixing.
+        - >-
+          Regulated separation that needs distinct storage credentials may force more catalogs than
+          a simple env split.
+        - >-
+          An empty or brand-new metastore should choose the boundary before the first production
+          load, not after.
+      path:
+        - >-
+          Write the boundary in one sentence both teams will use.
+        - >-
+          Create the missing catalogs and owners; stop landing new production tables in the
+          catch-all.
+        - >-
+          Plan moves of existing tables as copies with job cutover — catalog moves are not renames.
+      costs:
+        - >-
+          Moving tables between catalogs copies data and repoints jobs; large fact tables dominate
+          the bill and the calendar.
+        - >-
+          A wrong early boundary is cheaper than none, but changing it later is still a migration.
+      retain: >-
+        The written boundary sentence, the catalog list with owners, and the attestation answer
+        that names which boundary the scan cannot see.
+      revisit: >-
+        A new domain or environment, a table created in the wrong catalog, or a grant model that
+        cannot be expressed. Failing those, annually.
+
+  # Use infrastructure as code (IaC) for deployments and maintenance
+  # Q: Are jobs and pipelines defined in version-controlled code and deployed by a pipeline, rather than edited in the UI?
+  # Same measurement as OE-01-02 / IU-01-05 (bundle markers). Here the angle is IaC for definitions — not SCM presence, not portability.
+  OE-02-01:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: Platform or data engineering lead
+    means: >-
+      Job and pipeline definitions are declared in code — a Databricks Asset Bundle or equivalent
+      IaC — and applied by a deployment pipeline, so the workspace is not the place those
+      definitions are authored.
+    matters: >-
+      Definitions clicked together in the UI have no reviewable diff, no repeatable apply, and no
+      ownership outside whoever last edited the form. Drift between "what we think runs" and what
+      the workspace holds is discovered during an incident.
+    good:
+      - Production jobs show a bundle deployment marker, or are applied from Terraform (or similar) even when unmarked.
+      - A change to a schedule, cluster or task goes through a pull request and a deploy, not the job UI.
+      - Unmarked jobs are classified — Terraform, one-off, or still to move — rather than left unexplained.
+      - The UI is used to inspect running configuration, not to author it.
+      - New jobs start in the IaC root; conversions of old jobs follow, they do not block starting.
+    examples:
+      strong: >-
+        Every production job is generated from a bundle (or Terraform root) and deployed by CI. The
+        scan may still only reach partial when markers exist, and unmeasured when the estate is
+        Terraform-only — both are expected; the attestation records which.
+      partial: >-
+        New jobs come from a bundle and a set of older jobs are still maintained in the UI, or
+        bundles deploy once and someone edits the live job afterwards.
+      weak: >-
+        Jobs are created and edited only in the workspace. There is no repository that could
+        recreate them, and no deploy pipeline.
+    verify:
+      - how: sql
+        where: |-
+          with latest as (
+            select coalesce(deployment.kind, 'unmarked') as deployment_kind, delete_time,
+            row_number() over (partition by workspace_id, job_id order by change_time desc) as rn
+            from system.lakeflow.jobs
+          )
+          select deployment_kind, count(*) as jobs from latest
+          where rn = 1 and delete_time is null group by all order by jobs desc
+        expect: >-
+          Rows with `BUNDLE` when asset bundles are in use — or all unmarked, which is unmeasured
+          rather than fail
+        caveat: >-
+          The app caps at partial when any bundle marker is present, and returns unmeasured (never
+          fail) when markers are absent: Terraform writes the same API a person uses and leaves no
+          marker. Rank latest row per job before filtering deletes or counts inflate
+      - how: cli
+        where: databricks bundle validate, against the repository that should own production jobs
+        expect: A bundle that resolves and names the jobs it manages
+      - how: by-hand
+        where: Ask what applies job definitions — bundle CI, Terraform, or the UI
+        expect: A named pipeline or Terraform root; "we click them in" is the weak case
+    pitfalls:
+      - >-
+        Reading an unmeasured finding as a fail. A fully Terraform-managed estate looks identical
+        to a hand-built one on this signal.
+      - >-
+        A bundle that deploys and is then edited in the UI, so the next deploy reverts someone's
+        "fix" — or the repository becomes a stale snapshot.
+      - >-
+        Confusing this with OE-01-02. Code in Git while job JSON is still hand-maintained in the
+        workspace fails this control even when SCM looks fine.
+    partial_when: >-
+      Definitions are applied from a bundle or Terraform root for new work while live jobs are
+      still retuned in the UI after deploy, or only a minority of production definitions are under
+      IaC and the rest have no apply path at all.
+    not_applicable_when: >-
+      No jobs exist in the assessed workspaces, so there is no deployed definition whose provenance
+      could be read.
+    references:
+      - https://docs.databricks.com/aws/en/dev-tools/bundles/
+      - https://docs.databricks.com/aws/en/dev-tools/terraform/
+    advice:
+      start_from: >-
+        Treat the job editor as read-only for production: schedules, tasks and clusters change only
+        when a pull request lands through the apply pipeline. Prefer the team's existing IaC tool;
+        inventing a second one to satisfy a deployment marker is the wrong move.
+      depends_on:
+        - >-
+          Terraform-standardised estates should not migrate to bundles to turn the finding
+          partial; unmeasured plus attestation is the honest reading.
+        - >-
+          One-off analysis jobs can remain UI-built if written down as exceptions.
+        - >-
+          OE-01-02 still requires the code those jobs run to live in enterprise Git; this control
+          does not replace that.
+      path:
+        - >-
+          Put the next production job in the bundle or Terraform root, not the oldest twenty first.
+        - >-
+          Wire CI so merge applies definitions, and stop authoring in the job UI.
+        - >-
+          Classify unmarked remainder as Terraform, retired, or to-move.
+      costs:
+        - >-
+          The first IaC job is slower than clicking through the form.
+        - >-
+          Terraform state hosting and locking is ongoing cost; lost state recreates the UI problem.
+      retain: >-
+        The repository and CI job that apply definitions, and — if Terraform — the state backend
+        name. Those answer the attestation when markers are absent.
+      revisit: >-
+        A job edited in the UI after deploy, a second workspace that was clicked together, or a
+        new team bypassing the IaC root. Failing those, twice a year.
+
+  # Standardize compute configurations
+  # Never put to a person. Same measurement as IU-03-03. Here the angle is operational consistency — not onboarding empty forms.
+  OE-02-02:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: Platform administrator
+    means: >-
+      Classic all-purpose compute is created from policies so instance family, runtime and size
+      bounds are an estate decision rather than a per-cluster improvisation. Consistency for
+      operations — patching, support, cost comparison — is the point.
+    matters: >-
+      Freehand clusters multiply runtimes and node types. On-call then debugs every failure twice:
+      once for the job, once for that team's unique shape. Cost and runtime upgrades cannot be
+      reasoned about across an estate that never shared a template.
+    good:
+      - At least nine in ten all-purpose clusters were created from a policy (the pass band).
+      - Policies are maintained — runtime pins move on a schedule, not only when something breaks.
+      - Unrestricted cluster creation is not the default grant for people who build production work.
+      - Serverless estates with no classic all-purpose clusters are satisfied by architecture here.
+      - Job compute is configured on the job; this population is all-purpose only.
+    examples:
+      strong: >-
+        Classic all-purpose clusters that remain were created from current policies. Runtime
+        upgrades roll through the policies. Everyone else is on serverless.
+      partial: >-
+        Policies cover about half to nine-tenths of all-purpose clusters; older unrestricted
+        clusters still run, or policies exist but are stale.
+      weak: >-
+        All-purpose clusters are created freehand. There is no policy, or none that anyone uses.
+    verify:
+      - how: ui
+        where: >-
+          Compute, all-purpose clusters and the Policy column; then Compute > Policies
+        expect: >-
+          A policy on the clusters in active use, or no classic all-purpose clusters at all
+        caveat: >-
+          The app scores all-purpose clusters only (pass ≥90%, partial ≥50%). No all-purpose
+          classic compute is satisfied-by-architecture, not a 100% adoption score. Serverless has
+          no policy to attach
+      - how: cli
+        where: databricks clusters list --output json
+        expect: policy_id set on all-purpose clusters people actually use
+      - how: by-hand
+        where: Ask how the last production all-purpose cluster was sized and which runtime it pinned
+        expect: A policy name, rather than "whatever the form defaulted to"
+    pitfalls:
+      - >-
+        Policies that only admins may use, so builders still get the empty form.
+      - >-
+        Counting job clusters or serverless into this share; they are outside the population and
+        distort the operational question.
+      - >-
+        A policy nobody updates, which freezes an old runtime under the appearance of control.
+    partial_when: >-
+      Policies cover some all-purpose clusters while others remain freehand or pinned to an
+      unmaintained policy — operational inconsistency persists even though templates exist on paper.
+    not_applicable_when: >-
+      There are no classic all-purpose clusters, so there is no compute configuration a template
+      would settle.
+    references:
+      - https://docs.databricks.com/aws/en/admin/clusters/policies
+      - https://docs.databricks.com/aws/en/compute/configure
+    advice:
+      start_from: >-
+        Serverless as the default path, and maintained policies for the classic all-purpose
+        compute that remains — granted to the groups that create it, reviewed when runtimes move.
+      depends_on:
+        - >-
+          IU-03-03 asks whether a new team faces an empty form; here the question is whether
+          on-call inherits a zoo of shapes. Same policies serve both if they are used and kept
+          current.
+        - >-
+          GPU or custom images need their own policies so exceptions do not become the estate.
+        - >-
+          Job cluster settings belong on the job definition, not folded into this all-purpose
+          score.
+      path:
+        - >-
+          Publish or refresh one policy the busiest team will actually use.
+        - >-
+          Recreate or attach that policy on their running all-purpose clusters.
+        - >-
+          Remove unrestricted create once each group that needs classic has a policy, and diary
+          the next runtime bump on the policies themselves.
+      costs:
+        - >-
+          Policy maintenance is recurring work; an abandoned policy is how exceptions return.
+        - >-
+          Recreating clusters is a restart and a library-reattach risk.
+      retain: >-
+        The policy list with owners and last runtime review date, and the dated count of
+        all-purpose clusters with versus without a policy.
+      revisit: >-
+        A freehand cluster in production, a runtime CVE, or a new team granted unrestricted
+        create. Failing those, each runtime pin cycle.
+
+  # Use Unity Catalog managed tables
+  # Never put to a person. Managed share of tables that have storage; views excluded.
+  OE-02-03:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: Data platform lead
+    means: >-
+      Tables whose storage you control are Unity Catalog managed, so layout, statistics, compaction
+      and cleanup are the platform's job rather than a collection of hand-scheduled OPTIMIZE and
+      VACUUM jobs.
+    matters: >-
+      External tables leave file layout, compaction and retention to whoever remembers to run
+      maintenance. That work is skipped under delivery pressure, and readers pay in listing cost and
+      stale statistics. External locations remain necessary when another system writes the files —
+      they should be the exception with a reason, not the default.
+    good:
+      - At least four fifths of tables with storage are managed (the pass band).
+      - New tables are created managed unless an external writer owns the path.
+      - External tables that remain have a named reason (partner lake, shared bucket, migration).
+      - Views are not counted against you — they have no storage to manage.
+      - Predictive optimization or equivalent maintenance is relied on for managed tables rather than reinvented.
+    examples:
+      strong: >-
+        Production tables are managed. The external ones are a partner landing zone and a legacy
+        lake still being cut over, both listed. Maintenance is not a hand-rolled job zoo.
+      partial: >-
+        Roughly half the storage tables are managed; the rest are external from early migration
+        and nobody has scheduled the conversion copies.
+      weak: >-
+        Almost everything is external with LOCATION set out of habit. OPTIMIZE and VACUUM are
+        tribal knowledge.
+    verify:
+      - how: sql
+        where: |-
+          select table_type, count(*) as tables
+          from system.information_schema.tables
+          where table_schema not in ('information_schema')
+          group by all order by tables desc
+        expect: >-
+          MANAGED dominating among base tables; EXTERNAL present only where you can name why
+        caveat: >-
+          The app scores managed / (managed + external) and ignores views. Pass ≥80%, partial ≥40%.
+          A metastore of only views is not-applicable. External share is a question to answer, not
+          always a defect
+      - how: ui
+        where: Catalog Explorer > a production schema > table details > Type / storage
+        expect: Managed for tables you own end to end
+      - how: by-hand
+        where: List external tables and the system that writes their files
+        expect: A short exception list, not "we always set LOCATION"
+    pitfalls:
+      - >-
+        Creating external tables by default because tutorials showed LOCATION, which opts you out
+        of managed maintenance for no gain.
+      - >-
+        Counting views in a mental denominator, which makes a view-heavy estate look unmanaged.
+      - >-
+        Converting without owning the path — copying into managed while an outside writer still
+        lands on the old files splits the truth.
+    partial_when: >-
+      Managed tables are common while a large external remainder has no written exception, or
+      conversion is planned and not started — the scan's partial band is 40–80% managed among
+      tables with storage.
+    not_applicable_when: >-
+      The metastore has no tables with storage (empty, or views only), so there is nothing to
+      manage.
+    references:
+      - https://docs.databricks.com/aws/en/tables/managed
+      - https://docs.databricks.com/aws/en/lakehouse-architecture/operational-excellence/best-practices
+    advice:
+      start_from: >-
+        Create new tables as managed; convert external tables whose storage you own with a planned
+        copy and cutover; leave partner-written lakes external with a named owner.
+      depends_on:
+        - >-
+          Data another platform writes cannot be managed — keep it external and document it.
+        - >-
+          Large conversions cost a full rewrite; prioritise hot tables that suffer listing and
+          compaction pain first.
+        - >-
+          Catalog-managed locations must be set before managed creates succeed in that catalog.
+      path:
+        - >-
+          Stop new external creates where you own the files.
+        - >-
+          Convert the noisiest external tables you own, repoint jobs, then remove old files.
+        - >-
+          Publish the external exception list so "LOCATION by habit" stops being the culture.
+      costs:
+        - >-
+          Conversion copies pay storage and compute once per table.
+        - >-
+          Leaving external forever means keeping OPTIMIZE/VACUUM ownership forever.
+      retain: >-
+        The managed-versus-external count from the last assessment and the written external
+        exception list.
+      revisit: >-
+        A new external table without a reason, a partner lake cutover, or managed location changes.
+        Failing those, twice a year.
+
+  # Use automated workflows for jobs
+  # Never put to a person. Schedule/trigger/continuous; paused counts as unautomated; triggerRecorded gates the denominator.
+  OE-02-04:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: Data engineering lead
+    means: >-
+      Production jobs are started by the platform — a schedule, a trigger or continuous mode —
+      rather than by a person pressing Run. A paused schedule counts as unautomated because it
+      fires nothing until someone un-pauses it.
+    matters: >-
+      Manual runs depend on somebody remembering. They are missed on holidays, duplicated under
+      pressure, and invisible to anyone looking for "what should have run last night". Automation
+      is what makes an estate operable without a hero.
+    good:
+      - At least nine in ten jobs with a recorded trigger setting run scheduled, triggered or continuously.
+      - Paused schedules are rare and intentional — parked jobs, not forgotten ones.
+      - Jobs that must stay manual are named exceptions, not the default for production.
+      - File-arrival or other triggers are used where the clock is the wrong signal (see also OE-02-05).
+      - Old job definitions that never recorded a trigger are understood as unmeasured risk, not proof of manual runs.
+    examples:
+      strong: >-
+        Production jobs are scheduled or continuously running; paused ones are deliberately parked
+        with an owner. Manual run is for diagnostics only.
+      partial: >-
+        Most jobs are automated and a minority are still button-driven, or several schedules sit
+        paused since the last incident.
+      weak: >-
+        Nightly work is someone opening the job and clicking Run. There is no schedule, or every
+        schedule is paused.
+    verify:
+      - how: sql
+        where: |-
+          with latest as (
+            select job_id, name, schedule, trigger, continuous, delete_time,
+            row_number() over (partition by workspace_id, job_id order by change_time desc) as rn
+            from system.lakeflow.jobs
+          )
+          select
+            case
+              when schedule is not null or trigger is not null or continuous is not null then 'trigger_recorded'
+              else 'trigger_unknown'
+            end as trigger_state,
+            count(*) as jobs
+          from latest where rn = 1 and delete_time is null
+          group by all
+        expect: >-
+          Most live jobs with trigger fields populated; investigate paused schedules and jobs with
+          no schedule, trigger or continuous
+        caveat: >-
+          The app scores only jobs where a trigger was recorded (`triggerRecorded`). Paused
+          schedules count as unautomated. If counting unknown jobs as manual would change the band,
+          the outcome is unmeasured rather than a forced fail or pass. Pass ≥90%, partial ≥60% of
+          decidable jobs
+      - how: ui
+        where: Jobs & Pipelines > a production job > Schedules & Triggers
+        expect: An active schedule, trigger or continuous setting — not paused and not empty
+      - how: by-hand
+        where: Ask which production jobs still require a person to press Run
+        expect: A short exception list, or none
+    pitfalls:
+      - >-
+        Leaving schedules paused after an incident and calling the estate automated.
+      - >-
+        Treating jobs with no trigger column populated as proven-manual. Definitions that predate
+        the column look the same, and the app will unmeasure when the band is ambiguous.
+      - >-
+        Automating the clock when the work should wait for a file — a schedule succeeds on empty
+        and hides the real problem (OE-02-05).
+    partial_when: >-
+      Between roughly three fifths and nine tenths of decidable jobs are automated, or automation
+      is high while paused schedules quietly park work that people still think runs.
+    not_applicable_when: >-
+      No jobs were found, so there is no orchestration to automate. Interactive-only notebook work
+      would not appear here.
+    references:
+      - https://docs.databricks.com/aws/en/jobs/triggers
+      - https://docs.databricks.com/aws/en/jobs/file-arrival-triggers
+    advice:
+      start_from: >-
+        Every production job on an active schedule, file-arrival trigger or continuous mode;
+        paused only with an owner and a re-enable date.
+      depends_on:
+        - >-
+          Work that waits on files should use arrival triggers (OE-02-05), not a hopeful cron.
+        - >-
+          Truly ad-hoc admin jobs can stay manual if listed; production paths should not.
+        - >-
+          Unmeasured findings need a person to say which unmarked jobs are old definitions versus
+          manual — edit a job once to populate the column if you need the scan to decide.
+      path:
+        - >-
+          Un-pause or retire schedules left paused after incidents.
+        - >-
+          Add schedules or triggers to button-driven production jobs.
+        - >-
+          Edit stale definitions once so trigger fields populate, then re-read the finding.
+      costs:
+        - >-
+          Turning automation on without an on-call path pages people for jobs that used to fail
+          silently when nobody ran them.
+        - >-
+          File-arrival wiring needs the watched path correct or jobs never fire.
+      retain: >-
+        The dated share of automated decidable jobs and the list of paused or manual exceptions
+        with owners.
+      revisit: >-
+        An incident that paused half the estate, a missed run on a holiday, or a new team shipping
+        manual jobs. Failing those, quarterly.
+
+  # Use ETL frameworks for data pipelines
+  # Never put to a person. Same measurement as OE-02-11. Here the angle is choosing an ETL framework over hand-orchestrated notebooks.
+  OE-02-06:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: Data engineering lead
+    means: >-
+      Data transformation runs in a declarative ETL framework — Lakeflow Declarative Pipelines —
+      rather than as hand-orchestrated notebook jobs that reimplement retries, dependency order and
+      expectations. The share is pipelines against pipelines-plus-jobs.
+    matters: >-
+      Hand-rolled notebook DAGs reinvent what a framework already provides: retries, schema
+      evolution hooks, expectation handling and a graph you can read. The cost shows up as
+      one-off failure modes and pipelines only one author understands.
+    good:
+      - Declarative pipelines are a material share of orchestration (pass when pipelines are at least half of pipelines-plus-jobs).
+      - Transformation logic lives in the pipeline, not only in notebooks a job happens to call.
+      - Production pipelines run in production mode (retries on, clusters not reused for failed updates).
+      - Jobs remain for orchestration that is not a transform graph — and that split is deliberate.
+      - New ETL starts in a pipeline template, not a blank notebook job.
+    examples:
+      strong: >-
+        Core transforms are declarative pipelines in production mode. Jobs that remain trigger
+        those pipelines or run non-ETL work. The scan may still under-count because pipeline-trigger
+        jobs sit on the job side of the ratio.
+      partial: >-
+        A few pipelines exist beside a large notebook-job estate, or pipelines are still in
+        development mode.
+      weak: >-
+        All transformation is notebook jobs. There are no declarative pipelines.
+    verify:
+      - how: sql
+        where: |-
+          select 'pipelines' as kind, count(*) as n from system.pipelines.pipelines
+          where delete_time is null
+          union all
+          select 'jobs', count(*) from (
+            select job_id from system.lakeflow.jobs
+            where delete_time is null
+            qualify row_number() over (partition by workspace_id, job_id order by change_time desc) = 1
+          )
+        expect: >-
+          A non-trivial pipeline count relative to jobs — not zero pipelines beside a large job
+          estate
+        caveat: >-
+          Same measurement as OE-02-11. Pass ≥50% of (pipelines + jobs), partial ≥15%. A job that
+          only starts a pipeline still counts on the job side, biasing the share down. Zero
+          pipelines with jobs present is fail; neither jobs nor pipelines is not-applicable
+      - how: ui
+        where: Jobs & Pipelines > Pipelines, production versus development mode
+        expect: Pipelines carrying production transforms, in production mode
+      - how: by-hand
+        where: Pick a critical transform and ask whether its retries and expectations are framework-native
+        expect: Declared on the pipeline, not hand-coded in notebook cells
+    pitfalls:
+      - >-
+        Wrapping a notebook in a pipeline resource without moving the graph — a job by another name.
+      - >-
+        Leaving pipelines in development mode in production, which skips retry behaviour the
+        framework exists to provide.
+      - >-
+        Reading OE-02-11 as a second score. It is the same measurement from the declarative-management
+        angle; fix the estate once.
+    partial_when: >-
+      Pipelines exist but are a small fraction of orchestration, or they remain in development mode
+      while notebook jobs still carry the production transforms.
+    not_applicable_when: >-
+      No jobs or pipelines exist, so there is no data-engineering workload to have chosen a
+      framework for.
+    references:
+      - https://docs.databricks.com/aws/en/ldp/
+      - https://docs.databricks.com/aws/en/lakehouse-architecture/operational-excellence/best-practices
+    advice:
+      start_from: >-
+        New ETL as Lakeflow Declarative Pipelines in production mode, with notebook jobs reserved
+        for work that is not a transform graph.
+      depends_on:
+        - >-
+          Stored-procedure or non-Spark transforms may stay as jobs; do not force a pipeline around
+          them.
+        - >-
+          OE-02-11 shares this measurement — progress here is progress there.
+        - >-
+          Tiny one-table copies can wait; start with multi-hop graphs that already hurt to operate.
+      path:
+        - >-
+          Move one painful multi-stage notebook DAG into a pipeline and run it in production mode.
+        - >-
+          Make the pipeline template the default for new ETL.
+        - >-
+          Retire or shrink notebook jobs that only duplicated framework features.
+      costs:
+        - >-
+          Rewriting a mature notebook DAG is days to weeks per pipeline.
+        - >-
+          Learning expectations and graph semantics is upfront cost that later incidents do not pay.
+      retain: >-
+        The pipeline inventory (production versus development) and the dated pipelines/(pipelines+jobs)
+        share from the assessment.
+      revisit: >-
+        A new multi-hop notebook job, a pipeline left in development in prod, or a major domain
+        onboard. Failing those, twice a year.
+
+  # Utilize declarative management for complex data and ML projects
+  # Never put to a person. Same measurement as OE-02-06. Angle: declarative management of complex projects — not "use an ETL framework".
+  OE-02-11:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: Data or ML engineering lead
+    means: >-
+      Complex multi-stage data or ML projects are managed declaratively — dependencies, freshness
+      and quality expressed as a graph the platform runs — rather than as an informal web of jobs
+      and notebooks somebody keeps in their head.
+    matters: >-
+      Complexity without a declarative graph becomes tribal knowledge: which job to rerun, in what
+      order, after which failure. People become the orchestrator, and the project cannot grow past
+      what those people can remember on a bad day.
+    good:
+      - Multi-hop projects are expressed as declarative pipelines (or equivalent graphs), not as tribal runbooks.
+      - The same pipelines/(pipelines+jobs) share meets the framework bar — this control reuses that measurement.
+      - ML feature and training preparation that is a graph lives under declarative management too, not only "classic ETL".
+      - Development-mode pipelines are not what production complexity runs on.
+      - On-call can read the graph to see blast radius without paging the original author.
+    examples:
+      strong: >-
+        The estate's complex projects — multi-hop ETL and feature prep — are declarative pipelines
+        in production mode. Simple jobs remain for single-shot work. On-call reads the graph.
+      partial: >-
+        One flagship project is declarative while other complex domains are still notebook webs, or
+        the graph exists but stays in development mode.
+      weak: >-
+        Complex projects are five-to-fifteen notebook jobs with a wiki page for restart order.
+        There is no declarative graph.
+    verify:
+      - how: sql
+        where: |-
+          select 'pipelines' as kind, count(*) as n from system.pipelines.pipelines
+          where delete_time is null
+          union all
+          select 'jobs', count(*) from (
+            select job_id from system.lakeflow.jobs
+            where delete_time is null
+            qualify row_number() over (partition by workspace_id, job_id order by change_time desc) = 1
+          )
+        expect: >-
+          Pipelines present in proportion to jobs for an estate that claims complex projects are
+          under control
+        caveat: >-
+          Identical measurement to OE-02-06 (pass ≥50%, partial ≥15% of pipelines+jobs). Here you
+          are reading it as whether complexity is declared; there as whether an ETL framework was
+          chosen. Jobs that only start pipelines still inflate the job side
+      - how: ui
+        where: A complex project's pipeline graph in the Pipelines UI
+        expect: Stages and dependencies visible without opening a wiki
+      - how: by-hand
+        where: Ask on-call how they know which upstream stage to rerun after a mid-graph failure
+        expect: The pipeline graph, not a person or a runbook of job ids
+    pitfalls:
+      - >-
+        Declaring victory on OE-02-06's few pipelines while the complex ML feature project is still
+        a job web — same score, different pain.
+      - >-
+        A graph nobody on-call can open (wrong permissions) recreates tribal knowledge with prettier
+        authoring.
+      - >-
+        Development mode on the complex project, which disables the retry semantics complexity needs
+        most.
+    partial_when: >-
+      Some complex projects are declarative while others remain informal job webs, or the graph is
+      declared but not what production on-call actually operates from.
+    not_applicable_when: >-
+      No jobs or pipelines exist, so there is no complex project estate to manage declaratively.
+    references:
+      - https://docs.databricks.com/aws/en/ldp/
+      - https://docs.databricks.com/aws/en/machine-learning/feature-store/
+    advice:
+      start_from: >-
+        Put the hardest multi-stage project — the one whose restart order lives in someone's head —
+        onto a declarative pipeline in production mode first; simpler jobs can follow.
+      depends_on:
+        - >-
+          OE-02-06 is the same score from the framework-adoption angle; do not run two migration
+          programmes.
+        - >-
+          Pure ML training loops that are a single job are not "complex projects" for this purpose;
+          feature graphs are.
+        - >-
+          Permissions must let on-call read the graph or the declaration helps authors only.
+      path:
+        - >-
+          Inventory projects whose recovery needs a person who "knows the order".
+        - >-
+          Move the worst one to a declarative pipeline and operate a real failure from the graph.
+        - >-
+          Require new complex projects to start declarative so the job-web pattern stops spreading.
+      costs:
+        - >-
+          The first complex migration is the most expensive rewrite you will do in this pillar.
+        - >-
+          Training on-call to read graphs takes a drill, not a slide.
+      retain: >-
+        The list of complex projects and which are declarative, plus the shared
+        pipelines/(pipelines+jobs) share.
+      revisit: >-
+        A new domain built as a job web, an on-call incident that needed the original author, or
+        development-mode left on in production. Failing those, twice a year.
+
+  # Establish monitoring processes
+  # Q: When a production job fails or overruns, what tells someone — and is that someone on call for it?
+  # Same measurement as OE-04-02 / PE-05-04 group. Angle: monitoring process and on-call — not tooling catalogue, not duration trending.
+  OE-04-01:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: Platform owner, with workload owners
+    means: >-
+      When a production job fails or overruns, a defined process notifies a person who is on call
+      for it — not a hope that somebody opens the Runs page. Health rules on jobs are the visible
+      half of that process inside Databricks.
+    matters: >-
+      Without a process, failures wait until a consumer complains. The delay is the outage: data
+      that should have landed overnight is discovered at the morning standup, and the people who
+      could fix it were never told.
+    good:
+      - At least four fifths of jobs whose definitions record health rules carry one (the pass band).
+      - Notifications go to a rota or owned channel, not only to a personal inbox that goes quiet on leave.
+      - Duration and failure rules are set from the job's purpose, not from round numbers.
+      - Job definitions that predate the health-rules column are recognised as excluded, not scored as unmonitored.
+      - Somebody can name who was paged for the last production job failure.
+    examples:
+      strong: >-
+        Production jobs carry health rules and failure mail or webhook to an on-call channel. The
+        last failure woke the owning rota, not a customer. External tooling may add more signal;
+        the process is clear either way.
+      partial: >-
+        Some jobs have health rules and notifications; others rely on someone noticing a red run,
+        or alerts go to an alias nobody watches.
+      weak: >-
+        No health rules, no rota. Failures are found by consumers or by chance.
+    verify:
+      - how: sql
+        where: |-
+          with latest as (
+            select job_id, name, health, delete_time, change_time,
+            row_number() over (partition by workspace_id, job_id order by change_time desc) as rn
+            from system.lakeflow.jobs
+          )
+          select
+            case when health is not null then 'health_rules_known' else 'health_rules_unknown' end as state,
+            count(*) as jobs
+          from latest where rn = 1 and delete_time is null
+          group by all
+        expect: >-
+          Health populated on jobs you care about, with rules that notify someone
+        caveat: >-
+          The app scores only jobs with `healthRulesKnown` (definitions touched since the column
+          existed). Older definitions are excluded from both halves. Pass ≥80%, partial ≥30%.
+          External monitoring on audit logs is invisible here — answer that under OE-04-02
+      - how: ui
+        where: A production job > Notifications / Health
+        expect: A failure and duration path to a team destination, not only an empty form
+      - how: by-hand
+        where: Ask who was notified the last time a production job failed, and how
+        expect: A rota or channel and a timestamp, rather than "we saw it in the UI later"
+    pitfalls:
+      - >-
+        Health rules that email a departed employee, which look configured and wake nobody.
+      - >-
+        Treating jobs that predate the health-rules column as unmonitored failures — the app
+        excludes them; edit the job if you need them in the share.
+      - >-
+        Confusing this with PE-05-04. Duration trending is a different question; a health rule can
+        exist without anyone looking at week-over-week growth.
+    partial_when: >-
+      Health rules cover some production jobs while others have none, or rules exist but notify
+      nobody who is on call — a configured alarm with no process behind it.
+    not_applicable_when: >-
+      No jobs exist, so there is no workload whose failure would need a monitoring process.
+    references:
+      - https://docs.databricks.com/aws/en/jobs/notifications
+      - https://docs.databricks.com/aws/en/lakehouse-architecture/operational-excellence/best-practices
+    advice:
+      start_from: >-
+        Health rules plus failure and duration notifications on every production job, routed to an
+        owned on-call channel or PagerDuty-equivalent — not to an individual's inbox alone.
+      depends_on:
+        - >-
+          Estates that already page from Datadog or similar off audit logs still need a person and
+          a rota; native health rules may be thinner but the process must exist (see OE-04-02).
+        - >-
+          Duration thresholds should come from the job's deadline, not twice yesterday's runtime
+          (PE-05-04).
+        - >-
+          Non-production jobs can stay quiet; production is the population that needs the process.
+      path:
+        - >-
+          Add failure notification to the jobs consumers already notice when late.
+        - >-
+          Add duration rules from those jobs' deadlines; point both at the rota.
+        - >-
+          Edit older definitions once so health fields populate and the scan can see them.
+      costs:
+        - >-
+          Alert noise if thresholds are wrong — tune rather than disable.
+        - >-
+          On-call load appears where silence used to hide unpaid work.
+      retain: >-
+        The on-call mapping for production jobs and a dated incident where the process notified
+        the right people before a consumer did.
+      revisit: >-
+        A failure found first by a consumer, a notification to a dead inbox, or a new critical job
+        without rules. Failing those, quarterly.
+
+  # Use native and external tools for platform monitoring
+  # Q: Which monitoring tools are in use — Databricks native signals, an external stack, or both?
+  # Same measurement as OE-04-01. Angle: native + external tooling — not the on-call process itself.
+  OE-04-02:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: Platform administrator
+    means: >-
+      Platform monitoring uses Databricks-native signals (job health rules, system tables,
+      dashboards) and, where the organisation already runs an observability stack, external tools
+      fed from audit logs or metrics — deliberately, not by accident of whatever one team installed.
+    matters: >-
+      Native-only monitoring misses what your organisation already pages on elsewhere; external-only
+      monitoring can look excellent in Datadog while this scan reports no health rules. Without a
+      stated mix, gaps sit between the two and each team assumes the other is watching.
+    good:
+      - Native health rules (or equivalent) cover production jobs the scan can see — same share bands as OE-04-01.
+      - >-
+        External tooling, if used, is named — what it consumes (audit logs, metrics) and who owns
+        the alerts.
+      - The attestation records external monitoring the workspace cannot see.
+      - System-table dashboards or SQL alerts exist for estate-level views health rules do not cover.
+      - Tooling choices are written down so a new team does not invent a third stack.
+    examples:
+      strong: >-
+        Jobs carry health rules for failure and overrun, and audit logs feed the company PagerDuty
+        path for workspace-level events. Both are named in the operating model. The scan may still
+        only see the native half.
+      partial: >-
+        Native health rules exist on some jobs and nobody can say whether audit logs are monitored
+        externally, or external monitoring is strong while native rules are absent.
+      weak: >-
+        Neither health rules nor an external pipeline off audit logs. Monitoring is opening the UI
+        when something feels wrong.
+    verify:
+      - how: sql
+        where: |-
+          with latest as (
+            select job_id, health, delete_time,
+            row_number() over (partition by workspace_id, job_id order by change_time desc) as rn
+            from system.lakeflow.jobs
+          )
+          select
+            count_if(health is not null and size(health.rules) > 0) as with_rules,
+            count_if(health is not null) as health_known,
+            count(*) as jobs
+          from latest where rn = 1 and delete_time is null
+        expect: >-
+          A high share of health-known jobs carrying rules — the native half this scan can measure
+        caveat: >-
+          Same resolver as OE-04-01 and PE-05-04's shared job-monitoring group: health-rule share
+          with pre-column jobs excluded. External stacks leave no workspace row — a clean Datadog
+          setup can still look unmonitored here until the attestation says so
+      - how: by-hand
+        where: Ask which external tools watch this workspace and what feed they use
+        expect: Named tools and feeds (audit log delivery, metrics), or an explicit "native only"
+      - how: ui
+        where: Workflows > Job runs alerts / notification destinations on production jobs
+        expect: Native notification configured, consistent with the external story if any
+    pitfalls:
+      - >-
+        Assuming external monitoring makes native health rules unnecessary for this score — the
+        scan cannot see Datadog, so the finding stays about rules unless you attest.
+      - >-
+        Two external stacks plus ad-hoc SQL alerts with no owner, which is tooling sprawl rather
+        than coverage.
+      - >-
+        Equating this with OE-04-01's on-call process. Tools without a rota still wake nobody.
+    partial_when: >-
+      Native rules cover part of the job estate while external coverage is unknown or the reverse —
+      one half of the tooling story is missing or unowned.
+    not_applicable_when: >-
+      No jobs exist, so there is no workload for native or external job monitoring to cover.
+    references:
+      - https://docs.databricks.com/aws/en/admin/system-tables/
+      - https://docs.databricks.com/aws/en/jobs/notifications
+    advice:
+      start_from: >-
+        Native health rules on production jobs, plus — if the company already runs one —
+        audit-log delivery into that observability stack with a named alert owner. Do not stand up
+        a second external stack just for Databricks.
+      depends_on:
+        - >-
+          Organisations without a central observability team stay native-first and keep SQL alerts
+          in-workspace.
+        - >-
+          OE-04-01 still owns the rota; this control owns which tools feed it.
+        - >-
+          PE-05-04's duration trending may live in native SQL or in the external tool — pick one
+          place people actually look.
+      path:
+        - >-
+          Inventory native notifications and any external Databricks feeds already in place.
+        - >-
+          Close the larger gap first: add health rules if native is empty, or document and own the
+          external feed if rules exist but nobody named the stack.
+        - >-
+          Write the mix in the operating model so new workspaces copy it.
+      costs:
+        - >-
+          Audit log shipping and external seats cost money; duplicate stacks cost more.
+        - >-
+          Aligning two tools' alert policies takes meetings; skipping them leaves dual pages or gaps.
+      retain: >-
+        The written native-plus-external map (what, feed, owner) and the health-rule share from the
+        last scan.
+      revisit: >-
+        A new workspace without the standard feed, an external tool retirement, or a finding that
+        looked unmonitored despite a known external stack. Failing those, twice a year.

@@ -1,0 +1,2524 @@
+# Answering guidance for the questions in this pillar.
+#
+# Keyed by control id, flat rather than nested by principle: the catalogue owns that structure.
+# Scaffolded by scripts/scaffold-guidance.mjs, which never edits an entry that already exists.
+# Held to config/guidance/guidance.schema.json by scripts/check-guidance.mjs.
+#
+# docs/design/guidance-authoring.md fixes the voice and works one entry through end to end.
+pillar: performance-efficiency
+entries:
+  # Use an enterprise grade model serving service
+  # Q: Are production models served by managed serving infrastructure, or by something a team built and now maintains?
+  PE-02-02:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: ML platform lead
+    means: >-
+      Models in a request path are served by managed model serving rather than by a container, a Flask
+      app or a cluster endpoint that a team wrote and is now responsible for keeping alive.
+    matters: >-
+      A hand-built serving layer is a production service the team did not plan to operate. It needs
+      scaling, patching, monitoring and an on-call rota, and it gets those to the extent the team has
+      time — which is least when the model matters most, because that is when they are busy with models.
+    good:
+      - Production models are served by managed serving endpoints rather than custom infrastructure.
+      - Scaling, logging and versioning come from the platform rather than from code somebody maintains.
+      - Where a custom serving path exists, it is a stated exception with a named reason.
+      - Endpoint latency and error rates are visible without a team having instrumented them.
+      - Nobody's on-call includes a serving container they wrote.
+    examples:
+      strong: >-
+        All online inference runs on Databricks model serving with provisioned concurrency, request
+        logging on, and versions promoted by alias. No team maintains serving infrastructure.
+      partial: >-
+        New models are on managed serving, and one older model still runs in a container the team built
+        because it needs a dependency the endpoint did not support at the time. Nobody has revisited it.
+      weak: >-
+        Models are served from custom containers. Scaling is manual, logging is whatever each team
+        implemented, and the team that wrote each one is its support.
+    verify:
+      - how: ui
+        where: Serving, and whether the endpoints there account for the models actually in request paths
+        expect: An endpoint per production model, rather than endpoints for some and containers for others
+      - how: api
+        where: GET /api/2.0/serving-endpoints
+        expect: The production models listed, rather than a shorter list than you expected
+      - how: by-hand
+        where: Ask whether anybody's on-call covers serving infrastructure they wrote
+        expect: No, rather than a named service and a named person
+    pitfalls:
+      - >-
+        A custom serving path kept for a dependency limitation that has since been resolved, which is the
+        most common reason one survives — the constraint was real and nobody rechecked it.
+      - >-
+        Counting managed serving adoption by endpoints created rather than by request paths covered. The
+        model still in a container is the one carrying the traffic.
+      - >-
+        Managed serving with logging off, which gives up the observability that was half the reason to
+        move.
+    partial_when: >-
+      New models use managed serving while one or more older models remain on custom infrastructure,
+      usually for a constraint that was real when the decision was made.
+    not_applicable_when: >-
+      No models are served for online inference — inference is batch only.
+    references:
+      - https://docs.databricks.com/aws/en/machine-learning/model-serving/
+      - https://docs.databricks.com/aws/en/machine-learning/model-serving/production-optimization
+    advice:
+      start_from: >-
+        Serve every online-inference model from a Databricks serving endpoint with request logging
+        on and concurrency set to the latency the caller can wait for — scale-to-zero only where a
+        cold start is acceptable.
+      depends_on:
+        - >-
+          A dependency the endpoint cannot host yet stays on custom serving, dated, with a date to
+          recheck the limitation.
+        - >-
+          Callers that cannot wait for cold start need provisioned concurrency and a budget for idle.
+        - >-
+          Batch-only inference is outside this control — do not invent an endpoint to satisfy a scan
+          that cannot see custom serving anyway.
+      path:
+        - >-
+          List models on a request path and which of them already have an endpoint.
+        - >-
+          Move the ones with no remaining dependency block; turn logging on as they move.
+        - >-
+          Recheck each custom exception against today's serving capabilities.
+      costs:
+        - >-
+          Provisioned concurrency bills while idle; scale-to-zero trades that for a first-request
+          cold start.
+        - >-
+          An empty serving table is unmeasured, not a fail — the scan records managed serving only.
+      retain: >-
+        The dated list of production request paths and the endpoint, or named exception, for each.
+      revisit: >-
+        A new model entering a request path, a dependency limitation being lifted, or an on-call
+        page for a container somebody wrote. Failing those, twice a year.
+
+  # Understand your data ingestion and access patterns
+  # Q: Do you know how your largest datasets are read — which columns, which filters, how often — rather than inferring it?
+  PE-03-01:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: Data engineering lead
+    means: >-
+      For the tables that cost the most to read, somebody has looked at how they are actually queried —
+      which columns, which predicates, how often, by what — rather than assuming the access pattern the
+      table was designed for is the one it gets.
+    matters: >-
+      Layout decisions — partitioning, clustering, file size — are only right for a particular access
+      pattern, and the pattern a table was designed for is rarely the one it ends up serving. Without
+      looking, tuning is guesswork: it is where partitioning on a column nothing filters on comes from.
+    good:
+      - The most expensive tables have a known access pattern, derived from query history rather than from design intent.
+      - The columns actually filtered on are known, and the layout reflects them.
+      - Read frequency and read volume are known per table, so effort goes where it pays.
+      - The last layout review has a date, and it is inside the last year.
+      - Somebody can name a layout change made because of an observed pattern.
+    examples:
+      strong: >-
+        Query history is reviewed quarterly for the twenty most expensive tables. Predicate columns and
+        read volumes are recorded, and the last review moved two tables to liquid clustering on the
+        columns queries actually filter on.
+      partial: >-
+        The access pattern is known for the two biggest tables from an investigation during an incident.
+        The rest are laid out according to their original design.
+      weak: >-
+        Nobody has looked. Tables are partitioned by ingestion date because that is conventional, and
+        queries filter on customer.
+    verify:
+      - how: sql
+        where: |-
+          select statement_type, count(*) as queries, round(sum(read_bytes)/1e9, 1) as read_gb,
+          sum(produced_rows) as rows_returned,
+          round(percentile(total_duration_ms, 0.95)/1000, 1) as p95_seconds
+          from system.query.history where end_time > current_timestamp() - interval 30 days
+          group by all order by read_gb desc
+        expect: >-
+          A read profile you can attribute. Large `read_gb` against small `rows_returned` is where the
+          layout is not serving the pattern — both columns are selected because the comparison is the
+          finding.
+        caveat: >-
+          This table covers SQL warehouses and serverless notebook and job compute. Work on classic
+          all-purpose or classic job clusters produces no rows at all, so an empty or clean result on an
+          estate that runs its pipelines on classic compute means the evidence is missing rather than good
+      - how: ui
+        where: A slow query's profile, and how many bytes it scanned against how many it returned
+        expect: Pruning proportionate to the filter, rather than a full scan behind a narrow predicate
+      - how: by-hand
+        where: Ask which columns the busiest table is filtered on, and compare against its partitioning
+        expect: The same columns, rather than two unrelated answers
+    pitfalls:
+      - >-
+        Designing layout from how the table is documented to be used rather than from how it is used,
+        which is the mechanism behind most partition columns nothing filters on.
+      - >-
+        Reading query history in aggregate and missing that one consumer accounts for most of the cost,
+        so the tuning serves the average query and not the expensive one.
+      - >-
+        Looking once. Access patterns move as consumers arrive, and a layout right for last year's
+        pattern is a layout nobody chose for this year's.
+    partial_when: >-
+      The pattern is known for one or two tables, usually from an incident investigation, and the rest
+      are laid out from design intent.
+    references:
+      - https://docs.databricks.com/aws/en/admin/system-tables/query-history
+      - https://docs.databricks.com/aws/en/tables/clustering
+    advice:
+      start_from: >-
+        Review query history every quarter for the twenty tables that scan the most bytes, write
+        down the columns they are filtered on, and cluster to those columns rather than the ones
+        the table was designed around.
+      depends_on:
+        - >-
+          A table read once a month is not a layout project — spend the review on the expensive
+          ones.
+        - >-
+          Classic job-cluster pipelines leave no query-history rows; profile those from the Spark
+          UI instead.
+        - >-
+          Partner-written external tables cannot be reclustered without a copy you own.
+      path:
+        - >-
+          Rank tables by bytes scanned, not by name or owner.
+        - >-
+          Open profiles on the top few and record predicate columns.
+        - >-
+          Apply liquid clustering where those columns are stable, and date the review.
+      costs:
+        - >-
+          Clustering rewrites the table once.
+        - >-
+          A quarterly review is someone's calendar, or the layout drifts again.
+      retain: >-
+        The dated access-pattern notes for the expensive tables and the clustering change that
+        followed.
+      revisit: >-
+        A new heavy consumer, a clustering change that did not move scan bytes, or a year without
+        a review.
+
+  # Use parallel computation where it is beneficial
+  # Q: Where work could run in parallel, does it — or do pipelines run stages sequentially because that is how they were written?
+  PE-03-02:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: Data engineering lead
+    means: >-
+      Independent work runs at the same time. Tasks with no dependency on each other are not waiting on
+      each other because the pipeline was written as a list.
+    matters: >-
+      A sequential pipeline's runtime is the sum of its stages, and the deadline pressure that follows
+      gets answered by making the compute bigger — which does not help, because the constraint is the
+      ordering rather than the capacity. So the cost rises and the runtime does not fall.
+    good:
+      - Job task graphs express real dependencies, so independent tasks run concurrently.
+      - Somebody has looked at whether the critical path is genuinely serial.
+      - Spark parallelism is not defeated by driver-side loops over partitions or tables.
+      - Concurrency limits are set high enough that the graph is not serialised by the runner.
+      - A pipeline's runtime has been reduced by parallelising rather than by enlarging compute.
+    examples:
+      strong: >-
+        Jobs are defined as dependency graphs, and the nightly load runs its twelve independent source
+        ingestions concurrently. The critical path is documented, and the last runtime improvement came
+        from removing a false dependency.
+      partial: >-
+        The main pipeline parallelises its ingestion, and a downstream stage loops over thirty tables
+        sequentially in a single task because it was written as a loop.
+      weak: >-
+        Pipelines are lists of steps. Runtime is the sum of the steps, and the response to a missed
+        deadline has been a larger cluster.
+    verify:
+      - how: ui
+        where: A production job's task graph, and whether independent tasks share a dependency they need
+        expect: Branches running concurrently, rather than a single chain
+      - how: sql
+        where: |-
+          with runs as (
+            select job_id, run_id,
+            datediff(second, min(period_start_time), max(period_end_time)) as seconds
+            from system.lakeflow.job_run_timeline
+            where period_start_time > current_timestamp() - interval 30 days
+            group by job_id, run_id)
+          select job_id, count(*) as runs, round(avg(seconds)) as avg_seconds
+          from runs group by all order by avg_seconds desc
+        expect: >-
+          Long-running jobs to examine for serialisation. A duration close to the sum of its tasks is the
+          signal
+        caveat: >-
+          Aggregated to the run before averaging. This table records a row per period of a run, so
+          averaging the periods directly returns the length of a typical hour of work rather than of a
+          run, and understates exactly the long jobs being looked for.
+      - how: by-hand
+        where: Search the pipeline code for loops over table names or dates
+        expect: >-
+          Hits that are genuinely sequential by nature, rather than a loop doing independent work one
+          item at a time
+    pitfalls:
+      - >-
+        A dependency declared for safety rather than because it exists, which serialises the graph while
+        looking like correctness.
+      - >-
+        A driver-side loop over tables inside one task, which runs sequentially on a cluster sized for
+        parallelism and reports as one long task.
+      - >-
+        Parallelising onto a cluster that cannot support the concurrency, which converts serial execution
+        into contention and can be slower.
+    partial_when: >-
+      The main pipeline parallelises and one or more stages loop sequentially over independent work, or
+      the graph is parallel and a concurrency limit serialises it.
+    references:
+      - https://docs.databricks.com/aws/en/jobs/control-flow
+      - https://docs.databricks.com/aws/en/optimizations/
+    advice:
+      start_from: >-
+        Define production jobs as dependency graphs so independent tasks run together, and replace
+        driver-side loops over tables with concurrent tasks or a foreach the runner can parallelise.
+      depends_on:
+        - >-
+          A true serial dependency stays serial — inventing concurrency there hides data bugs.
+        - >-
+          Warehouse or job concurrency limits can serialise a correct graph; raise those before
+          adding workers.
+        - >-
+          Streaming and continuous jobs are already concurrent in time; this is about batch graphs.
+      path:
+        - >-
+          Open the longest job's task graph and mark edges that are habit rather than data.
+        - >-
+          Split independent ingestions first — they are usually the cheap win.
+        - >-
+          Then hunt loops inside a single task that walk tables or dates.
+      costs:
+        - >-
+          More concurrent tasks need more slots and can contend on a small warehouse.
+        - >-
+          A false dependency removed without checking order can write a wrong table.
+      retain: >-
+        The graph of the longest pipeline and the runtime before and after the last parallelisation.
+      revisit: >-
+        A missed deadline answered by enlarging compute, or a new sequential loop in a hot path.
+        Failing those, yearly.
+
+  # Analyze the whole chain of execution
+  # Q: When something is slow, do you profile the whole chain — source, transfer, compute, sink — or tune the Spark job by reflex?
+  PE-03-03:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: Data engineering lead
+    means: >-
+      Investigating slowness starts by finding where the time goes across the whole path — reading the
+      source, moving the data, computing, writing the sink — before anything is tuned.
+    matters: >-
+      The Spark stage is the visible part and often not the slow part. Time spent waiting on a source
+      system, on a single-threaded extract, or on a sink that serialises writes is invisible in the
+      Spark UI, so tuning by reflex optimises the part that was already fast and reports no improvement.
+    good:
+      - The measurement covers the whole path, so the time outside Spark is a number rather than a gap.
+      - The read from the source system is timed, rather than assumed to be as fast as the network allows.
+      - The write to the sink is timed, including any serialisation the target imposes on concurrent writers.
+      - Wall-clock time for the job and the time the query profile accounts for are compared, and the difference is explained.
+      - Work that happens outside Databricks entirely — an upstream export, a file landing — is in the picture.
+    examples:
+      strong: >-
+        Slowness investigations start from a timing breakdown across extract, transform and load. Wall
+        clock for the run is reconciled against what the query profiles account for, and the last
+        unexplained 70 per cent turned out to be a JDBC read against an unindexed source column.
+      partial: >-
+        Query profiles are used well for the compute stage, and source and sink timings are not measured,
+        so an external bottleneck presents as an unexplained gap nobody closes.
+      weak: >-
+        Slow means tune Spark. Configuration is adjusted until something changes, and the reason is not
+        established.
+    verify:
+      - how: sql
+        where: |-
+          with runs as (
+            select job_id, run_id, max(result_state) as result_state,
+            datediff(second, min(period_start_time), max(period_end_time)) as seconds
+            from system.lakeflow.job_run_timeline
+            where period_start_time > current_timestamp() - interval 30 days
+            group by job_id, run_id)
+          select job_id, count(*) as runs, round(avg(seconds)) as avg_wall_seconds
+          from runs where result_state = 'SUCCEEDED' group by all order by avg_wall_seconds desc
+        expect: >-
+          Wall-clock seconds per job, which is the total the rest of the chain has to add up to. Take the
+          slowest one, open its query profiles, and subtract: whatever the profiles cannot account for is
+          the source, the transfer or the sink, and that remainder is what this question is about
+      - how: by-hand
+        where: >-
+          For the slowest job above, the measured duration of its read from the source system and of its
+          write to the target — from the source system's own logs, not from Spark
+        expect: >-
+          Two numbers somebody has actually measured. "The source is fast" without a measurement is the
+          assumption this question exists to catch
+      - how: by-hand
+        where: Ask about the last performance investigation and what the breakdown showed
+        expect: >-
+          A breakdown that accounts for the whole elapsed time, rather than a profile of the compute stage
+          and silence about the rest
+    pitfalls:
+      - >-
+        Profiling the compute and taking the source on trust, when a slow external read is the single
+        most common cause of a pipeline that will not speed up.
+      - >-
+        Measuring each stage and never adding them up, so a remainder of 40 per cent of the elapsed time
+        sits unnoticed between the numbers that were collected.
+      - >-
+        Stopping the investigation at the workspace boundary, when the wait is an upstream export that
+        finishes late and the pipeline is only slow because it starts late.
+    partial_when: >-
+      The compute stage is profiled properly and the source and sink are not measured, so an external
+      bottleneck shows only as unexplained time.
+    references:
+      - https://docs.databricks.com/aws/en/sql/user/queries/query-profile
+      - https://docs.databricks.com/aws/en/admin/system-tables/query-history
+    advice:
+      start_from: >-
+        Time extract, transfer, compute and load separately on the slowest production job, and do
+        not change Spark configuration until the largest slice is named.
+      depends_on:
+        - >-
+          A job that stays inside the workspace can still have a sink that serialises writers.
+        - >-
+          Upstream exports outside Databricks need the source system's logs, not the Spark UI.
+        - >-
+          A one-stage notebook has no chain — use the bottleneck practice (PE-04-03) instead.
+      path:
+        - >-
+          Take wall-clock from the job run timeline for the slowest success.
+        - >-
+          Subtract what query profiles account for; the remainder is source, transfer or sink.
+        - >-
+          Measure that remainder from the system that owns it, then tune that piece.
+      costs:
+        - >-
+          Instrumenting an external source takes access you may not have on day one.
+        - >-
+          A week spent on Spark when the wait is JDBC is a week you do not get back.
+      retain: >-
+        A timing breakdown for the slowest job that adds up to wall-clock.
+      revisit: >-
+        A slowness investigation that starts at Spark configuration, or a new external source.
+        Failing those, twice a year.
+
+  # Prefer larger clusters
+  # Q: Has anyone tested whether a larger cluster finishes your heavy jobs faster for the same or lower cost?
+  PE-03-04:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: Data engineering lead
+    means: >-
+      For the heavy jobs, somebody has run the same work on a larger cluster and compared cost as well
+      as runtime — because DBUs are billed by time, so twice the cluster for half the time costs the same
+      and delivers sooner.
+    matters: >-
+      The intuition that a smaller cluster is cheaper is wrong for work that scales, and it is a costly
+      mistake in both directions: the job takes longer, and the long runtime is what pushes it against
+      the next deadline. Without the comparison, the smaller cluster looks like the frugal choice.
+    good:
+      - At least one heavy job has been run at two sizes with runtime and cost compared.
+      - The comparison is cost per run, not hourly rate.
+      - The scaling behaviour is known — where doubling stops halving the runtime.
+      - Autoscaling maximums are set high enough to allow the larger shape where it pays.
+      - A size increase has actually shipped on cost grounds, which is the counter-intuitive direction.
+    examples:
+      strong: >-
+        The five heaviest jobs were run at two sizes with cost per run recorded. Three moved to larger
+        clusters — same cost, half the runtime — and two did not because their scaling flattened, and the
+        flattening point is written down.
+      partial: >-
+        One job was tested and moved to a larger cluster with a good result, and the finding was not
+        applied to the other heavy jobs.
+      weak: >-
+        Clusters are kept small on the assumption that small is cheap. No comparison has been run.
+    verify:
+      - how: sql
+        where: |-
+          with runs as (
+            select job_id, run_id,
+            datediff(second, min(period_start_time), max(period_end_time)) as seconds
+            from system.lakeflow.job_run_timeline
+            where period_start_time > current_timestamp() - interval 30 days
+            group by job_id, run_id)
+          select job_id, count(*) as runs, round(avg(seconds)) as avg_seconds
+          from runs group by all order by avg_seconds desc
+        expect: >-
+          The long-running jobs, which are the candidates. Cost per run is runtime times rate, so these
+          are where a size change is worth measuring
+        caveat: >-
+          Aggregated to the run before averaging. This table records a row per period of a run, so
+          averaging the periods directly returns the length of a typical hour of work rather than of a
+          run, and understates exactly the long jobs being looked for.
+      - how: ui
+        where: A heavy job's run history across a period when its cluster size changed
+        expect: A runtime comparison at two sizes, rather than one size throughout
+      - how: by-hand
+        where: Ask whether any job has been made larger on cost grounds
+        expect: A named job and a comparison, rather than only reductions
+    pitfalls:
+      - >-
+        Comparing hourly rates rather than cost per run, which makes the larger cluster look more
+        expensive in every case and is the reason this is usually got wrong.
+      - >-
+        Assuming linear scaling. Past a point, more workers add shuffle and coordination rather than
+        throughput, and the flattening point is worth knowing rather than assuming.
+      - >-
+        Testing on a job whose bottleneck is a single-threaded source read, where no cluster size changes
+        anything and the test is read as evidence that scaling does not work.
+    partial_when: >-
+      One job has been compared at two sizes and the finding has not been applied to the others, or the
+      comparison was runtime only without cost per run.
+    references:
+      - https://docs.databricks.com/aws/en/compute/cluster-config-best-practices
+      - https://docs.databricks.com/aws/en/lakehouse-architecture/performance-efficiency/best-practices
+    advice:
+      start_from: >-
+        Run each of the five heaviest classic jobs at two sizes and keep the size whose cost per
+        run is lower or equal at a shorter runtime — compare dollars per run, not the hourly rate.
+      depends_on:
+        - >-
+          A job bottlenecked on a single-threaded source read will not scale; fix that first.
+        - >-
+          Autoscaling max must be high enough for the larger shape or the comparison cannot happen.
+        - >-
+          Serverless jobs have no worker count to double — this experiment is for classic compute.
+      path:
+        - >-
+          List jobs by average wall-clock, aggregated to the run rather than the period.
+        - >-
+          Repeat the top ones at a larger worker count; record runtime and DBU.
+        - >-
+          Ship the wins; write down where doubling stopped helping.
+      costs:
+        - >-
+          The test itself costs a second run at the larger size.
+        - >-
+          Past the flattening point, more workers add shuffle without shortening the job.
+      retain: >-
+        The two-size comparison sheet with cost per run for each heavy job.
+      revisit: >-
+        A heavy job added, a deadline missed that was answered by "more time", or a year without
+        a comparison.
+
+  # Use native Spark operations
+  # Q: Is transformation logic written in native Spark operations, or does it fall back to row-at-a-time UDFs and Python loops in hot paths?
+  PE-03-07:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: Data engineering lead
+    means: >-
+      Transformations use built-in Spark functions and SQL, so the engine can optimise and vectorise
+      them. Where a UDF is genuinely needed, it is a pandas UDF rather than a row-at-a-time Python one.
+    matters: >-
+      A Python UDF is opaque to the optimiser and pays serialisation per row, so it defeats predicate
+      pushdown, defeats Photon, and can cost an order of magnitude on the same cluster. The job still
+      works, so the cost shows up only as a runtime nobody can explain.
+    good:
+      - Hot-path transformations use built-in functions rather than UDFs.
+      - Where a UDF is needed, it is a pandas or vectorised UDF, not a row-at-a-time one.
+      - Nobody is looping over rows or collecting to the driver to transform.
+      - Somebody has checked whether the existing UDFs have a built-in equivalent, and when.
+      - Photon is enabled where the workload suits it, and UDFs are not silently preventing it.
+    examples:
+      strong: >-
+        Transformations are Spark SQL and DataFrame operations. Two pandas UDFs remain for genuinely
+        custom logic, both reviewed against the built-in library at the last runtime upgrade, and Photon
+        is on for the SQL workloads.
+      partial: >-
+        Most logic is native, and three row-at-a-time UDFs remain in a nightly pipeline written years
+        ago. Nobody has checked whether the functions they implement now exist natively.
+      weak: >-
+        Business logic is Python UDFs applied row by row, and one pipeline collects a table to the driver
+        and transforms it with a loop.
+    verify:
+      - how: by-hand
+        where: Search the production repository for `udf(`, `applyInPandas`, `iterrows` and `collect()`
+        expect: >-
+          Vectorised UDFs where UDFs exist at all, and no row-at-a-time loops in the pipelines that
+          process volume
+      - how: ui
+        where: A slow query's profile, and whether Photon is active on it
+        expect: Photon engaged, rather than a fallback caused by an unsupported expression
+      - how: sql
+        where: |-
+          select coalesce(compute.type, 'unrecorded') as compute_type,
+          round(percentile(total_duration_ms, 0.95)/1000, 1) as p95_seconds,
+          round(avg(total_duration_ms)/1000, 1) as avg_seconds, count(*) as queries
+          from system.query.history where end_time > current_timestamp() - interval 30 days
+          group by all order by queries desc
+        expect: >-
+          A p95 you can account for. A long tail against modest data volumes is where a UDF is usually
+          found.
+        caveat: >-
+          Nothing from classic all-purpose or classic job clusters appears in this table, and UDFs mostly
+          live in pipeline code — so if every row says `WAREHOUSE`, this step has not looked at the code the
+          question is about. Read the Spark UI's stage times for those pipelines instead of reading a clean
+          result here as an answer.
+    pitfalls:
+      - >-
+        A UDF that was necessary when it was written and has had a built-in equivalent for two runtime
+        versions, which nobody rechecks because the code works.
+      - >-
+        A single unsupported expression disabling Photon for the whole query, so the cost of one UDF is
+        paid by every operation around it.
+      - >-
+        Replacing a Python UDF with a pandas UDF and calling it native. It is much faster and still
+        opaque to the optimiser, so pushdown is still lost.
+    partial_when: >-
+      Most logic is native and a few row-at-a-time UDFs remain in older pipelines, or UDFs are vectorised
+      throughout and nobody has checked for built-in equivalents.
+    references:
+      - https://docs.databricks.com/aws/en/udf/
+      - https://docs.databricks.com/aws/en/compute/photon
+    advice:
+      start_from: >-
+        Write hot-path transformations in Spark SQL or DataFrame builtins; keep only vectorised
+        pandas UDFs where no builtin exists, and re-check those against the runtime function list
+        at each LTS upgrade.
+      depends_on:
+        - >-
+          Logic that truly cannot be expressed in Spark stays a UDF — do not rewrite it into
+          unreadable SQL.
+        - >-
+          Photon falling back from one unsupported expression is a reason to isolate that
+          expression, not to turn Photon off.
+        - >-
+          Driver-side collect-and-loop is never the fallback; it is a bug.
+      path:
+        - >-
+          Search production code for `udf(`, `iterrows` and `collect()`.
+        - >-
+          Replace row-at-a-time UDFs that now have builtins.
+        - >-
+          Confirm Photon stays engaged on the rewritten queries.
+      costs:
+        - >-
+          A rewrite of business logic needs a correctness test, not just a faster stage.
+        - >-
+          Pandas UDFs are faster and still opaque — predicate pushdown stays lost.
+      retain: >-
+        The list of remaining UDFs with the date each was checked against builtins.
+      revisit: >-
+        A runtime upgrade, a new UDF in a hot path, or Photon falling back on a production query.
+
+  # Understand your hardware and workload type
+  # Q: Is compute matched to workload character — memory-heavy, shuffle-heavy, GPU — rather than one family used for everything?
+  PE-03-09:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: Platform administrator, with the data engineering lead
+    means: >-
+      Somebody has characterised the workloads — which are memory-bound, which shuffle heavily, which
+      need GPUs — and the compute they run on follows from that rather than from a single default.
+    matters: >-
+      One instance family for every workload is right for some and wrong for the rest, and the wrong ones
+      pay twice: the resource they need is scarce, so they run long, and the resource they do not need is
+      paid for throughout. Because everything completes, nothing reports which workloads are mismatched.
+    good:
+      - Workloads are characterised — memory, shuffle, IO, GPU — from observation rather than assumption.
+      - Compute choices follow the characterisation, expressed in policies rather than in habits.
+      - Shuffle-heavy work has local storage or is on a family suited to it.
+      - GPU work is on GPU compute and nothing else is.
+      - Spill is looked at, since it is the clearest evidence of a memory mismatch.
+    examples:
+      strong: >-
+        Workloads are classified into three profiles from observed spill, shuffle and CPU behaviour, each
+        with a cluster policy. The shuffle-heavy nightly aggregation moved to a storage-optimised family
+        after spill was measured, and the runtime fell by a third.
+      partial: >-
+        The heaviest workload has been characterised and given suitable compute. The rest use a
+        general-purpose default nobody has held against their behaviour.
+      weak: >-
+        One instance family for everything. Spill has never been looked at, and the GPU work runs on it
+        too.
+    verify:
+      - how: sql
+        where: |-
+          select count(*) as spilling_queries, round(max(spilled_local_bytes)/1e9, 1) as worst_spill_gb
+          from system.query.history where end_time > current_timestamp() - interval 30 days
+          and spilled_local_bytes > 0
+        expect: >-
+          No spill, or spill you can attribute. Spilling queries are memory-bound work on compute that does
+          not have the memory.
+        caveat: >-
+          This table covers SQL warehouses and serverless notebook and job compute. Work on classic
+          all-purpose or classic job clusters produces no rows at all, so an empty or clean result on an
+          estate that runs its pipelines on classic compute means the evidence is missing rather than good;
+          for pipelines on classic job compute, the same signal is the Spark UI's stage detail
+      - how: sql
+        where: |-
+          with current_clusters as (
+            select * from system.compute.clusters
+            qualify row_number() over (
+              partition by workspace_id, cluster_id order by change_time desc) = 1
+          )
+          select worker_node_type, count(*) as clusters from current_clusters
+          where delete_time is null group by all order by clusters desc
+        expect: >-
+          Families that map to workload profiles, rather than one family covering everything.
+        caveat: >-
+          The `qualify` is load-bearing: this table keeps a row per edit and retains deleted clusters, so
+          `count(*)` counts versions and a plain `delete_time is null` filter counts clusters that are gone
+          — the column would be labelled clusters and be neither
+      - how: by-hand
+        where: Ask which workloads are shuffle-heavy and what they run on
+        expect: A named workload and a deliberate choice, rather than "they all run on the same thing"
+    pitfalls:
+      - >-
+        Characterising by what the workload does conceptually rather than by what it measurably does. A
+        job that sounds compute-heavy and spills is a memory problem.
+      - >-
+        Moving everything to memory-optimised because one job spilled, which fixes one workload and
+        raises the rate for all the others.
+      - >-
+        Ignoring shuffle-write volume, which determines whether local storage matters and is the usual
+        reason a storage-optimised family wins.
+    partial_when: >-
+      The heaviest workload has been characterised and matched while the rest run on a general-purpose
+      default, or the characterisation is documented and the policies do not reflect it.
+    references:
+      - https://docs.databricks.com/aws/en/compute/cluster-config-best-practices
+      - https://docs.databricks.com/aws/en/admin/system-tables/query-history
+    advice:
+      start_from: >-
+        Classify the heavy classic jobs from measured spill, shuffle and CPU, then give each class
+        a cluster policy — memory-optimised where it spills, storage-local where it shuffles, GPU
+        only where the code uses a GPU.
+      depends_on:
+        - >-
+          One spill event is not a reason to move the whole estate to memory-optimised nodes.
+        - >-
+          Serverless hides instance family; this mapping applies to classic compute that still
+          chooses one.
+        - >-
+          GPU work on CPU nodes and CPU work on GPU nodes are both mismatches — they fail in
+          opposite directions.
+      path:
+        - >-
+          Pull spill and shuffle from query history or the Spark UI for the expensive jobs.
+        - >-
+          Map each to a family and encode it in a policy.
+        - >-
+          Leave a general-purpose default only for work you have not characterised yet, and date
+          that list.
+      costs:
+        - >-
+          Memory- and storage-optimised families cost more per hour; the win is shorter runtime,
+          not a cheaper node.
+        - >-
+          Policies that are too tight produce exception tickets that become the real path.
+      retain: >-
+        The workload-to-family map and the spill figure that justified the last move.
+      revisit: >-
+        Persistent spill on a "matched" family, a GPU job arriving, or a year on one instance type
+        for everything.
+
+  # Use caching
+  # Q: Where the same data is read repeatedly, is caching used deliberately — and has its effect been measured?
+  PE-03-10:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: Data engineering lead
+    means: >-
+      Where the same data is read many times in a job or by many queries, caching is used on purpose and
+      somebody has measured whether it helped — rather than caching being sprinkled by habit or absent
+      entirely.
+    matters: >-
+      Caching applied without measurement usually costs more than it saves: cached data occupies memory
+      that the work needed, so a cache on a dataset read once makes the job slower and the reason is not
+      visible. Absent caching on a repeatedly scanned dataset pays the read every time.
+    good:
+      - Caching is applied where data is genuinely reused, and somebody can say how many times.
+      - The effect was measured — runtime before and after — rather than assumed.
+      - Cached datasets are unpersisted when no longer needed, so memory returns to the work.
+      - Disk caching on the SQL warehouses is understood as distinct from application-level caching.
+      - Every `cache()` or `persist()` call sits on a dataset the same job reads more than once, and the number of reads is countable from the code.
+    examples:
+      strong: >-
+        Two datasets are cached in the nightly pipeline, both read five or more times, with the runtime
+        improvement recorded from the change that introduced them. Both are unpersisted at the end of
+        their stage.
+      partial: >-
+        Caching is used in the main pipeline where reuse is real, and its effect was never measured, so
+        whether it is helping is an assumption.
+      weak: >-
+        `cache()` appears on most DataFrames as a matter of style, including ones read once. Nothing has
+        been measured, and one pipeline spills.
+    verify:
+      - how: by-hand
+        where: Search the pipeline code for `cache()` and `persist()`, and count reads of each target
+        expect: Caching only where the dataset is read more than once
+      - how: ui
+        where: The Spark UI's storage tab on a running job
+        expect: Cached datasets that are being hit, rather than cached and read once
+      - how: sql
+        where: |-
+          select count(*) as spilling_queries, round(sum(spilled_local_bytes)/1e9, 1) as spill_gb
+          from system.query.history where end_time > current_timestamp() - interval 30 days
+          and spilled_local_bytes > 0
+        expect: >-
+          No spill. Spill alongside heavy caching is the signature of a cache taking memory the work needed.
+        caveat: >-
+          Nothing from classic all-purpose or classic job clusters appears in this table, and a nightly
+          pipeline is exactly the workload most likely to be over-caching. Read the Spark UI's storage and
+          stage tabs for it rather than trusting a clean result here.
+    pitfalls:
+      - >-
+        Caching a dataset read once, which pays the cost of materialising it for no reuse and takes
+        memory from the work that follows.
+      - >-
+        Caching without unpersisting, so memory is held for the rest of the job and the effect appears in
+        a later stage nobody connects to the cache.
+      - >-
+        Confusing the warehouse's disk cache with application caching. The first is automatic and the
+        second is a decision, and treating them as one thing means neither is managed.
+    partial_when: >-
+      Caching is applied where reuse is genuine and its effect has never been measured, or it is measured
+      in one pipeline and applied by habit in the others.
+    references:
+      - https://docs.databricks.com/aws/en/optimizations/disk-cache
+      - https://docs.databricks.com/aws/en/lakehouse-architecture/performance-efficiency/best-practices
+    advice:
+      start_from: >-
+        Put repeatedly scanned SQL on warehouses or serverless compute that keep a disk cache, and
+        treat a cache-byte share under half as a reason to look at those repeated scans — not as a
+        target to hit on a once-through pipeline.
+      depends_on:
+        - >-
+          A workload that reads each row once cannot be cached into a pass; the scan already drops
+          statements that read no files.
+        - >-
+          Result-cache hits sit outside the share — they never reached the disk cache.
+        - >-
+          Application `cache()` / `persist()` is a different lever and is not what this scan
+          measures.
+      path:
+        - >-
+          Read the scan's cached-byte share and the warehouses that miss.
+        - >-
+          Confirm those queries actually repeat; if they do, keep compute warm enough to hold the
+          working set.
+        - >-
+          If they do not repeat, stop chasing the percentage.
+      costs:
+        - >-
+          Holding a warehouse up for cache warmth is idle spend (see PE-04-02).
+        - >-
+          Caching a one-shot read steals memory and can spill the work that follows.
+      retain: >-
+        The dated cache-byte share and the note on whether the low-share warehouses repeat their
+        reads.
+      revisit: >-
+        A new dashboard that rescans the same tables, or the share falling two months running.
+        Failing those, quarterly.
+
+  # Optimize join performance
+  # Q: Have the joins in your heaviest queries been examined for strategy and skew, or are they left to the optimiser?
+  PE-03-14:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: Data engineering lead
+    means: >-
+      For the heaviest queries, somebody has looked at how the joins actually execute — which strategy
+      was chosen, whether one key dominates — rather than trusting the optimiser on every case.
+    matters: >-
+      The optimiser is right most of the time and expensive when it is wrong, because a bad join plan on
+      a large table is the difference between minutes and hours. Skew is the case it cannot fix on its
+      own: one key holding a tenth of the rows puts a tenth of the work on one task, and the job's
+      runtime becomes that task's.
+    good:
+      - The join plans of the heaviest queries have been read, not just their runtimes.
+      - Skew is known where it exists, and is handled rather than absorbed.
+      - Statistics are current on the tables being joined, since the optimiser's choices depend on them.
+      - Broadcast is used where a side is genuinely small, and its threshold is understood.
+      - Somebody can name a join that was investigated and what changed.
+    examples:
+      strong: >-
+        The five heaviest queries have had their plans reviewed. One had skew on a null-heavy key,
+        handled by salting; statistics are refreshed by the pipelines that write the tables, and the
+        broadcast threshold was raised deliberately for one workload.
+      partial: >-
+        Join performance was investigated for the query that caused an incident and fixed. The other
+        heavy queries have not been examined and statistics are not maintained.
+      weak: >-
+        Joins are left entirely to the optimiser. Skew has never been looked for, and one nightly job has
+        a stage that always takes ten times longer than the others.
+    verify:
+      - how: ui
+        where: A heavy query's profile, its join nodes and the row counts on each side
+        expect: >-
+          A strategy that suits the sizes, and tasks of comparable duration within a stage rather than one
+          long straggler
+      - how: sql
+        where: |-
+          select round(percentile(total_duration_ms, 0.5)/1000, 1) as p50_seconds,
+          round(percentile(total_duration_ms, 0.95)/1000, 1) as p95_seconds,
+          round(sum(shuffle_read_bytes)/1e9, 1) as shuffle_gb
+          from system.query.history where end_time > current_timestamp() - interval 30 days
+        expect: >-
+          A p95 within reach of the p50. A large gap alongside heavy shuffle is where skewed joins live.
+        caveat: >-
+          This table covers SQL warehouses and serverless notebook and job compute. Work on classic
+          all-purpose or classic job clusters produces no rows at all, so an empty or clean result on an
+          estate that runs its pipelines on classic compute means the evidence is missing rather than good
+      - how: by-hand
+        where: Ask whether statistics are maintained on the largest joined tables, and by what
+        expect: >-
+          A mechanism — a pipeline step, ANALYZE, predictive optimisation — rather than "not that I know
+          of"
+    pitfalls:
+      - >-
+        Reading average runtime rather than the distribution, which hides skew completely: a job whose
+        stragglers dominate has a normal-looking average.
+      - >-
+        Broadcasting a side that is small in staging and large in production, which turns an optimisation
+        into a driver memory failure at the worst time.
+      - >-
+        Stale statistics, which make the optimiser choose correctly for a table that no longer has that
+        shape — and the choice looks like an optimiser fault rather than a maintenance one.
+    partial_when: >-
+      Joins have been examined for the query that caused an incident and not for the rest, or skew is
+      known and worked around per query rather than handled where it originates.
+    references:
+      - https://docs.databricks.com/aws/en/optimizations/aqe
+      - https://docs.databricks.com/aws/en/sql/user/queries/query-profile
+    advice:
+      start_from: >-
+        Open the query profile on the five heaviest jobs, name the join strategy and any skew, and
+        only then change broadcast thresholds or salt a key — refresh statistics on those tables
+        first if they are stale.
+      depends_on:
+        - >-
+          Most joins are fine left to adaptive query execution; this is for the ones whose p95 sits
+          far from p50 next to heavy shuffle.
+        - >-
+          Broadcasting a side that is small in staging and large in production OOMs the driver.
+        - >-
+          Skew that originates in the data is cheaper to fix at write than in every query.
+      path:
+        - >-
+          Find the p95-to-p50 gap and the shuffle-heavy statements.
+        - >-
+          Read those join nodes; record strategy and task-time spread.
+        - >-
+          Fix statistics, then strategy, then skew — one change at a time.
+      costs:
+        - >-
+          Salting and hints are ongoing query debt if the table shape was the real problem.
+        - >-
+          ANALYZE or a rewrite to refresh statistics costs a run.
+      retain: >-
+        The named join that was changed and the profile excerpt that justified it.
+      revisit: >-
+        A new heavy join, a stage that always has one straggler, or stale statistics on a growing
+        dimension table.
+
+  # Test on data representative of production data
+  # Q: Is performance tested against data of production shape and scale, or against a small sample that hides the problems?
+  PE-04-01:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: Data engineering lead
+    means: >-
+      Performance testing runs against data with production's volume and production's shape — the same
+      skew, the same cardinality, the same null distribution — rather than against a tidy sample.
+    matters: >-
+      A small sample passes everything, because the failures that matter are properties of scale and
+      shape: skew, spill, a join that fits in memory at a million rows and not at a billion. Testing
+      against a sample means the first real test is the production release.
+    good:
+      - Test data matches production in volume, or in a known and stated ratio.
+      - It matches in shape — skew and cardinality — not only in size.
+      - Performance is part of testing before release rather than measured after it.
+      - The test environment's compute is comparable, so a result means something.
+      - A performance problem has been found before release at least once.
+    examples:
+      strong: >-
+        Staging holds a masked copy at production scale, refreshed monthly. Pipeline changes are timed
+        against it before merge, and the last release was held because a change tripled a stage's
+        runtime.
+      partial: >-
+        Staging holds a 10 per cent sample that preserves the key distribution, so shape problems appear
+        and volume problems do not. Nobody scales the result to predict production.
+      weak: >-
+        Testing uses a few thousand hand-made rows. Performance is discovered in production.
+    verify:
+      - how: sql
+        where: |-
+          select table_catalog, table_schema, count(*) as tables
+          from system.information_schema.tables where table_schema not in ('information_schema')
+          group by all order by tables desc
+        expect: >-
+          A test or staging catalogue whose table count is comparable to production, as the starting
+          point for comparing volumes table by table
+        caveat: >-
+          This view covers the Unity Catalog metastore, so an estate whose staging still lives in
+          `hive_metastore` shows no staging catalogue at all — which reads as none existing rather than
+          as none visible.
+      - how: by-hand
+        where: >-
+          Compare row counts and distinct key counts for the three biggest tables across environments
+        expect: Comparable shape, or a stated and understood ratio
+      - how: by-hand
+        where: Ask for the last performance problem found before release
+        expect: A named case, rather than only ones found in production
+    pitfalls:
+      - >-
+        A sample that is uniformly drawn, which removes exactly the skew that causes the problem and
+        produces a test that cannot fail for the reason production will.
+      - >-
+        Matching volume and not shape. A billion synthetic rows with uniform keys is easier to process
+        than a hundred million real ones.
+      - >-
+        Testing on smaller compute in proportion to the smaller data, which cancels the difference and
+        makes the test tell you nothing about either.
+    partial_when: >-
+      Test data preserves shape at a reduced volume, or matches volume with synthetic uniformity, so one
+      of the two classes of problem is still discovered in production.
+    references:
+      - https://docs.databricks.com/aws/en/lakehouse-architecture/performance-efficiency/best-practices
+      - https://docs.databricks.com/aws/en/dev-tools/bundles/deployment-modes
+    advice:
+      start_from: >-
+        Keep a masked staging copy at production volume for the tables pipelines actually join, and
+        time changes against it before merge — a ten-percent sample is a fallback only when it
+        preserves key skew.
+      depends_on:
+        - >-
+          Regulated data may forbid a full copy; then preserve cardinality and skew at a stated
+          ratio and say what the test cannot catch.
+        - >-
+          Smaller compute proportional to smaller data cancels the test — keep compute comparable.
+        - >-
+          Synthetic uniform keys hide the problems this control exists to find.
+      path:
+        - >-
+          Compare row counts and distinct keys on the three biggest tables across environments.
+        - >-
+          Refresh the staging copy on a cadence you can afford.
+        - >-
+          Add a duration assertion on the critical pipeline before merge.
+      costs:
+        - >-
+          A production-scale copy is storage and a refresh job.
+        - >-
+          Holding a release for a staging slowdown is calendar time teams resist.
+      retain: >-
+        The last pre-merge timing against staging and the volume-to-shape ratio written down.
+      revisit: >-
+        A performance incident that staging never saw, or a year-old staging copy. Failing those,
+        yearly.
+
+  # Consider prewarming resources
+  # Q: For workloads with a start-of-day deadline, is compute warmed before the work arrives?
+  PE-04-02:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: Platform administrator, with the analytics lead
+    means: >-
+      Where a deadline is at the start of the working day, compute is running before the work arrives —
+      a warehouse started ahead of the first query, a pool with instances ready — rather than being
+      started by the first request.
+    matters: >-
+      Cold-start time lands on the first user or the first job, and at start of day that is the moment
+      with the least tolerance for it. It is also the least visible kind of slowness: the platform
+      reports the query as fast and the person waited two minutes for the cluster.
+    good:
+      - Warehouses serving morning traffic are running before it arrives.
+      - Instance pools keep warm instances where cluster start time affects a deadline.
+      - Prewarming is scoped to the window that needs it rather than running all day.
+      - Somebody knows what the cold-start cost actually is, as a number.
+      - The first query of the day has been timed, rather than assumed to be like the others.
+    examples:
+      strong: >-
+        The warehouses serving the morning dashboards start on a schedule fifteen minutes before the
+        first users and auto-stop at the end of the day. Cold-start cost was measured at ninety seconds,
+        which is why the schedule exists.
+      partial: >-
+        A pool keeps instances warm for the nightly jobs, and the analyst-facing warehouses still cold
+        start each morning because nobody has measured what that costs the first user.
+      weak: >-
+        Everything starts on demand. The first query each morning takes minutes and is reported as the
+        platform being slow.
+    verify:
+      - how: sql
+        where: |-
+          select hour(start_time) as hour_of_day, count(*) as queries,
+          round(avg(total_duration_ms)/1000, 1) as avg_seconds
+          from system.query.history where end_time > current_timestamp() - interval 14 days
+          group by all order by hour_of_day
+        expect: >-
+          Comparable durations in the first busy hour and the rest. A slow first hour is cold start being
+          paid by users
+      - how: ui
+        where: SQL Warehouses, their auto-stop settings and any start schedule
+        expect: A start ahead of the traffic where a deadline depends on it
+      - how: by-hand
+        where: Time the first query of the day, cold, and compare it against the same query warm
+        expect: A number you can decide with, rather than an impression
+    pitfalls:
+      - >-
+        Prewarming by disabling auto-stop, which solves the morning at the cost of the other twenty hours
+        and is usually reverted after the first cost review.
+      - >-
+        Warming compute and not the data. The first query also populates the disk cache, so a warm
+        warehouse can still serve a slow first query.
+      - >-
+        Prewarming a workload whose delay is queueing rather than starting, which adds cost and moves
+        nothing.
+    partial_when: >-
+      Prewarming covers the scheduled jobs and not the interactive traffic, or it is achieved by leaving
+      compute running rather than by starting it ahead of the window.
+    not_applicable_when: >-
+      No workload has a start-of-day or fixed-time deadline — work is continuous or its latency does not
+      matter to anybody waiting.
+    references:
+      - https://docs.databricks.com/aws/en/compute/pool-index
+      - https://docs.databricks.com/aws/en/compute/sql-warehouse/warehouse-behavior
+    advice:
+      start_from: >-
+        Start the warehouses that serve a morning deadline fifteen minutes before the first user,
+        and auto-stop them after the window — measure the cold-start seconds first so the schedule
+        has a number behind it.
+      depends_on:
+        - >-
+          No fixed-time deadline means do not prewarm; idle compute is then just cost.
+        - >-
+          A serverless warehouse still pays a first-query cache fill; warming compute is not
+          warming data.
+        - >-
+          Queueing at capacity is a size problem, not a start-up problem — prewarming will not
+          move it.
+      path:
+        - >-
+          Time the first query of the day cold versus warm.
+        - >-
+          Schedule start only on warehouses whose deadline sits inside that gap.
+        - >-
+          Leave auto-stop on; do not disable it to fake warmth.
+      costs:
+        - >-
+          Those fifteen minutes bill every weekday whether anyone arrives.
+        - >-
+          Disabling auto-stop to avoid the problem costs the other twenty hours.
+      retain: >-
+        The measured cold-start seconds and the start schedule that covers them.
+      revisit: >-
+        A new morning dashboard, a first-hour duration spike in query history, or a cost review
+        that killed the schedule. Failing those, twice a year.
+
+  # Identify bottlenecks
+  # Q: Are bottlenecks identified from evidence — query profiles, Spark UI, metrics — rather than from where people expect them?
+  PE-04-03:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: Data engineering lead
+    means: >-
+      A performance investigation ends with a named constraint and the evidence that located it, recorded
+      somewhere the next person will find it — so the same query is not investigated from scratch every
+      time it is slow.
+    matters: >-
+      Expectation is a poor guide to where time goes, and acting on it means the effort lands away from
+      the constraint. The work then shows no improvement, which is usually read as the workload being
+      inherently slow rather than as the investigation having looked in the wrong place. An investigation
+      that was done well and never written down produces the same cost again a quarter later.
+    good:
+      - 'The order is fixed: profile, then name the constraint, then change something. Not the reverse.'
+      - Findings are recorded per workload, so a recurring problem is looked up rather than re-diagnosed.
+      - The profiling tools are opened routinely rather than only during incidents.
+      - One change is made at a time, so the improvement is attributable to it.
+      - The last three performance investigations each have a recorded finding naming the constraint.
+    examples:
+      strong: >-
+        Performance work starts from a profile and names the constraint before any change is made. Each
+        finding is recorded against the workload, so when a pipeline slowed again last month the previous
+        investigation was read rather than repeated.
+      partial: >-
+        Query profiles are used during incidents and findings are not written down, so the same
+        investigation is repeated when the problem recurs.
+      weak: >-
+        Bottlenecks are diagnosed by discussion. Changes are made to the part of the pipeline people
+        assume is slowest.
+    verify:
+      - how: sql
+        where: |-
+          select round(avg(waiting_at_capacity_duration_ms)) as avg_queue_ms,
+          round(avg(execution_duration_ms)) as avg_exec_ms,
+          round(avg(compilation_duration_ms)) as avg_compile_ms, count(*) as queries
+          from system.query.history where end_time > current_timestamp() - interval 30 days
+        expect: >-
+          Time attributed to a phase, since queueing, compilation and execution have different fixes. A
+          large queue component is warehouse capacity and no amount of query tuning will move it.
+        caveat: >-
+          This table covers SQL warehouses and serverless notebook and job compute only, so a pipeline on
+          classic job compute contributes nothing here and has to be read from the Spark UI instead
+      - how: ui
+        where: A recent slow query's profile, and which node holds the time
+        expect: A single dominant node, rather than a diagnosis made without opening it
+      - how: by-hand
+        where: >-
+          Where the last three performance findings are recorded, and what each one named as the
+          constraint
+        expect: >-
+          Three findings a new person could read. This is the half of the practice that survives the
+          people who did the investigating
+    pitfalls:
+      - >-
+        Fixing the second bottleneck first because it is the more tractable one, which produces effort
+        with no measurable result and discredits the next investigation.
+      - >-
+        Changing several settings at once, which finds an improvement without establishing which change
+        produced it — and so cannot be applied to the next workload.
+      - >-
+        Finding the bottleneck and not recording it, so the same query is investigated from scratch the
+        next time it is slow.
+    partial_when: >-
+      Evidence is used during incidents and not routinely, or bottlenecks are located properly and the
+      findings are not recorded anywhere the next person will find them.
+    references:
+      - https://docs.databricks.com/aws/en/sql/user/queries/query-profile
+      - https://docs.databricks.com/aws/en/compute/troubleshooting/
+    advice:
+      start_from: >-
+        Profile first, name the constraint, change one thing, and write the finding against the
+        workload so the next slow day starts from a note rather than a guess.
+      depends_on:
+        - >-
+          Queue time is warehouse capacity — no query rewrite moves it (see warehouse size and
+          PE-04-02).
+        - >-
+          Classic job-cluster pipelines are invisible in query history; use the Spark UI for those.
+        - >-
+          An incident is allowed to skip the write-up once; the second time is the failure.
+      path:
+        - >-
+          Attribute time to queue, compile and execute on a recent slow query.
+        - >-
+          Open the profile and name the dominant node.
+        - >-
+          Record the finding where the next person will look.
+      costs:
+        - >-
+          Writing findings takes ten minutes people skip, and then they spend an hour
+          re-diagnosing.
+        - >-
+          Changing several knobs at once produces a win you cannot repeat.
+      retain: >-
+        The last three named constraints, each with a date and a workload.
+      revisit: >-
+        A performance change made from discussion only, or a recurring slowness with no note.
+        Failing those, twice a year.
+
+  # Configure performance monitoring at deployment
+  # Q: Is monitoring configured when a workload ships, or added later when something goes wrong?
+  PE-05-01:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: Data engineering lead, with the platform owner
+    means: >-
+      A workload arrives in production with its monitoring already configured — duration, failure,
+      whatever its own health means — rather than acquiring it after the first incident.
+    matters: >-
+      Monitoring added after an incident has no history, so the first question in the next one — is this
+      normal? — cannot be answered for weeks. Configuring it at deployment means the baseline exists
+      before it is needed, which is the only time it can be established.
+    good:
+      - Monitoring is part of the deployment artefact rather than a follow-up task.
+      - Failure notifications are configured on every production job at creation.
+      - Duration is recorded from the first run, so a baseline exists.
+      - The workload's own health measure — freshness, row counts, lag — is monitored where duration is not enough.
+      - A recently shipped workload can be inspected and found to have all of it.
+    examples:
+      strong: >-
+        The bundle template includes notifications, duration thresholds and a freshness check, so a new
+        job cannot ship without them. The most recent deployment had all three from its first run.
+      partial: >-
+        Failure notifications are standard on new jobs, and performance monitoring is added when
+        something becomes slow, so a baseline never exists at the point it would be useful.
+      weak: >-
+        Jobs ship with nothing. Monitoring is added to whichever job most recently caused a problem.
+    verify:
+      - how: ui
+        where: The most recently created production job, and its notifications and thresholds
+        expect: Configured from the start, rather than absent
+      - how: cli
+        where: The bundle definition for a production job, and whether monitoring is in it
+        expect: Notifications and thresholds as part of the definition
+      - how: sql
+        where: |-
+          select job_id, name, create_time from system.lakeflow.jobs
+          qualify row_number() over (
+            partition by workspace_id, job_id order by change_time desc) = 1
+          order by create_time desc nulls last
+        expect: >-
+          Recently created jobs you can then check for monitoring, which is where the practice either
+          holds or does not
+        caveat: >-
+          `create_time`, not the first run seen in a window: inside ninety days every job older than that
+          reports the window's own edge, and a dormant job resumed last week sorts to the top as new. Jobs
+          untouched since early December 2025 have no `create_time`, which the null ordering keeps out of
+          the way.
+    pitfalls:
+      - >-
+        Monitoring added after the first incident, which is the common case and the one that guarantees
+        no baseline exists when it is first needed.
+      - >-
+        Monitoring duration only, when the workload's real failure mode is silent — a source that stopped
+        arriving produces a fast successful run.
+      - >-
+        A notification to the deploying engineer rather than to an owning team, which stops working the
+        day they change role.
+    partial_when: >-
+      Failure notifications are standard from the start and performance monitoring is added reactively,
+      or monitoring is configured at deployment for some teams and not others.
+    references:
+      - https://docs.databricks.com/aws/en/jobs/configure-job
+      - https://docs.databricks.com/aws/en/data-governance/unity-catalog/data-quality-monitoring/data-profiling
+    advice:
+      start_from: >-
+        Put failure notification, a duration health rule and the workload's own freshness or
+        row-count check in the job bundle template so a new production job cannot ship without them.
+      depends_on:
+        - >-
+          Duration alone misses a silent empty success — add the health measure the job's consumers
+          actually need.
+        - >-
+          Notifications to a person rather than a rota die when they change role (OE-04-01).
+        - >-
+          Non-production jobs can stay quiet.
+      path:
+        - >-
+          Add notifications to the bundle template used for production.
+        - >-
+          Backfill the most recently created production jobs that shipped without them.
+        - >-
+          Inspect one new deploy each month until the template is the only path.
+      costs:
+        - >-
+          Template discipline is a platform-team habit, not a one-line YAML change.
+        - >-
+          Wrong thresholds at birth create noise that trains people to ignore the alert.
+      retain: >-
+        The bundle snippet and one recent job whose first run already had the rules.
+      revisit: >-
+        A production job created in the UI without the template, or an incident with no baseline.
+        Failing those, twice a year.
+
+  # Monitor query performance
+  # Q: Does anyone watch query performance over time, such that a query getting slower is noticed before a user reports it?
+  PE-05-02:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: Analytics lead, with the platform owner
+    means: >-
+      Query durations are looked at as a trend, so a query that has been getting slower over weeks is
+      noticed by whoever watches it rather than by whoever eventually complains.
+    matters: >-
+      Query degradation is gradual — data grows, statistics age, a layout stops suiting the pattern — so
+      no single day looks wrong and the total change is large. By the time a user reports it, the
+      degradation has been running long enough that the cause is several changes back.
+    good:
+      - Query duration is tracked over time, not only inspected when somebody complains.
+      - The trend is per query or per workload, since an average across an estate hides everything.
+      - A degradation raises something that reaches a person.
+      - Percentiles are watched rather than means, since the tail is what users experience.
+      - Somebody can name a query whose degradation was caught before it was reported.
+    examples:
+      strong: >-
+        A dashboard tracks median and 95th-percentile duration per warehouse and per recurring query
+        from the query history, with an alert on week-over-week regression. Last month it caught a
+        dashboard query that had doubled after a table grew past its clustering.
+      partial: >-
+        Query history is available and somebody looks at it when a complaint arrives, so the data exists
+        and the noticing depends on a user.
+      weak: >-
+        Nobody looks. Slow queries are reported by the people running them, and the first question is
+        whether it was always like that.
+    verify:
+      - how: sql
+        where: |-
+          select date_trunc('week', end_time) as week, count(*) as queries,
+          round(percentile(total_duration_ms, 0.5)/1000, 1) as p50_seconds,
+          round(percentile(total_duration_ms, 0.95)/1000, 1) as p95_seconds
+          from system.query.history where end_time > current_timestamp() - interval 90 days
+          group by all order by week
+        expect: >-
+          A stable or explained trend. A rising 95th percentile across weeks is degradation nobody has
+          been watching
+      - how: ui
+        where: The monitoring dashboard for query performance, if one exists
+        expect: A trend over weeks, rather than a snapshot of the last hour
+      - how: by-hand
+        where: Ask about the last query degradation and who noticed it first
+        expect: A monitor, rather than a user
+    pitfalls:
+      - >-
+        Watching the mean, which is dominated by the many fast queries and moves imperceptibly while the
+        slow tail users actually experience doubles.
+      - >-
+        Averaging across the whole estate, where one warehouse's degradation is invisible against
+        everything else.
+      - >-
+        A dashboard nobody has a reason to open. Without an alert, monitoring depends on somebody looking
+        on the right week.
+    partial_when: >-
+      Query history is available and consulted reactively, or a trend is monitored on means rather than
+      percentiles so the degradation users feel is not the one being watched.
+    references:
+      - https://docs.databricks.com/aws/en/admin/system-tables/query-history
+      - https://docs.databricks.com/aws/en/sql/user/alerts/
+    advice:
+      start_from: >-
+        Alert on week-over-week 95th-percentile duration per warehouse — and per recurring query
+        where you can name one — not on the estate mean.
+      depends_on:
+        - >-
+          A warehouse that changes its mix every week will always look like a regression — segment
+          by workload.
+        - >-
+          Classic pipelines need Spark UI or job-duration trends (PE-05-04), not this query-history
+          view.
+        - >-
+          A dashboard without an alert is a hope that someone opens it on the right week.
+      path:
+        - >-
+          Plot p50 and p95 from query history by week and warehouse.
+        - >-
+          Put an alert on a rise you would actually act on.
+        - >-
+          Keep a note of the last catch so the next one is believed.
+      costs:
+        - >-
+          Per-query tracking needs a stable query identity; text changes break the series.
+        - >-
+          Alert noise on mixed warehouses will get the alert disabled.
+      retain: >-
+        The alert definition and the last regression it caught before a user did.
+      revisit: >-
+        A user-reported slowdown the alert missed, or a warehouse mix change. Failing those,
+        quarterly.
+
+  # Monitor streaming workloads
+  # Q: Are streaming workloads monitored for lag and backlog, with an alert that fires before the deadline is missed?
+  PE-05-03:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: Streaming pipeline owner
+    means: >-
+      For each streaming query, somebody watches how far behind the source it is and how much is
+      waiting, and an alert fires while there is still time to act rather than once the freshness target
+      is missed.
+    matters: >-
+      A streaming query that is running is not necessarily keeping up, and the failure is invisible from
+      the outside: the query is healthy, the table is being written, and the data in it is an hour old.
+      A backlog also compounds — falling behind reduces throughput — so the window to recover is early.
+    good:
+      - Lag or backlog is monitored per query, not just whether the query is running.
+      - The alert threshold is below the freshness the consumers need, so it warns rather than reports.
+      - Batch duration and input rate are watched, since a rising batch duration precedes a backlog.
+      - Somebody is alerted, and a lag alert has led to an action.
+      - The consumers' freshness requirement is stated, so the threshold is derived from something.
+    examples:
+      strong: >-
+        Each query's lag is monitored against a stated freshness target with an alert at 60 per cent of
+        it. Batch duration and input rate are on a dashboard, and the last alert led to a partition
+        increase before consumers saw stale data.
+      partial: >-
+        Queries are monitored for failure and restart automatically, and lag is not measured, so a query
+        that is running an hour behind looks healthy.
+      weak: >-
+        Nothing is monitored beyond the job's state. Staleness is reported by consumers.
+    verify:
+      - how: ui
+        where: A streaming query's metrics — input rate, processing rate, batch duration
+        expect: Processing rate keeping pace with input rate, rather than a growing gap
+      - how: sql
+        where: |-
+          select job_id, count(distinct run_id) as runs, max(period_end_time) as last_seen
+          from system.lakeflow.job_run_timeline
+          where period_start_time > current_timestamp() - interval 7 days
+          and trigger_type = 'CONTINUOUS' group by all
+          order by last_seen desc
+        expect: >-
+          Continuous jobs present and recent, which establishes they are running — the lag question is
+          the one the query metrics answer
+        caveat: >-
+          Filtered to `CONTINUOUS`, because without it every job that ran in the week is returned and a
+          wholly scheduled estate reads as a streaming one. Streaming more often runs as a declarative
+          pipeline, which this table does not hold: an empty result is not evidence there is no streaming,
+          and `system.lakeflow.pipeline_update_timeline` is where to look next.
+      - how: by-hand
+        where: Ask what the freshness requirement is for the main streaming output, and what alerts on it
+        expect: A number and an alert below it, rather than "as fast as possible"
+    pitfalls:
+      - >-
+        Monitoring that the query is running rather than that it is keeping up, which is the whole
+        failure mode: a healthy query can be arbitrarily far behind.
+      - >-
+        An alert at the freshness target rather than below it, which reports a missed commitment instead
+        of warning of one.
+      - >-
+        Watching lag and not batch duration, which removes the early signal — batch duration rises before
+        the backlog becomes visible.
+    partial_when: >-
+      Streaming queries are monitored for failure and restart without lag being measured, or lag is
+      monitored with a threshold at the freshness target rather than below it.
+    not_applicable_when: >-
+      No streaming workloads run on this platform — ingestion and processing are batch only.
+    references:
+      - https://docs.databricks.com/aws/en/structured-streaming/stream-monitoring
+      - https://docs.databricks.com/aws/en/sql/user/alerts/
+    advice:
+      start_from: >-
+        Put a STREAMING_BACKLOG_SECONDS (or bytes, records, files) health rule on every continuous
+        job, thresholded below the consumer freshness target, notifying the pipeline owner.
+      depends_on:
+        - >-
+          A task that calls `awaitTermination()` hides the query from Jobs — the rule will never
+          fire; change the task shape first.
+        - >-
+          Declarative pipelines are not in the jobs inventory; watch those in pipeline metrics,
+          not this share.
+        - >-
+          Jobs whose trigger column is unreadable are unmeasured, not proof there is no streaming.
+      path:
+        - >-
+          List continuous jobs and which already carry a STREAMING_BACKLOG_* rule.
+        - >-
+          Add the missing rules from the freshness number consumers already have.
+        - >-
+          Confirm the last alert fired while there was still time to act.
+      costs:
+        - >-
+          A threshold at the freshness target only reports a miss; one too low pages on noise.
+        - >-
+          Editing old job definitions is how the health column becomes readable.
+      retain: >-
+        The continuous-job list with backlog metric, threshold and last alert.
+      revisit: >-
+        A consumer seeing stale data with no backlog page, or a new continuous job. Failing those,
+        quarterly.
+
+  # Monitor job performance
+  # Q: Is job duration tracked over time, so a job that has doubled in runtime is visible?
+  PE-05-04:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: Data engineering lead
+    means: >-
+      Each production job's duration is recorded run over run, and a job taking materially longer than
+      it used to is visible to somebody without them going to look for it.
+    matters: >-
+      Job runtime grows with data, and a job that has doubled is usually still succeeding — so nothing
+      reports it. What reports it is the day the growth crosses a downstream deadline, at which point
+      the change happened months ago and the cause is somewhere in the intervening changes.
+    good:
+      - Duration is tracked per job over time rather than inspected per run.
+      - A duration threshold or a regression alert exists on the jobs with deadlines.
+      - The threshold comes from the deadline the job serves, not from its current runtime plus a margin.
+      - Growth is distinguishable from regression, since they have different responses.
+      - Somebody can name a job whose growth was noticed before it caused a problem.
+    examples:
+      strong: >-
+        Duration per job is trended weekly from the job run timeline, with duration thresholds derived
+        from each job's downstream deadline. The last alert found a job that had grown 60 per cent over a
+        quarter, with two months of headroom left.
+      partial: >-
+        Jobs alert on failure and on a duration threshold set at twice the current runtime, so a job can
+        double before anything fires and the threshold carries no information about the deadline.
+      weak: >-
+        Nothing tracks duration. A job that has tripled since it was written is noticed when it starts
+        overrunning the window it feeds.
+    verify:
+      - how: sql
+        where: |-
+          with runs as (
+            select job_id, date_trunc('week', min(period_start_time)) as week,
+            datediff(second, min(period_start_time), max(period_end_time)) as seconds
+            from system.lakeflow.job_run_timeline
+            where period_start_time > current_timestamp() - interval 90 days
+            group by job_id, run_id)
+          select week, job_id, round(avg(seconds)) as avg_seconds
+          from runs group by all order by week desc, avg_seconds desc
+        expect: >-
+          Durations flat or growing at a rate you can account for. A job trending upward week over week
+          is the case this question is about
+      - how: ui
+        where: A production job's settings, and whether a duration threshold is configured
+        expect: A threshold derived from a deadline, rather than none or one set at twice today's runtime
+      - how: by-hand
+        where: Ask which job has grown most in runtime this year, and by how much
+        expect: A named job and a number, rather than "none that I know of"
+    pitfalls:
+      - >-
+        A duration threshold set as a multiple of the current runtime, which by construction cannot fire
+        until the problem is large and tells you nothing about whether the deadline is at risk.
+      - >-
+        Watching failure and not duration, which covers the loud failure and misses the slow one — and
+        the slow one is what breaks the downstream deadline.
+      - >-
+        Treating all growth as regression. A job growing with the data is expected, and conflating the
+        two means the real regressions are lost among them.
+    partial_when: >-
+      Duration is alerted on with a threshold set from today's runtime rather than from the deadline, or
+      it is tracked and nobody distinguishes growth from regression.
+    references:
+      - https://docs.databricks.com/aws/en/admin/system-tables/jobs
+      - https://docs.databricks.com/aws/en/jobs/configure-job
+    advice:
+      start_from: >-
+        Trend duration per production job week over week, and set duration health rules from the
+        downstream deadline — not from twice yesterday's runtime — so growth is visible while there
+        is still headroom.
+      depends_on:
+        - >-
+          OE-04-01 owns who is paged; this owns whether duration is the thing being watched.
+        - >-
+          A job that grows with data needs a rising threshold or a redesign, not a page every week.
+        - >-
+          External duration dashboards count only if someone looks; pick one place — native SQL or
+          the company stack.
+      path:
+        - >-
+          Chart average run duration per job from the run timeline, aggregated to the run then the
+          week.
+        - >-
+          Set duration rules on the jobs that feed a deadline.
+        - >-
+          Separate expected growth from a one-week jump.
+      costs:
+        - >-
+          A threshold tied to today's runtime cannot fire until the problem is large.
+        - >-
+          Two tools trending the same job produce two stories and no owner.
+      retain: >-
+        The weekly duration series and the deadline each threshold came from.
+      revisit: >-
+        A deadline miss on a job that stayed green, or a threshold still set at twice current
+        runtime. Failing those, quarterly.
+
+  # Use serverless compute
+  # Never put to a person. Guidance here explains a finding rather than enabling an answer.
+  # Alias serverless-adoption with CO-01-06, REL-01-06, IU-03-02 — here: time-to-first-query.
+  PE-02-01:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: Platform owner, with the analytics lead
+    means: >-
+      Interactive and short-lived work starts on compute that is ready to run, so the first query of
+      a session returns in seconds rather than waiting for a classic cluster to provision.
+    matters: >-
+      Classic start-up lands on the first person or the first task. The platform then reports the
+      query as fast and the person waited minutes. That wait is why people keep a cluster running
+      "just in case", which is a performance habit that becomes a bill.
+    good:
+      - At least 80% of choice-spend is serverless (pass); partial from 30% because migration is a programme.
+      - New jobs, warehouses and notebooks default to serverless unless a named exception blocks them.
+      - First-query wait is measured, not assumed — waiting_for_compute is a number.
+      - Classic remainder has written reasons — GPU, custom image, a measured warmer cache.
+      - Incomplete price coverage is treated as unmeasured, not as low adoption.
+    examples:
+      strong: >-
+        SQL and short jobs are serverless. Analysts' first query of the day starts in seconds.
+        Classic left is a GPU job and a custom container, both listed. Choice-spend is overwhelmingly
+        serverless.
+      partial: >-
+        Warehouses moved, so dashboards start quickly, while scheduled jobs still wait on classic
+        cluster start — the wait a user feels is gone and the wait a pipeline pays is not.
+      weak: >-
+        Interactive and scheduled work stays on classic clusters. The first query each morning takes
+        minutes and is reported as the platform being slow.
+    verify:
+      - how: sql
+        where: |-
+          select billing_origin_product,
+          coalesce(product_features.is_serverless, false) as serverless,
+          round(sum(usage_quantity), 1) as dbus
+          from system.billing.usage
+          where usage_date > current_date() - 30 and usage_unit = 'DBU'
+          and billing_origin_product in ('JOBS', 'ALL_PURPOSE', 'INTERACTIVE', 'SQL', 'DLT')
+          group by all order by dbus desc
+        expect: >-
+          Serverless carrying most DBU among products that have a classic form
+        caveat: >-
+          The app scores priced serverless choice-cost over choice-spend, not raw DBU. Serving,
+          Lakebase, Apps and storage are excluded either way. Same measurement as CO-01-06,
+          REL-01-06 and IU-03-02; here the question is time-to-first-query, not idle spend or
+          who owns a dead node. Missing list prices → unmeasured.
+      - how: sql
+        where: |-
+          select coalesce(compute.type, 'unrecorded') as compute_type,
+          round(avg(waiting_for_compute_duration_ms)) as avg_wait_ms, count(*) as queries
+          from system.query.history
+          where end_time > current_timestamp() - interval 14 days
+          group by all order by queries desc
+        expect: >-
+          Low wait on warehouse and serverless compute; a large wait is cluster start paid by the
+          first query
+        caveat: >-
+          Query history covers SQL warehouses and serverless notebook and job compute. Classic
+          all-purpose and classic job clusters produce no rows, so a clean result on an estate that
+          runs pipelines on classic compute means the wait is invisible rather than gone.
+      - how: ui
+        where: Compute / Jobs / SQL warehouses — whether new work defaults to serverless
+        expect: Serverless as the default path; classic as a named exception
+    pitfalls:
+      - >-
+        Moving SQL and leaving jobs on classic, which removes the wait an analyst feels and keeps
+        the wait every pipeline pays at start-up.
+      - >-
+        Counting model serving as serverless adoption — it has no classic form to leave.
+      - >-
+        Keeping classic "because serverless is slower" without a timed first-query comparison.
+    partial_when: >-
+      Warehouses are serverless so dashboards start quickly, while scheduled jobs still wait on
+      classic cluster start times — the interactive wait is gone and the pipeline wait is not.
+    not_applicable_when: >-
+      Nothing in the window was billed on jobs, all-purpose, SQL or pipelines — products with a
+      serverless option — so there was no classic start-up to leave.
+    references:
+      - https://docs.databricks.com/aws/en/compute/serverless/
+      - https://docs.databricks.com/aws/en/jobs/run-serverless-jobs
+    advice:
+      start_from: >-
+        Put interactive SQL and short jobs on serverless so the first query of a session starts in
+        seconds, and keep classic only where a GPU, a custom image, or a measured warmer cache is
+        the faster path.
+      depends_on:
+        - >-
+          Init scripts, custom images and GPUs stay classic; do not let that exception set the
+          default for interactive work.
+        - >-
+          A long continuous job may cost more per DBU on serverless — measure before moving, but
+          do not keep classic only from habit.
+        - >-
+          Cost and reliability share this share; one migration programme serves the wait, the idle
+          bill and the patching rota.
+      path:
+        - >-
+          Move the warehouses that serve people waiting on a first query.
+        - >-
+          Make serverless the job template default so classic start-up stops spreading.
+        - >-
+          Time remaining classic jobs' start-up; migrate the ones whose wait is the runtime.
+      costs:
+        - >-
+          Serverless can cost more per DBU than a well-packed always-on classic fleet.
+        - >-
+          Cold start after idle is a latency trade — measure it; do not assume it is worse than
+          a classic cluster start.
+      retain: >-
+        The dated serverless share of choice-spend and the first-query wait in milliseconds.
+      revisit: >-
+        A new classic cluster created for work serverless could run, or first-query wait rising
+        two months running. Failing those, quarterly.
+
+  # Use predictive optimization
+  # Never put to a person. Guidance here explains a finding rather than enabling an answer.
+  PE-03-05:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: Data platform lead
+    means: >-
+      Catalogs that hold managed tables have predictive optimization on, so compaction, clustering
+      and statistics happen without a maintenance calendar. The scan reads the catalog default, not
+      per-table overrides.
+    matters: >-
+      Without it, file layout and statistics age with every write. Queries get slower as tables
+      grow and nobody scheduled OPTIMIZE, and the first person who notices is a user waiting on a
+      dashboard.
+    good:
+      - Every managed table sits under a catalog with predictive optimization enabled (pass is 100%).
+      - New catalogs inherit the setting, so coverage does not depend on remembering each create.
+      - Partial cover (from 50%) is catalogs still off, not a quiet window with nothing to compact.
+      - An absent setting on DESCRIBE CATALOG EXTENDED is unmeasured, not treated as off.
+      - No managed tables means the control does not apply — there is nothing for it to maintain.
+    examples:
+      strong: >-
+        Every catalog that holds managed tables has predictive optimization enabled. New schemas
+        inherit it. Manual OPTIMIZE is reserved for tables outside that cover.
+      partial: >-
+        Production catalogs are on; a shared sandbox catalog that also holds managed tables is
+        still off, so half the managed estate is uncovered.
+      weak: >-
+        Predictive optimization is off everywhere. Layout maintenance is a tribal OPTIMIZE job, or
+        nothing.
+    verify:
+      - how: ui
+        where: Catalog Explorer > a catalog that holds managed tables > Details > Predictive optimization
+        expect: Enabled, and inherited by new schemas
+      - how: sql
+        where: |-
+          select catalog_name, count(*) as managed_tables
+          from system.information_schema.tables
+          where table_type = 'MANAGED' and table_schema not in ('information_schema')
+          group by all order by managed_tables desc
+        expect: >-
+          The catalogs that hold managed tables — those are the ones whose Details pane must show
+          predictive optimization on
+        caveat: >-
+          The app reads DESCRIBE CATALOG EXTENDED per catalog, not this count. A schema or table
+          can override its catalog, and that override is invisible here — the figure is the estate
+          default. No catalog reporting a setting is unmeasured, not off. An estate with no managed
+          tables is not-applicable.
+      - how: sql
+        where: |-
+          select operation_type, count(*) as runs
+          from system.storage.predictive_optimization_operations_history
+          where start_time > current_timestamp() - interval 30 days
+          group by all order by runs desc
+        expect: >-
+          OPTIMIZE, VACUUM or ANALYZE runs where the setting is on — confirmation, not the test
+        caveat: >-
+          Enablement is the test. A quiet window with zero runs is expected when nothing became
+          eligible; demanding a run would mark down estates that delegated the work correctly.
+    pitfalls:
+      - >-
+        Reading a quiet operations history as "PO is not working" — it runs when files become
+        eligible, not on a calendar.
+      - >-
+        Enabling it on one catalog and creating the next catalog with the default off.
+      - >-
+        Treating an unread DESCRIBE CATALOG setting as disabled — the scan reports that unmeasured.
+    partial_when: >-
+      Some catalogs that hold managed tables have predictive optimization on and others do not —
+      the scan's partial band starts at half the managed tables under an enabled catalog.
+    not_applicable_when: >-
+      There are no Unity Catalog managed tables, so there is nothing for predictive optimization
+      to maintain.
+    references:
+      - https://docs.databricks.com/aws/en/optimizations/predictive-optimization
+      - https://docs.databricks.com/aws/en/tables/managed
+    advice:
+      start_from: >-
+        Enable predictive optimization at catalog level on every catalog that holds managed tables,
+        so new schemas inherit it and layout maintenance is not a job somebody forgets.
+      depends_on:
+        - >-
+          External tables never get this cover — they need their own OPTIMIZE if you own the files
+          (see PE-03-06 / PE-03-11).
+        - >-
+          A schema or table override can turn it off under an "enabled" catalog; check the hot
+          tables if scans stay slow.
+        - >-
+          VACUUM cadence is a storage-cost question (CO-03-06); this control is whether layout
+          maintenance is automatic.
+      path:
+        - >-
+          Turn it on for the catalogs that hold production managed tables.
+        - >-
+          Make enable-on-create the catalog template so the next catalog is not born off.
+        - >-
+          Leave manual OPTIMIZE only for tables that stay outside the cover.
+      costs:
+        - >-
+          Predictive optimization consumes DBUs when it rewrites files — that is the work you were
+          going to schedule anyway.
+        - >-
+          A rewrite can change file layout under a reader that assumed a partition path.
+      retain: >-
+        The catalog-level setting list and the dated managed-table cover the scan reported.
+      revisit: >-
+        A new catalog created with the setting off, or scans slowing on tables thought to be
+        covered. Failing those, quarterly.
+
+  # Use Unity Catalog managed tables
+  # Never put to a person. Guidance here explains a finding rather than enabling an answer.
+  PE-03-06:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: Data platform lead
+    means: >-
+      Readers scan Unity Catalog managed tables, which the platform is allowed to rewrite — so
+      compaction and clustering can keep file layout in step with how the table is queried.
+    matters: >-
+      An external table's files stay the size and order they were written. Every later scan pays
+      that layout: tiny files, no clustering, stale statistics. The job still succeeds, so the
+      slowness looks like compute rather than a table type chosen years ago.
+    good:
+      - At least 80% of non-view tables are managed (pass); partial from 40%.
+      - New tables that readers will scan are created managed unless an outside writer owns the path.
+      - External tables that remain have a named reason and their own compaction plan.
+      - Views are out of the denominator — they have no files to lay out.
+      - Predictive optimization is relied on for the managed majority rather than reinvented.
+    examples:
+      strong: >-
+        Production tables readers scan are managed. The external remainder is a partner landing
+        zone, listed, with its own OPTIMIZE. Dashboards do not scan the landing zone raw.
+      partial: >-
+        Dashboards read managed tables while nightly pipelines still write external ones those
+        dashboards also scan, so the layout readers pay is the one nobody can compact.
+      weak: >-
+        Almost everything is external with LOCATION set out of habit. Scans list thousands of
+        small files and nobody can OPTIMIZE without owning the path.
+    verify:
+      - how: sql
+        where: |-
+          select table_type, count(*) as tables
+          from system.information_schema.tables
+          where table_schema not in ('information_schema')
+          group by all order by tables desc
+        expect: >-
+          MANAGED dominating among base tables; EXTERNAL present only where you can name why
+        caveat: >-
+          The app scores managed / (table count minus views). Pass ≥80%, partial ≥40%. An estate
+          of only views is not-applicable. OE-02-03 uses managed / (managed + external) on the
+          same census — same direction, slightly different denominator if other types exist.
+          External share can be a constraint (partner writer) rather than a gap.
+      - how: ui
+        where: Catalog Explorer > a heavily scanned table > Type / storage
+        expect: Managed for tables you own end to end
+      - how: by-hand
+        where: List external tables that dashboards or jobs actually scan, and who writes their files
+        expect: A short exception list with a compaction owner, not "we always set LOCATION"
+    pitfalls:
+      - >-
+        Creating external tables because a tutorial showed LOCATION, which opts those scans out of
+        managed layout maintenance for no gain.
+      - >-
+        Converting a table while an outside writer still lands on the old path — readers then see
+        two layouts.
+      - >-
+        Counting views in a mental denominator, which makes a view-heavy estate look unmanaged.
+    partial_when: >-
+      Dashboards read managed tables while pipelines still write external ones those dashboards
+      also scan, so the layout readers pay is the one nobody can compact.
+    not_applicable_when: >-
+      The metastore has no tables (empty, or views only), so there is no managed-or-external
+      choice to assess.
+    references:
+      - https://docs.databricks.com/aws/en/tables/managed
+      - https://docs.databricks.com/aws/en/optimizations/predictive-optimization
+    advice:
+      start_from: >-
+        Create every table that readers will scan as managed; convert the hottest external tables
+        you own so their layout can be rewritten; treat LOCATION as a performance exception that
+        needs its own compaction job.
+      depends_on:
+        - >-
+          Data another platform writes cannot be managed — keep it external and do not expect
+          predictive optimization to touch it.
+        - >-
+          Large conversions cost a full rewrite; start with the tables that dominate scan bytes.
+        - >-
+          Catalog-managed locations must be set before managed creates succeed in that catalog.
+      path:
+        - >-
+          Stop new external creates for tables you own and scan.
+        - >-
+          Convert the noisiest scanned external tables, repoint readers, then drop the old files.
+        - >-
+          Publish the external exception list so LOCATION-by-habit stops being the culture.
+      costs:
+        - >-
+          Conversion copies pay storage and compute once per table.
+        - >-
+          Leaving a scanned table external forever means keeping OPTIMIZE ownership forever.
+      retain: >-
+        The managed-versus-external count from the last assessment and the scanned-external
+        exception list.
+      revisit: >-
+        A new external table on a dashboard's path, or a partner lake cutover. Failing those,
+        twice a year.
+
+  # Use native platform engines
+  # Never put to a person. Guidance here explains a finding rather than enabling an answer.
+  # Alias photon with CO-01-10 — here: query runtime, not the DBU rate card.
+  PE-03-08:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: Data engineering lead, with the analytics lead
+    means: >-
+      Queries the vectorised engine can execute run on it, so the same scan finishes sooner.
+      Serverless already does this without a toggle; classic SQL still has to switch Photon on.
+    matters: >-
+      Without a vectorised engine, SQL-heavy work spends longer in the same stages. Adding
+      workers does not recover what row-at-a-time execution lost, so the job looks like it needs
+      a bigger cluster when it needs a different engine.
+    good:
+      - At least 70% of Photon-eligible spend is on Photon (pass); partial from 30%.
+      - ≥95% serverless on eligible spend is satisfied by architecture — no separate Photon SKU.
+      - Warehouses and classic SQL clusters have Photon on where SQL or Delta dominates.
+      - Python-UDF-heavy jobs are not forced onto Photon as a cargo cult.
+      - Incomplete prices are unmeasured rather than scored as zero Photon.
+    examples:
+      strong: >-
+        Warehouses and classic SQL clusters run Photon; serverless jobs need no toggle. Eligible
+        spend is mostly Photon or serverless, and p95 on those warehouses is the number people
+        expect.
+      partial: >-
+        Warehouses run Photon while classic ETL clusters still execute SQL-heavy stages on the
+        standard engine, so the interactive path is fast and the nightly path is not.
+      weak: >-
+        Photon off everywhere on classic compute; serverless share of eligible spend is low, so
+        the architecture credit does not fire and SQL stages run long.
+    verify:
+      - how: sql
+        where: |-
+          select sku_name, billing_origin_product,
+          round(sum(usage_quantity), 1) as dbus
+          from system.billing.usage
+          where usage_date > current_date() - 30 and usage_unit = 'DBU'
+          group by all order by dbus desc
+        expect: >-
+          Photon SKUs or serverless SQL/jobs carrying the SQL-heavy lines
+        caveat: >-
+          The app scores Photon cost over photon-eligible cost. If serverless is ≥95% of that
+          eligible spend, the control is satisfied by architecture. Same family as CO-01-10; here
+          the question is runtime, not whether the higher DBU rate paid for itself. Price gaps →
+          unmeasured.
+      - how: ui
+        where: A slow SQL query's profile — whether Photon is active on the heavy nodes
+        expect: Photon engaged on SQL/Delta operators, rather than a fallback from one expression
+      - how: ui
+        where: SQL warehouses and classic clusters > Photon / runtime engine
+        expect: Photon on for SQL/Delta-heavy classic compute
+    pitfalls:
+      - >-
+        Failing a serverless estate for "no Photon SKU" — that is the architecture credit path.
+      - >-
+        Enabling Photon on UDF-heavy Python jobs and declaring a win from the rate card alone.
+      - >-
+        Scoring Photon against the whole bill including serving — eligible spend is the
+        denominator.
+    partial_when: >-
+      Dashboards finish quickly on Photon warehouses while overnight SQL still executes
+      row-at-a-time on classic clusters, and the estate is not close enough to serverless for
+      the architecture path to apply.
+    not_applicable_when: >-
+      No spend in the window was on compute where Photon is an option.
+    references:
+      - https://docs.databricks.com/aws/en/compute/photon
+      - https://docs.databricks.com/aws/en/compute/sql-warehouse/
+    advice:
+      start_from: >-
+        Put the SQL stages people wait on through the vectorised engine — Photon on the classic
+        warehouses and clusters those stages use — and judge the change by p95 duration, not by
+        whether a Photon SKU appears on the bill.
+      depends_on:
+        - >-
+          Workloads dominated by Python UDFs outside the engine may not finish sooner — measure
+          duration before mandating Photon.
+        - >-
+          An estate already ≥95% serverless on eligible spend needs no Photon programme.
+        - >-
+          Cost-optimization shares this measurement; one enablement pass serves both runtime and
+          DBU.
+      path:
+        - >-
+          Enable Photon on the warehouses whose p95 users already complain about.
+        - >-
+          Then the classic SQL/Delta clusters that burn the longest stages.
+        - >-
+          Spot-check duration on the top jobs before and after — that is the PE test.
+      costs:
+        - >-
+          Higher DBU rate until runtime drops enough to compensate.
+        - >-
+          Compatibility quirks on rare operators — keep a rollback on the first wave.
+      retain: >-
+        The dated Photon share of eligible spend (or the serverless architecture credit) and a
+        before/after p95 on one warehouse.
+      revisit: >-
+        A new classic SQL fleet created with Photon off, or p95 rising after a Photon fallback.
+        Failing those, quarterly.
+
+  # Use compaction
+  # Never put to a person. Guidance here explains a finding rather than enabling an answer.
+  PE-03-11:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: Data engineering lead
+    means: >-
+      Tables large enough to hold a 16 MiB file actually do — average file size is the test, not
+      whether OPTIMIZE ran. Predictive optimization or a scheduled rewrite both count if the files
+      are big enough.
+    matters: >-
+      Tiny files turn every scan into a metadata storm: thousands of opens for a few gigabytes.
+      Runtime grows with file count rather than with bytes, and adding workers does not fix it.
+    good:
+      - Files average at least 16 MiB on tables large enough to hold one.
+      - Running OPTIMIZE and still holding tiny files is not a pass — size decides it.
+      - Tables smaller than one target file are excluded, not failed.
+      - Predictive optimization on, or OPTIMIZE observed, turns a size miss into partial rather than fail.
+      - A sampled pass says the tables read are compacted, not that every table is.
+    examples:
+      strong: >-
+        Hot tables average well above 16 MiB. Predictive optimization is on; OPTIMIZE is reserved
+        for a table it has not reached yet. Scans open tens of files, not tens of thousands.
+      partial: >-
+        Predictive optimization or OPTIMIZE is running and average file size is still below 16
+        MiB — the mechanism exists and has not caught up with how the tables are written.
+      weak: >-
+        Large tables sit in tens of thousands of small files. No OPTIMIZE, predictive optimization
+        off, and every dashboard scan lists them all.
+    verify:
+      - how: sql
+        where: |-
+          describe detail catalog.schema.a_heavily_scanned_table
+        expect: >-
+          sizeInBytes / numFiles at least 16 MiB on tables large enough to hold one such file
+        caveat: >-
+          Sample of most-read tables (or the complete snapshot if it has rows). Below 16 MiB
+          fails, or partial if predictive optimization is on or OPTIMIZE ran. Unattributable
+          OPTIMIZE counts as a mechanism, never a pass. Tiny tables are not-applicable. Query
+          history misses classic notebook OPTIMIZE.
+      - how: sql
+        where: |-
+          select operation_type, count(*) as runs
+          from system.storage.predictive_optimization_operations_history
+          where start_time > current_timestamp() - interval 30 days
+          and operation_type ilike '%OPTIMIZE%'
+          group by all
+        expect: >-
+          OPTIMIZE from predictive optimization where that cover is on — confirmation, not the
+          size test
+      - how: ui
+        where: Catalog Explorer > a hot table > Details > number of files versus size
+        expect: Files large enough that per-file overhead is not the scan
+    pitfalls:
+      - >-
+        Scheduling OPTIMIZE and never checking file size, which is how a nightly job becomes
+        evidence of a practice that is not working.
+      - >-
+        Advising an estate to enable predictive optimization when it is already on — then the
+        gap is write pattern or a table it has not reached.
+      - >-
+        Failing tables that cannot hold a 16 MiB file no matter how they are written.
+    partial_when: >-
+      File size is still below 16 MiB while predictive optimization is on or OPTIMIZE is running
+      — the mechanism exists and has not caught up — or only some of the sampled hot tables are
+      compacted.
+    not_applicable_when: >-
+      No sampled table is large enough for a 16 MiB file, so compaction has nothing it could do.
+    references:
+      - https://docs.databricks.com/aws/en/tables/operations/optimize
+      - https://docs.databricks.com/aws/en/optimizations/predictive-optimization
+    advice:
+      start_from: >-
+        Enable predictive optimization on catalogs with managed tables, and OPTIMIZE the named
+        hot tables whose average file size is still below 16 MiB.
+      depends_on:
+        - >-
+          Predictive optimization already on means do not "enable PO" again — OPTIMIZE those
+          tables directly or change how they are written (too many commits, too small batches).
+        - >-
+          External tables need a scheduled OPTIMIZE you own; PO will not touch them.
+        - >-
+          Auto-compaction on write is a complement, not a substitute, when readers already see
+          a backlog of small files.
+      path:
+        - >-
+          Read the scan's undersized tables; start with the ones that have the most reads.
+        - >-
+          OPTIMIZE those; enable or extend predictive optimization for the rest.
+        - >-
+          If size does not move, look at commit rate and batch size — compaction cannot keep up
+          with a writer that creates a file per row.
+      costs:
+        - >-
+          OPTIMIZE rewrites data and costs compute proportional to the table.
+        - >-
+          Changing ingest batch size can add latency upstream of the table.
+      retain: >-
+        The dated average file size on the hottest tables and whether PO or OPTIMIZE produced it.
+      revisit: >-
+        A new high-commit writer, or average file size falling back below 16 MiB. Failing those,
+        quarterly.
+
+  # Use data skipping
+  # Never put to a person. Guidance here explains a finding rather than enabling an answer.
+  PE-03-12:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: Data engineering lead
+    means: >-
+      Large, actively read tables keep file statistics and organise files by clustering or
+      partitioning, so a filter can avoid files. The scan measures whether skipping is possible,
+      not whether today's predicates actually skip.
+    matters: >-
+      With statistics off, every query reads every file. With no clustering on a multi-file table,
+      skipping works only when write order happens to match the filter — which is luck, and luck
+      expires when the access pattern changes.
+    good:
+      - No table sets delta.dataSkippingNumIndexedCols to 0 — that fails outright.
+      - At least 80% of tables above 1 GiB and 10 files cluster or partition (partial from 40%).
+      - Liquid clustering is the current recommendation on those tables.
+      - 'A named stats-column list is understood: skipping works on those columns and not others.'
+      - Small tables are excluded — they are read whole either way.
+    examples:
+      strong: >-
+        Statistics stay at the default of 32 columns. Large, actively read tables use liquid
+        clustering on the columns queries filter. Nobody has turned statistics off.
+      partial: >-
+        Statistics are intact and half the large tables still have no clustering and no
+        partitioning, so a filter skips only where write order happens to help.
+      weak: >-
+        One widely read table has dataSkippingNumIndexedCols set to 0, so every query over it
+        reads every file, whatever the clustering.
+    verify:
+      - how: sql
+        where: |-
+          show tblproperties catalog.schema.a_large_actively_read_table
+        expect: >-
+          delta.dataSkippingNumIndexedCols unset or 32, not 0; clustering or partition columns
+          present on tables above a gibibyte
+        caveat: >-
+          Statistics-off fails immediately. Otherwise the share of actively read tables above
+          1 GiB and 10 files that cluster or partition (pass ≥80%, partial ≥40%). Predicates are
+          not read — this is whether skipping is possible. Restoring the property does not
+          backfill old files.
+      - how: ui
+        where: A slow filtered query's profile — files pruned versus files read
+        expect: Pruning proportionate to the filter, rather than a full scan behind a narrow predicate
+      - how: sql
+        where: |-
+          describe detail catalog.schema.a_large_actively_read_table
+        expect: >-
+          clusteringColumns or partitionColumns populated on tables large enough for skipping to
+          change what a query reads
+    pitfalls:
+      - >-
+        Setting dataSkippingNumIndexedCols to 0 "to save stats overhead", which turns skipping off
+        for every predicate.
+      - >-
+        Treating a pass here as proof skipping is working — the scan never reads the predicates.
+      - >-
+        Clustering on the ingest date when queries filter on customer, which makes skipping
+        possible and useless.
+    partial_when: >-
+      Statistics are intact and a material share of large, actively read tables still have no
+      clustering and no partitioning, so a filter skips only where write order happens to match.
+    not_applicable_when: >-
+      No sampled table is both larger than 1 GiB and spread over at least ten files, so skipping
+      would not change what a query reads.
+    references:
+      - https://docs.databricks.com/aws/en/tables/data-skipping
+      - https://docs.databricks.com/aws/en/tables/clustering
+    advice:
+      start_from: >-
+        Leave file statistics at Delta's default of 32 columns, and set liquid clustering on the
+        largest actively read tables using the columns query history says are filtered.
+      depends_on:
+        - >-
+          A table whose filters change every quarter may want automatic clustering rather than a
+          frozen CLUSTER BY.
+        - >-
+          A named stats-column list is right when the filter set is small and known; it makes
+          other columns unskippable.
+        - >-
+          Partitioning still counts as organisation, but below 1 TiB prefer clustering
+          (PE-03-13).
+      path:
+        - >-
+          Restore statistics on any table that set indexed columns to 0; rewrite files to
+          backfill.
+        - >-
+          Cluster the largest actively read tables on their real predicate columns.
+        - >-
+          Recheck a profile for prune counts after the rewrite, because this scan cannot.
+      costs:
+        - >-
+          Clustering an existing table rewrites data once.
+        - >-
+          Restoring statistics does not backfill old files until each is rewritten.
+      retain: >-
+        The clustering keys on the hottest large tables and a profile showing files pruned.
+      revisit: >-
+        A new filter column that is not clustered, or a table found with statistics off. Failing
+        those, twice a year.
+
+  # Avoid over-partitioning
+  # Never put to a person. Guidance here explains a finding rather than enabling an answer.
+  PE-03-13:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: Data engineering lead
+    means: >-
+      Tables below a tebibyte are not partitioned. Liquid clustering is the substitute the same
+      page recommends, so a clustered table is following the rule rather than evading it.
+    matters: >-
+      Partitioning a small table creates directories too thin to skip usefully and files too small
+      to scan cheaply. Every read lists many partitions and opens many files, which is slower than
+      reading the table whole.
+    good:
+      - No laid-out table below 1 TiB is partitioned — that is a fail in the sample.
+      - New Delta tables use liquid clustering instead of partitioning.
+      - Empty partitioned tables (0 bytes, 0 files) are excluded, not failed.
+      - A sampled pass is "none found among the most-read tables", not "none exist".
+      - The per-partition 1 GB rule is not tested — DESCRIBE DETAIL has no cardinality.
+    examples:
+      strong: >-
+        Nothing below a tebibyte is partitioned. Large tables that need organisation use liquid
+        clustering. The sample of most-read tables has no undersized partitioned table.
+      partial: >-
+        One or two older tables below a tebibyte are still partitioned by ingest date, and
+        conversion to clustering is on a list that has no date.
+      weak: >-
+        A 20 GiB events table is partitioned by hour. Every dashboard query lists thousands of
+        directories and the team thinks that is "good hygiene".
+    verify:
+      - how: sql
+        where: |-
+          describe detail catalog.schema.a_partitioned_table
+        expect: >-
+          sizeInBytes at least 1 TiB if partitionColumns is non-empty, or the table holds no data
+        caveat: >-
+          The app fails any sampled, non-empty partitioned table below 1 TiB. Liquid clustering
+          counts in a table's favour. A partitioned table holding nothing is left out — it has no
+          partitions of any size. The companion rule (each partition ≥1 GB) is not tested: that
+          needs partition cardinality, which the per-table describe does not return. A pass covers
+          the most-read sample, not the estate.
+      - how: ui
+        where: Catalog Explorer > a partitioned table > size and partition columns
+        expect: Partitioning only on tables that are actually huge, otherwise CLUSTER BY
+      - how: by-hand
+        where: Ask which tables below a tebibyte are still partitioned and why
+        expect: None, or a dated conversion, rather than "we always partition by date"
+    pitfalls:
+      - >-
+        Partitioning by date on every table because that is conventional, which is how a 20 GiB
+        table ends up with a directory per day.
+      - >-
+        Reading a clean sample as proof no over-partitioned table exists — the scan says it is
+        not that statement.
+      - >-
+        Dropping partitioning without clustering, which removes a bad layout and puts nothing in
+        its place on a table that still needs organisation.
+    partial_when: >-
+      The scan does not award partial — a found undersized partitioned table fails. Treat a dated
+      conversion of one or two leftover tables as the honest operational partial while they still
+      sit in the sample.
+    references:
+      - https://docs.databricks.com/aws/en/tables/clustering
+      - https://docs.databricks.com/aws/en/tables/data-skipping
+    advice:
+      start_from: >-
+        Do not partition tables below 1 TiB; use liquid clustering on the columns queries filter,
+        and convert existing undersized partitioned tables the same way.
+      depends_on:
+        - >-
+          Hive-style consumers that require a partition path stay partitioned until those
+          consumers move — write that exception down.
+        - >-
+          Liquid clustering and partitioning cannot coexist on the same table; conversion is a
+          rewrite.
+        - >-
+          An empty partitioned table is not this problem; wait until it holds data before judging.
+      path:
+        - >-
+          List partitioned tables under 1 TiB from the scan or from DESCRIBE DETAIL.
+        - >-
+          CLUSTER BY the real filter columns and drop partitioning on those tables.
+        - >-
+          Leave partitioning only on tables that are actually huge and have a path-based consumer.
+      costs:
+        - >-
+          Removing partitioning rewrites the table layout — schedule it like any other rewrite.
+        - >-
+          Path-based tools break until they read the clustered table as a whole.
+      retain: >-
+        The dated list of remaining partitioned tables under 1 TiB and the reason each still is.
+      revisit: >-
+        A new table created with PARTITIONED BY below a tebibyte, or a consumer that no longer
+        needs the path. Failing those, twice a year.
+
+  # Run analyze table to collect table statistics
+  # Never put to a person. Guidance here explains a finding rather than enabling an answer.
+  PE-03-15:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: Data engineering lead
+    means: >-
+      The optimiser has current table statistics — from predictive optimization on managed tables,
+      or from ANALYZE where that cover does not reach. Stale stats are how a join that fitted last
+      month spills this month.
+    matters: >-
+      The optimiser plans from the last statistics it saw. After a table grows or skews, a
+      broadcast that was right becomes a driver OOM, or a shuffle that was unnecessary becomes the
+      whole runtime.
+    good:
+      - Predictive optimization enabled on all managed tables → satisfied by architecture; ANALYZE is then correctly absent.
+      - ANALYZE observed on assessed tables is a pass where PO is not fully on.
+      - Unattributable ANALYZE, or none visible, is unmeasured — not a fail.
+      - Classic notebook ANALYZE is invisible in query history; a clean history is not proof of absence.
+      - Join-heavy tables have a known refresh path even when the scan cannot see it.
+    examples:
+      strong: >-
+        Predictive optimization covers every managed table, so ANALYZE is not scheduled. One
+        external table that is joined heavily has ANALYZE in its write pipeline.
+      partial: >-
+        PO covers production catalogs; an uncovered external dimension is joined nightly and
+        nobody can show when its statistics were last computed.
+      weak: >-
+        PO off, no ANALYZE anyone can point to, and a nightly join spills after the dimension
+        grew. The scan will likely say unmeasured rather than fail — that is not a clean bill.
+    verify:
+      - how: ui
+        where: Catalog Explorer > catalogs with managed tables > Predictive optimization
+        expect: On — the architecture path that makes missing ANALYZE correct
+      - how: sql
+        where: |-
+          select operation_type, count(*) as runs, max(start_time) as last_run
+          from system.storage.predictive_optimization_operations_history
+          where start_time > current_timestamp() - interval 90 days
+          and operation_type ilike '%ANALYZE%'
+          group by all
+        expect: >-
+          ANALYZE from predictive optimization where PO is on — confirmation, not required in a
+          quiet window
+        caveat: >-
+          The resolver never fails this control. PO enabled on all managed tables is
+          satisfied-by-architecture. Attributable ANALYZE is a pass. Unresolved ANALYZE, or none
+          visible, is unmeasured: query history misses classic notebook commands, and crediting
+          unattributable ANALYZE would pass work done elsewhere. Criteria text that says
+          "statistics are refreshed" is the intent, not a fail band.
+      - how: by-hand
+        where: Ask how statistics are kept current on the largest joined external table
+        expect: Predictive optimization, a pipeline ANALYZE, or a dated gap — not "Delta just knows"
+    pitfalls:
+      - >-
+        Reading "unmeasured" as a pass. The scan could not tell ANALYZE-absent from
+        ANALYZE-invisible.
+      - >-
+        Scheduling ANALYZE on managed tables already under predictive optimization, which is
+        duplicate work the architecture path already covers.
+      - >-
+        ANALYZE without FOR ALL COLUMNS on a join key that is not in the default set, so the
+        optimiser still guesses that key.
+    partial_when: >-
+      The scan does not award partial. Treat PO on some catalogs plus an uncovered joined table
+      with no visible ANALYZE as the honest operational partial — and expect unmeasured, not a
+      band, until ANALYZE is attributable or PO is complete.
+    not_applicable_when: >-
+      Predictive optimization covers every managed table and there is no external table the
+      optimiser must plan — then ANALYZE is correctly absent.
+    references:
+      - https://docs.databricks.com/aws/en/sql/language-manual/sql-ref-syntax-aux-analyze-compute-statistics
+      - https://docs.databricks.com/aws/en/optimizations/predictive-optimization
+    advice:
+      start_from: >-
+        Let the optimiser plan from current column statistics: rely on automatic collection for
+        managed tables, and run ANALYZE TABLE … FOR ALL COLUMNS only on joined tables that
+        automatic collection never sees.
+      depends_on:
+        - >-
+          External dimension tables used in heavy joins need an explicit ANALYZE in the write
+          pipeline — PO will not see them.
+        - >-
+          A clean query history is not evidence ANALYZE never ran on classic job clusters.
+        - >-
+          Join strategy (PE-03-14) still needs the profile; fresh stats are an input, not the
+          diagnosis.
+      path:
+        - >-
+          Turn PO on for managed catalogs if it is not already.
+        - >-
+          Find joined tables outside that cover and add ANALYZE there.
+        - >-
+          After a join spill, check stats age before changing broadcast thresholds.
+      costs:
+        - >-
+          ANALYZE on a wide table costs a scan; running it more often than the table changes
+          wastes that scan.
+        - >-
+          The scan will keep saying unmeasured until PO is complete or ANALYZE is attributable —
+          do not wait for a fail that will not come.
+      retain: >-
+        Catalog PO settings and the ANALYZE step on each uncovered joined table.
+      revisit: >-
+        A join spill on a table whose last ANALYZE nobody can date, or a new external dimension.
+        Failing those, twice a year.
+
+  # Enable deletion vectors to avoid rewriting files on delete and update
+  # Never put to a person. Guidance here explains a finding rather than enabling an answer.
+  PE-03-16:
+    status: authored
+    last_reviewed: '2026-08-18'
+    owner_role: Data engineering lead
+    means: >-
+      Actively read tables mark deleted rows instead of rewriting whole files on DELETE, UPDATE
+      and MERGE. Tables nobody modifies are left out — enabling the feature there churns the
+      protocol for no runtime gain.
+    matters: >-
+      Without deletion vectors, a one-row delete rewrites a 256 MiB file. Frequent merges then
+      spend most of their time rewriting data that did not change, and compaction has to clean up
+      the extra files.
+    good:
+      - At least 80% of tables read in the window have deletion vectors enabled (partial from 40%).
+      - The feature is on in table features, not only a property that never upgraded the protocol.
+      - Clients that read those tables meet the raised minimum reader version.
+      - Tables with no reads in the window are not chased for protocol churn.
+      - MERGE-heavy tables are in the enabled set, not only append-only ones.
+    examples:
+      strong: >-
+        Tables that are read and merged have deletion vectors on. Older clients were checked
+        before the protocol bump. Append-only dumps without deletes were left alone.
+      partial: >-
+        New tables inherit deletion vectors; a few heavily merged older tables still rewrite
+        whole files, and nobody has scheduled the upgrade.
+      weak: >-
+        Frequent MERGE jobs rewrite whole files on the hottest tables. Deletion vectors were
+        never enabled, or were set as a property without a protocol upgrade.
+    verify:
+      - how: sql
+        where: |-
+          describe detail catalog.schema.a_merged_table
+        expect: >-
+          tableFeatures includes deletionVectors on tables that see DELETE, UPDATE or MERGE
+        caveat: >-
+          The app scores the feature, not the property, over tables with reads in the window —
+          or over the whole sample if none were read. Pass ≥80%, partial ≥40%. Measured on the
+          most-read sample. Enabling the feature raises the minimum reader version.
+      - how: ui
+        where: Catalog Explorer > a MERGE target > Details > table features
+        expect: deletionVectors present, not only a tblproperty with no protocol upgrade
+      - how: by-hand
+        where: Ask what still reads the table (JDBC, old runtimes, external engines) before enabling
+        expect: Clients that meet the raised reader version, or a dated exception
+    pitfalls:
+      - >-
+        Setting the tblproperty without upgrading the protocol, which looks enabled and does
+        nothing.
+      - >-
+        Enabling on every unused table to chase the share, which raises reader versions for no
+        merge benefit.
+      - >-
+        Enabling without checking older readers — those clients fail after the protocol bump.
+    partial_when: >-
+      New tables inherit deletion vectors while heavily merged older tables still rewrite whole
+      files, or only part of the actively read sample has the feature on.
+    references:
+      - https://docs.databricks.com/aws/en/tables/features/deletion-vectors
+      - https://docs.databricks.com/aws/en/tables/operations/optimize
+    advice:
+      start_from: >-
+        Enable deletion vectors on tables that see DELETE, UPDATE or MERGE and are actually read,
+        after checking that every reader meets the raised minimum reader version.
+      depends_on:
+        - >-
+          Append-only tables with no row-level modification gain nothing — leave them.
+        - >-
+          Older JDBC, Spark or sharing clients can lose the table until they upgrade.
+        - >-
+          Compaction (PE-03-11) still has to apply deletion vectors later; this is the write-time
+          cost, not a substitute for OPTIMIZE.
+      path:
+        - >-
+          List MERGE/UPDATE/DELETE targets that are read and lack the feature.
+        - >-
+          Check readers, then ALTER TABLE … delta.enableDeletionVectors = true on those.
+        - >-
+          Leave unused tables alone so the protocol bump stays scoped.
+      costs:
+        - >-
+          The protocol bump can lock out older readers until they upgrade.
+        - >-
+          Deletion vectors add a later compaction debt; they do not shrink files by themselves.
+      retain: >-
+        The dated list of merge targets with the feature on, and the reader check that allowed it.
+      revisit: >-
+        A new MERGE job on a table without the feature, or a reader break after a protocol bump.
+        Failing those, twice a year.
