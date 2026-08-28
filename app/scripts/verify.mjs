@@ -27,6 +27,12 @@ import { existsSync } from 'node:fs';
 // the workflow file, because here it sits next to the command it justifies.
 const CHECKS = [
   {
+    name: 'the branch-published Pages site matches its Markdown sources',
+    // The official organization disables Actions, so Pages serves committed HTML directly from
+    // main/docs. This prevents a guide edit from leaving that static publication stale.
+    run: ['npm', 'run', 'check:docs-build'],
+  },
+  {
     name: 'lint',
     run: ['npm', 'run', 'lint'],
   },
