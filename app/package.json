@@ -104,7 +104,9 @@
     "check:third-party-licenses": "node scripts/third-party-licenses.mjs",
     "check:shipped": "node scripts/check-shipped-bundle.mjs",
     "check:skill-vendoring": "node scripts/check-skill-vendoring.mjs",
-    "drift:docs": "node scripts/docs-drift.mjs"
+    "drift:docs": "node scripts/docs-drift.mjs",
+    "docs:build": "node scripts/build-pages.mjs --write",
+    "check:docs-build": "node scripts/build-pages.mjs"
   },
   "keywords": [
     "databricks",
@@ -157,6 +159,7 @@
     "eslint-plugin-react-hooks": "7.1.1",
     "eslint-plugin-react-refresh": "0.5.4",
     "globals": "17.11.0",
+    "marked": "17.0.3",
     "pg": "8.23.0",
     "prettier": "3.9.6",
     "tailwindcss": "4.3.3",

@@ -133,7 +133,7 @@ Do not deploy merely to validate ordinary UI work. A real DAB deployment is requ
 
 ### Documentation changes
 
-Keep commands copyable, use placeholders for customer values, and update both the short README path and this guide when an installation contract changes. The documentation workflow builds the Jekyll site on every docs pull request.
+Keep commands copyable, use placeholders for customer values, and update both the short README path and this guide when an installation contract changes. Run `npm run docs:build` from `app/` and commit the generated HTML with the Markdown source. `npm run verify` refuses stale Pages output; the official repository publishes the pre-rendered `/docs` tree directly because organization policy disables GitHub Actions.
 
 ## Open the pull request
 
@@ -167,4 +167,3 @@ Never commit or attach:
 - screenshots and logs containing customer or user identity.
 
 If a credential was pushed, revoke it immediately before attempting to remove it from history, then use the private security channel.
-
