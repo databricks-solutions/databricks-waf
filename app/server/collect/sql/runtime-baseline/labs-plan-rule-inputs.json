@@ -1,0 +1,3540 @@
+{
+  "runFinishedAt": "2026-08-11T14:02:50.706Z",
+  "profile": "labs",
+  "extractedMetaKeys": [
+    "SCAN_IDENTIFIER",
+    "JOIN_ALGORITHM",
+    "JOIN_BUILD_SIDE",
+    "PARTITIONING_TYPE",
+    "IS_PHOTON",
+    "SCAN_PARTITIONS"
+  ],
+  "metricLabels": [
+    "AQEShuffleRead - Is ebj read",
+    "AQEShuffleRead - Is local read",
+    "AQEShuffleRead - Number of coalesced partitions",
+    "AQEShuffleRead - Number of empty partitions",
+    "AQEShuffleRead - Number of partitions",
+    "AQEShuffleRead - Partition data size",
+    "AQEShuffleRead - Skew handled by",
+    "Aggressive BHJ Build Side",
+    "Aggressive BHJ Completion Ratio",
+    "Aggressive BHJ Decision",
+    "Aggressive BHJ Duration",
+    "Aggressive BHJ Extrapolated Size",
+    "Aggressive BHJ Num Tasks For Extrapolation",
+    "Aggressive BHJ Ratio Checked",
+    "Aggressive BHJ Total Tasks",
+    "Auto batch size - max pivoted batch size",
+    "Auto batch size - num reduced size batches",
+    "Avg hash probe steps per batch",
+    "Avg hash probes per row",
+    "Bloom filter 1 - checksum mismatch",
+    "Bloom filter 1 - id to find source join",
+    "Bloom filter 1 - lock wait time",
+    "Bloom filter 1 - number of input rows",
+    "Bloom filter 1 - number of rows filtered out",
+    "Bloom filter 1 - number of rows skipped",
+    "Bloom filter 1 - probe side aggregation time",
+    "Bloom filter 1 - probe time",
+    "Bloom filter 1 - saturation percentage",
+    "Bloom filter 1 - shuffle files read time",
+    "Bloom filter 1 - size in bytes",
+    "Bloom filter 1 - trigger an OOM",
+    "Bloom filter 1 - validation status",
+    "Buffering time",
+    "Bytes copied",
+    "Cancellation Completion Ratio",
+    "Cancellation Decision",
+    "Cancellation Duration",
+    "Cancellation Is Skewed",
+    "Combined hash of all udf dependencies",
+    "Combined hash of all udf functions",
+    "Corrupt merged block chunks",
+    "Cost Based Cancellation Completion Ratio",
+    "Cost Based Cancellation Decision",
+    "Count of cached udf dependencies",
+    "Count of interrupted dependency installs",
+    "Count of session shared udf dependencies",
+    "Cumulative time",
+    "Duration",
+    "Exclusive time",
+    "Fetch wait time",
+    "Has udf with strict isolation",
+    "Hash of the UC owner",
+    "Hash table - num distinct keys",
+    "Hash table - num probe tasks that used the fused dense probe kernel",
+    "Hash table - num sparse to dense hashed relation conversions",
+    "Hash table - num times built compact (subset of two-level)",
+    "Hash table - num times built dense",
+    "Hash table - num times built sparse",
+    "Hash table - num times built two-level",
+    "Hash table - num two-level to dense hashed relation conversions",
+    "Hash table - size in bytes of dense relation that was eligible to be built but not built",
+    "Hashed relation size",
+    "Jni fallback expression evaluation time (ns)",
+    "Join Fallback Left",
+    "Join Fallback Left Size",
+    "Join Fallback Right",
+    "Join Fallback Right Size",
+    "Join probe - non-equijoin condition eval time",
+    "Join probe - non-equijoin condition selectivity",
+    "Join probe - num probe batches with unmatched rows, if probe side is outer",
+    "Join probe - num unmatched probe rows, if probe side is outer",
+    "Largest compression factor (%) for a single ArrowBatch",
+    "Largest number of rows serialized into a single ArrowBatch",
+    "Local blocks read",
+    "Local bytes read",
+    "Local merged blocks fetched",
+    "Local merged bytes read",
+    "Local merged chunks fetched",
+    "Lock wait time",
+    "MapStage - Adp triggered on materialized count",
+    "MapStage - Adp triggered on reused coordinated stage count",
+    "MapStage - Aos intended number of partitions",
+    "MapStage - Aos new number of partitions",
+    "MapStage - Aos old number of partitions",
+    "MapStage - Aos rule action",
+    "MapStage - Aos shuffle group id",
+    "MapStage - Column packing schema width",
+    "MapStage - EnsureRequirementsDP estimated NDV",
+    "MapStage - EnsureRequirementsDP shuffle type",
+    "MapStage - Marked for OOM fallback",
+    "MapStage - Number of output rows",
+    "MapStage - Peak memory usage",
+    "MapStage - Peak untracked memory usage",
+    "MapStage - Reuse id",
+    "MapStage - Serialized data type proto size",
+    "MapStage - Serialized plan proto size",
+    "MapStage - Shuffle group id",
+    "MapStage - Skew max to non-empty median ratio",
+    "MapStage - Skew non-empty median partition size",
+    "MapStage - Skew num empty partitions",
+    "MapStage - Skew num skewed partitions",
+    "MapStage - Skew skewed data size ratio",
+    "MapStage - Spill fallback eligibility",
+    "MapStage - Stage duration",
+    "Max batch size (rows) produced in the sort node",
+    "Max bytes per row",
+    "Max column batch size (bytes) sort spilled",
+    "Max input batch size for Scala UDF",
+    "Max output batch size for Scala UDF",
+    "Max spill recursion depth",
+    "Maximum final size of the input buffer",
+    "Maximum final size of the output buffer",
+    "Maximum size of 1st varlen key",
+    "Maximum size of 2nd varlen key",
+    "Maximum size of 3rd varlen key",
+    "Merged fetch fallback count",
+    "Min batch size (rows) produced in the sort node",
+    "Minimum size of 1st varlen key",
+    "Minimum size of 2nd varlen key",
+    "Minimum size of 3rd varlen key",
+    "Num batches aggregated in dense mode",
+    "Num batches aggregated in sparse mode",
+    "Num bytes read",
+    "Num bytes spilled from left side",
+    "Num bytes spilled from right side",
+    "Num bytes spilled to disk due to memory pressure",
+    "Num bytes used for var-len data",
+    "Num compacted batches",
+    "Num compacted rows",
+    "Num early close",
+    "Num hash bailouts",
+    "Num hash lookups",
+    "Num probe rows suspended",
+    "Num python udf",
+    "Num python udf with dependencies",
+    "Num rows spilled from left side",
+    "Num rows spilled from right side",
+    "Num rows spilled to disk due to memory pressure",
+    "Num scala udf",
+    "Num spill partitions created",
+    "Num spill partitions that were ineffective at subdividing build side",
+    "Num spill partitions with role reversal",
+    "Num spills to disk due to memory pressure",
+    "Num uc scala udf",
+    "Num udf invocations",
+    "Num uncompressed bytes read",
+    "Num uncompressed bytes spilled",
+    "Num uncompressed bytes spilled from left side",
+    "Num uncompressed bytes spilled from right side",
+    "Num window partitions",
+    "Number of UDF evaluation requests made to the SafeSpark server",
+    "Number of buffer reallocations",
+    "Number of input batches",
+    "Number of input rows",
+    "Number of input rows that skipped the heap (determined to be spilled)",
+    "Number of lag frames",
+    "Number of lead frames",
+    "Number of output batches",
+    "Number of output rows",
+    "Number of partitions",
+    "Number of range growing frames",
+    "Number of range running frames",
+    "Number of range sliding frames",
+    "Number of removable functions",
+    "Number of row growing frames",
+    "Number of row running frames",
+    "Number of row sliding frames",
+    "Number of rows inserted into heap",
+    "Number of rows pruned by cross-task output pruning before shuffle",
+    "Number of rows pruned by unpartitioned TopK in-operator filtering",
+    "Number of rows removed and evicted from heap",
+    "Number of rows removed from heap",
+    "Number of rows topk spilled from the in-memory run",
+    "Number of sandbox allocations",
+    "Number of spill buffers allocated for a merge tree",
+    "Number of successful cross-task threshold writes to shared state",
+    "Number of times hash table was resized",
+    "Number of times the LEFT_SINGLE join evaluation would lead to a runtime error",
+    "Number of times the output buf is reallocated",
+    "Number of times the output buffer was reallocated",
+    "Number of times this topk node entered passthrough mode",
+    "Number of times topk copied input data into a heap, total",
+    "Number of times unpartitioned TopK pruning threshold was updated",
+    "Number of unbounded frames",
+    "PQE Cost Build Side",
+    "PQE Cost Build Side Uncompressed Size",
+    "PQE Cost Completion Ratio",
+    "PQE Cost Decision",
+    "PQE Cost Num Tasks For Extrapolation",
+    "PQE Cost Reason",
+    "PQE Cost Total Tasks",
+    "PQE Cost Uncompressed Extrapolated Size",
+    "Passthrough output rows",
+    "Peak memory usage",
+    "Peak untracked memory usage",
+    "Percentile Fallback",
+    "Permanent agg varlen pool size in bytes",
+    "Pivoting time",
+    "Prism Rust client max init time",
+    "Prism adjusted high priority fetch bytes",
+    "Prism adjusted low priority fetch bytes",
+    "Prism client connect time",
+    "Prism client connection failed attempts",
+    "Prism client connection fast failures",
+    "Prism client connections created",
+    "Prism fetch queue max acquired bytes",
+    "Prism fetch queue max creation time",
+    "Prism jni api max load time",
+    "Prism migration followup rpc check hits",
+    "Prism migration followup rpc check time",
+    "Prism migration followup rpc checks",
+    "Prism migration mapstatus update time",
+    "Prism num migrated requests",
+    "Prism num requests",
+    "Prism read blocked by fetch duration",
+    "Prism server before queue time",
+    "Prism server data read time",
+    "Prism server high priority queue max size",
+    "Prism server index empty reads",
+    "Prism server index lookup time",
+    "Prism server low priority queue max size",
+    "Prism server memory pool max used bytes",
+    "Prism server memory pool total bytes",
+    "Prism server processing time",
+    "Prism server queueing time",
+    "Prism server total time",
+    "Prism stage shuffle count",
+    "Remote blocks read",
+    "Remote bytes read",
+    "Remote bytes read to disk",
+    "Remote merged blocks fetched",
+    "Remote merged bytes read",
+    "Remote merged chunks fetched",
+    "Remote merged reqs duration",
+    "Remote reqs duration",
+    "Retry-based spill - num retries",
+    "Retry-based spill - retry time",
+    "Reuse id",
+    "Row pivot - max row size in bytes",
+    "Runtime filter IDs originating from this join (right)",
+    "Sandbox api used",
+    "Sandbox jvm gc events",
+    "Sandbox jvm gc time",
+    "Sandbox jvm total gc freed memory",
+    "Sandbox peak memory use",
+    "Sandbox peak memory use (for container)",
+    "Scan - Active disk cache policy hash",
+    "Scan - Adaptive throttled count for native IO",
+    "Scan - Adaptive throttled delay for native IO",
+    "Scan - Async executor time CPU - footer decoding",
+    "Scan - Auto batch size - low watermark",
+    "Scan - Auto batch size - num increases",
+    "Scan - Auto batch size - num preemptive clears",
+    "Scan - Auto batch size - num recovered ooms",
+    "Scan - Auto batch size - num reduced size batches",
+    "Scan - Auto batch size - num retries",
+    "Scan - Auto batch size - num retries above low watermark",
+    "Scan - Auto batch size - peak batch memory",
+    "Scan - Batches with optional data filters that got disabled",
+    "Scan - Bytes received for native IO",
+    "Scan - Bytes sent for native IO",
+    "Scan - Cache hits size",
+    "Scan - Cache hits size (uncompressed)",
+    "Scan - Cache misses size",
+    "Scan - Cache misses size (uncompressed)",
+    "Scan - Cache writes size",
+    "Scan - Cache writes size (uncompressed)",
+    "Scan - Cache writes stored compressed size",
+    "Scan - Cache writes stored uncompressed size",
+    "Scan - Cloud storage connect duration",
+    "Scan - Cloud storage request count",
+    "Scan - Cloud storage request duration",
+    "Scan - Cloud storage request size",
+    "Scan - Cloud storage requests to fetch parquet footer",
+    "Scan - Cloud storage response size",
+    "Scan - Cloud storage retry count",
+    "Scan - Cloud storage retry duration",
+    "Scan - Cloud storage tls duration",
+    "Scan - Cloud store requests for page index fetch",
+    "Scan - Cluster's current parallelism ",
+    "Scan - Coalesced column chunk requests",
+    "Scan - Columns in the relation",
+    "Scan - Columns with filters",
+    "Scan - Columns with filters - dictionary encoded",
+    "Scan - Compressed bytes attempted to skip via page stats filtering in columns after the first",
+    "Scan - Compressed bytes attempted to skip via page stats filtering in the first column",
+    "Scan - Compressed bytes page stats filtering would skip in columns after the first",
+    "Scan - Compressed bytes page stats filtering would skip in the first column",
+    "Scan - Compressed bytes read for BIT_PACKED encoding",
+    "Scan - Compressed bytes read for BYTE_STREAM_SPLIT encoding",
+    "Scan - Compressed bytes read for DELTA_BINARY_PACKED encoding",
+    "Scan - Compressed bytes read for DELTA_BYTE_ARRAY encoding",
+    "Scan - Compressed bytes read for DELTA_LENGTH_BYTE_ARRAY encoding",
+    "Scan - Compressed bytes read for GROUP_VAR_INT encoding",
+    "Scan - Compressed bytes read for PLAIN encoding",
+    "Scan - Compressed bytes read for PLAIN_DICTIONARY encoding",
+    "Scan - Compressed bytes read for RLE encoding",
+    "Scan - Compressed bytes read for RLE_DICTIONARY encoding",
+    "Scan - Compressed bytes read without page stats in page filtering in columns after the first",
+    "Scan - Compressed bytes read without page stats in page filtering in the first column",
+    "Scan - Connect duration for native IO",
+    "Scan - Consumed column chunk bytes",
+    "Scan - Cumulative time",
+    "Scan - Data filter predicate memoization - num batches evaluated",
+    "Scan - Data filters - batches skipped",
+    "Scan - Data filters - row groups filtered",
+    "Scan - Data filters - rows skipped",
+    "Scan - Decoder pages - all active",
+    "Scan - Decoder pages - some active",
+    "Scan - Decoder pages - some active nonnull rows",
+    "Scan - Decoder pages - some active total rows",
+    "Scan - Delta-optimized file listing enabled",
+    "Scan - Delta-optimized file listing: relative paths enabled",
+    "Scan - Dictionary filtering - num row groups eligible",
+    "Scan - Dictionary filtering - num row groups evaluated",
+    "Scan - Dictionary filtering - num row groups not evaluated - dictionary size",
+    "Scan - Disk bytes read",
+    "Scan - Disk bytes written",
+    "Scan - Driver time - bucketing files by host",
+    "Scan - Driver time - list and filter partitions",
+    "Scan - Driver time - sorting files by size",
+    "Scan - Dynamic pruning - num cols (DFP)",
+    "Scan - Dynamic pruning - num cols (DPP)",
+    "Scan - Dynamic pruning - num filters (DFP)",
+    "Scan - Dynamic pruning - num filters (DPP)",
+    "Scan - Dynamic scan - estimated executor time without coalescing",
+    "Scan - Dynamic scan - executor runtime",
+    "Scan - Dynamic scan - initial number of tasks",
+    "Scan - Dynamic scan - number of tasks completed before starting coalescing",
+    "Scan - Dynamic scan - overhead added",
+    "Scan - Exclusive time",
+    "Scan - Executor time CPU",
+    "Scan - Executor time CPU - applying data filters",
+    "Scan - Executor time CPU - applying data filters using memoized results",
+    "Scan - Executor time CPU - applying dictionary filters",
+    "Scan - Executor time CPU - applying optional data filters",
+    "Scan - Executor time CPU - auto batch size reset",
+    "Scan - Executor time CPU - decoding columns",
+    "Scan - Executor time CPU - decoding deletion vectors",
+    "Scan - Executor time CPU - decoding footers",
+    "Scan - Executor time CPU - decompressing pages",
+    "Scan - Executor time CPU - distinct evaluation total",
+    "Scan - Executor time CPU - fetch scheduling",
+    "Scan - Executor time CPU - other",
+    "Scan - Executor time CPU - schema resolution",
+    "Scan - Executor time IO wait",
+    "Scan - Executor time IO wait - cache read columns",
+    "Scan - Executor time IO wait - cache read footers",
+    "Scan - Executor time IO wait - cache write columns",
+    "Scan - Executor time IO wait - cache write footers",
+    "Scan - Executor time IO wait - cancellation",
+    "Scan - Executor time IO wait - deletion vectors",
+    "Scan - Executor time IO wait - fetch columns (and full files)",
+    "Scan - Executor time IO wait - fetch footers",
+    "Scan - Executor time IO wait - file statuses",
+    "Scan - Extra bytes read due to coalescing",
+    "Scan - File partitions skipped via QCC",
+    "Scan - File splits used photon native frame reader",
+    "Scan - File splits used photon reader",
+    "Scan - Files corrupt",
+    "Scan - Files missing",
+    "Scan - Files read",
+    "Scan - Files skipped via QCC",
+    "Scan - Footer - metadata extension failed read",
+    "Scan - Footer - metadata extension successful read",
+    "Scan - Jni fallback expression evaluation time (ns)",
+    "Scan - Max distance between the positions of scanned columns in the relation",
+    "Scan - Max partition size chosen",
+    "Scan - Maximum effective cache auto compression ratio",
+    "Scan - Memory usage for file scan partition planning",
+    "Scan - Nfr cumulative time",
+    "Scan - Num early close",
+    "Scan - Num variant structs - nested",
+    "Scan - Num variant structs - top level",
+    "Scan - Num variant types - nested",
+    "Scan - Num variant types - top level",
+    "Scan - Number of ColumnIndex entries parsed",
+    "Scan - Number of OffsetIndex entries parsed",
+    "Scan - Number of async disk cache writes scheduled",
+    "Scan - Number of deletion vector rows read",
+    "Scan - Number of deletion vector rows read from disk cache",
+    "Scan - Number of deletion vector rows read from memory cache",
+    "Scan - Number of deletion vectors read",
+    "Scan - Number of deletion vectors read from disk cache",
+    "Scan - Number of deletion vectors read from memory cache",
+    "Scan - Number of file swaps during out-of-order processing",
+    "Scan - Number of files where page index was read from footer tail",
+    "Scan - Number of in-memory footer metadata cache hits",
+    "Scan - Number of in-memory footer metadata cache misses",
+    "Scan - Number of in-memory page cache hits",
+    "Scan - Number of in-memory page cache misses",
+    "Scan - Number of local scan tasks",
+    "Scan - Number of non-local (rescheduled) scan tasks",
+    "Scan - Number of output batches",
+    "Scan - Number of output rows",
+    "Scan - Number of pages skipped via page cache index",
+    "Scan - Number of pread calls for columns",
+    "Scan - Number of row group swaps during out-of-order processing",
+    "Scan - Number of rows pruned by TopK filter in scan",
+    "Scan - Number of rows skipped via page cache index",
+    "Scan - Number of scheduled async disk cache writes cancelled",
+    "Scan - Output var-len data - dictionary total values size",
+    "Scan - Output var-len data - non-dictionary total values size",
+    "Scan - Output var-len data - num pages using V2 encodings",
+    "Scan - Page index bytes read",
+    "Scan - Pages attempted to skip via page stats filtering in columns after the first",
+    "Scan - Pages attempted to skip via page stats filtering in the first column",
+    "Scan - Pages page stats filtering would skip in columns after the first",
+    "Scan - Pages page stats filtering would skip in the first column",
+    "Scan - Pages read without page stats in page filtering in columns after the first",
+    "Scan - Pages read without page stats in page filtering in first column",
+    "Scan - Parquet footer prefetching - cache write IO wait",
+    "Scan - Parquet footer prefetching - cloud storage request count",
+    "Scan - Parquet footer prefetching - fetch IO wait",
+    "Scan - Parquet footer prefetching - footer prefetching tasks failed",
+    "Scan - Parquet footer prefetching - tasks with footers prefetched before task start",
+    "Scan - Parquet footer prefetching - time prefetching footers",
+    "Scan - Partition columns",
+    "Scan - Partitions read",
+    "Scan - Peak memory usage",
+    "Scan - Peak reader threads utilized",
+    "Scan - Predicted cache utility of the scan (cacheRead / cacheMiss)",
+    "Scan - QCC cache hits",
+    "Scan - QCC cache misses",
+    "Scan - QCC ranges dropped by write-time filtering",
+    "Scan - Raw compressed bytes read",
+    "Scan - Request count for native copy",
+    "Scan - Request count for native delete",
+    "Scan - Request count for native head",
+    "Scan - Request count for native list",
+    "Scan - Request count for native read",
+    "Scan - Request count for native rename",
+    "Scan - Request count for native streamingRead",
+    "Scan - Request count for native streamingWrite",
+    "Scan - Request count for native write",
+    "Scan - Request duration for native copy",
+    "Scan - Request duration for native delete",
+    "Scan - Request duration for native head",
+    "Scan - Request duration for native list",
+    "Scan - Request duration for native read",
+    "Scan - Request duration for native rename",
+    "Scan - Request duration for native streamingRead",
+    "Scan - Request duration for native streamingWrite",
+    "Scan - Request duration for native write",
+    "Scan - Retry count for native copy",
+    "Scan - Retry count for native delete",
+    "Scan - Retry count for native head",
+    "Scan - Retry count for native list",
+    "Scan - Retry count for native read",
+    "Scan - Retry count for native rename",
+    "Scan - Retry count for native streamingRead",
+    "Scan - Retry count for native streamingWrite",
+    "Scan - Retry count for native write",
+    "Scan - Retry delay for native IO",
+    "Scan - Row groups in files to read total",
+    "Scan - Row groups read actual",
+    "Scan - Row groups skipped by optional data filters",
+    "Scan - Row groups skipped by optional data filters during lazy materialization",
+    "Scan - Row groups skipped via QCC",
+    "Scan - Row groups skipped via dictionary filtering",
+    "Scan - Row groups skipped via lazy materialization",
+    "Scan - Row groups skipped via stats filtering",
+    "Scan - Row groups using lazy materialization",
+    "Scan - Row groups with matching rows",
+    "Scan - Row groups with optional data filters that got disabled",
+    "Scan - Rows attempted to skip via page stats filtering in columns after the first",
+    "Scan - Rows attempted to skip via page stats filtering in the first column",
+    "Scan - Rows page stats filtering would skip in columns after the first",
+    "Scan - Rows page stats filtering would skip in the first column",
+    "Scan - Rows read without page stats in page filtering in columns after the first",
+    "Scan - Rows read without page stats in page filtering in the first column",
+    "Scan - Rows returned by distinct",
+    "Scan - Rows scanned",
+    "Scan - Rows skipped via QCC",
+    "Scan - Rows skipped via stats filtering",
+    "Scan - Scan batches - all active",
+    "Scan - Scan batches - some active",
+    "Scan - Scan batches - some active active rows",
+    "Scan - Scan batches - some active total rows",
+    "Scan - Scan path hash",
+    "Scan - Scanned columns",
+    "Scan - Size of a row of all columns in the relation (estimated)",
+    "Scan - Size of a row of scanned columns (estimated)",
+    "Scan - Size of data read with io requests",
+    "Scan - Size of deletion vectors read",
+    "Scan - Size of deletion vectors read from disk cache",
+    "Scan - Size of deletion vectors read from memory cache",
+    "Scan - Size of files read",
+    "Scan - Size of row groups before filtering",
+    "Scan - Size of the largest file read",
+    "Scan - Size of the smallest file read",
+    "Scan - Split size average distribution per node",
+    "Scan - Split size relative skew (percent)",
+    "Scan - Stable cache miss bytes for ParquetColumnChunk",
+    "Scan - Stable cache miss bytes for ParquetFooter",
+    "Scan - Stable cache miss bytes for Range",
+    "Scan - Stable cache miss bytes for RangeCsv",
+    "Scan - Stable cache miss bytes for RangeDeletionVector",
+    "Scan - Stable cache miss bytes for RangeJson",
+    "Scan - Stable cache miss bytes for RangeParquet",
+    "Scan - Stable cache serve bytes for ParquetColumnChunk",
+    "Scan - Stable cache serve bytes for ParquetFooter",
+    "Scan - Stable cache serve bytes for Range",
+    "Scan - Stable cache serve bytes for RangeCsv",
+    "Scan - Stable cache serve bytes for RangeDeletionVector",
+    "Scan - Stable cache serve bytes for RangeJson",
+    "Scan - Stable cache serve bytes for RangeParquet",
+    "Scan - Stage wait time (ns) for build side to materialize",
+    "Scan - Support of the predicted cache utility",
+    "Scan - TLS duration for native IO",
+    "Scan - Tasks total",
+    "Scan - The proration factor used",
+    "Scan - Time spent deserializing page index",
+    "Scan - Time spent evaluating page index statistics",
+    "Scan - Time spent on fetching FileStatus",
+    "Scan - Time spent reading deletion vectors",
+    "Scan - Time waiting on page index cache read",
+    "Scan - Time waiting on page index cache write",
+    "Scan - Time waiting on page index cloud fetch",
+    "Scan - Uncompressed bytes attempted to skip via page stats filtering in columns after the first",
+    "Scan - Uncompressed bytes attempted to skip via page stats filtering in the first column",
+    "Scan - Uncompressed bytes page stats filtering would skip in columns after the first",
+    "Scan - Uncompressed bytes page stats filtering would skip in the first column",
+    "Scan - Uncompressed bytes read after filtering",
+    "Scan - Uncompressed bytes read after filtering by native frame reader",
+    "Scan - Uncompressed bytes read for BIT_PACKED encoding",
+    "Scan - Uncompressed bytes read for BYTE_STREAM_SPLIT encoding",
+    "Scan - Uncompressed bytes read for DELTA_BINARY_PACKED encoding",
+    "Scan - Uncompressed bytes read for DELTA_BYTE_ARRAY encoding",
+    "Scan - Uncompressed bytes read for DELTA_LENGTH_BYTE_ARRAY encoding",
+    "Scan - Uncompressed bytes read for GROUP_VAR_INT encoding",
+    "Scan - Uncompressed bytes read for PLAIN encoding",
+    "Scan - Uncompressed bytes read for PLAIN_DICTIONARY encoding",
+    "Scan - Uncompressed bytes read for RLE encoding",
+    "Scan - Uncompressed bytes read for RLE_DICTIONARY encoding",
+    "Scan - Uncompressed bytes read without page stats in page filtering in columns after the first",
+    "Scan - Uncompressed bytes read without page stats in page filtering in the first column",
+    "Scan - Unified cache coalesce count for ParquetColumnChunk",
+    "Scan - Unified cache coalesce count for ParquetFooter",
+    "Scan - Unified cache coalesce count for Range",
+    "Scan - Unified cache coalesce count for RangeCsv",
+    "Scan - Unified cache coalesce count for RangeDeletionVector",
+    "Scan - Unified cache coalesce count for RangeJson",
+    "Scan - Unified cache coalesce count for RangeParquet",
+    "Scan - Unified cache hits count for ParquetColumnChunk",
+    "Scan - Unified cache hits count for ParquetFooter",
+    "Scan - Unified cache hits count for Range",
+    "Scan - Unified cache hits count for RangeCsv",
+    "Scan - Unified cache hits count for RangeDeletionVector",
+    "Scan - Unified cache hits count for RangeJson",
+    "Scan - Unified cache hits count for RangeParquet",
+    "Scan - Unified cache miss bytes for ParquetColumnChunk",
+    "Scan - Unified cache miss bytes for ParquetFooter",
+    "Scan - Unified cache miss bytes for Range",
+    "Scan - Unified cache miss bytes for RangeCsv",
+    "Scan - Unified cache miss bytes for RangeDeletionVector",
+    "Scan - Unified cache miss bytes for RangeJson",
+    "Scan - Unified cache miss bytes for RangeParquet",
+    "Scan - Unified cache miss count for ParquetColumnChunk",
+    "Scan - Unified cache miss count for ParquetFooter",
+    "Scan - Unified cache miss count for Range",
+    "Scan - Unified cache miss count for RangeCsv",
+    "Scan - Unified cache miss count for RangeDeletionVector",
+    "Scan - Unified cache miss count for RangeJson",
+    "Scan - Unified cache miss count for RangeParquet",
+    "Scan - Unified cache populate time for ParquetColumnChunk",
+    "Scan - Unified cache populate time for ParquetFooter",
+    "Scan - Unified cache populate time for Range",
+    "Scan - Unified cache populate time for RangeCsv",
+    "Scan - Unified cache populate time for RangeDeletionVector",
+    "Scan - Unified cache populate time for RangeJson",
+    "Scan - Unified cache populate time for RangeParquet",
+    "Scan - Unified cache read bytes for ParquetColumnChunk",
+    "Scan - Unified cache read bytes for ParquetFooter",
+    "Scan - Unified cache read bytes for Range",
+    "Scan - Unified cache read bytes for RangeCsv",
+    "Scan - Unified cache read bytes for RangeDeletionVector",
+    "Scan - Unified cache read bytes for RangeJson",
+    "Scan - Unified cache read bytes for RangeParquet",
+    "Scan - Unified cache serve bytes for ParquetColumnChunk",
+    "Scan - Unified cache serve bytes for ParquetFooter",
+    "Scan - Unified cache serve bytes for Range",
+    "Scan - Unified cache serve bytes for RangeCsv",
+    "Scan - Unified cache serve bytes for RangeDeletionVector",
+    "Scan - Unified cache serve bytes for RangeJson",
+    "Scan - Unified cache serve bytes for RangeParquet",
+    "Scan - Unified cache write bytes for ParquetColumnChunk",
+    "Scan - Unified cache write bytes for ParquetFooter",
+    "Scan - Unified cache write bytes for Range",
+    "Scan - Unified cache write bytes for RangeCsv",
+    "Scan - Unified cache write bytes for RangeDeletionVector",
+    "Scan - Unified cache write bytes for RangeJson",
+    "Scan - Unified cache write bytes for RangeParquet",
+    "Scan - Var-len dictionary - max num entries per chunk",
+    "Scan - Var-len dictionary - max uncompressed size bytes per chunk",
+    "Scan - Var-len dictionary - min num entries per chunk",
+    "Scan - Var-len dictionary - min uncompressed size bytes per chunk",
+    "Scan - Var-len dictionary - num (file, column) pairs partially dict-encoded",
+    "Scan - Var-len dictionary - num (file, column) pairs with any dict-encoded chunk",
+    "Scan - Var-len dictionary - num column chunks",
+    "Scan - Var-len dictionary - num column chunks with dict",
+    "Scan - Var-len dictionary - num column chunks with page-level fallback",
+    "Scan - Var-len dictionary - total num entries",
+    "Scan - Var-len dictionary - total uncompressed size bytes",
+    "Scan - Variant shredding - number of column chunks after clipping",
+    "Scan - Variant shredding - number of column chunks in the file",
+    "Scan - Variant shredding - time spent in reconstructing variant binary",
+    "Scan - Variant-get (non-foldable path) - total in filters",
+    "Scan - Variant-get - max array index",
+    "Scan - Variant-get - total in filters",
+    "Scan - Variant-get - with array index",
+    "Scan - Variant-get-struct-field - max array index",
+    "Scan - Variant-get-struct-field - total in filters",
+    "Scan - Variant-get-struct-field - with array index",
+    "Serialized data type proto size",
+    "Serialized plan proto size",
+    "Set if OVC is used in the merge tree",
+    "Shuffle group id",
+    "ShuffleQueryStage - Adp cannot repartition",
+    "ShuffleQueryStage - Adp extrapolated size",
+    "ShuffleQueryStage - Adp is prorated",
+    "ShuffleQueryStage - Adp mapper num",
+    "ShuffleQueryStage - Adp num empty partitions",
+    "ShuffleQueryStage - Adp reduce-side skew threshold met",
+    "ShuffleQueryStage - Adp size threshold met",
+    "ShuffleQueryStage - Adp target size multiplier",
+    "ShuffleQueryStage - Adp use uncompressed",
+    "ShuffleQueryStage - Coalesce target size",
+    "ShuffleQueryStage - Spill fallback action",
+    "ShuffleQueryStage - Spill fallback dynamic coalescing",
+    "ShuffleQueryStage - Spill fallback est long task avg ms",
+    "ShuffleQueryStage - Spill fallback num long tasks finished",
+    "ShuffleQueryStage - Spill fallback num long tasks running",
+    "ShuffleQueryStage - Spill fallback num tasks finished",
+    "ShuffleQueryStage - Spill fallback num tasks running",
+    "ShuffleQueryStage - Spill fallback progress",
+    "ShuffleQueryStage - Spill fallback task peak disk bytes spilled",
+    "Sink - Auto batch size - max pivoted batch size",
+    "Sink - Auto batch size - num reduced size batches",
+    "Sink - Cumulative time",
+    "Sink - Exclusive time",
+    "Sink - Factor by which the number of partitions is increased for pre-partitioned input",
+    "Sink - Maximum size of 1st varlen key",
+    "Sink - Maximum size of 2nd varlen key",
+    "Sink - Maximum size of 3rd varlen key",
+    "Sink - Minimum size of 1st varlen key",
+    "Sink - Minimum size of 2nd varlen key",
+    "Sink - Minimum size of 3rd varlen key",
+    "Sink - Num bytes spilled to disk due to memory pressure",
+    "Sink - Num bytes used for var-len data",
+    "Sink - Num bytes written",
+    "Sink - Num early close",
+    "Sink - Num rows spilled to disk due to memory pressure",
+    "Sink - Num spills to disk due to memory pressure",
+    "Sink - Num uncompressed bytes written",
+    "Sink - Number of bytes of shuffle output kept in memory",
+    "Sink - Number of empty blocks",
+    "Sink - Number of output batches",
+    "Sink - Number of output rows",
+    "Sink - Number of partitions",
+    "Sink - Number of tasks with shuffle output kept in memory",
+    "Sink - Peak memory usage",
+    "Sink - Retry-based spill - num retries",
+    "Sink - Retry-based spill - retry time",
+    "Sink - Row pivot - max row size in bytes",
+    "Sink - Runtime filter - OOM fallback triggered",
+    "Sink - Runtime filter compressed output size in bytes",
+    "Sink - Runtime filter uncompressed output size in bytes",
+    "Sink - Sampling and range boundary calculation time in ns",
+    "Sink - Shuffle checksum expression evaluation time in NS",
+    "Sink - Shuffle partition expression evaluation time",
+    "Sink - Shuffle partitioning type",
+    "Sink - Tasks total",
+    "Sink - Time for merging spill files in shuffle",
+    "Sink - Time spent fusing the runtime filter spill into the main shuffle spill",
+    "Sink - Time taken to accumulate rows",
+    "Sink - Time taken to build runtime filter",
+    "Sink - Time taken to compress data",
+    "Sink - Time taken to convert columns to rows",
+    "Sink - Time taken to convert rows to columns",
+    "Sink - Time taken to output runtime filter",
+    "Sink - Time taken to reserve memory",
+    "Sink - Time taken to sort rows by partition ID (part of shuffle file write)",
+    "Sink - Time taken waiting on file write IO (part of shuffle file write)",
+    "Sink - Total time spent producing shuffle files",
+    "Size of largest (uncompressed) ArrowBatch produced (bytes)",
+    "Size of smallest (uncompressed) ArrowBatch produced (bytes)",
+    "Size of the UDF payload",
+    "Smallest compression factor (%) for a single ArrowBatch",
+    "Smallest number of rows serialized into a single ArrowBatch",
+    "Source - Corrupt merged block chunks",
+    "Source - Cumulative time",
+    "Source - Dynamic shuffle - estimated executor time without coalescing",
+    "Source - Dynamic shuffle - executor runtime",
+    "Source - Dynamic shuffle - initial number of tasks",
+    "Source - Dynamic shuffle - number of tasks completed before starting coalescing",
+    "Source - Dynamic shuffle - overhead added",
+    "Source - Exclusive time",
+    "Source - Fetch wait time",
+    "Source - Local blocks read",
+    "Source - Local bytes read",
+    "Source - Local merged blocks fetched",
+    "Source - Local merged bytes read",
+    "Source - Local merged chunks fetched",
+    "Source - Merged fetch fallback count",
+    "Source - Num bytes read",
+    "Source - Num early close",
+    "Source - Num uncompressed bytes read",
+    "Source - Number of output batches",
+    "Source - Number of output rows",
+    "Source - Prism Rust client max init time",
+    "Source - Prism adjusted high priority fetch bytes",
+    "Source - Prism adjusted low priority fetch bytes",
+    "Source - Prism client connect time",
+    "Source - Prism client connection failed attempts",
+    "Source - Prism client connection fast failures",
+    "Source - Prism client connections created",
+    "Source - Prism fetch queue max acquired bytes",
+    "Source - Prism fetch queue max creation time",
+    "Source - Prism jni api max load time",
+    "Source - Prism migration followup rpc check hits",
+    "Source - Prism migration followup rpc check time",
+    "Source - Prism migration followup rpc checks",
+    "Source - Prism migration mapstatus update time",
+    "Source - Prism num migrated requests",
+    "Source - Prism num requests",
+    "Source - Prism read blocked by fetch duration",
+    "Source - Prism server before queue time",
+    "Source - Prism server data read time",
+    "Source - Prism server high priority queue max size",
+    "Source - Prism server index empty reads",
+    "Source - Prism server index lookup time",
+    "Source - Prism server low priority queue max size",
+    "Source - Prism server memory pool max used bytes",
+    "Source - Prism server memory pool total bytes",
+    "Source - Prism server processing time",
+    "Source - Prism server queueing time",
+    "Source - Prism server total time",
+    "Source - Prism stage shuffle count",
+    "Source - Remote blocks read",
+    "Source - Remote bytes read",
+    "Source - Remote bytes read to disk",
+    "Source - Remote merged blocks fetched",
+    "Source - Remote merged bytes read",
+    "Source - Remote merged chunks fetched",
+    "Source - Remote merged reqs duration",
+    "Source - Remote reqs duration",
+    "Source - Tasks total",
+    "Source - Time taken to decompress data",
+    "Stage duration",
+    "Subset of times topk copied input data into a heap, using full GC",
+    "Tasks total",
+    "Time in hash build",
+    "Time in produce",
+    "Time spent adding batches to topk",
+    "Time spent adding rows to sorter",
+    "Time spent applying dynamic filter in unpartitioned TopK",
+    "Time spent building HLLs",
+    "Time spent building the hashed relation",
+    "Time spent building the partitioned relation",
+    "Time spent coalescing output batches",
+    "Time spent compacting batches",
+    "Time spent compacting data",
+    "Time spent compacting input batches",
+    "Time spent comparing values for determining bounds for range frames",
+    "Time spent copying input data into top-k node",
+    "Time spent deep copying batches",
+    "Time spent deserializing Apache Arrow data into Photon column batches",
+    "Time spent during garbage collection",
+    "Time spent in cross-task output pruning before shuffle",
+    "Time spent in resizing hash table",
+    "Time spent inserting rows into heap",
+    "Time spent making request for and executing UDF user code",
+    "Time spent merging HLLs",
+    "Time spent processing ORDER BY columns",
+    "Time spent processing PARTITION BY columns",
+    "Time spent reallocating overflowed buffers for UDF execution",
+    "Time spent reallocating the output buffer",
+    "Time spent serializing data into Apache Arrow",
+    "Time spent sorting data (in-memory only)",
+    "Time spent spilling",
+    "Time spent synchronizing (reads and writes) thresholds across tasks on the same executor",
+    "Time spent waiting for UDF evaluation",
+    "Time taken to compress data",
+    "Time taken to convert columns to rows",
+    "Time taken to convert rows to columns",
+    "Time taken to decompress data",
+    "Time taken to reserve memory for the column to row conversion",
+    "Time to execute",
+    "Time to install udf dependencies",
+    "Time to open Scala udf payload",
+    "Time to produce Scala first output batch",
+    "Time to receive Scala first input batch",
+    "Time to receive the first row for Scala UDF",
+    "Total size of input rows in bytes",
+    "Total time spent merging in-memory runs",
+    "Total time spent merging spilled runs",
+    "Uc udf client image major version",
+    "Udf max group processing wall time",
+    "Udf processing cpu time",
+    "Udf total processing wall time",
+    "Var-len bytes copied",
+    "Variant nested - max depth",
+    "Variant nested - total byte size",
+    "Variant nested - total count",
+    "Variant nested - total number of paths",
+    "Variant nested - total number of scalar values",
+    "Variant top-level - max depth",
+    "Variant top-level - total byte size",
+    "Variant top-level - total count",
+    "Variant top-level - total number of paths",
+    "Variant top-level - total number of scalar values"
+  ],
+  "rules": {
+    "DATA_SKEW": {
+      "tell": "/skew/i",
+      "needs": [
+        "task-level durations or an AQE skew marker"
+      ]
+    },
+    "EXCESSIVE_EXCHANGES": {
+      "tell": "/exchange|shuffle/i",
+      "needs": [
+        "exchange operators countable from tags"
+      ]
+    },
+    "LARGE_SORT": {
+      "tell": "/\\bsort\\b/i",
+      "needs": [
+        "sort operators",
+        "the graph edges, to see what follows a sort"
+      ]
+    },
+    "BROADCAST_CANDIDATE": {
+      "tell": "/broadcast/i",
+      "needs": [
+        "JOIN_ALGORITHM and JOIN_BUILD_SIDE with values",
+        "row counts on the join inputs"
+      ]
+    },
+    "MISSING_OR_STALE_STATS": {
+      "tell": "/statistic|estimat|rowcount|stale/i",
+      "needs": [
+        "a statistics signal of any kind"
+      ]
+    },
+    "UDF_OR_PYTHON_BOUNDARY": {
+      "tell": "/udf|python|arrow.*eval|batch.*eval/i",
+      "needs": [
+        "a UDF operator distinguishable from a projection"
+      ]
+    }
+  },
+  "probes": [
+    {
+      "id": "join-and-sort",
+      "of": [
+        "BROADCAST_CANDIDATE",
+        "LARGE_SORT",
+        "EXCESSIVE_EXCHANGES"
+      ],
+      "statementId": "01f1958d-3609-1c15-8eea-258cf41c80d2",
+      "statement": "SELECT h.statement_id, h.total_duration_ms, small.label\n      FROM system.query.history h\n      JOIN (VALUES ('a', 'SELECT'), ('b', 'INSERT')) AS small(label, kind)\n        ON h.statement_type = small.kind\n      WHERE h.start_time >= current_timestamp() - INTERVAL 2 DAYS\n      ORDER BY h.total_duration_ms DESC\n      LIMIT 50",
+      "rungs": {
+        "awaited": {
+          "waitedMs": 6661,
+          "plansState": "EXISTS",
+          "nodes": 18
+        },
+        "include_plans": {
+          "status": 200,
+          "bytes": 171300,
+          "plansState": "EXISTS",
+          "bodyKeys": [
+            "canSubscribeToLiveQuery",
+            "channel_used",
+            "client_application",
+            "duration",
+            "endpoint_id",
+            "executed_as_user_display_name",
+            "executed_as_user_id",
+            "executed_as_user_name",
+            "execution_end_time_ms",
+            "is_cancelable",
+            "is_final",
+            "lookup_key",
+            "plans",
+            "plans_state",
+            "query_end_time_ms",
+            "query_id",
+            "query_source",
+            "query_start_time_ms",
+            "query_text",
+            "rows_produced",
+            "session_id",
+            "statement_type",
+            "status",
+            "user_display_name",
+            "user_id",
+            "user_name",
+            "warehouse_id"
+          ],
+          "rowsProduced": 50,
+          "widest": {
+            "index": "0",
+            "nodes": 18,
+            "unparsable": 0,
+            "candidates": 2
+          },
+          "inventory": {
+            "nodes": 18,
+            "tags": [
+              "ADAPTIVE_SPARK_PLAN_EXEC",
+              "PHOTON_ARROW_BATCH_SINK_EXEC",
+              "PHOTON_ARROW_RESULT_STAGE_EXEC",
+              "PHOTON_BROADCAST_HASH_JOIN_EXEC",
+              "PHOTON_PARQUET_FILE_SCAN_EXEC",
+              "PHOTON_PROJECT_EXEC",
+              "PHOTON_SHUFFLE_MAP_STAGE_EXEC",
+              "RESULT_QUERY_STAGE_EXEC",
+              "UNKNOWN.ColumnarToRow",
+              "UNKNOWN.LocalTableScan",
+              "UNKNOWN.PhotonRowToColumnar",
+              "UNKNOWN.PhotonShuffleExchangeSink",
+              "UNKNOWN.PhotonTopK",
+              "WHOLE_STAGE_CODEGEN_EXEC"
+            ],
+            "tagCounts": {
+              "ADAPTIVE_SPARK_PLAN_EXEC": 1,
+              "PHOTON_ARROW_BATCH_SINK_EXEC": 1,
+              "PHOTON_ARROW_RESULT_STAGE_EXEC": 1,
+              "PHOTON_BROADCAST_HASH_JOIN_EXEC": 1,
+              "PHOTON_PARQUET_FILE_SCAN_EXEC": 1,
+              "PHOTON_PROJECT_EXEC": 2,
+              "PHOTON_SHUFFLE_MAP_STAGE_EXEC": 2,
+              "RESULT_QUERY_STAGE_EXEC": 1,
+              "UNKNOWN.ColumnarToRow": 1,
+              "UNKNOWN.LocalTableScan": 1,
+              "UNKNOWN.PhotonRowToColumnar": 1,
+              "UNKNOWN.PhotonShuffleExchangeSink": 2,
+              "UNKNOWN.PhotonTopK": 2,
+              "WHOLE_STAGE_CODEGEN_EXEC": 1
+            },
+            "nodeFields": [
+              "collapsed",
+              "expressions",
+              "hidden",
+              "id",
+              "insight_ids",
+              "key_metrics",
+              "meta_data",
+              "metrics",
+              "name",
+              "stage_links",
+              "subgraph_parent",
+              "tag"
+            ],
+            "metaKeys": [
+              "FILTERS",
+              "IS_DELTA",
+              "IS_PHOTON",
+              "JOIN_ALGORITHM",
+              "JOIN_BUILD_SIDE",
+              "JOIN_TYPE",
+              "LEFT_KEYS",
+              "OUTPUT",
+              "PARTITIONING_TYPE",
+              "PROJECTION",
+              "RIGHT_KEYS",
+              "SCAN_CATALOG_TABLE_TYPE",
+              "SCAN_DATABASE",
+              "SCAN_FILE_INDEX_NAME",
+              "SCAN_FILE_PATHS",
+              "SCAN_IDENTIFIER",
+              "SCAN_PARTITIONS",
+              "SCAN_RELATION_DESC",
+              "SCAN_RELATION_NAME",
+              "SCAN_TABLE",
+              "SORT_ORDER"
+            ],
+            "metaKeysWithValues": [
+              "FILTERS",
+              "IS_DELTA",
+              "IS_PHOTON",
+              "JOIN_ALGORITHM",
+              "JOIN_BUILD_SIDE",
+              "JOIN_TYPE",
+              "LEFT_KEYS",
+              "OUTPUT",
+              "PARTITIONING_TYPE",
+              "PROJECTION",
+              "RIGHT_KEYS",
+              "SCAN_CATALOG_TABLE_TYPE",
+              "SCAN_DATABASE",
+              "SCAN_FILE_INDEX_NAME",
+              "SCAN_FILE_PATHS",
+              "SCAN_IDENTIFIER",
+              "SCAN_PARTITIONS",
+              "SCAN_RELATION_DESC",
+              "SCAN_RELATION_NAME",
+              "SCAN_TABLE",
+              "SORT_ORDER"
+            ],
+            "metaKeysOutsideExtract": [
+              "FILTERS",
+              "IS_DELTA",
+              "JOIN_TYPE",
+              "LEFT_KEYS",
+              "OUTPUT",
+              "PROJECTION",
+              "RIGHT_KEYS",
+              "SCAN_CATALOG_TABLE_TYPE",
+              "SCAN_DATABASE",
+              "SCAN_FILE_INDEX_NAME",
+              "SCAN_FILE_PATHS",
+              "SCAN_RELATION_DESC",
+              "SCAN_RELATION_NAME",
+              "SCAN_TABLE",
+              "SORT_ORDER"
+            ],
+            "metaSpelling": {
+              "FILTERS": "values",
+              "IS_DELTA": "value",
+              "IS_PHOTON": "value",
+              "JOIN_ALGORITHM": "value",
+              "JOIN_BUILD_SIDE": "value",
+              "JOIN_TYPE": "value",
+              "LEFT_KEYS": "values",
+              "OUTPUT": "values",
+              "PARTITIONING_TYPE": "value",
+              "PROJECTION": "values",
+              "RIGHT_KEYS": "values",
+              "SCAN_CATALOG_TABLE_TYPE": "value",
+              "SCAN_DATABASE": "value",
+              "SCAN_FILE_INDEX_NAME": "value",
+              "SCAN_FILE_PATHS": "values",
+              "SCAN_IDENTIFIER": "value",
+              "SCAN_PARTITIONS": "values",
+              "SCAN_RELATION_DESC": "value",
+              "SCAN_RELATION_NAME": "value",
+              "SCAN_TABLE": "value",
+              "SORT_ORDER": "values"
+            },
+            "metricKeys": [
+              "CUMULATIVE_TIME",
+              "DURATION",
+              "EXCLUSIVE_TIME",
+              "NUMBER_OUTPUT_ROWS",
+              "PEAK_MEMORY_USAGE"
+            ],
+            "edges": 13,
+            "stages": 4,
+            "stageFields": [
+              "attempt_id",
+              "completion_time",
+              "description",
+              "details",
+              "disk_bytes_spilled",
+              "end_time_ms",
+              "executor_run_time_ms",
+              "first_task_launched_time",
+              "key_metrics",
+              "name",
+              "num_complete_tasks",
+              "num_completed_indices",
+              "num_failed_tasks",
+              "num_killed_tasks",
+              "num_tasks",
+              "remote_bytes_read",
+              "scheduling_pool",
+              "stage_id",
+              "start_time_ms",
+              "status",
+              "submission_time"
+            ],
+            "stageTasks": [
+              {
+                "tasks": 2,
+                "failed": 0,
+                "spilledBytes": 0,
+                "runMs": 11,
+                "name": "mapPartitionsInternal at PhotonExec.scala:870"
+              },
+              {
+                "tasks": 2,
+                "failed": 0,
+                "spilledBytes": 0,
+                "runMs": 0,
+                "name": "mapPartitionsInternal at PhotonExec.scala:870"
+              },
+              {
+                "tasks": 31,
+                "failed": 0,
+                "spilledBytes": 0,
+                "runMs": 5666,
+                "name": "mapPartitionsInternal at PhotonExec.scala:870"
+              },
+              {
+                "tasks": 1,
+                "failed": 0,
+                "spilledBytes": 0,
+                "runMs": 10,
+                "name": "runJobInternal at RDDBatchCollector.scala:264"
+              }
+            ],
+            "insightIds": [
+              "ce907e0c-b047-4203-8a71-a794458f953a"
+            ],
+            "metricLabelCount": 662
+          },
+          "tells": {
+            "DATA_SKEW": {
+              "matched": 8,
+              "samples": [
+                "MapStage - Skew non-empty median partition size",
+                "MapStage - Skew num empty partitions",
+                "MapStage - Skew num skewed partitions",
+                "MapStage - Skew max to non-empty median ratio",
+                "MapStage - Skew skewed data size ratio",
+                "Cancellation Is Skewed",
+                "Scan - Split size relative skew (percent)",
+                "ShuffleQueryStage - Adp reduce-side skew threshold met"
+              ]
+            },
+            "EXCESSIVE_EXCHANGES": {
+              "matched": 46,
+              "samples": [
+                "Time spent in cross-task output pruning before shuffle",
+                "Number of rows pruned by cross-task output pruning before shuffle",
+                "Shuffle",
+                "UNKNOWN.PhotonShuffleExchangeSink",
+                "Source - Dynamic shuffle - estimated executor time without coalescing",
+                "Source - Dynamic shuffle - overhead added",
+                "SHUFFLE_SAVED",
+                "Source - Dynamic shuffle - initial number of tasks"
+              ]
+            },
+            "LARGE_SORT": {
+              "matched": 2,
+              "samples": [
+                "Sort order",
+                "Sink - Time taken to sort rows by partition ID (part of shuffle file write)"
+              ]
+            },
+            "BROADCAST_CANDIDATE": {
+              "matched": 2,
+              "samples": [
+                "PHOTON_BROADCAST_HASH_JOIN_EXEC",
+                "Photon Broadcast Hash"
+              ]
+            },
+            "MISSING_OR_STALE_STATS": {
+              "matched": 6,
+              "samples": [
+                "Source - Dynamic shuffle - estimated executor time without coalescing",
+                "MapStage - EnsureRequirementsDP estimated NDV",
+                "Scan - Dynamic scan - estimated executor time without coalescing",
+                "Scan - Size of a row of all columns in the relation (estimated)",
+                "Scan - Size of a row of scanned columns (estimated)",
+                "Scan - Time spent evaluating page index statistics"
+              ]
+            },
+            "UDF_OR_PYTHON_BOUNDARY": {
+              "matched": 1,
+              "samples": [
+                "Scan - Data filter predicate memoization - num batches evaluated"
+              ]
+            }
+          },
+          "operators": {
+            "skew": [
+              {
+                "tag": "UNKNOWN.PhotonShuffleExchangeSink",
+                "name": "Shuffle",
+                "metrics": [
+                  {
+                    "label": "MapStage - Skew non-empty median partition size",
+                    "value": 0,
+                    "key": "UNKNOWN_KEY"
+                  },
+                  {
+                    "label": "MapStage - Skew num empty partitions",
+                    "value": 0,
+                    "key": "UNKNOWN_KEY"
+                  },
+                  {
+                    "label": "MapStage - Skew num skewed partitions",
+                    "value": 0,
+                    "key": "UNKNOWN_KEY"
+                  },
+                  {
+                    "label": "MapStage - Skew max to non-empty median ratio",
+                    "value": 0,
+                    "key": "UNKNOWN_KEY"
+                  },
+                  {
+                    "label": "MapStage - Skew skewed data size ratio",
+                    "value": 0,
+                    "key": "UNKNOWN_KEY"
+                  }
+                ]
+              },
+              {
+                "tag": "PHOTON_BROADCAST_HASH_JOIN_EXEC",
+                "name": "Inner Join",
+                "metrics": [
+                  {
+                    "label": "Cancellation Is Skewed",
+                    "value": 0,
+                    "key": "UNKNOWN_KEY"
+                  }
+                ]
+              },
+              {
+                "tag": "PHOTON_PARQUET_FILE_SCAN_EXEC",
+                "name": "Scan system.query.history",
+                "metrics": [
+                  {
+                    "label": "Scan - Split size relative skew (percent)",
+                    "value": 346,
+                    "key": "UNKNOWN_KEY"
+                  }
+                ]
+              },
+              {
+                "tag": "UNKNOWN.PhotonShuffleExchangeSink",
+                "name": "Shuffle",
+                "metrics": [
+                  {
+                    "label": "ShuffleQueryStage - Adp reduce-side skew threshold met",
+                    "value": 0,
+                    "key": "UNKNOWN_KEY"
+                  },
+                  {
+                    "label": "MapStage - Skew non-empty median partition size",
+                    "value": 148,
+                    "key": "UNKNOWN_KEY"
+                  },
+                  {
+                    "label": "MapStage - Skew num empty partitions",
+                    "value": 0,
+                    "key": "UNKNOWN_KEY"
+                  },
+                  {
+                    "label": "MapStage - Skew num skewed partitions",
+                    "value": 0,
+                    "key": "UNKNOWN_KEY"
+                  },
+                  {
+                    "label": "MapStage - Skew max to non-empty median ratio",
+                    "value": 1,
+                    "key": "UNKNOWN_KEY"
+                  },
+                  {
+                    "label": "MapStage - Skew skewed data size ratio",
+                    "value": 0,
+                    "key": "UNKNOWN_KEY"
+                  }
+                ]
+              }
+            ],
+            "joins": [
+              {
+                "tag": "PHOTON_BROADCAST_HASH_JOIN_EXEC",
+                "name": "Inner Join",
+                "meta": {
+                  "JOIN_ALGORITHM": [
+                    "Photon Broadcast Hash"
+                  ],
+                  "JOIN_TYPE": [
+                    "Inner"
+                  ],
+                  "JOIN_BUILD_SIDE": [
+                    "Right"
+                  ]
+                },
+                "keyMetrics": {
+                  "duration_ms": 1230,
+                  "rows_num": 2882,
+                  "peak_memory_bytes": 17301504
+                }
+              }
+            ],
+            "sorts": [],
+            "udfs": [],
+            "statistics": [
+              {
+                "tag": "UNKNOWN.PhotonShuffleExchangeSink",
+                "metrics": [
+                  {
+                    "label": "Source - Dynamic shuffle - estimated executor time without coalescing",
+                    "value": 0,
+                    "key": "UNKNOWN_KEY"
+                  },
+                  {
+                    "label": "MapStage - EnsureRequirementsDP estimated NDV",
+                    "value": 0,
+                    "key": "UNKNOWN_KEY"
+                  }
+                ],
+                "meta": {}
+              },
+              {
+                "tag": "PHOTON_PARQUET_FILE_SCAN_EXEC",
+                "metrics": [
+                  {
+                    "label": "Scan - Dynamic scan - estimated executor time without coalescing",
+                    "value": 0,
+                    "key": "UNKNOWN_KEY"
+                  },
+                  {
+                    "label": "Scan - Size of a row of all columns in the relation (estimated)",
+                    "value": 2157,
+                    "key": "UNKNOWN_KEY"
+                  },
+                  {
+                    "label": "Scan - Size of a row of scanned columns (estimated)",
+                    "value": 56,
+                    "key": "UNKNOWN_KEY"
+                  },
+                  {
+                    "label": "Scan - Time spent evaluating page index statistics",
+                    "value": 0,
+                    "key": "UNKNOWN_KEY"
+                  }
+                ],
+                "meta": {}
+              },
+              {
+                "tag": "UNKNOWN.PhotonShuffleExchangeSink",
+                "metrics": [
+                  {
+                    "label": "Source - Dynamic shuffle - estimated executor time without coalescing",
+                    "value": 0,
+                    "key": "UNKNOWN_KEY"
+                  },
+                  {
+                    "label": "MapStage - EnsureRequirementsDP estimated NDV",
+                    "value": 0,
+                    "key": "UNKNOWN_KEY"
+                  }
+                ],
+                "meta": {}
+              }
+            ]
+          }
+        },
+        "include_plans+debug_info": {
+          "status": 200,
+          "bytes": 278416,
+          "plansState": "EXISTS"
+        }
+      }
+    },
+    {
+      "id": "sort-without-limit",
+      "of": [
+        "LARGE_SORT"
+      ],
+      "statementId": "01f1958d-3d8c-10cf-85d8-a4d5071f9bd2",
+      "statement": "SELECT count(*) FROM (\n        SELECT statement_id, row_number() OVER (ORDER BY total_duration_ms DESC) AS rank\n        FROM system.query.history\n        WHERE start_time >= current_timestamp() - INTERVAL 7 DAYS\n      ) ranked\n      WHERE rank > 0",
+      "rungs": {
+        "awaited": {
+          "waitedMs": 6618,
+          "plansState": "EXISTS",
+          "nodes": 15
+        },
+        "include_plans": {
+          "status": 200,
+          "bytes": 119886,
+          "plansState": "EXISTS",
+          "bodyKeys": [
+            "canSubscribeToLiveQuery",
+            "channel_used",
+            "client_application",
+            "duration",
+            "endpoint_id",
+            "executed_as_user_display_name",
+            "executed_as_user_id",
+            "executed_as_user_name",
+            "execution_end_time_ms",
+            "is_cancelable",
+            "is_final",
+            "lookup_key",
+            "plans",
+            "plans_state",
+            "query_end_time_ms",
+            "query_id",
+            "query_source",
+            "query_start_time_ms",
+            "query_text",
+            "rows_produced",
+            "session_id",
+            "statement_type",
+            "status",
+            "user_display_name",
+            "user_id",
+            "user_name",
+            "warehouse_id"
+          ],
+          "rowsProduced": 1,
+          "widest": {
+            "index": "0",
+            "nodes": 15,
+            "unparsable": 0,
+            "candidates": 2
+          },
+          "inventory": {
+            "nodes": 15,
+            "tags": [
+              "ADAPTIVE_SPARK_PLAN_EXEC",
+              "PHOTON_AGG_EXEC",
+              "PHOTON_ARROW_BATCH_SINK_EXEC",
+              "PHOTON_ARROW_RESULT_STAGE_EXEC",
+              "PHOTON_FILTER_EXEC",
+              "PHOTON_PARQUET_FILE_SCAN_EXEC",
+              "PHOTON_PROJECT_EXEC",
+              "PHOTON_SHUFFLE_MAP_STAGE_EXEC",
+              "PHOTON_SORT_EXEC",
+              "RESULT_QUERY_STAGE_EXEC",
+              "UNKNOWN.ColumnarToRow",
+              "UNKNOWN.PhotonShuffleExchangeSink",
+              "UNKNOWN.PhotonWindow",
+              "WHOLE_STAGE_CODEGEN_EXEC"
+            ],
+            "tagCounts": {
+              "ADAPTIVE_SPARK_PLAN_EXEC": 1,
+              "PHOTON_AGG_EXEC": 1,
+              "PHOTON_ARROW_BATCH_SINK_EXEC": 1,
+              "PHOTON_ARROW_RESULT_STAGE_EXEC": 1,
+              "PHOTON_FILTER_EXEC": 1,
+              "PHOTON_PARQUET_FILE_SCAN_EXEC": 1,
+              "PHOTON_PROJECT_EXEC": 2,
+              "PHOTON_SHUFFLE_MAP_STAGE_EXEC": 1,
+              "PHOTON_SORT_EXEC": 1,
+              "RESULT_QUERY_STAGE_EXEC": 1,
+              "UNKNOWN.ColumnarToRow": 1,
+              "UNKNOWN.PhotonShuffleExchangeSink": 1,
+              "UNKNOWN.PhotonWindow": 1,
+              "WHOLE_STAGE_CODEGEN_EXEC": 1
+            },
+            "nodeFields": [
+              "collapsed",
+              "expressions",
+              "hidden",
+              "id",
+              "insight_ids",
+              "key_metrics",
+              "meta_data",
+              "metrics",
+              "name",
+              "stage_links",
+              "subgraph_parent",
+              "tag"
+            ],
+            "metaKeys": [
+              "AGGREGATE_EXPRESSIONS",
+              "ALIASES",
+              "FILTERS",
+              "FILTER_CONDITION",
+              "IS_DELTA",
+              "IS_PHOTON",
+              "OUTPUT",
+              "PARTITIONING_TYPE",
+              "PROJECTION",
+              "SCAN_CATALOG_TABLE_TYPE",
+              "SCAN_DATABASE",
+              "SCAN_FILE_INDEX_NAME",
+              "SCAN_FILE_PATHS",
+              "SCAN_IDENTIFIER",
+              "SCAN_PARTITIONS",
+              "SCAN_RELATION_DESC",
+              "SCAN_RELATION_NAME",
+              "SCAN_TABLE",
+              "SORT_ORDER"
+            ],
+            "metaKeysWithValues": [
+              "AGGREGATE_EXPRESSIONS",
+              "ALIASES",
+              "FILTERS",
+              "FILTER_CONDITION",
+              "IS_DELTA",
+              "IS_PHOTON",
+              "OUTPUT",
+              "PARTITIONING_TYPE",
+              "PROJECTION",
+              "SCAN_CATALOG_TABLE_TYPE",
+              "SCAN_DATABASE",
+              "SCAN_FILE_INDEX_NAME",
+              "SCAN_FILE_PATHS",
+              "SCAN_IDENTIFIER",
+              "SCAN_PARTITIONS",
+              "SCAN_RELATION_DESC",
+              "SCAN_RELATION_NAME",
+              "SCAN_TABLE",
+              "SORT_ORDER"
+            ],
+            "metaKeysOutsideExtract": [
+              "AGGREGATE_EXPRESSIONS",
+              "ALIASES",
+              "FILTERS",
+              "FILTER_CONDITION",
+              "IS_DELTA",
+              "OUTPUT",
+              "PROJECTION",
+              "SCAN_CATALOG_TABLE_TYPE",
+              "SCAN_DATABASE",
+              "SCAN_FILE_INDEX_NAME",
+              "SCAN_FILE_PATHS",
+              "SCAN_RELATION_DESC",
+              "SCAN_RELATION_NAME",
+              "SCAN_TABLE",
+              "SORT_ORDER"
+            ],
+            "metaSpelling": {
+              "AGGREGATE_EXPRESSIONS": "values",
+              "ALIASES": "values",
+              "FILTER_CONDITION": "values",
+              "FILTERS": "values",
+              "IS_DELTA": "value",
+              "IS_PHOTON": "value",
+              "OUTPUT": "values",
+              "PARTITIONING_TYPE": "value",
+              "PROJECTION": "values",
+              "SCAN_CATALOG_TABLE_TYPE": "value",
+              "SCAN_DATABASE": "value",
+              "SCAN_FILE_INDEX_NAME": "value",
+              "SCAN_FILE_PATHS": "values",
+              "SCAN_IDENTIFIER": "value",
+              "SCAN_PARTITIONS": "values",
+              "SCAN_RELATION_DESC": "value",
+              "SCAN_RELATION_NAME": "value",
+              "SCAN_TABLE": "value",
+              "SORT_ORDER": "values"
+            },
+            "metricKeys": [
+              "CUMULATIVE_TIME",
+              "DURATION",
+              "EXCLUSIVE_TIME",
+              "NUMBER_OUTPUT_ROWS",
+              "PEAK_MEMORY_USAGE"
+            ],
+            "edges": 11,
+            "stages": 3,
+            "stageFields": [
+              "attempt_id",
+              "completion_time",
+              "description",
+              "details",
+              "disk_bytes_spilled",
+              "end_time_ms",
+              "executor_run_time_ms",
+              "first_task_launched_time",
+              "key_metrics",
+              "name",
+              "num_complete_tasks",
+              "num_completed_indices",
+              "num_failed_tasks",
+              "num_killed_tasks",
+              "num_tasks",
+              "remote_bytes_read",
+              "scheduling_pool",
+              "stage_id",
+              "start_time_ms",
+              "status",
+              "submission_time"
+            ],
+            "stageTasks": [
+              {
+                "tasks": 31,
+                "failed": 0,
+                "spilledBytes": 0,
+                "runMs": 3563,
+                "name": "mapPartitionsInternal at PhotonExec.scala:870"
+              },
+              {
+                "tasks": 31,
+                "failed": 0,
+                "spilledBytes": 0,
+                "runMs": 0,
+                "name": "mapPartitionsInternal at PhotonExec.scala:870"
+              },
+              {
+                "tasks": 1,
+                "failed": 0,
+                "spilledBytes": 0,
+                "runMs": 10,
+                "name": "runJobInternal at RDDBatchCollector.scala:264"
+              }
+            ],
+            "insightIds": [
+              "8c9ca00f-daf5-4882-8cac-9a96303ca29b"
+            ],
+            "metricLabelCount": 593
+          },
+          "tells": {
+            "DATA_SKEW": {
+              "matched": 7,
+              "samples": [
+                "ShuffleQueryStage - Adp reduce-side skew threshold met",
+                "MapStage - Skew non-empty median partition size",
+                "MapStage - Skew num empty partitions",
+                "MapStage - Skew num skewed partitions",
+                "MapStage - Skew max to non-empty median ratio",
+                "MapStage - Skew skewed data size ratio",
+                "Scan - Split size relative skew (percent)"
+              ]
+            },
+            "EXCESSIVE_EXCHANGES": {
+              "matched": 43,
+              "samples": [
+                "Shuffle",
+                "UNKNOWN.PhotonShuffleExchangeSink",
+                "Source - Dynamic shuffle - estimated executor time without coalescing",
+                "Source - Dynamic shuffle - overhead added",
+                "SHUFFLE_SAVED",
+                "Source - Dynamic shuffle - initial number of tasks",
+                "Source - Dynamic shuffle - number of tasks completed before starting coalescing",
+                "Source - Dynamic shuffle - executor runtime"
+              ]
+            },
+            "LARGE_SORT": {
+              "matched": 6,
+              "samples": [
+                "Sort order",
+                "Sort",
+                "Min batch size (rows) produced in the sort node",
+                "Max column batch size (bytes) sort spilled",
+                "Max batch size (rows) produced in the sort node",
+                "Sink - Time taken to sort rows by partition ID (part of shuffle file write)"
+              ]
+            },
+            "BROADCAST_CANDIDATE": {
+              "matched": 0,
+              "samples": []
+            },
+            "MISSING_OR_STALE_STATS": {
+              "matched": 6,
+              "samples": [
+                "Source - Dynamic shuffle - estimated executor time without coalescing",
+                "MapStage - EnsureRequirementsDP estimated NDV",
+                "Scan - Dynamic scan - estimated executor time without coalescing",
+                "Scan - Size of a row of all columns in the relation (estimated)",
+                "Scan - Size of a row of scanned columns (estimated)",
+                "Scan - Time spent evaluating page index statistics"
+              ]
+            },
+            "UDF_OR_PYTHON_BOUNDARY": {
+              "matched": 1,
+              "samples": [
+                "Scan - Data filter predicate memoization - num batches evaluated"
+              ]
+            }
+          },
+          "operators": {
+            "skew": [
+              {
+                "tag": "UNKNOWN.PhotonShuffleExchangeSink",
+                "name": "Shuffle",
+                "metrics": [
+                  {
+                    "label": "ShuffleQueryStage - Adp reduce-side skew threshold met",
+                    "value": 0,
+                    "key": "UNKNOWN_KEY"
+                  },
+                  {
+                    "label": "MapStage - Skew non-empty median partition size",
+                    "value": 151546,
+                    "key": "UNKNOWN_KEY"
+                  },
+                  {
+                    "label": "MapStage - Skew num empty partitions",
+                    "value": 0,
+                    "key": "UNKNOWN_KEY"
+                  },
+                  {
+                    "label": "MapStage - Skew num skewed partitions",
+                    "value": 0,
+                    "key": "UNKNOWN_KEY"
+                  },
+                  {
+                    "label": "MapStage - Skew max to non-empty median ratio",
+                    "value": 1,
+                    "key": "UNKNOWN_KEY"
+                  },
+                  {
+                    "label": "MapStage - Skew skewed data size ratio",
+                    "value": 0,
+                    "key": "UNKNOWN_KEY"
+                  }
+                ]
+              },
+              {
+                "tag": "PHOTON_PARQUET_FILE_SCAN_EXEC",
+                "name": "Scan system.query.history",
+                "metrics": [
+                  {
+                    "label": "Scan - Split size relative skew (percent)",
+                    "value": 245,
+                    "key": "UNKNOWN_KEY"
+                  }
+                ]
+              }
+            ],
+            "joins": [],
+            "sorts": [
+              {
+                "tag": "PHOTON_SORT_EXEC",
+                "name": "Sort",
+                "meta": {
+                  "SORT_ORDER": [
+                    "system.query.history.total_duration_ms DESC NULLS LAST"
+                  ]
+                },
+                "keyMetrics": {
+                  "duration_ms": 0,
+                  "rows_num": 17468,
+                  "peak_memory_bytes": 27262976
+                }
+              }
+            ],
+            "udfs": [],
+            "statistics": [
+              {
+                "tag": "UNKNOWN.PhotonShuffleExchangeSink",
+                "metrics": [
+                  {
+                    "label": "Source - Dynamic shuffle - estimated executor time without coalescing",
+                    "value": 0,
+                    "key": "UNKNOWN_KEY"
+                  },
+                  {
+                    "label": "MapStage - EnsureRequirementsDP estimated NDV",
+                    "value": 0,
+                    "key": "UNKNOWN_KEY"
+                  }
+                ],
+                "meta": {}
+              },
+              {
+                "tag": "PHOTON_PARQUET_FILE_SCAN_EXEC",
+                "metrics": [
+                  {
+                    "label": "Scan - Dynamic scan - estimated executor time without coalescing",
+                    "value": 0,
+                    "key": "UNKNOWN_KEY"
+                  },
+                  {
+                    "label": "Scan - Size of a row of all columns in the relation (estimated)",
+                    "value": 2157,
+                    "key": "UNKNOWN_KEY"
+                  },
+                  {
+                    "label": "Scan - Size of a row of scanned columns (estimated)",
+                    "value": 16,
+                    "key": "UNKNOWN_KEY"
+                  },
+                  {
+                    "label": "Scan - Time spent evaluating page index statistics",
+                    "value": 0,
+                    "key": "UNKNOWN_KEY"
+                  }
+                ],
+                "meta": {}
+              }
+            ]
+          }
+        },
+        "include_plans+debug_info": {
+          "status": 200,
+          "bytes": 197411,
+          "plansState": "EXISTS"
+        }
+      }
+    },
+    {
+      "id": "shuffle-heavy",
+      "of": [
+        "EXCESSIVE_EXCHANGES",
+        "DATA_SKEW"
+      ],
+      "statementId": "01f1958d-44cf-17a7-8726-93212a46a310",
+      "statement": "WITH per_user AS (\n        SELECT executed_by, statement_type, count(*) AS runs, sum(total_duration_ms) AS ms\n        FROM system.query.history\n        WHERE start_time >= current_timestamp() - INTERVAL 7 DAYS\n        GROUP BY 1, 2\n      ),\n      per_type AS (\n        SELECT statement_type, count(DISTINCT executed_by) AS users, sum(runs) AS runs\n        FROM per_user GROUP BY 1\n      )\n      SELECT per_type.statement_type, per_type.users, per_type.runs, sum(per_user.ms) AS ms\n      FROM per_type JOIN per_user USING (statement_type)\n      GROUP BY 1, 2, 3\n      ORDER BY ms DESC",
+      "rungs": {
+        "awaited": {
+          "waitedMs": 6831,
+          "plansState": "EXISTS",
+          "nodes": 39
+        },
+        "include_plans": {
+          "status": 200,
+          "bytes": 352781,
+          "plansState": "EXISTS",
+          "bodyKeys": [
+            "canSubscribeToLiveQuery",
+            "channel_used",
+            "client_application",
+            "duration",
+            "endpoint_id",
+            "executed_as_user_display_name",
+            "executed_as_user_id",
+            "executed_as_user_name",
+            "execution_end_time_ms",
+            "is_cancelable",
+            "is_final",
+            "lookup_key",
+            "plans",
+            "plans_state",
+            "query_end_time_ms",
+            "query_id",
+            "query_source",
+            "query_start_time_ms",
+            "query_text",
+            "rows_produced",
+            "session_id",
+            "statement_type",
+            "status",
+            "user_display_name",
+            "user_id",
+            "user_name",
+            "warehouse_id"
+          ],
+          "rowsProduced": 16,
+          "widest": {
+            "index": "0",
+            "nodes": 39,
+            "unparsable": 0,
+            "candidates": 3
+          },
+          "inventory": {
+            "nodes": 39,
+            "tags": [
+              "ADAPTIVE_SPARK_PLAN_EXEC",
+              "PHOTON_AGG_EXEC",
+              "PHOTON_ARROW_BATCH_SINK_EXEC",
+              "PHOTON_ARROW_RESULT_STAGE_EXEC",
+              "PHOTON_BROADCAST_HASH_JOIN_EXEC",
+              "PHOTON_FILTER_EXEC",
+              "PHOTON_GROUPING_AGG_EXEC",
+              "PHOTON_METADATA_SUBQUERY_EXEC",
+              "PHOTON_PARQUET_FILE_SCAN_EXEC",
+              "PHOTON_PROJECT_EXEC",
+              "PHOTON_RESULT_STAGE_EXEC",
+              "PHOTON_SHUFFLE_MAP_STAGE_EXEC",
+              "PHOTON_SORT_EXEC",
+              "RESULT_QUERY_STAGE_EXEC",
+              "REUSED_EXCHANGE_EXEC",
+              "SHUFFLE_QUERY_STAGE_EXEC",
+              "UNKNOWN.ColumnarToRow",
+              "UNKNOWN.PhotonColumnarToRow",
+              "UNKNOWN.PhotonRuntimeFilterSource",
+              "UNKNOWN.PhotonShuffleExchangeSink",
+              "WHOLE_STAGE_CODEGEN_EXEC"
+            ],
+            "tagCounts": {
+              "ADAPTIVE_SPARK_PLAN_EXEC": 2,
+              "PHOTON_AGG_EXEC": 1,
+              "PHOTON_ARROW_BATCH_SINK_EXEC": 1,
+              "PHOTON_ARROW_RESULT_STAGE_EXEC": 1,
+              "PHOTON_BROADCAST_HASH_JOIN_EXEC": 1,
+              "PHOTON_FILTER_EXEC": 1,
+              "PHOTON_GROUPING_AGG_EXEC": 8,
+              "PHOTON_METADATA_SUBQUERY_EXEC": 1,
+              "PHOTON_PARQUET_FILE_SCAN_EXEC": 2,
+              "PHOTON_PROJECT_EXEC": 5,
+              "PHOTON_RESULT_STAGE_EXEC": 1,
+              "PHOTON_SHUFFLE_MAP_STAGE_EXEC": 3,
+              "PHOTON_SORT_EXEC": 1,
+              "RESULT_QUERY_STAGE_EXEC": 2,
+              "REUSED_EXCHANGE_EXEC": 1,
+              "SHUFFLE_QUERY_STAGE_EXEC": 1,
+              "UNKNOWN.ColumnarToRow": 1,
+              "UNKNOWN.PhotonColumnarToRow": 1,
+              "UNKNOWN.PhotonRuntimeFilterSource": 1,
+              "UNKNOWN.PhotonShuffleExchangeSink": 3,
+              "WHOLE_STAGE_CODEGEN_EXEC": 1
+            },
+            "nodeFields": [
+              "collapsed",
+              "expressions",
+              "hidden",
+              "id",
+              "insight_ids",
+              "key_metrics",
+              "meta_data",
+              "metrics",
+              "name",
+              "stage_links",
+              "subgraph_parent",
+              "tag"
+            ],
+            "metaKeys": [
+              "AGGREGATE_EXPRESSIONS",
+              "FILTERS",
+              "FILTER_CONDITION",
+              "GROUPING_EXPRESSIONS",
+              "IS_DELTA",
+              "IS_PHOTON",
+              "JOIN_ALGORITHM",
+              "JOIN_BUILD_SIDE",
+              "JOIN_TYPE",
+              "LEFT_KEYS",
+              "OUTPUT",
+              "PARTITIONING_TYPE",
+              "PROJECTION",
+              "RIGHT_KEYS",
+              "SCAN_CATALOG_TABLE_TYPE",
+              "SCAN_DATABASE",
+              "SCAN_FILE_INDEX_NAME",
+              "SCAN_FILE_PATHS",
+              "SCAN_IDENTIFIER",
+              "SCAN_PARTITIONS",
+              "SCAN_RELATION_DESC",
+              "SCAN_RELATION_NAME",
+              "SCAN_TABLE",
+              "SHUFFLE_ATTRIBUTES",
+              "SORT_ORDER"
+            ],
+            "metaKeysWithValues": [
+              "AGGREGATE_EXPRESSIONS",
+              "FILTERS",
+              "FILTER_CONDITION",
+              "GROUPING_EXPRESSIONS",
+              "IS_DELTA",
+              "IS_PHOTON",
+              "JOIN_ALGORITHM",
+              "JOIN_BUILD_SIDE",
+              "JOIN_TYPE",
+              "LEFT_KEYS",
+              "OUTPUT",
+              "PARTITIONING_TYPE",
+              "PROJECTION",
+              "RIGHT_KEYS",
+              "SCAN_CATALOG_TABLE_TYPE",
+              "SCAN_DATABASE",
+              "SCAN_FILE_INDEX_NAME",
+              "SCAN_FILE_PATHS",
+              "SCAN_IDENTIFIER",
+              "SCAN_PARTITIONS",
+              "SCAN_RELATION_DESC",
+              "SCAN_RELATION_NAME",
+              "SCAN_TABLE",
+              "SHUFFLE_ATTRIBUTES",
+              "SORT_ORDER"
+            ],
+            "metaKeysOutsideExtract": [
+              "AGGREGATE_EXPRESSIONS",
+              "FILTERS",
+              "FILTER_CONDITION",
+              "GROUPING_EXPRESSIONS",
+              "IS_DELTA",
+              "JOIN_TYPE",
+              "LEFT_KEYS",
+              "OUTPUT",
+              "PROJECTION",
+              "RIGHT_KEYS",
+              "SCAN_CATALOG_TABLE_TYPE",
+              "SCAN_DATABASE",
+              "SCAN_FILE_INDEX_NAME",
+              "SCAN_FILE_PATHS",
+              "SCAN_RELATION_DESC",
+              "SCAN_RELATION_NAME",
+              "SCAN_TABLE",
+              "SHUFFLE_ATTRIBUTES",
+              "SORT_ORDER"
+            ],
+            "metaSpelling": {
+              "AGGREGATE_EXPRESSIONS": "values",
+              "FILTER_CONDITION": "values",
+              "FILTERS": "values",
+              "GROUPING_EXPRESSIONS": "values",
+              "IS_DELTA": "value",
+              "IS_PHOTON": "value",
+              "JOIN_ALGORITHM": "value",
+              "JOIN_BUILD_SIDE": "value",
+              "JOIN_TYPE": "value",
+              "LEFT_KEYS": "values",
+              "OUTPUT": "values",
+              "PARTITIONING_TYPE": "value",
+              "PROJECTION": "values",
+              "RIGHT_KEYS": "values",
+              "SCAN_CATALOG_TABLE_TYPE": "value",
+              "SCAN_DATABASE": "value",
+              "SCAN_FILE_INDEX_NAME": "value",
+              "SCAN_FILE_PATHS": "values",
+              "SCAN_IDENTIFIER": "value",
+              "SCAN_PARTITIONS": "values",
+              "SCAN_RELATION_DESC": "value",
+              "SCAN_RELATION_NAME": "value",
+              "SCAN_TABLE": "value",
+              "SHUFFLE_ATTRIBUTES": "values",
+              "SORT_ORDER": "values"
+            },
+            "metricKeys": [
+              "CUMULATIVE_TIME",
+              "DURATION",
+              "EXCLUSIVE_TIME",
+              "NUMBER_OUTPUT_ROWS",
+              "PEAK_MEMORY_USAGE"
+            ],
+            "edges": 33,
+            "stages": 8,
+            "stageFields": [
+              "attempt_id",
+              "completion_time",
+              "description",
+              "details",
+              "disk_bytes_spilled",
+              "end_time_ms",
+              "executor_run_time_ms",
+              "first_task_launched_time",
+              "key_metrics",
+              "name",
+              "num_complete_tasks",
+              "num_completed_indices",
+              "num_failed_tasks",
+              "num_killed_tasks",
+              "num_tasks",
+              "remote_bytes_read",
+              "scheduling_pool",
+              "stage_id",
+              "start_time_ms",
+              "status",
+              "submission_time"
+            ],
+            "stageTasks": [
+              {
+                "tasks": 32,
+                "failed": 0,
+                "spilledBytes": 0,
+                "runMs": 0,
+                "name": "mapPartitionsInternal at PhotonExec.scala:870"
+              },
+              {
+                "tasks": 1,
+                "failed": 0,
+                "spilledBytes": 0,
+                "runMs": 15,
+                "name": "mapPartitionsInternal at PhotonExec.scala:870"
+              },
+              {
+                "tasks": 32,
+                "failed": 0,
+                "spilledBytes": 0,
+                "runMs": 0,
+                "name": "mapPartitionsInternal at PhotonExec.scala:870"
+              },
+              {
+                "tasks": 32,
+                "failed": 0,
+                "spilledBytes": 0,
+                "runMs": 0,
+                "name": "mapPartitionsInternal at PhotonExec.scala:870"
+              },
+              {
+                "tasks": 1,
+                "failed": 0,
+                "spilledBytes": 0,
+                "runMs": 0,
+                "name": "mapPartitionsInternal at PhotonExec.scala:870"
+              },
+              {
+                "tasks": 1,
+                "failed": 0,
+                "spilledBytes": 0,
+                "runMs": 45,
+                "name": "runJobInternal at RDDBatchCollector.scala:264"
+              },
+              {
+                "tasks": 32,
+                "failed": 0,
+                "spilledBytes": 0,
+                "runMs": 3972,
+                "name": "mapPartitionsInternal at PhotonExec.scala:870"
+              },
+              {
+                "tasks": 32,
+                "failed": 0,
+                "spilledBytes": 0,
+                "runMs": 768,
+                "name": "mapPartitionsInternal at PhotonExec.scala:870"
+              }
+            ],
+            "insightIds": [
+              "341ac8db-0f38-4a0c-8b85-f15c36fa2c51",
+              "94f79364-f15f-4871-bb04-185e7b50117e"
+            ],
+            "metricLabelCount": 731
+          },
+          "tells": {
+            "DATA_SKEW": {
+              "matched": 9,
+              "samples": [
+                "Cancellation Is Skewed",
+                "AQEShuffleRead - Skew handled by",
+                "ShuffleQueryStage - Adp reduce-side skew threshold met",
+                "MapStage - Skew non-empty median partition size",
+                "MapStage - Skew num empty partitions",
+                "MapStage - Skew num skewed partitions",
+                "MapStage - Skew max to non-empty median ratio",
+                "MapStage - Skew skewed data size ratio"
+              ]
+            },
+            "EXCESSIVE_EXCHANGES": {
+              "matched": 60,
+              "samples": [
+                "Bloom filter 1 - shuffle files read time",
+                "Shuffle",
+                "UNKNOWN.PhotonShuffleExchangeSink",
+                "SHUFFLE_ATTRIBUTES",
+                "Shuffle attributes",
+                "Source - Dynamic shuffle - estimated executor time without coalescing",
+                "Source - Dynamic shuffle - overhead added",
+                "SHUFFLE_SAVED"
+              ]
+            },
+            "LARGE_SORT": {
+              "matched": 6,
+              "samples": [
+                "Sort",
+                "Sort order",
+                "Min batch size (rows) produced in the sort node",
+                "Max column batch size (bytes) sort spilled",
+                "Max batch size (rows) produced in the sort node",
+                "Sink - Time taken to sort rows by partition ID (part of shuffle file write)"
+              ]
+            },
+            "BROADCAST_CANDIDATE": {
+              "matched": 2,
+              "samples": [
+                "PHOTON_BROADCAST_HASH_JOIN_EXEC",
+                "Photon Broadcast Hash"
+              ]
+            },
+            "MISSING_OR_STALE_STATS": {
+              "matched": 6,
+              "samples": [
+                "Source - Dynamic shuffle - estimated executor time without coalescing",
+                "MapStage - EnsureRequirementsDP estimated NDV",
+                "Scan - Dynamic scan - estimated executor time without coalescing",
+                "Scan - Size of a row of all columns in the relation (estimated)",
+                "Scan - Size of a row of scanned columns (estimated)",
+                "Scan - Time spent evaluating page index statistics"
+              ]
+            },
+            "UDF_OR_PYTHON_BOUNDARY": {
+              "matched": 1,
+              "samples": [
+                "Scan - Data filter predicate memoization - num batches evaluated"
+              ]
+            }
+          },
+          "operators": {
+            "skew": [
+              {
+                "tag": "PHOTON_BROADCAST_HASH_JOIN_EXEC",
+                "name": "Inner Join",
+                "metrics": [
+                  {
+                    "label": "Cancellation Is Skewed",
+                    "value": 0,
+                    "key": "UNKNOWN_KEY"
+                  }
+                ]
+              },
+              {
+                "tag": "UNKNOWN.PhotonShuffleExchangeSink",
+                "name": "Shuffle",
+                "metrics": [
+                  {
+                    "label": "AQEShuffleRead - Skew handled by",
+                    "value": 0,
+                    "key": "UNKNOWN_KEY"
+                  },
+                  {
+                    "label": "ShuffleQueryStage - Adp reduce-side skew threshold met",
+                    "value": 1,
+                    "key": "UNKNOWN_KEY"
+                  },
+                  {
+                    "label": "MapStage - Skew non-empty median partition size",
+                    "value": 289,
+                    "key": "UNKNOWN_KEY"
+                  },
+                  {
+                    "label": "MapStage - Skew num empty partitions",
+                    "value": 28,
+                    "key": "UNKNOWN_KEY"
+                  },
+                  {
+                    "label": "MapStage - Skew num skewed partitions",
+                    "value": 0,
+                    "key": "UNKNOWN_KEY"
+                  },
+                  {
+                    "label": "MapStage - Skew max to non-empty median ratio",
+                    "value": 15,
+                    "key": "UNKNOWN_KEY"
+                  },
+                  {
+                    "label": "MapStage - Skew skewed data size ratio",
+                    "value": 0,
+                    "key": "UNKNOWN_KEY"
+                  }
+                ]
+              },
+              {
+                "tag": "PHOTON_PARQUET_FILE_SCAN_EXEC",
+                "name": "Scan system.query.history",
+                "metrics": [
+                  {
+                    "label": "Scan - Split size relative skew (percent)",
+                    "value": 282,
+                    "key": "UNKNOWN_KEY"
+                  }
+                ]
+              },
+              {
+                "tag": "SHUFFLE_QUERY_STAGE_EXEC",
+                "name": "Shuffle",
+                "metrics": [
+                  {
+                    "label": "AQEShuffleRead - Skew handled by",
+                    "value": 0,
+                    "key": "UNKNOWN_KEY"
+                  },
+                  {
+                    "label": "ShuffleQueryStage - Adp reduce-side skew threshold met",
+                    "value": 0,
+                    "key": "UNKNOWN_KEY"
+                  }
+                ]
+              },
+              {
+                "tag": "PHOTON_SHUFFLE_MAP_STAGE_EXEC",
+                "name": "Shuffle Map Stage",
+                "metrics": [
+                  {
+                    "label": "MapStage - Skew non-empty median partition size",
+                    "value": 0,
+                    "key": "UNKNOWN_KEY"
+                  },
+                  {
+                    "label": "MapStage - Skew num empty partitions",
+                    "value": 0,
+                    "key": "UNKNOWN_KEY"
+                  },
+                  {
+                    "label": "MapStage - Skew num skewed partitions",
+                    "value": 0,
+                    "key": "UNKNOWN_KEY"
+                  },
+                  {
+                    "label": "MapStage - Skew max to non-empty median ratio",
+                    "value": 0,
+                    "key": "UNKNOWN_KEY"
+                  },
+                  {
+                    "label": "MapStage - Skew skewed data size ratio",
+                    "value": 0,
+                    "key": "UNKNOWN_KEY"
+                  }
+                ]
+              },
+              {
+                "tag": "UNKNOWN.PhotonShuffleExchangeSink",
+                "name": "Shuffle",
+                "metrics": [
+                  {
+                    "label": "AQEShuffleRead - Skew handled by",
+                    "value": 0,
+                    "key": "UNKNOWN_KEY"
+                  },
+                  {
+                    "label": "ShuffleQueryStage - Adp reduce-side skew threshold met",
+                    "value": 2,
+                    "key": "UNKNOWN_KEY"
+                  },
+                  {
+                    "label": "MapStage - Skew non-empty median partition size",
+                    "value": 840,
+                    "key": "UNKNOWN_KEY"
+                  },
+                  {
+                    "label": "MapStage - Skew num empty partitions",
+                    "value": 100,
+                    "key": "UNKNOWN_KEY"
+                  },
+                  {
+                    "label": "MapStage - Skew num skewed partitions",
+                    "value": 0,
+                    "key": "UNKNOWN_KEY"
+                  },
+                  {
+                    "label": "MapStage - Skew max to non-empty median ratio",
+                    "value": 10,
+                    "key": "UNKNOWN_KEY"
+                  },
+                  {
+                    "label": "MapStage - Skew skewed data size ratio",
+                    "value": 0,
+                    "key": "UNKNOWN_KEY"
+                  }
+                ]
+              },
+              {
+                "tag": "PHOTON_PARQUET_FILE_SCAN_EXEC",
+                "name": "Scan system.query.history",
+                "metrics": [
+                  {
+                    "label": "Scan - Split size relative skew (percent)",
+                    "value": 282,
+                    "key": "UNKNOWN_KEY"
+                  }
+                ]
+              }
+            ],
+            "joins": [
+              {
+                "tag": "PHOTON_BROADCAST_HASH_JOIN_EXEC",
+                "name": "Inner Join",
+                "meta": {
+                  "JOIN_ALGORITHM": [
+                    "Photon Broadcast Hash"
+                  ],
+                  "JOIN_TYPE": [
+                    "Inner"
+                  ],
+                  "JOIN_BUILD_SIDE": [
+                    "Right"
+                  ]
+                },
+                "keyMetrics": {
+                  "duration_ms": 1,
+                  "rows_num": 121,
+                  "peak_memory_bytes": 4325376
+                }
+              }
+            ],
+            "sorts": [
+              {
+                "tag": "PHOTON_SORT_EXEC",
+                "name": "Sort",
+                "meta": {
+                  "SORT_ORDER": [
+                    "ms DESC NULLS LAST"
+                  ]
+                },
+                "keyMetrics": {
+                  "duration_ms": 0,
+                  "rows_num": 16,
+                  "peak_memory_bytes": 29360128
+                }
+              }
+            ],
+            "udfs": [],
+            "statistics": [
+              {
+                "tag": "UNKNOWN.PhotonShuffleExchangeSink",
+                "metrics": [
+                  {
+                    "label": "Source - Dynamic shuffle - estimated executor time without coalescing",
+                    "value": 0,
+                    "key": "UNKNOWN_KEY"
+                  },
+                  {
+                    "label": "MapStage - EnsureRequirementsDP estimated NDV",
+                    "value": 1,
+                    "key": "UNKNOWN_KEY"
+                  }
+                ],
+                "meta": {}
+              },
+              {
+                "tag": "PHOTON_PARQUET_FILE_SCAN_EXEC",
+                "metrics": [
+                  {
+                    "label": "Scan - Dynamic scan - estimated executor time without coalescing",
+                    "value": 0,
+                    "key": "UNKNOWN_KEY"
+                  },
+                  {
+                    "label": "Scan - Size of a row of all columns in the relation (estimated)",
+                    "value": 2157,
+                    "key": "UNKNOWN_KEY"
+                  },
+                  {
+                    "label": "Scan - Size of a row of scanned columns (estimated)",
+                    "value": 48,
+                    "key": "UNKNOWN_KEY"
+                  },
+                  {
+                    "label": "Scan - Time spent evaluating page index statistics",
+                    "value": 0,
+                    "key": "UNKNOWN_KEY"
+                  }
+                ],
+                "meta": {}
+              },
+              {
+                "tag": "SHUFFLE_QUERY_STAGE_EXEC",
+                "metrics": [
+                  {
+                    "label": "Source - Dynamic shuffle - estimated executor time without coalescing",
+                    "value": 0,
+                    "key": "UNKNOWN_KEY"
+                  }
+                ],
+                "meta": {}
+              },
+              {
+                "tag": "PHOTON_SHUFFLE_MAP_STAGE_EXEC",
+                "metrics": [
+                  {
+                    "label": "MapStage - EnsureRequirementsDP estimated NDV",
+                    "value": 0,
+                    "key": "UNKNOWN_KEY"
+                  }
+                ],
+                "meta": {}
+              },
+              {
+                "tag": "UNKNOWN.PhotonShuffleExchangeSink",
+                "metrics": [
+                  {
+                    "label": "Source - Dynamic shuffle - estimated executor time without coalescing",
+                    "value": 0,
+                    "key": "UNKNOWN_KEY"
+                  },
+                  {
+                    "label": "MapStage - EnsureRequirementsDP estimated NDV",
+                    "value": 1,
+                    "key": "UNKNOWN_KEY"
+                  }
+                ],
+                "meta": {}
+              },
+              {
+                "tag": "PHOTON_PARQUET_FILE_SCAN_EXEC",
+                "metrics": [
+                  {
+                    "label": "Scan - Dynamic scan - estimated executor time without coalescing",
+                    "value": 0,
+                    "key": "UNKNOWN_KEY"
+                  },
+                  {
+                    "label": "Scan - Size of a row of all columns in the relation (estimated)",
+                    "value": 2157,
+                    "key": "UNKNOWN_KEY"
+                  },
+                  {
+                    "label": "Scan - Size of a row of scanned columns (estimated)",
+                    "value": 36,
+                    "key": "UNKNOWN_KEY"
+                  },
+                  {
+                    "label": "Scan - Time spent evaluating page index statistics",
+                    "value": 0,
+                    "key": "UNKNOWN_KEY"
+                  }
+                ],
+                "meta": {}
+              }
+            ]
+          }
+        },
+        "include_plans+debug_info": {
+          "status": 200,
+          "bytes": 575568,
+          "plansState": "EXISTS"
+        }
+      }
+    },
+    {
+      "id": "unanalysed-scan",
+      "of": [
+        "MISSING_OR_STALE_STATS"
+      ],
+      "statementId": "01f1958d-4c84-1806-9154-cc7f05f467e0",
+      "statement": "WITH events AS (\n        SELECT service_name, action_name, count(*) AS calls\n        FROM system.access.audit\n        WHERE event_date >= current_date() - 2\n        GROUP BY 1, 2\n      ),\n      services AS (SELECT service_name, sum(calls) AS calls FROM events GROUP BY 1)\n      SELECT events.service_name, events.action_name, events.calls, services.calls AS service_calls\n      FROM events JOIN services USING (service_name)\n      ORDER BY events.calls DESC\n      LIMIT 50",
+      "rungs": {
+        "awaited": {
+          "waitedMs": 6853,
+          "plansState": "EXISTS",
+          "nodes": 23
+        },
+        "include_plans": {
+          "status": 200,
+          "bytes": 288672,
+          "plansState": "EXISTS",
+          "bodyKeys": [
+            "canSubscribeToLiveQuery",
+            "channel_used",
+            "client_application",
+            "duration",
+            "endpoint_id",
+            "executed_as_user_display_name",
+            "executed_as_user_id",
+            "executed_as_user_name",
+            "execution_end_time_ms",
+            "is_cancelable",
+            "is_final",
+            "lookup_key",
+            "plans",
+            "plans_state",
+            "query_end_time_ms",
+            "query_id",
+            "query_source",
+            "query_start_time_ms",
+            "query_text",
+            "rows_produced",
+            "session_id",
+            "statement_type",
+            "status",
+            "user_display_name",
+            "user_id",
+            "user_name",
+            "warehouse_id"
+          ],
+          "rowsProduced": 50,
+          "widest": {
+            "index": "0",
+            "nodes": 23,
+            "unparsable": 0,
+            "candidates": 3
+          },
+          "inventory": {
+            "nodes": 23,
+            "tags": [
+              "ADAPTIVE_SPARK_PLAN_EXEC",
+              "PHOTON_ARROW_BATCH_SINK_EXEC",
+              "PHOTON_ARROW_RESULT_STAGE_EXEC",
+              "PHOTON_BROADCAST_HASH_JOIN_EXEC",
+              "PHOTON_GROUPING_AGG_EXEC",
+              "PHOTON_PARQUET_FILE_SCAN_EXEC",
+              "PHOTON_PROJECT_EXEC",
+              "PHOTON_SHUFFLE_MAP_STAGE_EXEC",
+              "RESULT_QUERY_STAGE_EXEC",
+              "UNKNOWN.ColumnarToRow",
+              "UNKNOWN.PhotonShuffleExchangeSink",
+              "UNKNOWN.PhotonTopK",
+              "WHOLE_STAGE_CODEGEN_EXEC"
+            ],
+            "tagCounts": {
+              "ADAPTIVE_SPARK_PLAN_EXEC": 1,
+              "PHOTON_ARROW_BATCH_SINK_EXEC": 1,
+              "PHOTON_ARROW_RESULT_STAGE_EXEC": 1,
+              "PHOTON_BROADCAST_HASH_JOIN_EXEC": 1,
+              "PHOTON_GROUPING_AGG_EXEC": 4,
+              "PHOTON_PARQUET_FILE_SCAN_EXEC": 2,
+              "PHOTON_PROJECT_EXEC": 3,
+              "PHOTON_SHUFFLE_MAP_STAGE_EXEC": 3,
+              "RESULT_QUERY_STAGE_EXEC": 1,
+              "UNKNOWN.ColumnarToRow": 1,
+              "UNKNOWN.PhotonShuffleExchangeSink": 3,
+              "UNKNOWN.PhotonTopK": 1,
+              "WHOLE_STAGE_CODEGEN_EXEC": 1
+            },
+            "nodeFields": [
+              "collapsed",
+              "expressions",
+              "hidden",
+              "id",
+              "key_metrics",
+              "meta_data",
+              "metrics",
+              "name",
+              "stage_links",
+              "subgraph_parent",
+              "tag"
+            ],
+            "metaKeys": [
+              "AGGREGATE_EXPRESSIONS",
+              "FILTERS",
+              "GROUPING_EXPRESSIONS",
+              "IS_DELTA",
+              "IS_PHOTON",
+              "JOIN_ALGORITHM",
+              "JOIN_BUILD_SIDE",
+              "JOIN_TYPE",
+              "LEFT_KEYS",
+              "OUTPUT",
+              "PARTITIONING_TYPE",
+              "PROJECTION",
+              "RIGHT_KEYS",
+              "SCAN_CATALOG_TABLE_TYPE",
+              "SCAN_DATABASE",
+              "SCAN_FILE_INDEX_NAME",
+              "SCAN_FILE_PATHS",
+              "SCAN_IDENTIFIER",
+              "SCAN_PARTITIONS",
+              "SCAN_RELATION_DESC",
+              "SCAN_RELATION_NAME",
+              "SCAN_TABLE",
+              "SHUFFLE_ATTRIBUTES",
+              "SORT_ORDER"
+            ],
+            "metaKeysWithValues": [
+              "AGGREGATE_EXPRESSIONS",
+              "FILTERS",
+              "GROUPING_EXPRESSIONS",
+              "IS_DELTA",
+              "IS_PHOTON",
+              "JOIN_ALGORITHM",
+              "JOIN_BUILD_SIDE",
+              "JOIN_TYPE",
+              "LEFT_KEYS",
+              "OUTPUT",
+              "PARTITIONING_TYPE",
+              "PROJECTION",
+              "RIGHT_KEYS",
+              "SCAN_CATALOG_TABLE_TYPE",
+              "SCAN_DATABASE",
+              "SCAN_FILE_INDEX_NAME",
+              "SCAN_FILE_PATHS",
+              "SCAN_IDENTIFIER",
+              "SCAN_PARTITIONS",
+              "SCAN_RELATION_DESC",
+              "SCAN_RELATION_NAME",
+              "SCAN_TABLE",
+              "SHUFFLE_ATTRIBUTES",
+              "SORT_ORDER"
+            ],
+            "metaKeysOutsideExtract": [
+              "AGGREGATE_EXPRESSIONS",
+              "FILTERS",
+              "GROUPING_EXPRESSIONS",
+              "IS_DELTA",
+              "JOIN_TYPE",
+              "LEFT_KEYS",
+              "OUTPUT",
+              "PROJECTION",
+              "RIGHT_KEYS",
+              "SCAN_CATALOG_TABLE_TYPE",
+              "SCAN_DATABASE",
+              "SCAN_FILE_INDEX_NAME",
+              "SCAN_FILE_PATHS",
+              "SCAN_RELATION_DESC",
+              "SCAN_RELATION_NAME",
+              "SCAN_TABLE",
+              "SHUFFLE_ATTRIBUTES",
+              "SORT_ORDER"
+            ],
+            "metaSpelling": {
+              "AGGREGATE_EXPRESSIONS": "values",
+              "FILTERS": "values",
+              "GROUPING_EXPRESSIONS": "values",
+              "IS_DELTA": "value",
+              "IS_PHOTON": "value",
+              "JOIN_ALGORITHM": "value",
+              "JOIN_BUILD_SIDE": "value",
+              "JOIN_TYPE": "value",
+              "LEFT_KEYS": "values",
+              "OUTPUT": "values",
+              "PARTITIONING_TYPE": "value",
+              "PROJECTION": "values",
+              "RIGHT_KEYS": "values",
+              "SCAN_CATALOG_TABLE_TYPE": "value",
+              "SCAN_DATABASE": "value",
+              "SCAN_FILE_INDEX_NAME": "value",
+              "SCAN_FILE_PATHS": "values",
+              "SCAN_IDENTIFIER": "value",
+              "SCAN_PARTITIONS": "values",
+              "SCAN_RELATION_DESC": "value",
+              "SCAN_RELATION_NAME": "value",
+              "SCAN_TABLE": "value",
+              "SHUFFLE_ATTRIBUTES": "values",
+              "SORT_ORDER": "values"
+            },
+            "metricKeys": [
+              "CUMULATIVE_TIME",
+              "DURATION",
+              "EXCLUSIVE_TIME",
+              "NUMBER_OUTPUT_ROWS",
+              "PEAK_MEMORY_USAGE"
+            ],
+            "edges": 17,
+            "stages": 8,
+            "stageFields": [
+              "attempt_id",
+              "completion_time",
+              "description",
+              "details",
+              "disk_bytes_spilled",
+              "end_time_ms",
+              "executor_run_time_ms",
+              "first_task_launched_time",
+              "key_metrics",
+              "name",
+              "num_complete_tasks",
+              "num_completed_indices",
+              "num_failed_tasks",
+              "num_killed_tasks",
+              "num_tasks",
+              "remote_bytes_read",
+              "scheduling_pool",
+              "stage_id",
+              "start_time_ms",
+              "status",
+              "submission_time"
+            ],
+            "stageTasks": [
+              {
+                "tasks": 28,
+                "failed": 0,
+                "spilledBytes": 0,
+                "runMs": 3980,
+                "name": "mapPartitionsInternal at PhotonExec.scala:870"
+              },
+              {
+                "tasks": 28,
+                "failed": 0,
+                "spilledBytes": 0,
+                "runMs": 754,
+                "name": "mapPartitionsInternal at PhotonExec.scala:870"
+              },
+              {
+                "tasks": 28,
+                "failed": 0,
+                "spilledBytes": 0,
+                "runMs": 0,
+                "name": "mapPartitionsInternal at PhotonExec.scala:870"
+              },
+              {
+                "tasks": 1,
+                "failed": 0,
+                "spilledBytes": 0,
+                "runMs": 10,
+                "name": "mapPartitionsInternal at PhotonExec.scala:870"
+              },
+              {
+                "tasks": 28,
+                "failed": 0,
+                "spilledBytes": 0,
+                "runMs": 0,
+                "name": "mapPartitionsInternal at PhotonExec.scala:870"
+              },
+              {
+                "tasks": 1,
+                "failed": 0,
+                "spilledBytes": 0,
+                "runMs": 0,
+                "name": "mapPartitionsInternal at PhotonExec.scala:870"
+              },
+              {
+                "tasks": 28,
+                "failed": 0,
+                "spilledBytes": 0,
+                "runMs": 0,
+                "name": "mapPartitionsInternal at PhotonExec.scala:870"
+              },
+              {
+                "tasks": 1,
+                "failed": 0,
+                "spilledBytes": 0,
+                "runMs": 16,
+                "name": "runJobInternal at RDDBatchCollector.scala:264"
+              }
+            ],
+            "insightIds": [],
+            "metricLabelCount": 670
+          },
+          "tells": {
+            "DATA_SKEW": {
+              "matched": 9,
+              "samples": [
+                "Cancellation Is Skewed",
+                "AQEShuffleRead - Skew handled by",
+                "ShuffleQueryStage - Adp reduce-side skew threshold met",
+                "MapStage - Skew non-empty median partition size",
+                "MapStage - Skew num empty partitions",
+                "MapStage - Skew num skewed partitions",
+                "MapStage - Skew max to non-empty median ratio",
+                "MapStage - Skew skewed data size ratio"
+              ]
+            },
+            "EXCESSIVE_EXCHANGES": {
+              "matched": 54,
+              "samples": [
+                "Time spent in cross-task output pruning before shuffle",
+                "Number of rows pruned by cross-task output pruning before shuffle",
+                "Shuffle",
+                "UNKNOWN.PhotonShuffleExchangeSink",
+                "SHUFFLE_ATTRIBUTES",
+                "Shuffle attributes",
+                "Source - Dynamic shuffle - estimated executor time without coalescing",
+                "Source - Dynamic shuffle - overhead added"
+              ]
+            },
+            "LARGE_SORT": {
+              "matched": 2,
+              "samples": [
+                "Sort order",
+                "Sink - Time taken to sort rows by partition ID (part of shuffle file write)"
+              ]
+            },
+            "BROADCAST_CANDIDATE": {
+              "matched": 2,
+              "samples": [
+                "PHOTON_BROADCAST_HASH_JOIN_EXEC",
+                "Photon Broadcast Hash"
+              ]
+            },
+            "MISSING_OR_STALE_STATS": {
+              "matched": 6,
+              "samples": [
+                "Source - Dynamic shuffle - estimated executor time without coalescing",
+                "MapStage - EnsureRequirementsDP estimated NDV",
+                "Scan - Dynamic scan - estimated executor time without coalescing",
+                "Scan - Size of a row of all columns in the relation (estimated)",
+                "Scan - Size of a row of scanned columns (estimated)",
+                "Scan - Time spent evaluating page index statistics"
+              ]
+            },
+            "UDF_OR_PYTHON_BOUNDARY": {
+              "matched": 1,
+              "samples": [
+                "Scan - Data filter predicate memoization - num batches evaluated"
+              ]
+            }
+          },
+          "operators": {
+            "skew": [
+              {
+                "tag": "PHOTON_BROADCAST_HASH_JOIN_EXEC",
+                "name": "Inner Join",
+                "metrics": [
+                  {
+                    "label": "Cancellation Is Skewed",
+                    "value": 0,
+                    "key": "UNKNOWN_KEY"
+                  }
+                ]
+              },
+              {
+                "tag": "UNKNOWN.PhotonShuffleExchangeSink",
+                "name": "Shuffle",
+                "metrics": [
+                  {
+                    "label": "AQEShuffleRead - Skew handled by",
+                    "value": 0,
+                    "key": "UNKNOWN_KEY"
+                  },
+                  {
+                    "label": "ShuffleQueryStage - Adp reduce-side skew threshold met",
+                    "value": 1,
+                    "key": "UNKNOWN_KEY"
+                  },
+                  {
+                    "label": "MapStage - Skew non-empty median partition size",
+                    "value": 1508,
+                    "key": "UNKNOWN_KEY"
+                  },
+                  {
+                    "label": "MapStage - Skew num empty partitions",
+                    "value": 0,
+                    "key": "UNKNOWN_KEY"
+                  },
+                  {
+                    "label": "MapStage - Skew num skewed partitions",
+                    "value": 0,
+                    "key": "UNKNOWN_KEY"
+                  },
+                  {
+                    "label": "MapStage - Skew max to non-empty median ratio",
+                    "value": 3,
+                    "key": "UNKNOWN_KEY"
+                  },
+                  {
+                    "label": "MapStage - Skew skewed data size ratio",
+                    "value": 0,
+                    "key": "UNKNOWN_KEY"
+                  }
+                ]
+              },
+              {
+                "tag": "PHOTON_PARQUET_FILE_SCAN_EXEC",
+                "name": "Scan system.access.audit",
+                "metrics": [
+                  {
+                    "label": "Scan - Split size relative skew (percent)",
+                    "value": 4544,
+                    "key": "UNKNOWN_KEY"
+                  }
+                ]
+              },
+              {
+                "tag": "UNKNOWN.PhotonShuffleExchangeSink",
+                "name": "Shuffle",
+                "metrics": [
+                  {
+                    "label": "ShuffleQueryStage - Adp reduce-side skew threshold met",
+                    "value": 0,
+                    "key": "UNKNOWN_KEY"
+                  },
+                  {
+                    "label": "MapStage - Skew non-empty median partition size",
+                    "value": 1030,
+                    "key": "UNKNOWN_KEY"
+                  },
+                  {
+                    "label": "MapStage - Skew num empty partitions",
+                    "value": 0,
+                    "key": "UNKNOWN_KEY"
+                  },
+                  {
+                    "label": "MapStage - Skew num skewed partitions",
+                    "value": 0,
+                    "key": "UNKNOWN_KEY"
+                  },
+                  {
+                    "label": "MapStage - Skew max to non-empty median ratio",
+                    "value": 1,
+                    "key": "UNKNOWN_KEY"
+                  },
+                  {
+                    "label": "MapStage - Skew skewed data size ratio",
+                    "value": 0,
+                    "key": "UNKNOWN_KEY"
+                  }
+                ]
+              },
+              {
+                "tag": "UNKNOWN.PhotonShuffleExchangeSink",
+                "name": "Shuffle",
+                "metrics": [
+                  {
+                    "label": "AQEShuffleRead - Skew handled by",
+                    "value": 0,
+                    "key": "UNKNOWN_KEY"
+                  },
+                  {
+                    "label": "ShuffleQueryStage - Adp reduce-side skew threshold met",
+                    "value": 2,
+                    "key": "UNKNOWN_KEY"
+                  },
+                  {
+                    "label": "MapStage - Skew non-empty median partition size",
+                    "value": 730,
+                    "key": "UNKNOWN_KEY"
+                  },
+                  {
+                    "label": "MapStage - Skew num empty partitions",
+                    "value": 42,
+                    "key": "UNKNOWN_KEY"
+                  },
+                  {
+                    "label": "MapStage - Skew num skewed partitions",
+                    "value": 0,
+                    "key": "UNKNOWN_KEY"
+                  },
+                  {
+                    "label": "MapStage - Skew max to non-empty median ratio",
+                    "value": 3,
+                    "key": "UNKNOWN_KEY"
+                  },
+                  {
+                    "label": "MapStage - Skew skewed data size ratio",
+                    "value": 0,
+                    "key": "UNKNOWN_KEY"
+                  }
+                ]
+              },
+              {
+                "tag": "PHOTON_PARQUET_FILE_SCAN_EXEC",
+                "name": "Scan system.access.audit",
+                "metrics": [
+                  {
+                    "label": "Scan - Split size relative skew (percent)",
+                    "value": 4544,
+                    "key": "UNKNOWN_KEY"
+                  }
+                ]
+              }
+            ],
+            "joins": [
+              {
+                "tag": "PHOTON_BROADCAST_HASH_JOIN_EXEC",
+                "name": "Inner Join",
+                "meta": {
+                  "JOIN_ALGORITHM": [
+                    "Photon Broadcast Hash"
+                  ],
+                  "JOIN_TYPE": [
+                    "Inner"
+                  ],
+                  "JOIN_BUILD_SIDE": [
+                    "Right"
+                  ]
+                },
+                "keyMetrics": {
+                  "duration_ms": 1,
+                  "rows_num": 241,
+                  "peak_memory_bytes": 4325376
+                }
+              }
+            ],
+            "sorts": [],
+            "udfs": [],
+            "statistics": [
+              {
+                "tag": "UNKNOWN.PhotonShuffleExchangeSink",
+                "metrics": [
+                  {
+                    "label": "Source - Dynamic shuffle - estimated executor time without coalescing",
+                    "value": 0,
+                    "key": "UNKNOWN_KEY"
+                  },
+                  {
+                    "label": "MapStage - EnsureRequirementsDP estimated NDV",
+                    "value": 1,
+                    "key": "UNKNOWN_KEY"
+                  }
+                ],
+                "meta": {}
+              },
+              {
+                "tag": "PHOTON_PARQUET_FILE_SCAN_EXEC",
+                "metrics": [
+                  {
+                    "label": "Scan - Dynamic scan - estimated executor time without coalescing",
+                    "value": 0,
+                    "key": "UNKNOWN_KEY"
+                  },
+                  {
+                    "label": "Scan - Size of a row of all columns in the relation (estimated)",
+                    "value": 456,
+                    "key": "UNKNOWN_KEY"
+                  },
+                  {
+                    "label": "Scan - Size of a row of scanned columns (estimated)",
+                    "value": 44,
+                    "key": "UNKNOWN_KEY"
+                  },
+                  {
+                    "label": "Scan - Time spent evaluating page index statistics",
+                    "value": 0,
+                    "key": "UNKNOWN_KEY"
+                  }
+                ],
+                "meta": {}
+              },
+              {
+                "tag": "UNKNOWN.PhotonShuffleExchangeSink",
+                "metrics": [
+                  {
+                    "label": "Source - Dynamic shuffle - estimated executor time without coalescing",
+                    "value": 0,
+                    "key": "UNKNOWN_KEY"
+                  },
+                  {
+                    "label": "MapStage - EnsureRequirementsDP estimated NDV",
+                    "value": 0,
+                    "key": "UNKNOWN_KEY"
+                  }
+                ],
+                "meta": {}
+              },
+              {
+                "tag": "UNKNOWN.PhotonShuffleExchangeSink",
+                "metrics": [
+                  {
+                    "label": "Source - Dynamic shuffle - estimated executor time without coalescing",
+                    "value": 0,
+                    "key": "UNKNOWN_KEY"
+                  },
+                  {
+                    "label": "MapStage - EnsureRequirementsDP estimated NDV",
+                    "value": 1,
+                    "key": "UNKNOWN_KEY"
+                  }
+                ],
+                "meta": {}
+              },
+              {
+                "tag": "PHOTON_PARQUET_FILE_SCAN_EXEC",
+                "metrics": [
+                  {
+                    "label": "Scan - Dynamic scan - estimated executor time without coalescing",
+                    "value": 0,
+                    "key": "UNKNOWN_KEY"
+                  },
+                  {
+                    "label": "Scan - Size of a row of all columns in the relation (estimated)",
+                    "value": 456,
+                    "key": "UNKNOWN_KEY"
+                  },
+                  {
+                    "label": "Scan - Size of a row of scanned columns (estimated)",
+                    "value": 24,
+                    "key": "UNKNOWN_KEY"
+                  },
+                  {
+                    "label": "Scan - Time spent evaluating page index statistics",
+                    "value": 0,
+                    "key": "UNKNOWN_KEY"
+                  }
+                ],
+                "meta": {}
+              }
+            ]
+          }
+        },
+        "include_plans+debug_info": {
+          "status": 200,
+          "bytes": 472847,
+          "plansState": "EXISTS"
+        }
+      }
+    },
+    {
+      "id": "python-udf",
+      "of": [
+        "UDF_OR_PYTHON_BOUNDARY"
+      ],
+      "statementId": "01f1958d-2cea-164a-970a-abb634166cf9",
+      "statement": "SELECT main.default.waf_plan_probe_udf(statement_type) AS lowered, count(*) AS runs\n       FROM system.query.history\n       WHERE start_time >= current_timestamp() - INTERVAL 2 DAYS\n       GROUP BY 1",
+      "rungs": {
+        "awaited": {
+          "waitedMs": 447,
+          "plansState": "EXISTS",
+          "nodes": 14
+        },
+        "include_plans": {
+          "status": 200,
+          "bytes": 134432,
+          "plansState": "EXISTS",
+          "bodyKeys": [
+            "canSubscribeToLiveQuery",
+            "channel_used",
+            "client_application",
+            "duration",
+            "endpoint_id",
+            "executed_as_user_display_name",
+            "executed_as_user_id",
+            "executed_as_user_name",
+            "execution_end_time_ms",
+            "is_cancelable",
+            "is_final",
+            "lookup_key",
+            "plans",
+            "plans_state",
+            "query_end_time_ms",
+            "query_id",
+            "query_source",
+            "query_start_time_ms",
+            "query_text",
+            "rows_produced",
+            "session_id",
+            "statement_type",
+            "status",
+            "user_display_name",
+            "user_id",
+            "user_name",
+            "warehouse_id"
+          ],
+          "rowsProduced": 16,
+          "widest": {
+            "index": "0",
+            "nodes": 14,
+            "unparsable": 0,
+            "candidates": 2
+          },
+          "inventory": {
+            "nodes": 14,
+            "tags": [
+              "ADAPTIVE_SPARK_PLAN_EXEC",
+              "PHOTON_ARROW_BATCH_SINK_EXEC",
+              "PHOTON_ARROW_RESULT_STAGE_EXEC",
+              "PHOTON_GROUPING_AGG_EXEC",
+              "PHOTON_PARQUET_FILE_SCAN_EXEC",
+              "PHOTON_PROJECT_EXEC",
+              "PHOTON_SHUFFLE_MAP_STAGE_EXEC",
+              "RESULT_QUERY_STAGE_EXEC",
+              "UNKNOWN.ColumnarToRow",
+              "UNKNOWN.PhotonScalarUDF",
+              "UNKNOWN.PhotonShuffleExchangeSink",
+              "WHOLE_STAGE_CODEGEN_EXEC"
+            ],
+            "tagCounts": {
+              "ADAPTIVE_SPARK_PLAN_EXEC": 1,
+              "PHOTON_ARROW_BATCH_SINK_EXEC": 1,
+              "PHOTON_ARROW_RESULT_STAGE_EXEC": 1,
+              "PHOTON_GROUPING_AGG_EXEC": 2,
+              "PHOTON_PARQUET_FILE_SCAN_EXEC": 1,
+              "PHOTON_PROJECT_EXEC": 2,
+              "PHOTON_SHUFFLE_MAP_STAGE_EXEC": 1,
+              "RESULT_QUERY_STAGE_EXEC": 1,
+              "UNKNOWN.ColumnarToRow": 1,
+              "UNKNOWN.PhotonScalarUDF": 1,
+              "UNKNOWN.PhotonShuffleExchangeSink": 1,
+              "WHOLE_STAGE_CODEGEN_EXEC": 1
+            },
+            "nodeFields": [
+              "collapsed",
+              "expressions",
+              "hidden",
+              "id",
+              "insight_ids",
+              "key_metrics",
+              "meta_data",
+              "metrics",
+              "name",
+              "stage_links",
+              "subgraph_parent",
+              "tag"
+            ],
+            "metaKeys": [
+              "AGGREGATE_EXPRESSIONS",
+              "FILTERS",
+              "GROUPING_EXPRESSIONS",
+              "IS_DELTA",
+              "IS_PHOTON",
+              "OUTPUT",
+              "PARTITIONING_TYPE",
+              "PROJECTION",
+              "SCAN_CATALOG_TABLE_TYPE",
+              "SCAN_DATABASE",
+              "SCAN_FILE_INDEX_NAME",
+              "SCAN_FILE_PATHS",
+              "SCAN_IDENTIFIER",
+              "SCAN_PARTITIONS",
+              "SCAN_RELATION_DESC",
+              "SCAN_RELATION_NAME",
+              "SCAN_TABLE",
+              "SHUFFLE_ATTRIBUTES"
+            ],
+            "metaKeysWithValues": [
+              "AGGREGATE_EXPRESSIONS",
+              "FILTERS",
+              "GROUPING_EXPRESSIONS",
+              "IS_DELTA",
+              "IS_PHOTON",
+              "OUTPUT",
+              "PARTITIONING_TYPE",
+              "PROJECTION",
+              "SCAN_CATALOG_TABLE_TYPE",
+              "SCAN_DATABASE",
+              "SCAN_FILE_INDEX_NAME",
+              "SCAN_FILE_PATHS",
+              "SCAN_IDENTIFIER",
+              "SCAN_PARTITIONS",
+              "SCAN_RELATION_DESC",
+              "SCAN_RELATION_NAME",
+              "SCAN_TABLE",
+              "SHUFFLE_ATTRIBUTES"
+            ],
+            "metaKeysOutsideExtract": [
+              "AGGREGATE_EXPRESSIONS",
+              "FILTERS",
+              "GROUPING_EXPRESSIONS",
+              "IS_DELTA",
+              "OUTPUT",
+              "PROJECTION",
+              "SCAN_CATALOG_TABLE_TYPE",
+              "SCAN_DATABASE",
+              "SCAN_FILE_INDEX_NAME",
+              "SCAN_FILE_PATHS",
+              "SCAN_RELATION_DESC",
+              "SCAN_RELATION_NAME",
+              "SCAN_TABLE",
+              "SHUFFLE_ATTRIBUTES"
+            ],
+            "metaSpelling": {
+              "AGGREGATE_EXPRESSIONS": "values",
+              "FILTERS": "values",
+              "GROUPING_EXPRESSIONS": "values",
+              "IS_DELTA": "value",
+              "IS_PHOTON": "value",
+              "OUTPUT": "values",
+              "PARTITIONING_TYPE": "value",
+              "PROJECTION": "values",
+              "SCAN_CATALOG_TABLE_TYPE": "value",
+              "SCAN_DATABASE": "value",
+              "SCAN_FILE_INDEX_NAME": "value",
+              "SCAN_FILE_PATHS": "values",
+              "SCAN_IDENTIFIER": "value",
+              "SCAN_PARTITIONS": "values",
+              "SCAN_RELATION_DESC": "value",
+              "SCAN_RELATION_NAME": "value",
+              "SCAN_TABLE": "value",
+              "SHUFFLE_ATTRIBUTES": "values"
+            },
+            "metricKeys": [
+              "CUMULATIVE_TIME",
+              "DURATION",
+              "EXCLUSIVE_TIME",
+              "NUMBER_OUTPUT_ROWS",
+              "PEAK_MEMORY_USAGE"
+            ],
+            "edges": 10,
+            "stages": 3,
+            "stageFields": [
+              "attempt_id",
+              "completion_time",
+              "description",
+              "details",
+              "disk_bytes_spilled",
+              "end_time_ms",
+              "executor_run_time_ms",
+              "first_task_launched_time",
+              "key_metrics",
+              "name",
+              "num_complete_tasks",
+              "num_completed_indices",
+              "num_failed_tasks",
+              "num_killed_tasks",
+              "num_tasks",
+              "remote_bytes_read",
+              "scheduling_pool",
+              "stage_id",
+              "start_time_ms",
+              "status",
+              "submission_time"
+            ],
+            "stageTasks": [
+              {
+                "tasks": 31,
+                "failed": 0,
+                "spilledBytes": 0,
+                "runMs": 122339,
+                "name": "mapPartitionsInternal at PhotonExec.scala:870"
+              },
+              {
+                "tasks": 31,
+                "failed": 0,
+                "spilledBytes": 0,
+                "runMs": 0,
+                "name": "mapPartitionsInternal at PhotonExec.scala:870"
+              },
+              {
+                "tasks": 1,
+                "failed": 0,
+                "spilledBytes": 0,
+                "runMs": 23,
+                "name": "runJobInternal at RDDBatchCollector.scala:264"
+              }
+            ],
+            "insightIds": [
+              "f4af4d1f-5f05-4dc9-901a-4b22e7821579"
+            ],
+            "metricLabelCount": 632
+          },
+          "tells": {
+            "DATA_SKEW": {
+              "matched": 8,
+              "samples": [
+                "AQEShuffleRead - Skew handled by",
+                "ShuffleQueryStage - Adp reduce-side skew threshold met",
+                "MapStage - Skew non-empty median partition size",
+                "MapStage - Skew num empty partitions",
+                "MapStage - Skew num skewed partitions",
+                "MapStage - Skew max to non-empty median ratio",
+                "MapStage - Skew skewed data size ratio",
+                "Scan - Split size relative skew (percent)"
+              ]
+            },
+            "EXCESSIVE_EXCHANGES": {
+              "matched": 52,
+              "samples": [
+                "Shuffle",
+                "UNKNOWN.PhotonShuffleExchangeSink",
+                "SHUFFLE_ATTRIBUTES",
+                "Shuffle attributes",
+                "Source - Dynamic shuffle - estimated executor time without coalescing",
+                "Source - Dynamic shuffle - overhead added",
+                "SHUFFLE_SAVED",
+                "Source - Dynamic shuffle - initial number of tasks"
+              ]
+            },
+            "LARGE_SORT": {
+              "matched": 1,
+              "samples": [
+                "Sink - Time taken to sort rows by partition ID (part of shuffle file write)"
+              ]
+            },
+            "BROADCAST_CANDIDATE": {
+              "matched": 0,
+              "samples": []
+            },
+            "MISSING_OR_STALE_STATS": {
+              "matched": 6,
+              "samples": [
+                "Source - Dynamic shuffle - estimated executor time without coalescing",
+                "MapStage - EnsureRequirementsDP estimated NDV",
+                "Scan - Dynamic scan - estimated executor time without coalescing",
+                "Scan - Size of a row of all columns in the relation (estimated)",
+                "Scan - Size of a row of scanned columns (estimated)",
+                "Scan - Time spent evaluating page index statistics"
+              ]
+            },
+            "UDF_OR_PYTHON_BOUNDARY": {
+              "matched": 30,
+              "samples": [
+                "UDF_waf_plan_probe_udf_0 AS _nondeterministic",
+                "UNKNOWN.PhotonScalarUDF",
+                "UDF_waf_plan_probe_udf_0",
+                "Size of the UDF payload",
+                "Count of cached udf dependencies",
+                "Number of UDF evaluation requests made to the SafeSpark server",
+                "Time to install udf dependencies",
+                "Combined hash of all udf dependencies"
+              ]
+            }
+          },
+          "operators": {
+            "skew": [
+              {
+                "tag": "UNKNOWN.PhotonShuffleExchangeSink",
+                "name": "Shuffle",
+                "metrics": [
+                  {
+                    "label": "AQEShuffleRead - Skew handled by",
+                    "value": 0,
+                    "key": "UNKNOWN_KEY"
+                  },
+                  {
+                    "label": "ShuffleQueryStage - Adp reduce-side skew threshold met",
+                    "value": 2,
+                    "key": "UNKNOWN_KEY"
+                  },
+                  {
+                    "label": "MapStage - Skew non-empty median partition size",
+                    "value": 448,
+                    "key": "UNKNOWN_KEY"
+                  },
+                  {
+                    "label": "MapStage - Skew num empty partitions",
+                    "value": 50,
+                    "key": "UNKNOWN_KEY"
+                  },
+                  {
+                    "label": "MapStage - Skew num skewed partitions",
+                    "value": 0,
+                    "key": "UNKNOWN_KEY"
+                  },
+                  {
+                    "label": "MapStage - Skew max to non-empty median ratio",
+                    "value": 4,
+                    "key": "UNKNOWN_KEY"
+                  },
+                  {
+                    "label": "MapStage - Skew skewed data size ratio",
+                    "value": 0,
+                    "key": "UNKNOWN_KEY"
+                  }
+                ]
+              },
+              {
+                "tag": "PHOTON_PARQUET_FILE_SCAN_EXEC",
+                "name": "Scan system.query.history",
+                "metrics": [
+                  {
+                    "label": "Scan - Split size relative skew (percent)",
+                    "value": 208,
+                    "key": "UNKNOWN_KEY"
+                  }
+                ]
+              }
+            ],
+            "joins": [],
+            "sorts": [],
+            "udfs": [
+              {
+                "tag": "UNKNOWN.PhotonScalarUDF",
+                "name": "Scalar U D F",
+                "keyMetrics": {
+                  "duration_ms": 111499,
+                  "rows_num": 4935,
+                  "peak_memory_bytes": 5006959824
+                }
+              }
+            ],
+            "statistics": [
+              {
+                "tag": "UNKNOWN.PhotonShuffleExchangeSink",
+                "metrics": [
+                  {
+                    "label": "Source - Dynamic shuffle - estimated executor time without coalescing",
+                    "value": 0,
+                    "key": "UNKNOWN_KEY"
+                  },
+                  {
+                    "label": "MapStage - EnsureRequirementsDP estimated NDV",
+                    "value": 1,
+                    "key": "UNKNOWN_KEY"
+                  }
+                ],
+                "meta": {}
+              },
+              {
+                "tag": "PHOTON_PARQUET_FILE_SCAN_EXEC",
+                "metrics": [
+                  {
+                    "label": "Scan - Dynamic scan - estimated executor time without coalescing",
+                    "value": 0,
+                    "key": "UNKNOWN_KEY"
+                  },
+                  {
+                    "label": "Scan - Size of a row of all columns in the relation (estimated)",
+                    "value": 2157,
+                    "key": "UNKNOWN_KEY"
+                  },
+                  {
+                    "label": "Scan - Size of a row of scanned columns (estimated)",
+                    "value": 28,
+                    "key": "UNKNOWN_KEY"
+                  },
+                  {
+                    "label": "Scan - Time spent evaluating page index statistics",
+                    "value": 0,
+                    "key": "UNKNOWN_KEY"
+                  }
+                ],
+                "meta": {}
+              }
+            ]
+          }
+        },
+        "include_plans+debug_info": {
+          "status": 200,
+          "bytes": 219209,
+          "plansState": "EXISTS"
+        }
+      }
+    }
+  ]
+}

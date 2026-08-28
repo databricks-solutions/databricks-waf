@@ -1,0 +1,22 @@
+.DS_Store
+node_modules/
+build/
+
+# client/dist and dist are deliberately NOT ignored.
+#
+# A Marketplace install has nowhere to run a build step, so the built server
+# bundle and client assets are committed artefacts rather than local output. CI
+# rebuilds and diffs them, so a stale commit fails the build. If you change
+# source, run `npm run build` and commit the result.
+.env
+.databricks/
+.smoke-test/
+test-results/
+playwright-report/
+
+# Auto-generated types (endpoint-specific, varies per developer)
+shared/appkit-types/serving.d.ts
+
+# Also generated, and no longer read by anything — see ADR 0005.
+shared/appkit-types/analytics.d.ts
+

@@ -1,0 +1,87 @@
+{
+  "what": "Shipped statements with no reading in labs.json yet, each with the row that owes one.",
+  "why": [
+    "Every statement in config/statements is measured on labs and carries a duration, a scanned-byte",
+    "reading and an accepted number from an earlier commit. That is the pack docs/design/q1a-runtime-baseline.md",
+    "publishes and check:sql-release holds. A statement added while labs cannot be reached has none of",
+    "those, and there are only two honest things to do with it: keep it out of the tree until somebody",
+    "can log in, or ship it and say plainly that it has no budget.",
+    "",
+    "This file is the second. A name here buys exactly one thing — the recording is allowed not to",
+    "mention it — and costs the rest: the gate prints it as unbudgeted, refuses to call Q1 complete",
+    "while the list is non-empty, and refuses an entry whose statement has since been measured, so the",
+    "list can only shrink. Everything else a statement owes still applies: a declared row bound, a",
+    "benchmark class, a descriptor, a reach.",
+    "",
+    "It is not a place to park a slow statement. A measured statement that fails its class ceiling is a",
+    "failure, and moving it here would not be allowed: the gate checks that nothing on this list has a",
+    "reading.",
+    "",
+    "What the paragraph above got wrong, until row 77: it enumerates what a name here costs and it was",
+    "not the whole list. A labs reading is the only thing in this build that parses SQL — the bounds and",
+    "grain checks read statements with scan.ts, which says in its own header that it is not a parser. So",
+    "an exemption from a measured duration was an exemption from ever being read, and",
+    "serving_asset_quality shipped with a missing comma between its two CTEs, failing PARSE_SYNTAX_ERROR",
+    "where its entry below claims TABLE_OR_VIEW_NOT_FOUND.",
+    "",
+    "So every entry now carries the submission that produced its excuse: the error the platform",
+    "returned, the SQLSTATE, the text it returned them for, and what was bound. The gate refuses an",
+    "entry whose SQLSTATE is a parse failure, because that is a statement the platform never read, and",
+    "one whose statement has changed since. Take a submission with `npm run record:awaiting` against a",
+    "bound warehouse. The bindings are placeholders and the record says so: a submission asks whether",
+    "the platform read the statement, and no binding makes an absent schema present."
+  ],
+  "statements": {
+    "serving_asset_quality": {
+      "since": "2026-08-16",
+      "why": "reads system.data_quality_monitoring.table_results, which an account admin enables per metastore and which is not enabled on labs, so the statement fails TABLE_OR_VIEW_NOT_FOUND rather than returning an empty result. This is the half of the old serving_asset_facts that could not be measured; row 65 split it out so the six dimensions that do not read this schema could be, and they now are",
+      "owedBy": "65",
+      "submitted": {
+        "at": "2026-08-19T01:57:11.821Z",
+        "profile": "labs",
+        "warehouseId": "0123456789abcdef",
+        "statementSha": "sha256:699549827e6ff3b0ccd1febdbb9d985d8314a843c2eca8e75aa185f488941a3c",
+        "sqlState": "42P01",
+        "error": "[TABLE_OR_VIEW_NOT_FOUND] The table or view `system`.`data_quality_monitoring`.`table_results` cannot be found. Verify the spelling and correctness of the schema and catalog.",
+        "parameters": {
+          "lookback_days": "30",
+          "serving_assets": "main.default.placeholder",
+          "serving_limit": "2000"
+        }
+      }
+    },
+    "uc_quality_monitoring": {
+      "since": "2026-08-19",
+      "why": "reads system.data_quality_monitoring.table_results, which an account admin enables per metastore and which is not enabled on labs, so the statement fails TABLE_OR_VIEW_NOT_FOUND rather than returning an empty result. The same schema as serving_asset_quality; this statement is the estate-wide count DG-03-02 reports and does not band",
+      "owedBy": "37j",
+      "submitted": {
+        "at": "2026-08-19T01:57:11.821Z",
+        "profile": "labs",
+        "warehouseId": "0123456789abcdef",
+        "statementSha": "sha256:ba58826f12532d42b1c7706228d0110cac22c68fe67a2dd1177dd156d672fb55",
+        "sqlState": "42P01",
+        "error": "[TABLE_OR_VIEW_NOT_FOUND] The table or view `system`.`data_quality_monitoring`.`table_results` cannot be found. Verify the spelling and correctness of the schema and catalog.",
+        "parameters": {
+          "lookback_days": "30"
+        }
+      }
+    },
+    "serving_asset_classifications": {
+      "since": "2026-08-16",
+      "why": "reads system.data_classification.results, absent on labs for the same reason and in the same way as the quality read above",
+      "owedBy": "65",
+      "submitted": {
+        "at": "2026-08-19T01:57:11.821Z",
+        "profile": "labs",
+        "warehouseId": "0123456789abcdef",
+        "statementSha": "sha256:72ff57d652781f6bef2e89ee8a1b589e612597efeb0a9d55ba74a001a0ec2381",
+        "sqlState": "42P01",
+        "error": "[TABLE_OR_VIEW_NOT_FOUND] The table or view `system`.`data_classification`.`results` cannot be found. Verify the spelling and correctness of the schema and catalog.",
+        "parameters": {
+          "serving_assets": "main.default.placeholder",
+          "serving_limit": "2000"
+        }
+      }
+    }
+  }
+}

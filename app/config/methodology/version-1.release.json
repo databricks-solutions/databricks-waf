@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "public_version": 1,
+  "name": "Databricks Well-Architected Assessment Methodology Version 1",
+  "state": "released",
+  "candidate_started_at": "2026-08-19",
+  "effective_date": "2026-08-28",
+  "release_commit": "60ff57fa7ceb2ca844532376230c0769b9f304ba",
+  "approved_by": "Al Thrussell (product owner)",
+  "approval_required_role": "product owner",
+  "support_boundary": {
+    "installation_model": "One customer installation in the customer's Databricks environment",
+    "assessment_scope": "Account-wide by default, or an explicitly named workspace subset within the deployment region",
+    "supported_clouds": ["aws", "azure", "gcp"],
+    "evidence_classes": ["automated", "attested", "administrator"],
+    "execution_identities": {
+      "interactive": "current user through on-behalf-of authorization",
+      "scheduled": "dedicated service principal"
+    },
+    "exclusions": [
+      "Customer-editable scoring or methodology",
+      "AI-produced scores or verdicts",
+      "Automatic permission grants or policy writes",
+      "An official Databricks score"
+    ]
+  }
+}

@@ -1,0 +1,82 @@
+{
+  "takenAt": "2026-08-18",
+  "corpus": {
+    "authored": 63,
+    "draft": 121,
+    "requirements": 184,
+    "draftsCarryingAVerifyBlock": 0
+  },
+  "goodAgainstItsOwnTitle": {
+    "signals": 315,
+    "highest": 0.75,
+    "highestAt": "PE-04-01",
+    "atOrAbove50": 8,
+    "atOrAbove40": 9,
+    "titlesOfThreeWordsOrFewer": 37,
+    "titlesMeasured": 184,
+    "medianTitleWords": 4,
+    "verdict": "refuted: a signal about the requirement shares its words, and the metric divides by the shorter set so a two-word title scores 50% on one shared word"
+  },
+  "verify": {
+    "steps": 191,
+    "how": {
+      "sql": 56,
+      "ui": 57,
+      "by-hand": 63,
+      "api": 4,
+      "cli": 11
+    },
+    "missingExpect": 0,
+    "missingWhere": 0,
+    "entriesWithARunnableStep": 56,
+    "entriesWithNone": 7,
+    "whereTheyHaveNone": [
+      "CO-03-02",
+      "OE-01-01",
+      "OE-02-08",
+      "PE-02-02",
+      "REL-01-05",
+      "REL-02-05",
+      "SCP-03-13"
+    ]
+  },
+  "examples": {
+    "missingStrong": 0,
+    "missingPartial": 0,
+    "missingWeak": 0
+  },
+  "lists": {
+    "good": {
+      "min": 4,
+      "median": 5,
+      "max": 6
+    },
+    "pitfalls": {
+      "min": 3,
+      "median": 3,
+      "max": 3
+    },
+    "references": {
+      "min": 2,
+      "median": 2,
+      "max": 2
+    },
+    "verify": {
+      "min": 3,
+      "median": 3,
+      "max": 4
+    }
+  },
+  "controlIdsNamedInProse": {
+    "entries": 0,
+    "verdict": "not applicable: depends_on holds decision factors, and no field names a control"
+  },
+  "advice": {
+    "entries": 2,
+    "pathSteps": {
+      "min": 3,
+      "median": 3,
+      "max": 3
+    }
+  }
+}

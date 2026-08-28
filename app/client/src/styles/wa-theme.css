@@ -1,0 +1,605 @@
+/*
+ * Customer system tokens. docs/design/customer-design-system.md is the authority.
+ *
+ * The original values were sampled from one historical composition. Family 126 keeps the semantic
+ * contract and re-derives the palette around customer hierarchy: an application canvas, task surface,
+ * supporting section, inset evidence and elevated action are visibly distinct in both themes.
+ *
+ * Loaded AFTER @databricks/appkit-ui/styles.css, which is the whole mechanism. AppKit declares
+ * the same semantic variable names against its own palette; these declarations win on source
+ * order, so every AppKit component re-tones itself without being wrapped or forked. Reversing
+ * the order silently reverts the design system and nothing fails.
+ *
+ * Three blocks follow: light, dark, and dark-by-system-preference. The last is a byte-identical
+ * copy of the second, because a class selector and a media query cannot share one block, and
+ * `npm run check:design-system` fails if the two ever stop matching. Components never name a
+ * raw colour; that check fails the build if one does, which is what makes this a system rather
+ * than a suggestion.
+ *
+ * A fourth block prints. It is a palette in its own right rather than a redirect to the light one,
+ * for reasons given where it is declared.
+ */
+
+:root,
+html.light,
+html[data-theme='light'] {
+  color-scheme: light;
+
+  /*
+   * Chrome is the navy column, and it is not a surface — nothing else in the app is this dark,
+   * and its own text, borders and row states live in these tokens so a component on the canvas
+   * cannot accidentally reach for chrome ink and disappear.
+   */
+  --wa-chrome: #0e1a26;
+  --wa-chrome-raised: #202c38;
+  --wa-chrome-active: #0a3a6b;
+  --wa-chrome-border: #1b2836;
+  --wa-chrome-text: #dbe3ea;
+  --wa-chrome-text-muted: #8d9aa8;
+  --wa-chrome-label: #7c8b99;
+
+  /* Persistent planes */
+  --wa-shell: #f1f4f8;
+  --wa-canvas: #f1f4f8;
+  --wa-surface: #ffffff;
+  --wa-surface-subtle: #f7f9fc;
+  --wa-surface-raised: #ffffff;
+  --wa-surface-strong: #e8edf3;
+  --wa-surface-inset: #e8edf3;
+  --wa-surface-accent: #edf5ff;
+
+  /* The closing band: tinted, so one action reads as an action and not as another card. */
+  --wa-band: #f7f8fc;
+
+  /*
+   * The banding tint for alternating table rows. Its own token rather than a reuse of
+   * surface-subtle, which is the column header's fill: a stripe the same colour as the header
+   * makes every second row look like a second header.
+   */
+  --wa-zebra: #fafbfd;
+
+  /* Boundaries */
+  --wa-border: #dce3eb;
+  --wa-divider: #e7ecf2;
+  --wa-border-strong: #c7d1dc;
+  --wa-border-action: #a9c7ed;
+  --wa-border-success: #a9d7bb;
+  --wa-border-warning: #e7c29f;
+  --wa-border-danger: #e3aaa5;
+
+  /* Text */
+  --wa-text: #0b0e14;
+  --wa-text-secondary: #3f4854;
+  /*
+   * Measured against the darkest plane it lands on, not against white.
+   *
+   * #6b7480 is 4.56:1 on #ffffff and passes, which is how it survived review — and 4.18:1 on
+   * surface-strong, 4.35:1 on the canvas, so most captions in the app were below AA. The check that
+   * found it composites every translucent layer down and judges the colour where it actually sits.
+   */
+  --wa-text-muted: #616a75;
+  --wa-text-placeholder: #8b95a1;
+  --wa-text-inverse: #ffffff;
+
+  /* Interaction */
+  --wa-action: #1b62c9;
+  --wa-action-hover: #164fa3;
+  --wa-action-press: #113f83;
+  --wa-action-soft: rgba(27, 98, 201, 0.08);
+  --wa-action-soft-hover: rgba(27, 98, 201, 0.14);
+  --wa-focus: #1b62c9;
+  /*
+   * The colour text takes when it sits on the action fill.
+   *
+   * White on the light theme's action blue is 5.77:1 and white on the dark theme's is 3.04:1 — the
+   * same rule, two answers, because a dark theme lightens its accents to sit on a dark plane and a
+   * lightened accent cannot carry white text. So the ink is a token and the dark theme answers it
+   * with near-black, at 6.10:1.
+   */
+  --wa-on-action: #ffffff;
+  /*
+   * The inner ring of the focus treatment, drawn between the element and the outline.
+   *
+   * The outline alone leaves a 2px gap that shows whatever happens to be behind the element, and on
+   * a filled badge, a hovered row or the dark navigation rail that is not the plane the outline was
+   * measured against. Drawing the inner ring explicitly means the ring reads the same everywhere
+   * rather than only over a card. It is the surface colour in each theme because that is the value
+   * the focus blue was contrast-checked against.
+   */
+  --wa-focus-inner: #ffffff;
+  --wa-selection: rgba(27, 98, 201, 0.1);
+
+  /* Databricks identity accent — the product mark, and nothing else */
+  --wa-lava: #ff3621;
+  --wa-lava-strong: #c92e1f;
+
+  /*
+   * Verdict colours come in three parts because they do three jobs: ink for a score or a word,
+   * fill for a bar or an arc, and soft for a severity chip's background. One value cannot do
+   * all three — a fill dark enough to read as text is too heavy for 40% of a bar's width.
+   */
+  --wa-danger: #b42318;
+  --wa-danger-fill: #d92d20;
+  --wa-danger-soft: #fde8e8;
+  /* 4.48:1 as badge text on its own wash — a fail by 0.02. Now 5.04:1; the fill is unchanged. */
+  --wa-warning: #a94c07;
+  --wa-warning-fill: #dd6f16;
+  --wa-warning-soft: #fdf0e3;
+  --wa-caution: #a16207;
+  --wa-caution-fill: #eeb005;
+  --wa-caution-soft: #fdf6e3;
+  /*
+   * Dark enough to be read as text on its own wash, which is the job it actually does.
+   *
+   * A chip is a 10% tint of this colour with this colour's text on it, and #1a8248 measured 4.31:1
+   * there — a pass on white and a fail everywhere the app draws it. Fills use success-fill, so
+   * darkening this costs the meter and the dot nothing.
+   */
+  --wa-success: #14713c;
+  --wa-success-fill: #22a05a;
+  --wa-success-soft: #e7f5ec;
+  --wa-info: #44546a;
+  --wa-info-soft: #eef1f5;
+
+  /*
+   * Absence of evidence is grey and hatched, never a colour. A pillar nobody measured must not
+   * be able to look like a pillar that failed, and colour is what would make it look like one.
+   *
+   * The ink is text, not a mark: it draws the em dash a pillar with no score shows in place of a
+   * number, so it carries a contrast requirement the track does not. It was #b7bcc4, which measured
+   * 1.91:1 — a grey light enough that "grey rather than a colour" had become "grey rather than
+   * legible". Only a run with a pillar left unmeasured renders it, which is why the sweep that
+   * fixed the rest of the palette never saw it. The track behind a hatch stays light on purpose.
+   */
+  --wa-unmeasured: #7f8792;
+  --wa-unmeasured-track: #e8eaed;
+
+  /* Elevation communicates rank; transient layers retain the strongest depth. */
+  --wa-overlay: rgba(11, 14, 20, 0.4);
+  --wa-shadow-surface: 0 1px 2px rgba(11, 14, 20, 0.06), 0 8px 24px rgba(11, 14, 20, 0.07);
+  --wa-shadow-surface-hover: 0 2px 4px rgba(11, 14, 20, 0.08), 0 14px 32px rgba(11, 14, 20, 0.1);
+  --wa-shadow-action: 0 3px 8px rgba(27, 98, 201, 0.18), 0 16px 36px rgba(11, 14, 20, 0.1);
+  --wa-shadow-popover: 0 8px 24px rgba(11, 14, 20, 0.12), 0 2px 8px rgba(11, 14, 20, 0.07);
+  --wa-shadow-dialog: 0 20px 48px rgba(11, 14, 20, 0.18), 0 4px 12px rgba(11, 14, 20, 0.1);
+
+  /* Geometry follows component role rather than one historic card measurement. */
+  --wa-radius-xs: 2px;
+  --wa-radius-sm: 6px;
+  --wa-radius-md: 8px;
+  --wa-radius-lg: 12px;
+  --wa-radius-xl: 16px;
+  --wa-radius-pill: 999px;
+
+  /* Type roles. Components consume the role; responsive CSS decides its exact size. */
+  --wa-type-display: 40px;
+  --wa-type-display-line: 46px;
+  --wa-type-page: 28px;
+  --wa-type-page-line: 34px;
+  --wa-type-section: 20px;
+  --wa-type-section-line: 26px;
+  --wa-type-title: 16px;
+  --wa-type-title-line: 22px;
+  --wa-type-body: 14px;
+  --wa-type-body-line: 21px;
+  --wa-type-compact: 13px;
+  --wa-type-compact-line: 19px;
+  --wa-type-label: 12px;
+  --wa-type-label-line: 17px;
+
+  /*
+   * The page measure: the widest the content goes before it centres.
+   *
+   * 1680, raised from the reference's own 1440, because 1440 was measured off a render and the app
+   * is read on a laptop. A 14" MacBook is 1512 wide and leaves 1308 after the chrome column, so at
+   * 1440 nothing centres and nothing is wasted — but a 16" leaves 1524 and an external monitor far
+   * more, and there the strip below is the thing that suffers: eight cards need 1368 to clear the
+   * 150px floor, so a cap near 1440 is what forced the strip to show three pillars out of seven.
+   *
+   * Still capped rather than fluid. Past about 1700 a table row's first and last cell stop being
+   * readable as one row, which is the failure this number exists to prevent; a 2560px monitor
+   * centres 1680 of content rather than stretching to a row nobody can scan across.
+   */
+  --wa-measure: 1680px;
+
+  /* AppKit semantic bridge */
+  --background: var(--wa-canvas);
+  --foreground: var(--wa-text);
+  --card: var(--wa-surface);
+  --card-foreground: var(--wa-text);
+  --popover: var(--wa-surface-raised);
+  --popover-foreground: var(--wa-text);
+  --primary: var(--wa-action);
+  --primary-foreground: var(--wa-text-inverse);
+  --secondary: var(--wa-surface-strong);
+  --secondary-foreground: var(--wa-text);
+  --muted: var(--wa-surface-subtle);
+  --muted-foreground: var(--wa-text-secondary);
+  --accent: var(--wa-action-soft);
+  --accent-foreground: var(--wa-action-hover);
+  --destructive: var(--wa-danger);
+  --destructive-foreground: #ffffff;
+  --success: var(--wa-success);
+  --success-foreground: #ffffff;
+  --warning: var(--wa-warning);
+  --warning-foreground: #ffffff;
+  --border: var(--wa-border);
+  --input: var(--wa-border-strong);
+  --ring: var(--wa-focus);
+  --radius: var(--wa-radius-md);
+  --sidebar: var(--wa-chrome);
+  --sidebar-foreground: var(--wa-chrome-text);
+  --sidebar-primary: var(--wa-action);
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: var(--wa-chrome-raised);
+  --sidebar-accent-foreground: var(--wa-chrome-text);
+  --sidebar-border: var(--wa-chrome-border);
+  --sidebar-ring: var(--wa-focus);
+
+  /*
+   * xyflow, re-toned the way AppKit is. The variables resolve at use time against --wa-*,
+   * so the dark and print blocks do not repeat them. Shadow tokens are none: a node is
+   * ordinary content, and the kit forbids elevation there.
+   */
+  --xy-background-color: var(--wa-canvas);
+  --xy-node-color: var(--wa-text);
+  --xy-node-background-color: var(--wa-surface);
+  --xy-node-border: var(--wa-border-strong);
+  --xy-node-border-radius: var(--wa-radius-sm);
+  --xy-node-box-shadow: none;
+  --xy-edge-stroke: var(--wa-border-strong);
+  --xy-edge-stroke-selected: var(--wa-action);
+  --xy-connectionline-stroke: var(--wa-action);
+  --xy-controls-button-background-color: var(--wa-surface);
+  --xy-controls-button-background-color-hover: var(--wa-surface-strong);
+  --xy-controls-button-color: var(--wa-text);
+  --xy-controls-button-color-hover: var(--wa-text);
+  --xy-controls-button-border-color: var(--wa-border);
+  --xy-controls-box-shadow: none;
+}
+
+/*
+ * 101a measured both failures. Vendor nodes set outline: none; zoom buttons take a 1px
+ * user-agent ring. 2.4.7 asks for 2px. The default attribution is hidden in the adapter
+ * (1.4.3); these rules cover whatever still takes focus.
+ */
+.react-flow__node:focus,
+.react-flow__node:focus-visible,
+.react-flow__controls-button:focus,
+.react-flow__controls-button:focus-visible {
+  outline: 2px solid var(--wa-focus);
+  outline-offset: 2px;
+}
+
+html.dark,
+html[data-theme='dark'] {
+  color-scheme: dark;
+  --wa-chrome: #0b141d;
+  --wa-chrome-raised: #1b2733;
+  --wa-chrome-active: #10467f;
+  --wa-chrome-border: #16212c;
+  --wa-chrome-text: #dbe3ea;
+  --wa-chrome-text-muted: #8d9aa8;
+  --wa-chrome-label: #7c8b99;
+  --wa-shell: #0b141d;
+  --wa-canvas: #0d1620;
+  --wa-surface: #172431;
+  --wa-surface-subtle: #1f2f3d;
+  --wa-surface-raised: #293b49;
+  --wa-surface-strong: #334653;
+  --wa-surface-inset: #101b25;
+  --wa-surface-accent: #132b41;
+  --wa-band: #14212c;
+  --wa-zebra: #1b2a37;
+  --wa-border: #324453;
+  --wa-divider: #283947;
+  --wa-border-strong: #455b6b;
+  --wa-border-action: #315e86;
+  --wa-border-success: #356a50;
+  --wa-border-warning: #735535;
+  --wa-border-danger: #754343;
+  --wa-text: #e9edf1;
+  --wa-text-secondary: #b3bec9;
+  /* 4.60:1 on the strongest persistent dark surface; captions remain AA everywhere they render. */
+  --wa-text-muted: #a7b3bf;
+  --wa-text-placeholder: #7d8a97;
+  --wa-text-inverse: #0b141d;
+  /* Link ink stays AA on raised and strong surfaces, not only on the page canvas. */
+  --wa-action: #7ab5f0;
+  --wa-action-hover: #a6cef6;
+  --wa-action-press: #c5e1fb;
+  --wa-action-soft: rgba(77, 151, 232, 0.12);
+  --wa-action-soft-hover: rgba(77, 151, 232, 0.2);
+  --wa-focus: #7ab5f0;
+  --wa-focus-inner: #12191f;
+  --wa-on-action: #0b141d;
+  --wa-selection: rgba(77, 151, 232, 0.16);
+  --wa-lava: #ff5a47;
+  --wa-lava-strong: #ff806f;
+  --wa-danger: #f47d74;
+  --wa-danger-fill: #e0574c;
+  --wa-danger-soft: #412f33;
+  /* 4.44:1 as badge text on its own wash. Lifted to 5.27:1; the fill below is unchanged. */
+  --wa-warning: #eb9b52;
+  --wa-warning-fill: #d97d24;
+  --wa-warning-soft: #40362c;
+  --wa-caution: #e3b23c;
+  --wa-caution-fill: #d9a72c;
+  --wa-caution-soft: rgba(217, 167, 44, 0.18);
+  /* 4.00:1 as chip text on its own wash, which is the one the run state uses. Now 4.60:1. */
+  --wa-success: #4bbc7d;
+  --wa-success-fill: #2e9c5e;
+  --wa-success-soft: #213b37;
+  /* Info badges use 11px text on their wash, so the neutral signal needs the same AA floor. */
+  --wa-info: #b3bec9;
+  --wa-info-soft: rgba(154, 168, 182, 0.14);
+  --wa-unmeasured: #757e8b;
+  --wa-unmeasured-track: #2c3641;
+  --wa-overlay: rgba(0, 0, 0, 0.45);
+  --wa-shadow-surface: 0 1px 0 rgba(255, 255, 255, 0.04), 0 12px 28px rgba(0, 0, 0, 0.24);
+  --wa-shadow-surface-hover: 0 1px 0 rgba(255, 255, 255, 0.06), 0 18px 38px rgba(0, 0, 0, 0.32);
+  --wa-shadow-action: 0 4px 12px rgba(77, 151, 232, 0.18), 0 20px 42px rgba(0, 0, 0, 0.3);
+  --wa-shadow-popover: 0 10px 28px rgba(0, 0, 0, 0.34), 0 2px 8px rgba(0, 0, 0, 0.24);
+  --wa-shadow-dialog: 0 24px 56px rgba(0, 0, 0, 0.46), 0 4px 14px rgba(0, 0, 0, 0.3);
+  --wa-radius-xs: 2px;
+  --wa-radius-sm: 6px;
+  --wa-radius-md: 8px;
+  --wa-radius-lg: 12px;
+  --wa-radius-xl: 16px;
+  --wa-radius-pill: 999px;
+  --background: var(--wa-canvas);
+  --foreground: var(--wa-text);
+  --card: var(--wa-surface);
+  --card-foreground: var(--wa-text);
+  --popover: var(--wa-surface-raised);
+  --popover-foreground: var(--wa-text);
+  --primary: var(--wa-action);
+  --primary-foreground: var(--wa-text-inverse);
+  --secondary: var(--wa-surface-strong);
+  --secondary-foreground: var(--wa-text);
+  --muted: var(--wa-surface-subtle);
+  --muted-foreground: var(--wa-text-muted);
+  --accent: var(--wa-action-soft);
+  --accent-foreground: var(--wa-action-hover);
+  --destructive: var(--wa-danger);
+  --destructive-foreground: var(--wa-text-inverse);
+  --success: var(--wa-success);
+  --success-foreground: var(--wa-text-inverse);
+  --warning: var(--wa-warning);
+  --warning-foreground: var(--wa-text-inverse);
+  --border: var(--wa-border);
+  --input: var(--wa-border-strong);
+  --ring: var(--wa-focus);
+  --radius: var(--wa-radius-md);
+  --sidebar: var(--wa-chrome);
+  --sidebar-foreground: var(--wa-chrome-text);
+  --sidebar-primary: var(--wa-action);
+  --sidebar-primary-foreground: var(--wa-text-inverse);
+  --sidebar-accent: var(--wa-chrome-raised);
+  --sidebar-accent-foreground: var(--wa-chrome-text);
+  --sidebar-border: var(--wa-chrome-border);
+  --sidebar-ring: var(--wa-focus);
+}
+
+/*
+ * System-mode fallback when no explicit data-theme/class is present.
+ *
+ * Byte-identical to the block above, and checked to stay that way. The alternative is for the
+ * boot script to resolve system mode and write `data-theme` before first paint, which it does —
+ * but only when JavaScript runs. This block is what makes a system-dark user see dark during the
+ * HTML parse, and it is why there is no flash to correct.
+ */
+/*
+ * Paper.
+ *
+ * A palette of its own rather than "use the light one", because paper is not a bright screen. The
+ * hairline borders that separate a table's rows at 1px on a backlit panel are #eaeef2, which a
+ * laser printer renders as either nothing or a dotted artefact; the muted grey that clears 4.5:1
+ * against a white screen loses contrast to the paper's own tint and to toner spread. So the
+ * boundaries darken and the greys darken with them. Every plane goes white — a tinted surface is
+ * ink spent on saying "this is a card", which on paper is not a distinction worth paying for.
+ *
+ * The selector is defensive on purpose. The block above targets
+ * `:root:not(.light):not([data-theme='light'])`, which outweighs a plain `:root` — so a print block
+ * written the obvious way is overruled on any machine set to dark at the system level, and the
+ * reader gets a dark-theme PDF with 40 pages of navy. Repeating the same shape with `html` in front
+ * of it is one specificity point more, which is the least that reliably wins.
+ *
+ * Print also drops the shadows outright rather than lightening them: a shadow is a claim about
+ * elevation, and nothing on a sheet of paper is elevated.
+ */
+@media print {
+  html:root,
+  html:root:not(.light):not([data-theme='light']) {
+    color-scheme: light;
+
+    /* Hidden by wa-print.css, toned anyway: a navy column would be 204px of solid ink if it
+       ever printed, and the failure mode of a missing display:none should not be that. */
+    --wa-chrome: #ffffff;
+    --wa-chrome-raised: #f2f4f7;
+    --wa-chrome-active: #eef3fa;
+    --wa-chrome-border: #c9d0d8;
+    --wa-chrome-text: #0b0e14;
+    --wa-chrome-text-muted: #4a535e;
+    --wa-chrome-label: #4a535e;
+
+    --wa-shell: #ffffff;
+    --wa-canvas: #ffffff;
+    --wa-surface: #ffffff;
+    --wa-surface-raised: #ffffff;
+    --wa-surface-inset: #ffffff;
+    --wa-surface-accent: #ffffff;
+    --wa-band: #ffffff;
+    /* The two that stay tinted: a table's own header row, and its banding. Both are dropped
+       entirely when the reader leaves "Background graphics" off, which is why nothing in the
+       report depends on either to be legible. */
+    --wa-surface-subtle: #f2f4f7;
+    --wa-surface-strong: #e9edf1;
+    --wa-zebra: #f5f7f9;
+
+    --wa-border: #c9d0d8;
+    --wa-divider: #d8dee5;
+    --wa-border-strong: #9aa4b0;
+    --wa-border-action: #9aa4b0;
+    --wa-border-success: #9aa4b0;
+    --wa-border-warning: #9aa4b0;
+    --wa-border-danger: #9aa4b0;
+
+    --wa-text: #0b0e14;
+    --wa-text-secondary: #2b333d;
+    --wa-text-muted: #4a535e;
+    --wa-text-placeholder: #6b7480;
+    --wa-text-inverse: #ffffff;
+
+    /* Darker than the screen's blue: a link has to hold as ink, and it prints as grey on a
+       monochrome printer, where #1b62c9 lands too light to distinguish from body text. */
+    --wa-action: #0b4da2;
+    --wa-action-hover: #0b4da2;
+    --wa-action-press: #0b4da2;
+    --wa-action-soft: #eef3fa;
+    --wa-action-soft-hover: #eef3fa;
+    --wa-focus: #0b4da2;
+    --wa-selection: #eef3fa;
+
+    /* The ink on that fill, restated because this block is a partial override and the theme
+       underneath it is whichever one the reader had open. The dark theme's --wa-on-action is
+       #0b141d, for its own pale blue; over the print fill above it measures 2.29:1, so a reader
+       printing from dark mode got a primary button whose label was very nearly its background.
+       --wa-focus-inner is the same shape of fault on the ring inside a focused control. */
+    --wa-on-action: #ffffff;
+    --wa-focus-inner: #ffffff;
+
+    --wa-lava: #c92e1f;
+    --wa-lava-strong: #a82618;
+
+    --wa-danger: #8f1a11;
+    --wa-danger-fill: #b42318;
+    --wa-danger-soft: #fbe9e7;
+    --wa-warning: #7a3a05;
+    --wa-warning-fill: #b45309;
+    --wa-warning-soft: #fbf0e4;
+    --wa-caution: #6f4a05;
+    --wa-caution-fill: #a16207;
+    --wa-caution-soft: #fbf6e4;
+    --wa-success: #0f5f34;
+    --wa-success-fill: #12703f;
+    --wa-success-soft: #e8f4ec;
+    --wa-info: #333d49;
+    --wa-info-soft: #eef1f4;
+
+    --wa-unmeasured: #6f7783;
+    --wa-unmeasured-track: #e4e7ea;
+
+    --wa-overlay: #ffffff;
+    --wa-shadow-surface: none;
+    --wa-shadow-surface-hover: none;
+    --wa-shadow-action: none;
+    --wa-shadow-popover: none;
+    --wa-shadow-dialog: none;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not(.light):not([data-theme='light']) {
+    color-scheme: dark;
+    --wa-chrome: #0b141d;
+    --wa-chrome-raised: #1b2733;
+    --wa-chrome-active: #10467f;
+    --wa-chrome-border: #16212c;
+    --wa-chrome-text: #dbe3ea;
+    --wa-chrome-text-muted: #8d9aa8;
+    --wa-chrome-label: #7c8b99;
+    --wa-shell: #0b141d;
+    --wa-canvas: #0d1620;
+    --wa-surface: #172431;
+    --wa-surface-subtle: #1f2f3d;
+    --wa-surface-raised: #293b49;
+    --wa-surface-strong: #334653;
+    --wa-surface-inset: #101b25;
+    --wa-surface-accent: #132b41;
+    --wa-band: #14212c;
+    --wa-zebra: #1b2a37;
+    --wa-border: #324453;
+    --wa-divider: #283947;
+    --wa-border-strong: #455b6b;
+    --wa-border-action: #315e86;
+    --wa-border-success: #356a50;
+    --wa-border-warning: #735535;
+    --wa-border-danger: #754343;
+    --wa-text: #e9edf1;
+    --wa-text-secondary: #b3bec9;
+    --wa-text-muted: #a7b3bf;
+    --wa-text-placeholder: #7d8a97;
+    --wa-text-inverse: #0b141d;
+    --wa-action: #7ab5f0;
+    --wa-action-hover: #a6cef6;
+    --wa-action-press: #c5e1fb;
+    --wa-action-soft: rgba(77, 151, 232, 0.12);
+    --wa-action-soft-hover: rgba(77, 151, 232, 0.2);
+    --wa-focus: #7ab5f0;
+    --wa-focus-inner: #12191f;
+    --wa-on-action: #0b141d;
+    --wa-selection: rgba(77, 151, 232, 0.16);
+    --wa-lava: #ff5a47;
+    --wa-lava-strong: #ff806f;
+    --wa-danger: #f47d74;
+    --wa-danger-fill: #e0574c;
+    --wa-danger-soft: #412f33;
+    --wa-warning: #eb9b52;
+    --wa-warning-fill: #d97d24;
+    --wa-warning-soft: #40362c;
+    --wa-caution: #e3b23c;
+    --wa-caution-fill: #d9a72c;
+    --wa-caution-soft: rgba(217, 167, 44, 0.18);
+    --wa-success: #4bbc7d;
+    --wa-success-fill: #2e9c5e;
+    --wa-success-soft: #213b37;
+    --wa-info: #b3bec9;
+    --wa-info-soft: rgba(154, 168, 182, 0.14);
+    --wa-unmeasured: #757e8b;
+    --wa-unmeasured-track: #2c3641;
+    --wa-overlay: rgba(0, 0, 0, 0.45);
+    --wa-shadow-surface: 0 1px 0 rgba(255, 255, 255, 0.04), 0 12px 28px rgba(0, 0, 0, 0.24);
+    --wa-shadow-surface-hover: 0 1px 0 rgba(255, 255, 255, 0.06), 0 18px 38px rgba(0, 0, 0, 0.32);
+    --wa-shadow-action: 0 4px 12px rgba(77, 151, 232, 0.18), 0 20px 42px rgba(0, 0, 0, 0.3);
+    --wa-shadow-popover: 0 10px 28px rgba(0, 0, 0, 0.34), 0 2px 8px rgba(0, 0, 0, 0.24);
+    --wa-shadow-dialog: 0 24px 56px rgba(0, 0, 0, 0.46), 0 4px 14px rgba(0, 0, 0, 0.3);
+    --wa-radius-xs: 2px;
+    --wa-radius-sm: 6px;
+    --wa-radius-md: 8px;
+    --wa-radius-lg: 12px;
+    --wa-radius-xl: 16px;
+    --wa-radius-pill: 999px;
+    --background: var(--wa-canvas);
+    --foreground: var(--wa-text);
+    --card: var(--wa-surface);
+    --card-foreground: var(--wa-text);
+    --popover: var(--wa-surface-raised);
+    --popover-foreground: var(--wa-text);
+    --primary: var(--wa-action);
+    --primary-foreground: var(--wa-text-inverse);
+    --secondary: var(--wa-surface-strong);
+    --secondary-foreground: var(--wa-text);
+    --muted: var(--wa-surface-subtle);
+    --muted-foreground: var(--wa-text-muted);
+    --accent: var(--wa-action-soft);
+    --accent-foreground: var(--wa-action-hover);
+    --destructive: var(--wa-danger);
+    --destructive-foreground: var(--wa-text-inverse);
+    --success: var(--wa-success);
+    --success-foreground: var(--wa-text-inverse);
+    --warning: var(--wa-warning);
+    --warning-foreground: var(--wa-text-inverse);
+    --border: var(--wa-border);
+    --input: var(--wa-border-strong);
+    --ring: var(--wa-focus);
+    --radius: var(--wa-radius-md);
+    --sidebar: var(--wa-chrome);
+    --sidebar-foreground: var(--wa-chrome-text);
+    --sidebar-primary: var(--wa-action);
+    --sidebar-primary-foreground: var(--wa-text-inverse);
+    --sidebar-accent: var(--wa-chrome-raised);
+    --sidebar-accent-foreground: var(--wa-chrome-text);
+    --sidebar-border: var(--wa-chrome-border);
+    --sidebar-ring: var(--wa-focus);
+  }
+}

@@ -1,0 +1,185 @@
+# The bundle that deploys this app.
+#
+# Held to the same configuration as app.yaml by check:resources. Two files for two readers —
+# this one for a bundle deploy, app.yaml for the Apps runtime — and the app is only correct if
+# both agree. A Marketplace manifest is deliberately not part of the supported Git/DAB installation.
+#
+# They drifted once: this file named a different app entirely and declared neither the scopes
+# nor the store, so every deploy through it produced an app that could not read system tables
+# and had nowhere to keep history, and the gap was closed by hand each time with
+# `databricks apps update`. This file is the authority on both — the app object's scopes are
+# what the proxy mints tokens against.
+#
+# `lifecycle.started` is deliberately absent: it is accepted only in direct deployment
+# mode and fails the deploy outright otherwise. Start the app explicitly instead.
+
+bundle:
+  name: waf-assessment
+
+# The optional scheduled-scan job. Kept in its own file so that this one stays the size it was,
+# and so opting out is deleting a file rather than editing this one. It deploys paused. See
+# The job and application responsibilities are held together by the supervision check.
+include:
+  - resources/*.yml
+
+variables:
+  sql_warehouse_id:
+    description: The SQL warehouse to run the assessment queries on.
+  app_url:
+    description: >-
+      The app's own hostname, which the scheduled job posts to. Reported as `url` by
+      `databricks apps get`, and not the workspace URL — the app is served from its own host.
+      Only the optional scheduled job reads this; the app itself never needs to know its own URL.
+    default: ''
+  schedule_client_id:
+    description: >-
+      Application id of the service principal the scheduled assessment runs as. Its grants decide
+      what a scheduled run can see, which is deliberately separate from the app's own identity.
+      Unused unless the scheduled job is unpaused.
+    default: ''
+  schedule_secret_scope:
+    description: >-
+      Secret scope holding that principal's OAuth secret. Read by the job, never by the app.
+    default: ''
+  schedule_secret_key:
+    description: The key within that scope.
+    default: ''
+  schedule_assessment_id:
+    description: >-
+      The assessment every scheduled run answers to, by id. An id rather than a rule, so that adding a
+      definition changes nothing about what this job measures: resolving its target only when it fired
+      would silently change the assessment.
+
+      Empty by default, and empty is a supported setting rather than an unconfigured one. The app's
+      schedule panel reports whether an assessment is selected, and the assessments page is where the
+      ids come from.
+
+      Naming one moves the window with it: the assessment's own definition says which pillars, which
+      workspaces and how far back, so `lookback_days` on the job stops applying. The scan route refuses a
+      request that sets both.
+    default: ''
+  assessor_group:
+    description: >-
+      The Databricks group whose members may change an assessment: start or cancel a scan, answer a
+      requirement only a person can answer, accept or defer a risk. Everyone who can open the app
+      still reads everything. The group must hold its members directly, because SCIM reports direct
+      memberships only and a group nested inside this one does not count.
+
+      Here rather than in `app.yaml` because it is the one setting that has to differ between
+      installs, and `app.yaml` is the one place it cannot: a value there silently beats a target's
+      `config.env`; a conflicting value can otherwise deploy successfully while the app gates a different
+      group from the one the installer selected.
+
+      `admins` is the default rather than empty because it is the narrowest group that exists in every
+      workspace without anybody creating it, so a fresh install is closed rather than open on its
+      first boot. It is not the right answer for long: an install whose assessors are not workspace
+      admins should name a group of its own, and must, because the alternative is making assessors
+      admins.
+    default: 'admins'
+  job_performance_target:
+    description: >-
+      Serverless compute performance for the scheduled job: STANDARD or PERFORMANCE_OPTIMIZED.
+      Standard by default because the job runs unattended before six on a Monday and
+      performance-optimized costs about three times the DBUs for a start that is two to four minutes
+      faster. Worth overriding only where somebody is waiting for the run — a development workspace
+      exercising the job by hand, where that startup is paid on every attempt. See
+      resources/scheduled-scan.yml for the measurements.
+    default: 'STANDARD'
+  postgres_branch:
+    description: >-
+      The Lakebase branch to keep scan history, attested answers and decisions in, as
+      `projects/<project>/branches/<branch>`. From `databricks postgres list-branches`. The app
+      refuses to start without it rather than running with a history it silently forgets.
+  postgres_database:
+    description: >-
+      The database within that branch, as `projects/<project>/branches/<branch>/databases/<id>`.
+      From `databricks api get /api/2.0/postgres/<branch>/databases` — CLI v1.1.0 has
+      `list-branches` and `list-endpoints` but no `list-databases`, so this one is a raw call. A new
+      project arrives with a database whose id is `databricks-postgres` and whose Postgres name is
+      `databricks_postgres`; the two differ, and it is the resource name above that belongs here.
+      The app creates its own schema inside it and touches nothing else.
+
+resources:
+  apps:
+    app:
+      # Must match app.yaml's name, or a deploy creates a second app alongside the real one.
+      name: 'databricks-waf-assessment'
+      description: 'Assess a Databricks workspace against the seven pillars of the Well-Architected Framework.'
+      source_code_path: ./
+
+      # The scopes the app is granted to act as the signed-in user. Set here as well as in
+      # app.yaml because these are the ones that take effect: measured on a real workspace,
+      # the app object's scopes are what the proxy mints tokens against, and app.yaml alone
+      # left it holding only the two default iam scopes. The list stays narrow: settings,
+      # authentication, clusters and secrets are refused by name.
+      user_api_scopes:
+        - sql.statement-execution
+        - sql.warehouses:read
+        - catalog.catalogs:read
+        - catalog.schemas:read
+        - catalog.tables:read
+        - model-serving
+        - vector-search
+        # Query plans for the workload advisor. The reasoning, and why the narrow name, is in app.yaml.
+        - sql.query-history:read
+
+      # The whole environment, because this block replaces app.yaml's rather than merging with it.
+      #
+      # That is the part worth knowing, and it was learnt the expensive way twice. This block exists
+      # for one variable — `WAF_ASSESSOR_GROUP` names a Databricks group, which is not an app resource
+      # and so has nothing to bind with `value_from`, and it is the one setting that has to differ
+      # between installs. But declaring that one name here silently dropped the other three, including
+      # both `value_from` bindings, and the app came up with no Lakebase endpoint and no warehouse. It
+      # started, reported "no database is bound to this app", and pointed at the app's resources — which
+      # were bound correctly and always had been. Nothing in the deploy said an env var had been
+      # replaced.
+      #
+      # So the rule is: every name app.yaml declares must appear here too, or it is not set at all.
+      # check:resources holds the two lists identical rather than trusting this comment.
+      #
+      # A previous version of this comment claimed the two files merge with app.yaml winning a
+      # conflict. They do not merge, and the observation behind that claim had a simpler cause: the
+      # target below had not yet overridden `assessor_group`, so this block was itself supplying the
+      # `admins` that app.yaml was blamed for.
+      config:
+        env:
+          # `value_from` is the bundle's spelling of app.yaml's `valueFrom`, and it works: CLI v1.1.0
+          # accepts it inside this block and the platform resolves both bindings. databricks/cli#4288,
+          # which is why an earlier version of this block held only one variable, is fixed.
+          - name: DATABRICKS_WAREHOUSE_ID
+            value_from: sql-warehouse
+          - name: LAKEBASE_ENDPOINT
+            value_from: postgres
+          - name: WAF_AUDIT_STRICT
+            value: '0'
+          # The reason this block exists. app.yaml declares `admins`, which is right for a reader that
+          # never sees this file and wrong to hardcode for one that does.
+          - name: WAF_ASSESSOR_GROUP
+            value: ${var.assessor_group}
+
+      # What the app is bound to. Named, never hardcoded, so the same build runs in any
+      # workspace.
+      resources:
+        - name: sql-warehouse
+          sql_warehouse:
+            id: ${var.sql_warehouse_id}
+            permission: CAN_USE
+
+        # CAN_CONNECT_AND_CREATE is the only permission this resource type offers, and it is also
+        # the one the app needs: it creates its own schema on first boot so that the schema's owner
+        # is the identity that will write to it. A role granted less could connect and then be
+        # refused on its own tables. See server/store/postgres.ts.
+        - name: postgres
+          description: 'Where scan history, attested answers and risk decisions are kept.'
+          postgres:
+            branch: ${var.postgres_branch}
+            database: ${var.postgres_database}
+            permission: CAN_CONNECT_AND_CREATE
+
+targets:
+  # Distribution target. It deliberately carries no workspace identifiers: a clean customer clone
+  # supplies the three required resource bindings in the ignored target override file described in
+  # docs/deployment-lifecycle.md, and --profile supplies the host. Keeping those values out of git
+  # prevents a copied command from pointing at somebody else's workspace.
+  customer:
+    default: true

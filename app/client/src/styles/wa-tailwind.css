@@ -1,0 +1,2504 @@
+/*
+ * Tailwind v4 semantic layer for the customer design system. Historical Architecture Studio
+ * provenance remains in NOTICE.md; docs/design/customer-design-system.md is the authority.
+ *
+ * Deliberately does NOT `@import "tailwindcss"`: @databricks/appkit-ui/styles.css already
+ * does, and importing it twice would emit the preflight and utility layers twice. This file
+ * joins AppKit's compilation unit rather than starting a second one.
+ *
+ * The `dark` custom variant is not optional decoration. Tailwind v4 defaults `dark:` to
+ * prefers-color-scheme and ignores tailwind.config.ts unless @config is used, which AppKit
+ * does not do. Without this declaration a `dark:` utility follows the operating system and
+ * ignores the user's in-app choice, so the theme toggle would move the tokens but not the
+ * utilities.
+ */
+
+@custom-variant dark (&:where(.dark, .dark *, [data-theme='dark'], [data-theme='dark'] *));
+
+/*
+ * The build output is not a source.
+ *
+ * Tailwind v4 detects sources by walking the repository from the stylesheet outwards, skipping
+ * whatever .gitignore excludes. This app commits its bundle — the platform runs the committed
+ * files rather than building them — so dist is tracked, therefore scanned, therefore the class
+ * names in the previous build's own output become an input to the next build's CSS.
+ *
+ * That makes the output a function of itself. Two consecutive builds of identical source
+ * produced different CSS, and CI's build never agreed with a local one, because the dist each
+ * started from held different bytes. The utilities were all present either way, so nothing
+ * looked wrong; only the bundle-freshness check could see it, and its complaint ("run npm run
+ * bundle and commit the result") pointed at the one thing that could not fix it.
+ */
+@source not "../../dist";
+@source not "../../../dist";
+
+@theme inline {
+  --font-sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
+
+  --color-wa-shell: var(--wa-shell);
+  --color-wa-canvas: var(--wa-canvas);
+  --color-wa-surface: var(--wa-surface);
+  --color-wa-surface-subtle: var(--wa-surface-subtle);
+  --color-wa-surface-raised: var(--wa-surface-raised);
+  --color-wa-surface-strong: var(--wa-surface-strong);
+  --color-wa-surface-inset: var(--wa-surface-inset);
+  --color-wa-surface-accent: var(--wa-surface-accent);
+  --color-wa-zebra: var(--wa-zebra);
+  --color-wa-band: var(--wa-band);
+
+  /* Chrome ink is its own set: --wa-text on navy is near-black on navy. */
+  --color-wa-chrome: var(--wa-chrome);
+  --color-wa-chrome-raised: var(--wa-chrome-raised);
+  --color-wa-chrome-border: var(--wa-chrome-border);
+  --color-wa-chrome-text: var(--wa-chrome-text);
+  --color-wa-chrome-muted: var(--wa-chrome-text-muted);
+
+  --color-wa-unmeasured: var(--wa-unmeasured);
+  --color-wa-unmeasured-track: var(--wa-unmeasured-track);
+  --color-wa-danger-fill: var(--wa-danger-fill);
+  --color-wa-warning-fill: var(--wa-warning-fill);
+  --color-wa-caution: var(--wa-caution);
+  --color-wa-caution-fill: var(--wa-caution-fill);
+  --color-wa-caution-soft: var(--wa-caution-soft);
+  --color-wa-success-fill: var(--wa-success-fill);
+  --color-wa-border: var(--wa-border);
+  --color-wa-divider: var(--wa-divider);
+  --color-wa-border-strong: var(--wa-border-strong);
+  --color-wa-border-action: var(--wa-border-action);
+  --color-wa-border-success: var(--wa-border-success);
+  --color-wa-border-warning: var(--wa-border-warning);
+  --color-wa-border-danger: var(--wa-border-danger);
+  --color-wa-text: var(--wa-text);
+  --color-wa-text-secondary: var(--wa-text-secondary);
+  --color-wa-text-muted: var(--wa-text-muted);
+  --color-wa-text-placeholder: var(--wa-text-placeholder);
+  --color-wa-action: var(--wa-action);
+  --color-wa-action-hover: var(--wa-action-hover);
+  --color-wa-action-press: var(--wa-action-press);
+  --color-wa-action-soft: var(--wa-action-soft);
+  --color-wa-selection: var(--wa-selection);
+  --color-wa-lava: var(--wa-lava);
+  --color-wa-danger: var(--wa-danger);
+  --color-wa-danger-soft: var(--wa-danger-soft);
+  --color-wa-warning: var(--wa-warning);
+  --color-wa-warning-soft: var(--wa-warning-soft);
+  --color-wa-success: var(--wa-success);
+  --color-wa-success-soft: var(--wa-success-soft);
+  --color-wa-info: var(--wa-info);
+  --color-wa-info-soft: var(--wa-info-soft);
+
+  --radius-xs: var(--wa-radius-xs);
+  --radius-sm: var(--wa-radius-sm);
+  --radius-md: var(--wa-radius-md);
+  --radius-lg: var(--wa-radius-lg);
+  --radius-xl: var(--wa-radius-xl);
+}
+
+@layer base {
+  * {
+    border-color: var(--wa-border);
+  }
+
+  html {
+    min-width: 320px;
+    background: var(--wa-canvas);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    margin: 0;
+    background: var(--wa-canvas);
+    color: var(--wa-text);
+    font-size: 14px;
+    line-height: 20px;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+  }
+
+  /*
+   * Two rings: the focus colour outside, and a ring of the surface colour filling the 2px offset.
+   *
+   * The offset used to show whatever was behind the element, which is the plane on a card and
+   * something else entirely on a filled badge, a hovered row or the dark navigation rail — so the
+   * separation the outline needs to read against its own background was there on some surfaces and
+   * gone on others. The box-shadow spread matches the offset exactly, so it fills that gap and
+   * nothing more, and the treatment is identical wherever focus lands.
+   *
+   * In forced-colors mode the shadow is dropped and the outline switches to the system highlight,
+   * because Windows high contrast discards box-shadow and honours outline.
+   */
+  :focus-visible {
+    outline: 2px solid var(--wa-focus);
+    outline-offset: 2px;
+    box-shadow: 0 0 0 2px var(--wa-focus-inner);
+  }
+
+  @media (forced-colors: active) {
+    :focus-visible {
+      outline-color: Highlight;
+      box-shadow: none;
+    }
+  }
+
+  ::selection {
+    background: var(--wa-selection);
+    color: var(--wa-text);
+  }
+}
+
+@layer components {
+  /*
+   * Typography — six steps, measured off the reference, as classes so a page cannot invent a
+   * seventh size.
+   *
+   * The jumps are the point. The ramp this replaced ran 11, 12, 13, 14, 18: five sizes inside
+   * seven points, which is not a hierarchy, it is a rounding error. Nothing on the page could
+   * be more important than anything else because nothing could look it, and the result read as
+   * generated no matter how the content was arranged. 12 to 14 is a change of register, 14 to 24
+   * is a change of rank, and 28 and 48 exist for numbers alone.
+   */
+  .wa-title-page {
+    font-size: 24px;
+    line-height: 30px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
+  .wa-title-section {
+    font-size: 16px;
+    line-height: 22px;
+    font-weight: 600;
+  }
+
+  /* A score. 28px, tabular, and the only thing on a card allowed to be this big. */
+  .wa-metric-value {
+    font-size: 28px;
+    line-height: 32px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+  }
+
+  /* One count at the centre of a distribution, and nowhere else. */
+  .wa-metric-hero {
+    font-size: 48px;
+    line-height: 50px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.03em;
+  }
+
+  .wa-body-compact {
+    font-size: 13px;
+    line-height: 18px;
+  }
+
+  .wa-label {
+    font-size: 12px;
+    line-height: 16px;
+    font-weight: 500;
+    color: var(--wa-text-muted);
+  }
+
+  /* Chrome and table column headings: 10px, tracked, uppercase. */
+  .wa-label-eyebrow {
+    font-size: 10px;
+    line-height: 14px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--wa-text-muted);
+  }
+
+  .wa-code {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    line-height: 18px;
+  }
+
+  /*
+   * A quoted block: SQL, a CLI command, Terraform, a message from the platform.
+   *
+   * It wraps. It does not scroll sideways. These are things a reader copies and runs, and the widest
+   * of them ran 947px past the pane on the findings page and 1007px on the report — a command you
+   * have to drag a scrollbar to finish reading is one you cannot check before running it, which is
+   * the opposite of what quoting it verbatim was for.
+   *
+   * `pre-wrap` breaks the line for the eye only: hard newlines are still the ones in the source, so
+   * what the clipboard hands to a shell is unchanged. `overflow-wrap: anywhere` catches the case
+   * `pre-wrap` cannot — one unbroken token, an ARN or a URL, wider than the pane by itself.
+   *
+   * The indent hangs. A statement in the source starts flush left; a line the pane had to fold sits
+   * two characters in, so a fold cannot be misread as the next statement.
+   */
+  .wa-code-block {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    line-height: 18px;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    padding: 8px 8px 8px calc(8px + 2ch);
+    text-indent: -2ch;
+  }
+
+  /* Provenance, timestamps, coverage notes and the score disclaimer. Read second, by choice. */
+  .wa-caption {
+    font-size: 12px;
+    line-height: 16px;
+    color: var(--wa-text-muted);
+  }
+
+  /*
+   * A score's denominator. Label-sized and muted against a 28px value, because "/100" is not
+   * the measurement and must not be set as though it were.
+   */
+  .wa-metric-suffix {
+    font-size: 13px;
+    line-height: 18px;
+    font-weight: 500;
+    color: var(--wa-text-muted);
+  }
+
+  /* Scores, counts, timestamps and percentages must not shift width as digits change. */
+  .wa-numeric {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /*
+   * The application shell: a persistent left rail and one scrolling region beside it.
+   *
+   * A rail rather than the row of text links this replaced. Five links in a 48px bar could
+   * carry the five pages and nothing else — not which pillar you are in, not how any of them
+   * are doing, not where a page sits in the hierarchy — so every page had to reintroduce its
+   * own title, its own back link and its own list of pillars, and the reader rebuilt the
+   * structure from prose on each arrival. The rail states the structure once and stays.
+   *
+   * The rail scrolls independently and does not move with the content, because it is the fixed
+   * point the content is navigated from.
+   */
+  /*
+   * The document does not scroll. It is exactly the viewport, and the scroll — where there has to be
+   * one — happens inside `.wa-canvas-scroll` below.
+   *
+   * `height` rather than `min-height`, with overflow hidden, and that one-word change is the whole
+   * fixed-viewport shell. The chrome column was already sticky at 100dvh so it stayed put, but the
+   * page header scrolled away with the content: on the overview a reader who went looking for the
+   * pillars they could not see also lost the score, the run's provenance and the Run a scan button,
+   * and arrived at the bottom of a page with no way to tell what they were looking at.
+   *
+   * Released for print, where a viewport height is meaningless and a clipped region is a silently
+   * truncated report. See wa-print.css.
+   */
+  .wa-app {
+    display: grid;
+    height: 100dvh;
+    overflow: hidden;
+    grid-template-rows: 48px minmax(0, 1fr);
+    background: var(--wa-canvas);
+  }
+
+  /*
+   * The one scrolling region, and the reason it is here rather than on `.wa-page`.
+   *
+   * `.wa-page` is centred inside the measure, so a scrollbar on it appears part-way across the canvas
+   * with dead space to its right. On the content column the scrollbar sits at the true edge, which is
+   * where every other application puts it.
+   *
+   * That there is a scrollbar at all is a deliberate limit on the no-scroll rule. Lists paginate, so
+   * a list never causes it — but a finding's evidence, a remediation statement and a decision's
+   * history are prose of whatever length the estate produced, and prose cannot be paginated into a
+   * fixed pane without hiding the end of a sentence. So: the shell never scrolls, no page scrolls
+   * because of a list, and a detail pane holding an unusually long statement scrolls within itself.
+   */
+  .wa-canvas-scroll {
+    min-height: 0;
+    flex: 1;
+    overflow-y: auto;
+    /*
+     * Room left above and below anything scrolled into view, which is WCAG 2.2's 2.4.11.
+     *
+     * Tabbing into a list scrolls the row to the nearest edge, and at 860px that edge was underneath
+     * the panel header pinned above it: focus landed on a row whose ring was hidden by a 44px
+     * sticky header, on every row of the ranked risk list. 48px clears the header, and the same
+     * padding at the bottom keeps the last row off the fold. The end needs 64px: measured by the
+     * Labs-backed keyboard walk after using a task-workspace bypass, 48px left the guided-answer
+     * evidence textarea 14px beyond the scrollport at 860x800. Sixteen more pixels keeps the field
+     * and its focus ring inside without moving the sticky page header.
+     */
+    scroll-padding-block: 48px 64px;
+    overscroll-behavior: contain;
+  }
+
+  /*
+   * The estate graph. Overflow is hidden so 2.4.11 does not walk this pane as a scroller —
+   * ADR 0098. Height is a pane, not the document: a tall graph must not grow `#content`.
+   */
+  .wa-topology-pane {
+    /* A definite flex basis gives xyflow's `height: 100%` a real containing block. `auto` made the
+       outer plane consume the right room while the graph itself resolved to zero pixels. */
+    height: 0;
+    min-height: 320px;
+    flex: 1 1 0;
+    overflow: hidden;
+    background: var(--wa-surface);
+  }
+
+  /* xyflow declares light-mode defaults on the graph element itself. Restating the semantic
+     variables on that same element makes the canvas, dots and controls follow the app's explicit
+     theme instead of the operating-system default. */
+  .wa-topology-pane .react-flow {
+    --xy-background-color: var(--wa-canvas);
+    --xy-background-pattern-color: var(--wa-divider);
+    --xy-controls-button-background-color: var(--wa-surface);
+    --xy-controls-button-background-color-hover: var(--wa-surface-strong);
+    --xy-controls-button-color: var(--wa-text);
+    --xy-controls-button-color-hover: var(--wa-text);
+    --xy-controls-button-border-color: var(--wa-border);
+  }
+
+  .wa-topology-node {
+    border: 1px solid var(--wa-border-strong);
+    border-radius: var(--wa-radius-sm);
+    background: var(--wa-surface);
+    color: var(--wa-text);
+    font-size: 14px;
+    line-height: 18px;
+    overflow: hidden;
+    padding: 0;
+    text-align: left;
+  }
+
+  .wa-topology-node-content {
+    display: flex;
+    height: 100%;
+    min-width: 0;
+    flex-direction: column;
+    justify-content: center;
+    gap: 8px;
+    padding: 8px 12px;
+  }
+
+  .wa-topology-node-name {
+    display: -webkit-box;
+    overflow: hidden;
+    color: var(--wa-text);
+    font-size: 14px;
+    font-weight: 650;
+    line-height: 18px;
+    overflow-wrap: anywhere;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .wa-topology-node-meta {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .wa-topology-node-id {
+    min-width: 0;
+    flex: 1;
+    overflow: hidden;
+    color: var(--wa-text-muted);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 10px;
+    line-height: 14px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .wa-resource-kind {
+    --wa-resource-kind-ink: #4f4b62;
+    --wa-resource-kind-soft: #f0eff4;
+    display: inline-flex;
+    width: fit-content;
+    flex: none;
+    align-items: center;
+    gap: 4px;
+    border: 1px solid color-mix(in srgb, var(--wa-resource-kind-ink) 30%, transparent);
+    border-radius: var(--wa-radius-pill);
+    background: var(--wa-resource-kind-soft);
+    color: var(--wa-resource-kind-ink);
+    font-size: 10px;
+    font-weight: 650;
+    line-height: 16px;
+    padding: 0 6px;
+    white-space: nowrap;
+  }
+
+  .wa-resource-kind svg {
+    width: 11px;
+    height: 11px;
+    stroke-width: 2;
+  }
+
+  .wa-resource-kind[data-kind='job'] {
+    --wa-resource-kind-ink: #5d4388;
+    --wa-resource-kind-soft: #f1edf8;
+  }
+
+  .wa-resource-kind[data-kind='pipeline'] {
+    --wa-resource-kind-ink: #844263;
+    --wa-resource-kind-soft: #f8edf2;
+  }
+
+  .wa-resource-kind[data-kind='cluster'] {
+    --wa-resource-kind-ink: #356473;
+    --wa-resource-kind-soft: #eaf3f5;
+  }
+
+  .wa-resource-kind[data-kind='warehouse'] {
+    --wa-resource-kind-ink: #71531e;
+    --wa-resource-kind-soft: #f6f0e4;
+  }
+
+  .wa-resource-kind[data-kind='table'] {
+    --wa-resource-kind-ink: #42604b;
+    --wa-resource-kind-soft: #edf4ef;
+  }
+
+  .wa-resource-endpoint {
+    display: inline-flex;
+    min-width: 0;
+    max-width: 100%;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .wa-resource-endpoint > :last-child {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .wa-resource-relation {
+    display: flex;
+    min-width: 0;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    color: var(--wa-text-secondary);
+    font-size: 12px;
+    line-height: 18px;
+    overflow-wrap: anywhere;
+  }
+
+  html.dark .wa-resource-kind {
+    --wa-resource-kind-ink: #c3bdcf;
+    --wa-resource-kind-soft: #35333d;
+  }
+
+  html.dark .wa-resource-kind[data-kind='job'] {
+    --wa-resource-kind-ink: #c9b5ef;
+    --wa-resource-kind-soft: #352f43;
+  }
+
+  html.dark .wa-resource-kind[data-kind='pipeline'] {
+    --wa-resource-kind-ink: #e5adc5;
+    --wa-resource-kind-soft: #412f39;
+  }
+
+  html.dark .wa-resource-kind[data-kind='cluster'] {
+    --wa-resource-kind-ink: #9acbd6;
+    --wa-resource-kind-soft: #293b41;
+  }
+
+  html.dark .wa-resource-kind[data-kind='warehouse'] {
+    --wa-resource-kind-ink: #dec184;
+    --wa-resource-kind-soft: #40392c;
+  }
+
+  html.dark .wa-resource-kind[data-kind='table'] {
+    --wa-resource-kind-ink: #a9d0b3;
+    --wa-resource-kind-soft: #2e3d34;
+  }
+
+  .wa-topology-node--cluster {
+    border-style: dashed;
+    background: var(--wa-surface-subtle);
+  }
+
+  .wa-topology-node--selected,
+  .wa-topology-node--near {
+    border-color: var(--wa-action);
+  }
+
+  .wa-topology-edge--compute .react-flow__edge-path {
+    stroke-dasharray: 4 3;
+  }
+
+  /*
+   * The application command bar: four customer tasks, one contextual menu and one utility menu.
+   *
+   * The 204px route directory this replaces devoted the first fifth of every viewport to the
+   * implementation model. The approved shell keeps only Assess, Investigate, Improve and Operate
+   * persistent. The current task's record types are disclosed when needed; methodology and
+   * administration are secondary. At 48px this is the reference command-bar height and leaves the
+   * work plane, rather than the navigation, as the largest region.
+   */
+  .wa-chrome {
+    display: flex;
+    z-index: 20;
+    align-items: center;
+    min-width: 0;
+    width: 100%;
+    height: 48px;
+    border-bottom: 1px solid var(--wa-chrome-border);
+    background: var(--wa-chrome);
+    color: var(--wa-chrome-text);
+  }
+
+  /*
+   * Shown only where the rail is gone. The width is `CHROME_MIN_WIDTH_PX` in chrome-width.ts;
+   * `check-design-system` holds this hide, the 899px reveal, and the sheet gate to that constant.
+   */
+  .wa-nav-menu {
+    display: none;
+  }
+
+  .wa-chrome-brand {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 8px;
+    min-height: 32px;
+    border-right: 1px solid var(--wa-chrome-border);
+    padding-inline: 16px 20px;
+    font-size: 14px;
+    line-height: 20px;
+  }
+
+  .wa-chrome-scroll {
+    display: flex;
+    flex: 1;
+    align-items: stretch;
+    min-width: 0;
+    gap: 2px;
+    padding-inline: 8px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .wa-summary-link {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 8px;
+    min-height: 32px;
+    border-right: 1px solid var(--wa-chrome-border);
+    padding-inline: 16px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--wa-chrome-text);
+    white-space: nowrap;
+  }
+
+  .wa-summary-link:hover {
+    background: var(--wa-chrome-raised);
+    color: var(--wa-chrome-text);
+  }
+
+  .wa-summary-link[aria-current] {
+    background: var(--wa-chrome-active);
+    color: #ffffff;
+    font-weight: 600;
+  }
+
+  .wa-chrome-scroll::-webkit-scrollbar {
+    display: none;
+  }
+
+  .wa-chrome-foot {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 4px;
+    border-left: 1px solid var(--wa-chrome-border);
+    padding-inline: 8px;
+  }
+
+  .wa-task-link,
+  .wa-chrome-menu {
+    display: flex;
+    position: relative;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 32px;
+    border-radius: var(--wa-radius-sm);
+    padding-inline: 12px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--wa-chrome-text);
+    white-space: nowrap;
+  }
+
+  .wa-task-link:hover,
+  .wa-chrome-menu:hover {
+    background: var(--wa-chrome-raised);
+  }
+
+  .wa-task-link[aria-current] {
+    background: var(--wa-chrome-active);
+    color: #ffffff;
+    font-weight: 600;
+  }
+
+  .wa-mobile-task {
+    display: grid;
+    grid-template-columns: 16px minmax(0, 1fr);
+    align-items: center;
+    gap: 4px 8px;
+    min-height: 44px;
+    border-radius: var(--wa-radius-sm);
+    padding: 6px 8px;
+    color: var(--wa-text);
+  }
+
+  .wa-mobile-task:hover,
+  .wa-mobile-task[aria-current] {
+    background: var(--wa-action-soft);
+  }
+
+  .wa-mobile-view {
+    display: flex;
+    align-items: center;
+    min-height: 36px;
+    border-radius: var(--wa-radius-sm);
+    padding-inline: 8px;
+    color: var(--wa-text-secondary);
+  }
+
+  .wa-mobile-view:hover,
+  .wa-mobile-view[aria-current] {
+    background: var(--wa-surface-strong);
+    color: var(--wa-text);
+    font-weight: 600;
+  }
+
+  /*
+   * The page header: where the reader is, what state it is in, and what they can do about it.
+   *
+   * Sticky because the tab strip is part of it, and a tab strip that scrolls away takes the
+   * only means of switching view with it.
+   */
+  /*
+   * The header sits on the canvas, with no fill of its own.
+   *
+   * That is measured, not stylistic: in the reference every row from the breadcrumb to the tab
+   * strip is canvas-coloured, and the only white things in it are the two buttons. A white
+   * header bar — which is what this was — puts a second surface above the cards and makes the
+   * page start with a horizontal band that means nothing. Removing it is most of why the title
+   * now reads as the page's own name rather than as a label on a toolbar.
+   */
+  /*
+   * The header and every page's content share one measure.
+   *
+   * The padding used to live on .wa-bands, which only the overview used — so Findings, Checks, Runs
+   * and Pillars rendered flush to the canvas edge with square-cornered panels butting against the
+   * chrome column, and each page effectively chose its own width. The measure belongs to the shell:
+   * a page cannot then invent a different one, which is the whole point of having a system.
+   */
+  /*
+   * The measure for a notice that has no page around it.
+   *
+   * The error boundary renders when the shell itself failed, so it cannot use .wa-page — and a
+   * failure message spanning 1440px is unreadable. Named here rather than written as an arbitrary
+   * width in the component, because the alternative is one component knowing a number no other
+   * component knows, which is how a system starts having exceptions.
+   */
+  .wa-notice {
+    width: 100%;
+    max-width: 640px;
+    margin-inline: auto;
+  }
+
+  /*
+   * A page-width band saying something is wrong with the install rather than with the estate.
+   *
+   * Distinct from the severity chips and from EmptyState because it is neither a finding nor an
+   * absence of one: it is a condition of the tool the reader has to know before they act — answers
+   * that will not survive a restart, a volume that cannot be written. Toned as a warning and
+   * bordered on the leading edge rather than filled, so it reads as a caution at the top of a page
+   * without competing with the scores below it for the page's colour budget.
+   */
+  .wa-notice-warning {
+    border: 1px solid var(--wa-border);
+    border-left: 3px solid var(--wa-warning);
+    border-radius: 4px;
+    background: var(--wa-surface-subtle);
+    padding: 10px 12px;
+    color: var(--wa-text);
+  }
+
+  /*
+   * A block of advice inside a detail pane, as against a row of description.
+   *
+   * The pane it lives in is six sections of label-over-body separated by hairlines, so a seventh in
+   * that shape is a seventh row of metadata however it is worded — measured on the built page, the
+   * remedy block was byte-for-byte the same computed style as "Observed" and "Collected", and the
+   * only thing distinguishing the one sentence the reader could act on was a badge.
+   *
+   * Filled and edged rather than divided. The leading edge is what separates advice from
+   * description at a glance and it spends almost none of the page's colour budget, because the
+   * edge is the only coloured pixel and it is 3px wide. The default edge is muted on purpose:
+   * most remedies are somebody else's decision rather than the reader's neglect, and colouring
+   * all of them would put this app's own limits in the same channel as the estate's failures.
+   */
+  .wa-callout {
+    border: 1px solid var(--wa-border);
+    border-left: 3px solid var(--wa-text-muted);
+    border-radius: 4px;
+    background: var(--wa-surface-subtle);
+    padding: 10px 12px;
+  }
+
+  /*
+   * The prose inside a callout keeps a reading measure, whatever the box does.
+   *
+   * The detail pane is a fixed 418px column at 1280px and up, and goes full width below — so the
+   * callout is *widest* at 1279px, where it measured 993px around a 456px sentence: 53% of the box
+   * empty, and a link stranded under it on a line of its own. Constraining the box would fight the
+   * pane it is in; constraining the line length is what was wanted anyway, and 68ch is the same
+   * measure the rest of the app's body copy settles at once its column runs out.
+   */
+  .wa-callout > * {
+    max-width: 68ch;
+  }
+
+  /*
+   * A caption inside a callout is set one step darker than a caption on the page.
+   *
+   * `wa-caption` is muted grey, which is chosen against the page surface. The callout's fill is a
+   * tint above that surface, and the tint eats the difference: #6b7480 reaches 4.73:1 on the page
+   * and 4.35:1 here, so the same class that passes AA everywhere else fails inside this box. The
+   * correction belongs to the container rather than to any caption written into it, since the next
+   * caption placed in a callout would otherwise inherit the failure without anybody choosing it.
+   */
+  .wa-callout .wa-caption {
+    color: var(--wa-text-secondary);
+  }
+
+  /*
+   * The one modifier. For the two remedies where doing nothing has a cost inside the reader's own
+   * estate; everything else keeps the muted edge.
+   *
+   * There was an `info` variant drawn on `--wa-info`, which is a deliberate near-neutral in this
+   * theme, and the default edge is `--wa-text-muted`. In dark those two sit 28 apart in RGB, which
+   * across 3px is the same stripe. A tone nobody can distinguish from the absence of a tone teaches
+   * the reader that the stripe means nothing, which costs the one tone that does mean something.
+   */
+  .wa-callout-warning {
+    border-left-color: var(--wa-warning);
+  }
+
+  /*
+   * The one page width, and every other thing a page is — in one block.
+   *
+   * It was three blocks 350 lines apart: the measure here, the flex rhythm below it, and a
+   * `max-width: 1236px` at line 880 that silently won. Nothing in the first block hinted that a
+   * later one overrode it, so the app carried two page widths while its spec said it had one, and the
+   * narrower one cut the score strip from eight cards to four. Whatever is added to a page next
+   * belongs here, where the property it might conflict with is on the screen beside it.
+   */
+  .wa-page-header,
+  .wa-page {
+    width: 100%;
+    max-width: var(--wa-measure);
+    margin-inline: auto;
+    padding-inline: 28px;
+  }
+
+  .wa-page-header {
+    padding-top: 14px;
+  }
+
+  /*
+   * The bypass links, off-screen until one of them takes focus.
+   *
+   * Clipped rather than hidden: `display: none` would take them out of the tab order, and a bypass
+   * mechanism you cannot tab to is not one. On focus each link takes the same shape as a secondary
+   * button and sits over the top-left corner of the app, above the chrome column's stacking context.
+   */
+  /*
+   * The group is taken out of flow, not only its links.
+   *
+   * `.wa-app` is a grid, so a wrapper left in flow becomes a grid item: the rail was pushed into the
+   * second column and the canvas into a 73px third, which is a broken app rather than a styling
+   * blemish. The previous single link was `sr-only`, which is absolutely positioned, and so had never
+   * been a grid item — the bug arrived with the wrapper.
+   */
+  /*
+   * A caption-sized link that is still a 24px pointer target.
+   *
+   * 2.5.8 asks for 24px in the smaller dimension, or clear space around it. These sit in panel
+   * headers, and at 860px the header wraps and stacks two of them 17px apart — which fails both the
+   * size and the spacing halves at once. The box grows; the type does not.
+   */
+  .wa-aside-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 24px;
+  }
+
+  .wa-skip-links {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 60;
+  }
+
+  .wa-skip-links a {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    z-index: 60;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  /*
+   * The bypass link to the navigation is dropped where there is no navigation column.
+   *
+   * Below 900px the rail is replaced by a sheet, so #navigation is not in the document and the link
+   * would be a first tab stop that goes nowhere — which is worse than not offering it.
+   */
+  @media (max-width: 899px) {
+    .wa-skip-links a[href='#navigation'] {
+      display: none;
+    }
+  }
+
+  .wa-skip-links a:focus-visible {
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip-path: none;
+    border-radius: var(--wa-radius-sm);
+    border: 1px solid var(--wa-border-strong);
+    background: var(--wa-surface);
+    padding: 6px 12px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--wa-text);
+  }
+
+  .wa-page {
+    display: flex;
+    min-width: 0;
+    height: 100%;
+    flex-direction: column;
+    gap: 16px;
+    padding-top: 16px;
+    padding-bottom: 28px;
+  }
+
+  /*
+   * One assessment, across the routes that produce it.
+   *
+   * The command bar explains where a customer can go; this strip explains the state of the work
+   * they are doing. It is one attached plane rather than four cards so the stage sequence reads as
+   * a single lifecycle, and it names complete/current/upcoming in text for readers who do not see
+   * the marker treatment.
+   */
+  .wa-assessment-journey {
+    overflow: hidden;
+    flex-shrink: 0;
+    border: 1px solid var(--wa-border);
+    border-radius: var(--wa-radius-md);
+    background: var(--wa-surface-subtle);
+  }
+
+  .wa-journey-heading {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: 16px;
+    border-bottom: 1px solid var(--wa-divider);
+    padding: 12px 16px;
+  }
+
+  .wa-journey-stages {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    background: var(--wa-surface);
+  }
+
+  .wa-journey-stages > li {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: 10px;
+    border-left: 1px solid var(--wa-divider);
+    padding: 10px 14px;
+  }
+
+  .wa-journey-stages > li:first-child {
+    border-left: 0;
+  }
+
+  .wa-journey-stages > li[data-state='current'] {
+    box-shadow: inset 0 3px 0 var(--wa-action);
+    background: var(--wa-action-soft);
+  }
+
+  .wa-journey-stages > li[data-state='current'] .wa-caption {
+    color: var(--wa-text-secondary);
+  }
+
+  .wa-journey-stages > li[data-state='upcoming'] {
+    color: var(--wa-text-muted);
+  }
+
+  .wa-journey-marker {
+    display: inline-flex;
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--wa-border-strong);
+    border-radius: 999px;
+    background: var(--wa-surface);
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--wa-text-secondary);
+  }
+
+  .wa-journey-stages > li[data-state='complete'] .wa-journey-marker {
+    border-color: var(--wa-success);
+    color: var(--wa-success);
+  }
+
+  .wa-journey-stages > li[data-state='current'] .wa-journey-marker {
+    border-color: var(--wa-action);
+    background: var(--wa-action);
+    color: var(--wa-on-action);
+  }
+
+  @media (max-width: 767px) {
+    .wa-journey-heading {
+      align-items: start;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .wa-journey-stages {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .wa-journey-stages > li:nth-child(3) {
+      border-left: 0;
+      border-top: 1px solid var(--wa-divider);
+    }
+
+    .wa-journey-stages > li:nth-child(4) {
+      border-top: 1px solid var(--wa-divider);
+    }
+  }
+
+  .wa-tabs {
+    display: flex;
+    align-items: stretch;
+    gap: 4px;
+    box-shadow: inset 0 -1px 0 var(--wa-border);
+    overflow-x: auto;
+  }
+
+  .wa-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 36px;
+    border-bottom: 2px solid transparent;
+    padding: 0 12px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--wa-text-secondary);
+    white-space: nowrap;
+  }
+
+  .wa-tab:hover {
+    color: var(--wa-text);
+  }
+
+  .wa-tab[aria-current] {
+    border-bottom-color: var(--wa-action);
+    color: var(--wa-action);
+    font-weight: 600;
+  }
+
+  /* One step down, for switching views inside the focus panel. */
+  .wa-subtabs {
+    display: flex;
+    align-items: stretch;
+    gap: 4px;
+    box-shadow: inset 0 -1px 0 var(--wa-border);
+    padding: 0 16px;
+    overflow-x: auto;
+  }
+
+  .wa-subtab {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 32px;
+    border-bottom: 2px solid transparent;
+    padding: 0 8px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--wa-text-secondary);
+    white-space: nowrap;
+  }
+
+  .wa-subtab:hover {
+    color: var(--wa-text);
+  }
+
+  .wa-subtab[aria-current] {
+    border-bottom-color: var(--wa-action);
+    color: var(--wa-action);
+    font-weight: 600;
+  }
+
+  /*
+   * The four bands. Sizes are the reference's, normalised from its 1024 render to 1440:
+   * 28px canvas padding, 16px between bands, a 340px rail that does not flex.
+   */
+  /*
+   * Band one: the estate, then every pillar. Eight columns, one row.
+   *
+   * Four of eight is what this was, and the reason given was width: eight cards at the old 1236px
+   * cap are 133px each, under the 150px floor, so the strip showed the overall and the three pillars
+   * with the most to act on. That is a defensible card and an indefensible landing page — a reader
+   * of a seven-pillar framework saw three pillars and could not tell which four were missing or
+   * why. Ranking decided what a reader was allowed to know the score of.
+   *
+   * The floor moved instead of the card count. 150px was measured against "Interoperability and
+   * usability"; the cards show `shortPillarLabel`, whose longest is "Operational excellence", and
+   * that reads at 12px in a 94px column over two lines. The command bar also returns the old rail's
+   * 204px to the canvas, so eight cards are 143px each at 1280 rather than the old 113px. The census
+   * stays one row through laptop widths and becomes four across only when the lower summary stacks.
+   */
+  .wa-strip {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: repeat(8, minmax(0, 1fr));
+  }
+
+  @media (max-width: 1179px) {
+    .wa-strip {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+  }
+
+  /* Two-up on narrow canvases. At 390px each card still has 151px inside its padding, enough for
+     the longest two-line label and its 28px score; one-up turned the census into eight screens. */
+  @media (max-width: 899px) {
+    .wa-strip {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  /*
+   * Band two: the ranked risk list and its rail. The rail is fixed; see docs/design/composition.md.
+   *
+   * The wide column held a pillar focus panel and the rail held the risk list. They swapped: the
+   * question this page answers is "what is worst", and a ranked list is the answer to it, so the
+   * ranked list gets the width and coverage gets the rail that used to hold it.
+   */
+  .wa-main-band {
+    display: grid;
+    gap: 16px;
+    grid-template-columns: minmax(0, 1fr) 340px;
+    /*
+     * One row, as tall as the band and no taller.
+     *
+     * An `auto` row is sized by its tallest item's content and cannot be made smaller, so with
+     * `align-items: start` the risk panel stood 54px past the bottom of the band on a 1280x800
+     * screen and the page scrolled by exactly that — the one page in the app that must not.
+     * `minmax(0, 1fr)` is what allows the row to shrink to the height the band was given, which
+     * is what the fitted list inside it then measures itself against.
+     */
+    grid-template-rows: minmax(0, 1fr);
+  }
+
+  /*
+   * A score card: a pillar's name, its number, its verdict and its trend, in that order.
+   *
+   * The number is 28px and the name is 12px, a ratio the version before the last did not have —
+   * there, both were within two points of each other and the card had no focal point, so eight of
+   * them in a row read as a wall of text rather than as eight comparable numbers.
+   */
+  /*
+   * Padding 12 rather than 14 and gap 6 rather than 8, which is 10px off the card's height and the
+   * difference between eight of them fitting the strip's row and the strip needing two.
+   */
+  .wa-scorecard {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+    border: 1px solid var(--wa-border);
+    border-radius: var(--wa-radius-md);
+    background: var(--wa-surface);
+    padding: 12px;
+    text-align: left;
+  }
+
+  /*
+   * The label holds two lines whether it needs them or not.
+   *
+   * "Cost" needs one and "Operational excellence" needs two, and letting each card size to its own
+   * label puts eight scores on eight different baselines — the one thing a strip exists to make
+   * comparable. The caption line is 18px, so reserving its measured two-line 36px height aligns
+   * every number in the row; the old 32px minimum still grew on two-line labels and drifted by 2px.
+   */
+  .wa-scorecard-label {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+    height: 36px;
+    min-height: 36px;
+    min-width: 0;
+  }
+
+  /*
+   * The value row reserves the tallest honest state: number, then a two-line evidence warning.
+   * Without this, "Good" uses one line while "Too little measured" uses two and pushes every
+   * comparison mark below it onto a different baseline. A strip exists to compare columns, so its
+   * rows align even when their words do not have the same length.
+   */
+  .wa-scorecard-value {
+    min-height: 70px;
+  }
+
+  .wa-scorecard:hover {
+    border-color: var(--wa-border-strong);
+  }
+
+  /*
+   * There is no selected state any more.
+   *
+   * A card used to select a pillar into a focus panel below it, and the border marked which. The
+   * cards now go to the pillar's own page, so the strip has nothing to be the current item of — and
+   * a selected-card rule nothing can set is a rule the next reader of this file has to disprove.
+   */
+
+  /* The pillar's icon: 28px square, no fill, muted until its card is the selected one. */
+  .wa-icon-frame {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: var(--wa-radius-md);
+    color: var(--wa-text-muted);
+  }
+
+  /*
+   * 20px in the strip, where a 28px frame is a fifth of the card.
+   *
+   * At eight across the card is 142px on a 14" MacBook, leaving 92px for the label once the frame,
+   * the gap and the padding are taken. That is what "Operational" and "excellence" need to sit on
+   * two lines; at 28px the frame takes it back and the label wraps to three.
+   */
+  .wa-scorecard .wa-icon-frame {
+    width: 20px;
+    height: 20px;
+  }
+
+  /*
+   * The one nesting the system allows: canvas → panel → sub-panel.
+   *
+   * These were deleted when the overview's focus panel went, on the reasoning that a rule nothing
+   * draws is a rule the next reader has to prove is unreachable. That was right at the time and
+   * wrong about the future: the reference render's focus panel is six sub-panels in two rows of
+   * three, so the nesting is load-bearing after all and the note said restoring it was six lines.
+   * These are the six.
+   *
+   * A sub-panel is subtle fill inside white, not white inside white with a shadow between them.
+   * Tone and a hairline are what separate the two planes, which is the same rule the panels
+   * themselves follow against the canvas.
+   */
+  .wa-subgrid {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  @media (max-width: 1179px) {
+    .wa-subgrid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (max-width: 899px) {
+    .wa-subgrid {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+
+  .wa-subpanel {
+    min-width: 0;
+    border: 1px solid var(--wa-divider);
+    border-radius: var(--wa-radius-sm);
+    background: var(--wa-surface-subtle);
+    padding: 10px;
+  }
+
+  /*
+   * A link at the foot of a panel: 12px, the action colour, with its arrow. The reference ends
+   * every list panel with one, and it is the only place in a panel where the action colour appears
+   * as text — which is what makes it findable without a border or a button.
+   */
+  /*
+   * A panel's closing link. One line, always: wrapped, the arrow orphans onto a line of its own,
+   * which reads as a second control rather than as the end of the first.
+   */
+  .wa-link-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    overflow: hidden;
+    white-space: nowrap;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--wa-action);
+  }
+
+  .wa-link-row:hover {
+    text-decoration: underline;
+  }
+
+  .wa-link-row:hover {
+    text-decoration: underline;
+  }
+
+  /*
+   * A severity chip: a tint and its own ink, at 12px. Radius 4px rather than a pill, because a
+   * pill at this size reads as a button and invites a click that does nothing.
+   */
+  .wa-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    border-radius: var(--wa-radius-sm);
+    padding: 2px 8px;
+    font-size: 12px;
+    line-height: 16px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  .wa-chip-danger {
+    background: var(--wa-danger-soft);
+    color: var(--wa-danger);
+  }
+
+  .wa-chip-warning {
+    background: var(--wa-warning-soft);
+    color: var(--wa-warning);
+  }
+
+  .wa-chip-caution {
+    background: var(--wa-caution-soft);
+    color: var(--wa-caution);
+  }
+
+  .wa-chip-success {
+    background: var(--wa-success-soft);
+    color: var(--wa-success);
+  }
+
+  .wa-chip-neutral {
+    background: var(--wa-info-soft);
+    color: var(--wa-info);
+  }
+
+  /*
+   * A bar-list row: label, proportional bar, value. The bar is 6px and 96px long, and the value
+   * is tabular, so six rows form a column the eye can run down without reading any of the labels.
+   */
+  /*
+   * 96px is what the track wants, not what it must have.
+   *
+   * Fixed, it took 96 of the 234px a sub-panel gives a row three-across, and the label beside it —
+   * "Manage identity and access" — truncated to "Manag…". A bar whose label is unreadable is a bar
+   * that says nothing, and the label is the part carrying the meaning. So the track yields first:
+   * down to 56px, where a proportion is still legible, and no further.
+   */
+  .wa-bar-track {
+    display: block;
+    /* `width` as well as `flex`, because outside a flex row the basis does nothing and the track
+       would take the whole line. */
+    width: 96px;
+    flex: 0 1 96px;
+    min-width: 56px;
+    height: 6px;
+    border-radius: var(--wa-radius-pill);
+    background: var(--wa-unmeasured-track);
+    overflow: hidden;
+  }
+
+  .wa-bar-track > span {
+    display: block;
+    height: 100%;
+    border-radius: var(--wa-radius-pill);
+  }
+
+  /*
+   * In a sub-panel the track starts narrower rather than shrinking under protest.
+   *
+   * `flex-basis` only yields once the row overflows, and the label — which has `min-width: 0` so it
+   * can truncate — gives way first. So a full-width track in a 234px sub-panel produced a full-width
+   * track beside "Identity and a…", which is the wrong half to lose. 64px is enough to read a
+   * proportion against its neighbours, and the neighbours are the only comparison a bar this size
+   * supports.
+   */
+  .wa-subpanel .wa-bar-track {
+    flex-basis: 64px;
+  }
+
+  /*
+   * A metric card: one number, its verdict, and its trend.
+   *
+   * Fixed minimum height so a row of them aligns on the number rather than on whatever length
+   * of pillar name happened to wrap. Comparing scores is the entire purpose of the row, and
+   * cards of ragged height make the eye do arithmetic instead of comparison.
+   */
+  .wa-metric {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+    border: 1px solid var(--wa-border);
+    border-radius: var(--wa-radius-sm);
+    background: var(--wa-surface);
+    padding: 10px 12px 12px;
+  }
+
+  .wa-metric[data-interactive='true']:hover {
+    border-color: var(--wa-border-strong);
+    background: var(--wa-surface-subtle);
+  }
+
+  /*
+   * A second `.wa-page` block was here, and it is worth a note because of what it cost.
+   *
+   * Every page used to choose its own width — 896px on findings, 1024 on checks, 1152 on pillars,
+   * 1280 on the overview — so the content edge jumped on every navigation while the rail stayed
+   * still, making the whole page appear to shift sideways. One measure owned by the shell fixed that,
+   * and this block then quietly reintroduced the problem it solved: `max-width: 1236px`, 350 lines
+   * below the block setting `max-width: var(--wa-measure)`, while the spec said "every page is that
+   * wide and no page is wider". The app had the two widths it was written to abolish.
+   *
+   * The visible cost was not the 200px of unused canvas. Eight score cards need 1368px to clear the
+   * 150px floor and 1236 gives them 133px each, so the strip was cut to the estate plus three
+   * pillars — and a reader of a seven-pillar framework was shown three, with a ranking function
+   * choosing which. A layout constant contradicting its own spec removed four pillars from the
+   * landing page, and it read as a design decision for long enough to be documented as one.
+   *
+   * Everything a page is now lives in the single block above.
+   */
+
+  /*
+   * A whole population in one bar: the segmented coverage meter.
+   *
+   * Distinct from .wa-meter-track, which shows one score's position on a scale. This shows how a
+   * set divides, so it has no track colour of its own — every pixel of it is one of the segments.
+   */
+  .wa-segment-track {
+    display: flex;
+    height: 10px;
+    width: 100%;
+    overflow: hidden;
+    border-radius: var(--wa-radius-sm);
+    background: var(--wa-surface-subtle);
+    box-shadow: inset 0 0 0 1px var(--wa-divider);
+  }
+
+  .wa-segment-track > span {
+    display: block;
+    height: 100%;
+  }
+
+  /* Same hatch as the meter's unknown span, and for the same reason: nobody looked. */
+  .wa-segment-unknown {
+    background-color: color-mix(in srgb, var(--wa-text-muted) 12%, transparent);
+    background-image: repeating-linear-gradient(45deg, var(--wa-text-muted) 0 1px, transparent 1px 4px);
+  }
+
+  /* A proportion inside a table cell, where 10px of height is 10px too many. */
+  .wa-minibar {
+    display: block;
+    height: 4px;
+    width: 100%;
+    max-width: 96px;
+    overflow: hidden;
+    border-radius: var(--wa-radius-pill);
+    background: var(--wa-surface-subtle);
+    box-shadow: inset 0 0 0 1px var(--wa-divider);
+  }
+
+  .wa-minibar > span {
+    display: block;
+    height: 100%;
+  }
+
+  /*
+   * A table row that leads somewhere, without a click handler on <tr>.
+   *
+   * The link is a real link in the first cell and its ::after covers the row, so the pointer
+   * target is the whole row while the keyboard target, the accessibility name and the status bar
+   * URL are all the one link. A row-level onClick would have given mouse users a feature nobody
+   * else could reach.
+   */
+  .wa-table tbody tr:has(.wa-row-link) {
+    position: relative;
+  }
+
+  .wa-table tbody tr:has(.wa-row-link):hover {
+    background: var(--wa-action-soft);
+  }
+
+  .wa-table tbody tr:has(.wa-row-link:focus-visible) {
+    background: var(--wa-selection);
+    outline: 2px solid var(--wa-focus);
+    outline-offset: -2px;
+  }
+
+  /*
+   * The same full-row target in a list, not only in a table.
+   *
+   * `.wa-row-link` was written for the pillar matrix and its `position: relative` anchor was scoped
+   * to `.wa-table tbody tr`, so a list row could not use it — which is why the ranked risk list had
+   * a hit area the width of its title text. On a row whose other three quarters are the severity,
+   * the pillar and the resource count, aiming at the words is the reader doing the layout's job.
+   */
+  .wa-row:has(.wa-row-link) {
+    position: relative;
+  }
+
+  .wa-row:has(.wa-row-link):hover {
+    background: var(--wa-action-soft);
+  }
+
+  .wa-row:has(.wa-row-link:focus-visible) {
+    background: var(--wa-selection);
+    outline: 2px solid var(--wa-focus);
+    outline-offset: -2px;
+  }
+
+  /*
+   * The link's own ring is redundant once the row carries one, and it clips oddly in a cell.
+   *
+   * Both rings, not only the outline: the inner ring is a box-shadow on the base rule, and leaving it
+   * behind drew a surface-coloured halo around the link text inside a row that was already ringed.
+   */
+  .wa-row-link:focus-visible {
+    outline: none;
+    box-shadow: none;
+  }
+
+  .wa-row-link::after {
+    position: absolute;
+    inset: 0;
+    content: '';
+  }
+
+  /*
+   * A second link inside a row whose first link covers the whole row.
+   *
+   * The pillar matrix has both: the row leads to the pillar, and the unmet-by-severity cell leads to
+   * those requirements filtered by severity. Without this the severity links are under the row
+   * link's ::after and unclickable — present in the tab order, announced by a screen reader, and
+   * dead to a pointer, which is the worst of the three states to be in.
+   */
+  .wa-row-inset {
+    position: relative;
+    z-index: 1;
+  }
+
+  /*
+   * In-page view switching: a segmented control, not tabs.
+   *
+   * The header's tabs are navigation and change the URL. These change what a panel shows within
+   * one page, and styling the two identically taught the reader that a tab sometimes navigates
+   * and sometimes does not.
+   */
+  .wa-segmented {
+    display: inline-flex;
+    gap: 2px;
+    border: 1px solid var(--wa-border);
+    border-radius: var(--wa-radius-sm);
+    background: var(--wa-surface-subtle);
+    padding: 2px;
+  }
+
+  .wa-segmented > button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 24px;
+    border-radius: calc(var(--wa-radius-sm) - 1px);
+    padding: 0 10px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--wa-text-secondary);
+    white-space: nowrap;
+  }
+
+  .wa-segmented > button:hover {
+    color: var(--wa-text);
+  }
+
+  .wa-segmented > button[aria-pressed='true'] {
+    background: var(--wa-surface);
+    box-shadow: inset 0 0 0 1px var(--wa-border);
+    color: var(--wa-text);
+    font-weight: 600;
+  }
+
+  /*
+   * A panel's own heading. 14px semibold in 16px of padding, with its count or link at the right.
+   *
+   * It was 12px in 12px of padding, which put a panel's name at the same size as the captions
+   * inside it — so a rail of three panels read as one undifferentiated list of small grey text.
+   */
+  .wa-section-header {
+    display: flex;
+    /*
+     * It wraps, because one of these asides is a sentence and a button rather than a count. On a
+     * 390px phone the answers pane's header laid "0 of 120 answered and counting toward the score."
+     * beside an "Answer in order" button at their combined 452px inside a 380px box: the button ran
+     * 101px past the right edge with no scroll that reached it, and the heading beside it was
+     * squeezed to nought pixels wide and four lines tall, rendering "Answered / by / a / person"
+     * down the left margin under the count. Two rows is the honest arrangement at that width.
+     */
+    flex-wrap: wrap;
+    min-height: 44px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    border-bottom: 1px solid var(--wa-divider);
+    padding: 0 16px;
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .wa-row {
+    /* Named so the selected state can take 3px of it for its leading edge without the text moving. */
+    --wa-row-pad-x: 16px;
+    display: flex;
+    min-height: 36px;
+    width: 100%;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 1px solid var(--wa-divider);
+    padding: 8px var(--wa-row-pad-x);
+    text-align: left;
+  }
+
+  /*
+   * Zebra for a list of rows, on the same rule as the table.
+   *
+   * A findings list is a table that happens to be marked up as a list: every row carries a title, a
+   * pillar, an identifier, a severity and an outcome, and the eye reads across all five. So it gets
+   * the same banding, from the same token — the rule in this app is about what the reader is doing,
+   * not about which element the markup chose.
+   *
+   * Applied to the container rather than to each row so a row cannot opt in on its own, and declared
+   * before the state rules so selection and hover still win over the stripe.
+   */
+  .wa-zebra > :nth-child(even) {
+    background: var(--wa-zebra);
+  }
+
+  /*
+   * Room for a revealed row to sit in rather than against.
+   *
+   * `scrollIntoView({ block: 'nearest' })` brings a row to exactly the viewport edge, which is
+   * inside the fold and still reads as cut off — the row's second line, carrying the control id,
+   * touches the boundary. 12px is what makes it look placed rather than caught.
+   *
+   * On the list item and not on `.wa-row`, which is where this was first written and did nothing:
+   * the item is the element `useRevealed` holds and therefore the element scrolled, `scroll-margin`
+   * neither inherits nor propagates between the two, and the two have identical geometry so nothing
+   * distinguishes them on screen. Declaring it in CSS rather than in the scroll call also means a
+   * browser's own find-on-page gets the same margin.
+   */
+  .wa-zebra > * {
+    scroll-margin-block: 12px;
+  }
+
+  /*
+   * A row inside a banded list draws no background of its own, so the band shows through. Its
+   * selected and hover states still do, because those rules come later and are states rather than
+   * banding — the stripe must never look like one.
+   */
+  .wa-zebra > * > .wa-row {
+    background: transparent;
+  }
+
+  /*
+   * Only rows that do something respond to the pointer. A hover highlight on a row with no
+   * action is a promise the row cannot keep, and the reader spends a click finding that out.
+   */
+  button.wa-row:hover,
+  a.wa-row:hover {
+    background: var(--wa-action-soft);
+  }
+
+  /*
+   * The selected row, marked twice: a tint and a leading edge.
+   *
+   * The tint alone was the whole indicator, and measured 1.19:1 against the row beside it in light
+   * and 1.38:1 in dark — well under the 3:1 that WCAG 1.4.11 asks of a non-text indicator of state,
+   * and weaker still against a zebra stripe. It is visible when you know to look, which is the
+   * wrong test: the reader who needs it is one who has just arrived from a link and does not yet
+   * know where to look. The edge carries the state on its own at 5.58:1 and 4.66:1 against the
+   * worst neighbouring band, so the tint can stay as quiet as it is.
+   *
+   * The same 3px leading edge as `.wa-callout`, and coloured rather than muted, because unlike a
+   * callout's edge this one is the answer to "which of these did I ask for".
+   *
+   * Padding compensates so the text does not shift by 3px when a row becomes selected. A list that
+   * twitches as the reader arrows through it looks broken.
+   */
+  .wa-row[data-selected='true'] {
+    background: var(--wa-selection);
+    border-left: 3px solid var(--wa-action);
+    padding-left: calc(var(--wa-row-pad-x) - 3px);
+  }
+
+  /*
+   * And the caption on a selected row is set one step darker, for the reason the callout's caption
+   * is: `--wa-text-muted` is chosen against the page surface, the selection tint is a surface above
+   * it, and the tint eats the margin. #6b7480 reaches 4.73:1 on the page and 3.98:1 on a selected
+   * zebra row; #8b98a5 reaches 5.20:1 and 3.78:1. Both fail AA on precisely the row carrying the
+   * control id the arriving reader needs in order to confirm the app understood their link.
+   */
+  .wa-row[data-selected='true'] .wa-caption {
+    color: var(--wa-text-secondary);
+  }
+
+  /*
+   * Controls. 36px tall and 6px round, measured; the 32px version read as a form control rather
+   * than as the page's action.
+   */
+  .wa-button-primary {
+    display: inline-flex;
+    height: 36px;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    border-radius: var(--wa-radius-md);
+    border: 1px solid transparent;
+    background: var(--wa-action);
+    /* Not white: the dark theme's action blue is light, and white on it is 3.04:1. See --wa-on-action. */
+    color: var(--wa-on-action);
+    padding: 0 14px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .wa-button-primary:hover {
+    background: var(--wa-action-hover);
+  }
+
+  .wa-button-primary:active {
+    background: var(--wa-action-press);
+  }
+
+  .wa-button-primary:disabled {
+    opacity: 0.55;
+  }
+
+  /*
+   * One control in two halves: an action, and the choice of what the action acts on.
+   *
+   * Both carry `wa-button-primary` and these only square the edge they meet on, so the pair reads as
+   * a single slab with rounding on its outer corners. Measured at 8x: the halves sit at y=14 with a
+   * 1px overlap, one fill, no seam.
+   *
+   * The divider is the reason this is a stylesheet class rather than two utilities on the elements.
+   * Without it the second half is invisible until hovered — driving it in a browser, the chevron was
+   * discoverable only by finding it — and the focus ring makes that worse: the ring follows the
+   * element's own shape, so on a half whose left corners are square it draws a hard vertical edge
+   * through the middle of the control and reads as a box stuck on rather than a ring around
+   * something. The divider puts a line where that edge lands, so the ring agrees with a boundary the
+   * reader can already see instead of inventing one. It is mixed from the foreground rather than
+   * being a border token because it sits on the action fill, where every border token is either
+   * invisible or a contrasting stripe.
+   */
+  .wa-button-split-start {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+
+  .wa-button-split-end {
+    /* Wider than the glyph needs. At `px-2` the target measured 32px, which clears the 24px this
+       app holds itself to and is meaner than it needs to be for a control a reader hits repeatedly. */
+    padding: 0 11px;
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+    border-left-color: color-mix(in srgb, var(--wa-on-action) 30%, transparent);
+  }
+
+  /*
+   * A name inside a split button is capped and clipped, not allowed to size it.
+   *
+   * The only label this app puts on a button that it did not write itself is the name of an
+   * assessment, and an author's name is not ours to assume a length for. It cost a WCAG failure four
+   * elements away to learn that: an unbounded name pushed the page title beside it onto a second line
+   * at 860px, the sticky header grew past the 48px the panes below hard-code as their scroll padding,
+   * and a focused field on /answers came to rest 2px outside the pane that scrolled it.
+   *
+   * 7rem is about twenty characters, which fits every name seen on a real install and keeps the header
+   * one row at every width checked. The unabbreviated name is on the button's accessible name and in
+   * the menu, so nothing is only available to a reader who can measure pixels.
+   */
+  .wa-button-split-label {
+    display: block;
+    max-width: 7rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /*
+   * The ring goes inside each half, which is the only place it fits.
+   *
+   * The default is drawn outside the border box — `outline-offset: 2px` with the inner ring as a
+   * 2px box-shadow — and neither half of a split control has 2px outside it to spare. Measured on
+   * the running app: focusing the chevron put the ring's left edge 4px to the *left* of the divider,
+   * overpowering the line it was supposed to agree with, and focusing the primary half produced a
+   * bracket that never closed, because the chevron is a later sibling and painted over the right
+   * segment — leaving two 4px stubs running past the divider and stopping in mid-air.
+   *
+   * Inverting both puts each ring wholly within the half that owns it: the chevron's left edge lands
+   * on the divider column, and the primary's right edge lands where nothing is drawn over it. The
+   * same inversion `.wa-table tbody tr:has(.wa-row-link:focus-visible)` uses, and for the same
+   * reason — a ring on something flush with its neighbour has to be inside it.
+   *
+   * `z-index` because the halves overlap by a pixel, and without it that pixel of the primary's ring
+   * is under the chevron. Only while focused, so the resting control keeps one paint order.
+   *
+   * The inner ring is 4px rather than 2px, and that is arithmetic rather than emphasis. A negative
+   * offset insets the rectangle the outline is drawn on but the 2px stroke still grows outward from
+   * it, so the outline lands on the outermost two pixels of the border box and covers the first two
+   * of an inset shadow. At 2px the halo measured 1px of visible ring; at 4px it measures 2px, which
+   * is the width the rest of the app's focus states are held to.
+   *
+   * That the halo is doing the work alone in light is a token collision rather than a choice here:
+   * `--wa-focus` and `--wa-action` are both #1b62c9, so on any primary button the outline is 1.00:1
+   * against its own fill and invisible. `check:a11y` reads `outlineWidth`, which is 2 either way, so
+   * it passes — the same class of gap as the em dash at 1.91:1. Raised in docs/review-morning.md,
+   * because it is every primary button in the app and not this control.
+   */
+  .wa-button-split-start:focus-visible,
+  .wa-button-split-end:focus-visible {
+    position: relative;
+    z-index: 1;
+    outline-offset: -2px;
+    box-shadow: inset 0 0 0 4px var(--wa-focus-inner);
+  }
+
+  /* White with a visible border, not transparent: it sits on the canvas, where a borderless
+     button is invisible until hovered. */
+  .wa-button-secondary {
+    display: inline-flex;
+    height: 36px;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    border-radius: var(--wa-radius-md);
+    border: 1px solid var(--wa-border-strong);
+    background: var(--wa-surface);
+    color: var(--wa-text);
+    padding: 0 14px;
+    font-size: 13px;
+    font-weight: 500;
+  }
+
+  .wa-button-secondary:hover {
+    border-color: var(--wa-action);
+    color: var(--wa-action);
+  }
+
+  .wa-button-secondary:disabled {
+    opacity: 0.55;
+  }
+
+  .wa-icon-button {
+    display: inline-grid;
+    width: 32px;
+    height: 32px;
+    place-items: center;
+    border-radius: var(--wa-radius-sm);
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--wa-text-secondary);
+  }
+
+  .wa-icon-button:hover {
+    border-color: var(--wa-border);
+    background: var(--wa-action-soft);
+    color: var(--wa-text);
+  }
+
+  .wa-field {
+    height: 32px;
+    border-radius: var(--wa-radius-sm);
+    border: 1px solid var(--wa-border);
+    background: var(--wa-surface);
+    color: var(--wa-text);
+    padding: 0 10px;
+  }
+
+  .wa-field::placeholder {
+    color: var(--wa-text-placeholder);
+  }
+
+  .wa-field:focus {
+    border-color: var(--wa-focus);
+  }
+
+  /*
+   * A select in a filter row, made the same object as the input beside it.
+   *
+   * AppKit's trigger is a perfectly good select mechanism with its own opinion about what a field
+   * looks like, and that opinion is not this one: 36px tall against the 32px here, a 6px radius
+   * against 4px, a darker border, 14px text against 13px, and in dark theme a translucent fill
+   * where `.wa-field` is solid. Four controls in a row differing on five properties is why the
+   * filter bar looked subtly wrong without a reader being able to name it — the height was only the
+   * most measurable part.
+   *
+   * So the design system takes the appearance and leaves AppKit the behaviour. `!important` because
+   * the trigger sets these through variant selectors that beat a plain class, and confining it to
+   * this one rule is better than an `!` utility at every call site.
+   */
+  .wa-select {
+    height: 32px !important;
+    min-height: 32px !important;
+    border-radius: var(--wa-radius-sm) !important;
+    border-color: var(--wa-border) !important;
+    background: var(--wa-surface) !important;
+    padding-left: 10px !important;
+    font-size: 13px !important;
+    line-height: 18px !important;
+    box-shadow: none !important;
+  }
+
+  /*
+   * Focus given back, having been taken away by the rule above.
+   *
+   * AppKit's trigger indicates focus by recolouring its border and suppresses the outline to do it.
+   * Forcing the border colour therefore silently removed the only indicator the control had, and
+   * `box-shadow: none` closed off its fallback — a keyboard user could tab onto a select and see
+   * nothing change. Restored explicitly, and as the outline the rest of the app uses rather than as
+   * AppKit's border trick, so every focusable thing on the page indicates focus the same way.
+   *
+   * `[data-state='open']` is included because a select with its menu down is the active control and
+   * should look it, whether it was opened by keyboard or by pointer.
+   */
+  .wa-select:focus-visible,
+  .wa-select[data-state='open'] {
+    border-color: var(--wa-focus) !important;
+    outline: 2px solid var(--wa-focus) !important;
+    outline-offset: 2px !important;
+    /* The inner ring the rule above suppressed with its own `box-shadow: none !important`. */
+    box-shadow: 0 0 0 2px var(--wa-focus-inner) !important;
+  }
+
+  /*
+   * The menu that drops out of it, on the same type size and corner.
+   *
+   * Left alone, the trigger matched the field beside it and stopped matching its own menu: 13px text
+   * opening a 14px list, out of a 4px corner into a 6px one. A control whose menu is a different
+   * object from the control reads as unfinished without a reader being able to say why.
+   *
+   * Matched on AppKit's own slot attributes rather than on a class we add, because there is no
+   * select in this app that should look different from the others, and a class would mean every
+   * future call site remembering to include it — which is the same as it not existing.
+   */
+  [data-slot='select-content'] {
+    border-radius: var(--wa-radius-sm) !important;
+    border-color: var(--wa-border) !important;
+  }
+
+  [data-slot='select-item'] {
+    font-size: 13px !important;
+    line-height: 18px !important;
+    border-radius: var(--wa-radius-sm) !important;
+  }
+
+  /*
+   * The same field, sized for prose.
+   *
+   * A separate class rather than an override on .wa-field because the 32px height there is what
+   * aligns a filter row, and a textarea that inherited it would be one line tall with a scrollbar.
+   * The vertical padding is on the scale; `resize: vertical` because a statement can be three lines
+   * or ten and only the writer knows which.
+   */
+  .wa-textarea {
+    border-radius: var(--wa-radius-sm);
+    border: 1px solid var(--wa-border);
+    background: var(--wa-surface);
+    color: var(--wa-text);
+    padding: 6px 10px;
+    resize: vertical;
+  }
+
+  .wa-textarea::placeholder {
+    color: var(--wa-text-placeholder);
+  }
+
+  .wa-textarea:focus {
+    border-color: var(--wa-focus);
+  }
+
+  /* Status */
+  .wa-badge {
+    display: inline-flex;
+    min-height: 20px;
+    align-items: center;
+    gap: 4px;
+    border-radius: var(--wa-radius-pill);
+    border: 1px solid var(--wa-border);
+    background: var(--wa-surface-subtle);
+    color: var(--wa-text-secondary);
+    padding: 1px 7px;
+    font-size: 11px;
+    line-height: 16px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  /*
+   * A badge whose content is a sentence rather than a word.
+   *
+   * `.wa-badge` is `nowrap` because a two-word status broken across lines reads as two badges, and
+   * every badge in the app was a word or two until the workload trend started stating its
+   * measurement: "Getting better — 31% faster per run than the previous window" is 370px, and in a
+   * 344px row inside a 380px pane it put `/workloads` 14px past its own edge at 1280x800 and
+   * 1512x845 in both themes. `flex-wrap` wraps between children and cannot wrap inside one.
+   *
+   * The corner is squared with it. A pill radius on a box two lines tall is a stadium, which reads
+   * as a control rather than as a label — and the shape is the badge's second channel, so it may
+   * not be left to look like something it is not.
+   */
+  .wa-badge-sentence {
+    white-space: normal;
+    border-radius: var(--wa-radius-sm);
+    align-items: flex-start;
+  }
+
+  .wa-badge-sentence > svg {
+    /* Beside the first line rather than centred against both, once there are two. */
+    margin-top: 2px;
+  }
+
+  .wa-badge-danger {
+    border-color: color-mix(in srgb, var(--wa-danger) 52%, transparent);
+    background: var(--wa-danger-soft);
+    color: var(--wa-danger);
+  }
+
+  .wa-badge-warning {
+    border-color: color-mix(in srgb, var(--wa-warning) 52%, transparent);
+    background: var(--wa-warning-soft);
+    color: var(--wa-warning);
+  }
+
+  .wa-badge-success {
+    border-color: color-mix(in srgb, var(--wa-success) 52%, transparent);
+    background: var(--wa-success-soft);
+    color: var(--wa-success);
+  }
+
+  .wa-badge-info {
+    border-color: color-mix(in srgb, var(--wa-info) 52%, transparent);
+    background: var(--wa-info-soft);
+    color: var(--wa-info);
+  }
+
+  /*
+   * Score bar. The hatch marks the span still in play once unmeasured requirements resolve.
+   *
+   * It lives here rather than as an inline backgroundImage because it is the one gradient in
+   * the app and it encodes data: hatching reads as "not looked at" where a lighter tint of the
+   * same fill would read as "partly achieved". Naming it keeps the colour in the theme and puts
+   * the meaning somewhere a reviewer can find it.
+   */
+  .wa-meter-track {
+    position: relative;
+    height: 8px;
+    width: 100%;
+    overflow: hidden;
+    border-radius: var(--wa-radius-pill);
+    background: color-mix(in srgb, var(--wa-action) 20%, transparent);
+  }
+
+  .wa-meter-earned {
+    position: absolute;
+    inset-block: 0;
+    left: 0;
+    background: var(--wa-action);
+  }
+
+  /*
+   * The fill takes the score's own band, so the bar and the number never disagree.
+   *
+   * It was always action blue, which made every pillar's bar look identical and left the colour
+   * channel saying nothing at all — the reader had to read seven numbers to find the bad one on a
+   * page whose entire purpose was to show them at a glance.
+   */
+  .wa-meter-track[data-band='strong'] .wa-meter-earned {
+    background: var(--wa-success);
+  }
+
+  .wa-meter-track[data-band='fair'] .wa-meter-earned {
+    background: var(--wa-warning);
+  }
+
+  .wa-meter-track[data-band='weak'] .wa-meter-earned {
+    background: var(--wa-danger);
+  }
+
+  /*
+   * The unknown span stays neutral in every band. It is not a weaker version of the score — it is
+   * the part that was never looked at, and tinting it with the band's colour would make an
+   * unmeasured pillar look like a partly achieved one.
+   */
+  .wa-meter-unknown {
+    position: absolute;
+    inset-block: 0;
+    background-color: color-mix(in srgb, var(--wa-text-muted) 12%, transparent);
+    background-image: repeating-linear-gradient(45deg, var(--wa-text-muted) 0 1px, transparent 1px 4px);
+  }
+
+  /* Plane 3 — the only place a shadow is permitted. */
+  .wa-transient-surface {
+    border: 1px solid var(--wa-border-strong);
+    border-radius: var(--wa-radius-md);
+    background: var(--wa-surface-raised);
+    box-shadow: var(--wa-shadow-popover);
+  }
+
+  .wa-differential-strip {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: 8px;
+    border-top: 1px solid var(--wa-border);
+    background: var(--wa-surface);
+    padding: 6px 12px;
+    overflow-x: auto;
+  }
+
+  /*
+   * The scrim behind any dialog, on the token rather than on AppKit's own `bg-black/50`.
+   *
+   * A generic slot override rather than a class, on the same reasoning as the select menu above:
+   * there is no dialog in this app whose scrim should be a different colour, and a class would mean
+   * every future one remembering to ask for it. The token matters in one case the literal cannot
+   * serve — under `prefers-contrast: more` the overlay is opaque, and a half-black wash over a
+   * high-contrast page is exactly the thing that mode exists to remove.
+   */
+  [data-slot='dialog-overlay'] {
+    background: var(--wa-overlay) !important;
+  }
+
+  /*
+   * The command palette.
+   *
+   * AppKit's dialog is centred, padded and rounded for a form; a palette is a strip near the top of
+   * the viewport with a list under it, and the reader's eye has to land on the input without
+   * travelling. Overriding here rather than in the component because every value below is geometry
+   * the design system owns — the radius, the plane, the one permitted shadow — and a component
+   * spelling them out in utilities is how the next dialog ends up with different ones.
+   *
+   * `translate` alone undoes the vertical half of AppKit's centring, and it is deliberately not
+   * accompanied by `transform: none`. Naming both makes the minifier fold them together — it lowers
+   * `translate` to a `transform` for its browser targets, and the `none` beside it then wins — so the
+   * declaration disappeared from the built stylesheet and the dialog rendered 119px above the top of
+   * the window with its search field off screen. One property, and nothing to fold.
+   */
+  [data-slot='dialog-content'].wa-palette {
+    top: 80px !important;
+    left: 50% !important;
+    translate: -50% 0 !important;
+    display: block !important;
+    width: min(640px, calc(100vw - 32px)) !important;
+    max-width: none !important;
+    padding: 0 !important;
+    gap: 0 !important;
+    overflow: hidden !important;
+    border: 1px solid var(--wa-border-strong) !important;
+    border-radius: var(--wa-radius-md) !important;
+    background: var(--wa-surface-raised) !important;
+    box-shadow: var(--wa-shadow-dialog) !important;
+  }
+
+  /*
+   * Scan setup is a decision surface, not a confirmation alert: both scope dimensions stay visible
+   * together at the supported desktop widths, followed by one summary and one committing action.
+   */
+  [data-slot='dialog-content'].wa-scan-dialog {
+    width: min(880px, calc(100vw - 48px)) !important;
+    max-width: none !important;
+    max-height: calc(100vh - 48px) !important;
+    overflow-y: auto !important;
+    gap: 12px !important;
+    border: 1px solid var(--wa-border-strong) !important;
+    border-radius: var(--wa-radius-md) !important;
+    background: var(--wa-surface-raised) !important;
+    box-shadow: var(--wa-shadow-dialog) !important;
+  }
+
+  .wa-scan-form {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .wa-scan-columns {
+    display: grid;
+    min-width: 0;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+  }
+
+  .wa-scan-section {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 6px;
+    border: 1px solid var(--wa-border);
+    border-radius: var(--wa-radius-sm);
+    background: var(--wa-surface);
+    padding: 12px;
+  }
+
+  .wa-scan-section > legend {
+    padding-inline: 4px;
+    color: var(--wa-text);
+    font: var(--wa-type-label);
+  }
+
+  .wa-scan-choice {
+    display: grid;
+    min-width: 0;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: start;
+    gap: 10px;
+    border-inline-start: 3px solid transparent;
+    padding: 8px 10px;
+    cursor: pointer;
+  }
+
+  .wa-scan-choice[data-selected='true'] {
+    border-inline-start-color: var(--wa-action);
+    background: var(--wa-selected);
+  }
+
+  .wa-scan-choice > input {
+    margin-top: 3px;
+  }
+
+  .wa-scan-pillar-list {
+    display: flex;
+    max-height: 280px;
+    flex-direction: column;
+    gap: 2px;
+    overflow-y: auto;
+    padding-top: 4px;
+  }
+
+  .wa-scan-saved-scope {
+    border-inline-start: 3px solid var(--wa-action);
+    background: var(--wa-selected);
+    padding: 10px 12px;
+  }
+
+  .wa-scan-confirmation {
+    position: sticky;
+    bottom: 0;
+    z-index: 1;
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    border-top: 1px solid var(--wa-border-strong);
+    background: var(--wa-surface-raised);
+    padding-top: 12px;
+  }
+
+  /* The search field, which fills the top edge rather than sitting in it as a bordered box. */
+  .wa-palette-field {
+    display: flex;
+    width: 100%;
+    height: 44px;
+    align-items: center;
+    gap: 8px;
+    border: 0;
+    border-bottom: 1px solid var(--wa-border);
+    border-radius: 0;
+    background: transparent;
+    padding: 0 12px;
+    font-size: 14px;
+    line-height: 20px;
+    color: var(--wa-text);
+  }
+
+  .wa-palette-field::placeholder {
+    color: var(--wa-text-placeholder);
+  }
+
+  /*
+   * Focus is not drawn on the field, and this is the one place in the app that is deliberate.
+   *
+   * The field is the only focusable thing in the dialog — every row is reached with an arrow key and
+   * marked as the active option rather than focused, which is what the combobox pattern asks for. A
+   * ring around a field that can never lose focus while the palette is open is a ring that means
+   * nothing, and it would sit directly above the row highlight that does mean something.
+   */
+  .wa-palette-field:focus,
+  .wa-palette-field:focus-visible {
+    outline: none;
+    box-shadow: none;
+  }
+
+  .wa-palette-list {
+    max-height: 320px;
+    overflow-y: auto;
+    padding: 4px;
+  }
+
+  .wa-palette-heading {
+    padding: 6px 8px 2px;
+    font-size: 11px;
+    line-height: 16px;
+    font-weight: 600;
+    color: var(--wa-text-muted);
+  }
+
+  .wa-palette-option {
+    display: flex;
+    width: 100%;
+    min-height: 32px;
+    align-items: center;
+    gap: 8px;
+    border-radius: var(--wa-radius-sm);
+    padding: 4px 8px;
+    text-align: left;
+    cursor: default;
+  }
+
+  /*
+   * The active row, marked by attribute rather than by `:hover`.
+   *
+   * One highlight, whether it was arrived at by typing or by pointing — a palette that shows a
+   * keyboard highlight on one row and a hover tint on another is a palette where Enter does
+   * something the reader is not looking at.
+   */
+  .wa-palette-option[data-active='true'] {
+    background: var(--wa-action-soft);
+    color: var(--wa-action-hover);
+  }
+
+  .wa-palette-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    border-top: 1px solid var(--wa-border);
+    background: var(--wa-surface-subtle);
+    padding: 6px 12px;
+  }
+
+  /* A printed key. Not a button: nothing here is clickable, it is a caption in the shape of a key. */
+  .wa-key {
+    display: inline-flex;
+    min-width: 20px;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--wa-border);
+    border-bottom-width: 2px;
+    border-radius: var(--wa-radius-sm);
+    background: var(--wa-surface);
+    padding: 0 4px;
+    font-size: 11px;
+    line-height: 16px;
+    font-weight: 600;
+    color: var(--wa-text-secondary);
+  }
+
+  /* Tables */
+  .wa-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+
+  .wa-table th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    border-bottom: 1px solid var(--wa-border);
+    background: var(--wa-surface-subtle);
+    padding: 0 12px;
+    height: 36px;
+    text-align: left;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--wa-text-muted);
+    white-space: nowrap;
+  }
+
+  /*
+   * 6px of vertical padding rather than 8px, and the 2px is the differential strip's.
+   *
+   * The strip takes 29px of canvas from every page in the app, and the page it took them from was
+   * the pillars page, whose two panels fitted a 1280x800 window with nothing to spare. Measured
+   * there: 8px is 16px of the 39 the page was over. Tables are the densest thing on any of these
+   * pages and the least harmed by the loss — a row of one line of 13px text at 6px still stands
+   * 30px, which is above the 24px minimum target size 2.5.8 asks of the links inside it.
+   */
+  .wa-table td {
+    border-bottom: 1px solid var(--wa-divider);
+    padding: 6px 12px;
+    vertical-align: top;
+  }
+
+  /*
+   * Zebra rows. Not optional on any table in this app.
+   *
+   * A six-column row is read across, and a 1px divider is not enough to hold the eye on one record
+   * for the width of a page: it lands a row off, and in a table whose columns are a posture, a
+   * coverage figure and a severity count, landing a row off means attributing one pillar's numbers
+   * to another. The band does what the divider cannot, and costs nothing.
+   *
+   * Declared before the state rules below so hover, selection and focus still win. A stripe is
+   * banding, not a state, and must never look like one.
+   */
+  .wa-table tbody tr:nth-child(even) {
+    background: var(--wa-zebra);
+  }
+
+  .wa-table tbody tr[data-selected='true'] {
+    background: var(--wa-selection);
+  }
+}
+
+/*
+ * These two widths came from the kit, where 1180px turned the inspector into a drawer and 900px went
+ * list-first. Both of those rules governed the drafted workbench and are gone with it: the panes
+ * stack at 1280px instead, so nothing is hidden at either width. What is left here is the overview's
+ * own band, which has its own reasons at each width.
+ */
+@media (max-width: 1179px) {
+  /*
+   * The rail goes under the risk list rather than narrowing. A 340px rail is what makes a
+   * recommendation title hold two lines; take 80px off it and the same five titles become
+   * eleven lines, which is no longer a list that can be scanned.
+   */
+  .wa-main-band {
+    grid-template-columns: minmax(0, 1fr);
+    /* Stacked, the rail is a second row of its own height rather than half the band's. */
+    grid-template-rows: 320px auto;
+  }
+
+  /*
+   * The summary cannot remain a fixed-height page once its eight-card census becomes two rows and
+   * its lower band stacks. At 1024x768 those regions were forced into the 360px left below the
+   * header: the Evidence gaps heading painted over the priority rows and the change panel began
+   * inside both. The canvas is already the shell's one scrolling region, so let this page use it at
+   * the same breakpoint where its composition changes.
+   */
+  .wa-page:has(> .wa-strip) {
+    height: auto;
+  }
+
+  .wa-page:has(> .wa-strip) .wa-main-band {
+    flex: none;
+  }
+}
+
+@media (min-width: 900px) and (max-width: 1179px) {
+  /* The two qualifiers share the row below the priority queue; stacking them would add height
+     without making either easier to compare at this width. */
+  .wa-summary-rail {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+}
+
+@media (max-width: 899px) {
+  /* Below 900px the document uses natural-height rows in the shell's single scrolling region. */
+  .wa-page {
+    height: auto;
+  }
+
+  .wa-main-band {
+    grid-template-rows: auto auto;
+  }
+
+  /*
+   * The chrome column costs a quarter of a phone's width and holds nothing the reader cannot
+   * reach from the header's menu, so it goes rather than shrinks. A 52px icon column is the
+   * alternative and is worse: the icons alone do not distinguish "Findings" from "Checks".
+   */
+  .wa-app {
+    grid-template-rows: minmax(0, 1fr);
+  }
+
+  .wa-chrome {
+    display: none;
+  }
+
+  /* The header sheet is the nav once the rail is gone. Same 899px as `.wa-chrome` above. */
+  .wa-nav-menu {
+    display: block;
+  }
+
+  /* The canvas gutter halves; 28px of padding on a 390px screen is 14% of it. */
+  .wa-page {
+    padding-inline: 14px;
+    padding-block: 12px 20px;
+  }
+
+  .wa-page-header {
+    padding: 12px 14px 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

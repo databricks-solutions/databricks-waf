@@ -1,0 +1,30 @@
+{
+  "extends": "./tsconfig.shared.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.client.tsbuildinfo",
+    "target": "ES2022",
+    "useDefineForClassFields": true,
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "types": ["vite/client"],
+
+    /* Bundler mode */
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
+    "moduleDetection": "force",
+    "noEmit": true,
+    "jsx": "react-jsx",
+
+    /* Linting */
+    "erasableSyntaxOnly": true,
+    "noUncheckedSideEffectImports": true,
+
+    /* Paths */
+    "baseUrl": "./client",
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  // shared/api holds the wire contract, which both sides typecheck against. It is
+  // types only, so nothing from it reaches the browser bundle.
+  "include": ["client/src", "shared/appkit-types", "shared/api"]
+}

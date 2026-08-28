@@ -1,0 +1,23 @@
+{
+  "what": "When the app was last served, and when the served app was last driven in a browser. The `served` half is the platform's answer; the `driven` half is drive-labs.mjs's. The deployment ids say whether they are about the same app.",
+  "served": {
+    "asked": "2026-08-28T06:38:20.329Z",
+    "estate": "labs",
+    "app": "databricks-waf-assessment",
+    "origin": "https://databricks-waf-assessment-7000000000000023.aws.databricksapps.com",
+    "deploymentId": "01f1a2a86bb316068a8eb0dcb7df0533",
+    "deployedAt": "2026-08-28T06:19:27Z",
+    "deploymentState": "SUCCEEDED",
+    "appState": "RUNNING",
+    "source": "databricks apps get databricks-waf-assessment --profile your-profile"
+  },
+  "driven": {
+    "at": "2026-08-28T06:38:20.333Z",
+    "estate": "labs",
+    "origin": "https://databricks-waf-assessment-7000000000000023.aws.databricksapps.com",
+    "deploymentId": "01f1a2a86bb316068a8eb0dcb7df0533",
+    "drove": 37,
+    "declared": 37,
+    "failures": 0
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "extends": "./tsconfig.shared.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.server.tsbuildinfo",
+    // The runtime is Node 22, so the server is typechecked against what it actually
+    // has rather than the template's floor. Error.cause in particular is load-bearing:
+    // wrapping a failure without it loses the original, which is the thing that says
+    // what went wrong.
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "noEmit": true,
+    "rootDir": "./"
+  },
+  // `scripts` is here for its tests. The checks in that folder are mostly `.mjs` and untyped, but
+  // `python-code.test.ts` guards the tokeniser those checks depend on, and a test outside every
+  // tsconfig is a test the linter refuses to read. `.mts` is here for the opposite reason: a check
+  // that imports the server's own modules to report what the code does — `check-coverage-ledger.mts`
+  // — is only trustworthy if it is typechecked against them, so it belongs to this project.
+  "include": [
+    "server/**/*",
+    "shared/**/*",
+    "config/**/*",
+    "scripts/**/*.ts",
+    "scripts/**/*.mts",
+    "scripts/**/*.d.mts"
+  ],
+  "exclude": ["node_modules", "dist", "client"]
+}

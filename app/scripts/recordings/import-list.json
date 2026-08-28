@@ -1,0 +1,83 @@
+{
+  "measuredAt": "2026-08-17",
+  "postgres": "PostgreSQL 17.10",
+  "page": 20,
+  "sizes": [
+    {
+      "name": "labs",
+      "bytes": 26429,
+      "source": "the size of an envelope collected from labs on 2026-08-17, over 29 probes"
+    },
+    {
+      "name": "the cap",
+      "bytes": 8388608,
+      "source": "the largest upload `import/read.ts` accepts"
+    }
+  ],
+  "readings": [
+    {
+      "size": "labs",
+      "envelopeBytes": 26429,
+      "imports": 1,
+      "wholeMs": 0.3385419999999897,
+      "summaryMs": 0.1249170000000106,
+      "pagedMs": 0.2969169999999792
+    },
+    {
+      "size": "labs",
+      "envelopeBytes": 26429,
+      "imports": 10,
+      "wholeMs": 1.0919590000000028,
+      "summaryMs": 0.1220000000000141,
+      "pagedMs": 1.0707079999999962
+    },
+    {
+      "size": "labs",
+      "envelopeBytes": 26429,
+      "imports": 50,
+      "wholeMs": 4.732916000000017,
+      "summaryMs": 0.17345899999997982,
+      "pagedMs": 2.0302079999999876
+    },
+    {
+      "size": "labs",
+      "envelopeBytes": 26429,
+      "imports": 200,
+      "wholeMs": 17.495000000000005,
+      "summaryMs": 0.44633299999998144,
+      "pagedMs": 1.9936250000000086
+    },
+    {
+      "size": "the cap",
+      "envelopeBytes": 8388608,
+      "imports": 1,
+      "wholeMs": 46.34883400000001,
+      "summaryMs": 0.2141670000000886,
+      "pagedMs": 43.18791699999997
+    },
+    {
+      "size": "the cap",
+      "envelopeBytes": 8388608,
+      "imports": 10,
+      "wholeMs": 271.0220410000002,
+      "summaryMs": 0.22775000000001455,
+      "pagedMs": 269.1709579999997
+    },
+    {
+      "size": "the cap",
+      "envelopeBytes": 8388608,
+      "imports": 50,
+      "wholeMs": 1288.883749999999,
+      "summaryMs": 0.2316659999996773,
+      "pagedMs": 545.0632910000022
+    },
+    {
+      "size": "the cap",
+      "envelopeBytes": 8388608,
+      "imports": 200,
+      "wholeMs": 6149.689666999999,
+      "summaryMs": 0.5676249999960419,
+      "pagedMs": 533.9951250000013
+    }
+  ]
+}

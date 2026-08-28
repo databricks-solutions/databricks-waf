@@ -1,0 +1,3360 @@
+{
+  "runFinishedAt": "2026-08-11T18:28:48.411Z",
+  "profile": "labs",
+  "lookbackDays": 15,
+  "shapeLimit": 40,
+  "corpus": {
+    "statement": "config/statements/workload_query_shapes.sql",
+    "shapesReturned": 40,
+    "plansRead": 36,
+    "skipped": {
+      "warehouse-outside-workspace": 3,
+      "not-warehouse-compute": 1
+    }
+  },
+  "exchangeTagGroups": {
+    "mapStage": [
+      "/SHUFFLEMAPSTAGE/"
+    ],
+    "sink": [
+      "/SHUFFLEEXCHANGESINK/"
+    ],
+    "queryStage": [
+      "/SHUFFLEQUERYSTAGE/"
+    ],
+    "reused": [
+      "/REUSEDEXCHANGE/"
+    ]
+  },
+  "exchanges": {
+    "tags": {
+      "n": 36,
+      "min": 0,
+      "p50": 2,
+      "p90": 8,
+      "p99": 20,
+      "max": 20,
+      "atOrAboveEight": 4
+    },
+    "pairs": {
+      "n": 36,
+      "min": 0,
+      "p50": 1,
+      "p90": 5,
+      "p99": 10,
+      "max": 10,
+      "atOrAboveEight": 3
+    },
+    "mapStages": {
+      "n": 36,
+      "min": 0,
+      "p50": 1,
+      "p90": 3,
+      "p99": 10,
+      "max": 10,
+      "atOrAboveEight": 3
+    },
+    "stages": {
+      "n": 36,
+      "min": 0,
+      "p50": 0,
+      "p90": 0,
+      "p99": 1,
+      "max": 1,
+      "atOrAboveEight": 0
+    }
+  },
+  "pairing": {
+    "plansWithAnyExchange": 28,
+    "plansWhereMapStagesEqualSinks": 36,
+    "plansWithAnExchangeWhereMapStagesEqualSinks": 28,
+    "exchangeTagsOutsideTheFourGroups": 1,
+    "tagsOutsideTheFourGroups": [
+      "SHUFFLE_EXCHANGE_EXEC"
+    ]
+  },
+  "jointly": {
+    "tags": 0,
+    "pairs": 0,
+    "mapStages": 0,
+    "stages": 0
+  },
+  "selectedByFloor": {
+    "4": 4,
+    "5": 4,
+    "6": 3,
+    "7": 3,
+    "8": 3,
+    "9": 3,
+    "10": 2
+  },
+  "shapesMeanOverAMinute": 0,
+  "shapesTotalOverAMinute": 9,
+  "shapesWorstOverAMinute": 1,
+  "longestMeanMs": 37344,
+  "longestWorstMs": 74412,
+  "boundaryAndWorstOverAMinute": 0,
+  "plansWhereWorstIsTheRepresentative": 36,
+  "skewMetrics": {
+    "MapStage - Skew max to non-empty median ratio": {
+      "carriedByPlans": 27,
+      "nonZeroPlans": 23,
+      "carryingOperators": 60,
+      "nonZeroOperators": 54,
+      "distinctNonZeroValues": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        19
+      ],
+      "spread": {
+        "n": 27,
+        "min": 0,
+        "p50": 1,
+        "p90": 4,
+        "p99": 19,
+        "max": 19,
+        "atOrAboveEight": 1
+      }
+    },
+    "MapStage - Skew num skewed partitions": {
+      "carriedByPlans": 27,
+      "nonZeroPlans": 0,
+      "carryingOperators": 60,
+      "nonZeroOperators": 0,
+      "distinctNonZeroValues": [],
+      "spread": {
+        "n": 27,
+        "min": 0,
+        "p50": 0,
+        "p90": 0,
+        "p99": 0,
+        "max": 0,
+        "atOrAboveEight": 0
+      }
+    },
+    "MapStage - Skew skewed data size ratio": {
+      "carriedByPlans": 27,
+      "nonZeroPlans": 0,
+      "carryingOperators": 60,
+      "nonZeroOperators": 0,
+      "distinctNonZeroValues": [],
+      "spread": {
+        "n": 27,
+        "min": 0,
+        "p50": 0,
+        "p90": 0,
+        "p99": 0,
+        "max": 0,
+        "atOrAboveEight": 0
+      }
+    },
+    "MapStage - Skew non-empty median partition size": {
+      "carriedByPlans": 27,
+      "nonZeroPlans": 23,
+      "carryingOperators": 60,
+      "nonZeroOperators": 54,
+      "distinctNonZeroValues": [
+        4,
+        24,
+        58,
+        92,
+        132,
+        136,
+        148,
+        166,
+        192,
+        233,
+        309,
+        368,
+        399,
+        403,
+        463,
+        495,
+        568,
+        656,
+        1344,
+        4457,
+        5359,
+        87515,
+        143398
+      ],
+      "spread": {
+        "n": 27,
+        "min": 0,
+        "p50": 233,
+        "p90": 5359,
+        "p99": 143398,
+        "max": 143398,
+        "atOrAboveEight": 22
+      }
+    },
+    "MapStage - Skew num empty partitions": {
+      "carriedByPlans": 27,
+      "nonZeroPlans": 15,
+      "carryingOperators": 60,
+      "nonZeroOperators": 35,
+      "distinctNonZeroValues": [
+        9,
+        10,
+        19,
+        38,
+        41,
+        44,
+        46,
+        51,
+        52,
+        54,
+        56,
+        57,
+        60,
+        62
+      ],
+      "spread": {
+        "n": 27,
+        "min": 0,
+        "p50": 10,
+        "p90": 60,
+        "p99": 62,
+        "max": 62,
+        "atOrAboveEight": 15
+      }
+    },
+    "AQEShuffleRead - Skew handled by": {
+      "carriedByPlans": 17,
+      "nonZeroPlans": 0,
+      "carryingOperators": 39,
+      "nonZeroOperators": 0,
+      "distinctNonZeroValues": [],
+      "spread": {
+        "n": 17,
+        "min": 0,
+        "p50": 0,
+        "p90": 0,
+        "p99": 0,
+        "max": 0,
+        "atOrAboveEight": 0
+      }
+    },
+    "ShuffleQueryStage - Adp reduce-side skew threshold met": {
+      "carriedByPlans": 25,
+      "nonZeroPlans": 17,
+      "carryingOperators": 58,
+      "nonZeroOperators": 38,
+      "distinctNonZeroValues": [
+        1,
+        2
+      ],
+      "spread": {
+        "n": 25,
+        "min": 0,
+        "p50": 2,
+        "p90": 2,
+        "p99": 2,
+        "max": 2,
+        "atOrAboveEight": 0
+      }
+    },
+    "AQEShuffleRead - Number of skewed partitions": {
+      "carriedByPlans": 0,
+      "nonZeroPlans": 0,
+      "carryingOperators": 0,
+      "nonZeroOperators": 0,
+      "distinctNonZeroValues": [],
+      "spread": null
+    },
+    "AQEShuffleRead - Number of skewed partition splits": {
+      "carriedByPlans": 0,
+      "nonZeroPlans": 0,
+      "carryingOperators": 0,
+      "nonZeroOperators": 0,
+      "distinctNonZeroValues": [],
+      "spread": null
+    }
+  },
+  "sorts": {
+    "plansWithASort": 14,
+    "sorts": 14,
+    "sortsWithALimitDownstream": 0,
+    "sortsWithNothingDownstream": 0,
+    "rows": {
+      "n": 14,
+      "min": 2,
+      "p50": 8,
+      "p90": 130,
+      "p99": 17010,
+      "max": 17010,
+      "atOrAboveEight": 8
+    },
+    "peakMemoryBytes": {
+      "n": 14,
+      "min": 27262976,
+      "p50": 29360128,
+      "p90": 29360128,
+      "p99": 29360128,
+      "max": 29360128,
+      "atOrAboveEight": 14
+    },
+    "spilledBytes": {
+      "n": 14,
+      "min": 0,
+      "p50": 0,
+      "p90": 0,
+      "p99": 0,
+      "max": 0,
+      "atOrAboveEight": 0
+    },
+    "sortsThatSpilled": 0,
+    "tagsSeen": [
+      "PHOTON_SORT_EXEC"
+    ],
+    "plansWithATopK": 8,
+    "topKOperators": 19,
+    "peakMemory": {
+      "distinctAcrossSorts": [
+        27262976,
+        29360128
+      ],
+      "distinctAcrossEveryOperator": [
+        0,
+        65536,
+        65552,
+        68768,
+        327840,
+        2129920,
+        2208322,
+        4196352,
+        4259840,
+        4325376,
+        6291456,
+        8388608,
+        8519680,
+        8650752,
+        8847744,
+        8849760,
+        16777216,
+        16779264,
+        16780288,
+        16781312,
+        16785408,
+        16811008,
+        16843776,
+        17301504,
+        18874368,
+        21364736,
+        25165824,
+        27262976,
+        29360128,
+        31457280,
+        41943040,
+        42598400,
+        50372608,
+        50416747,
+        50417773,
+        51168363,
+        51168365,
+        56623104,
+        67108864,
+        68157440,
+        70781664,
+        75497472,
+        76677120,
+        79701904,
+        83886080,
+        83889152,
+        100940800,
+        104857600,
+        106954752,
+        134222843,
+        134225648,
+        134226053,
+        134228843,
+        134283392,
+        134682877,
+        140509296,
+        140509368,
+        140511600,
+        140544040,
+        142606592,
+        142608640,
+        142608712,
+        142608856,
+        142737664,
+        143065584,
+        143067744,
+        144703672,
+        144703744,
+        146932328,
+        148897792,
+        151027712,
+        151041264,
+        151042048,
+        151045089,
+        151053399,
+        151061760,
+        151076864,
+        151094384,
+        151097616,
+        151181312,
+        151219410,
+        153096376,
+        153126000,
+        155199600,
+        157286656,
+        157288560,
+        157288632,
+        157288776,
+        161480816,
+        163578112,
+        167772344,
+        167772416,
+        167772488,
+        167772848,
+        167847936,
+        167954541,
+        167968768,
+        168159232,
+        171966792,
+        201436258,
+        201446569,
+        204559360,
+        251717632,
+        251843122,
+        268437504,
+        281088368,
+        471900496,
+        480248576,
+        480249440,
+        755303120,
+        765461040,
+        786432560,
+        807405160,
+        948191744,
+        1278742688,
+        1396726560,
+        1443893544,
+        1449184512,
+        1453331880,
+        1463814832,
+        1503693704,
+        1552207968,
+        1589666127,
+        1615005488,
+        1646662200,
+        1840339264,
+        1879167141,
+        1887542505,
+        2327871120,
+        2413875968,
+        2416351088,
+        4565578864
+      ],
+      "smallestByRows": {
+        "rows": 2,
+        "peak": 29360128
+      },
+      "largestByRows": {
+        "rows": 17010,
+        "peak": 27262976
+      }
+    }
+  },
+  "direction": {
+    "plansWithAScanAndASort": 14,
+    "plansWhereScanReachesFurtherAlongFrom": 14,
+    "plansWhereSortReachesFurtherAlongFrom": 0
+  },
+  "plans": [
+    {
+      "workspaceId": "7000000000000023",
+      "shape": "4a7dbd8a61a28cb3",
+      "statementType": "SELECT",
+      "msNow": 7959951,
+      "meanMs": 12303,
+      "worstMs": 74412,
+      "medianMs": 10352,
+      "representativeMeasured": true,
+      "runs": 647,
+      "operators": 24,
+      "responseTextLength": 57970,
+      "exchanges": {
+        "counts": {
+          "mapStage": 2,
+          "sink": 2,
+          "queryStage": 0,
+          "reused": 0,
+          "otherExchange": 0
+        },
+        "otherExchangeTags": [],
+        "readings": {
+          "tags": 4,
+          "pairs": 2,
+          "mapStages": 2,
+          "stages": 0
+        },
+        "mapStagesEqualSinks": true
+      },
+      "skew": {},
+      "sorts": [],
+      "topKOperators": 0,
+      "sortTagsSeen": [],
+      "peakMemoryValues": [
+        0
+      ],
+      "direction": {
+        "scans": 2,
+        "sorts": 0,
+        "scanReachesAlongFrom": 15,
+        "sortReachesAlongFrom": null,
+        "scanReachesAlongTo": 0,
+        "sortReachesAlongTo": null
+      },
+      "edges": 19
+    },
+    {
+      "workspaceId": "7000000000000023",
+      "shape": "7476524adf153b55",
+      "statementType": "SELECT",
+      "msNow": 1049430,
+      "meanMs": 332,
+      "worstMs": 26038,
+      "medianMs": 279,
+      "representativeMeasured": true,
+      "runs": 3163,
+      "operators": 2,
+      "responseTextLength": 4871,
+      "exchanges": {
+        "counts": {
+          "mapStage": 0,
+          "sink": 0,
+          "queryStage": 0,
+          "reused": 0,
+          "otherExchange": 0
+        },
+        "otherExchangeTags": [],
+        "readings": {
+          "tags": 0,
+          "pairs": 0,
+          "mapStages": 0,
+          "stages": 0
+        },
+        "mapStagesEqualSinks": true
+      },
+      "skew": {},
+      "sorts": [],
+      "topKOperators": 0,
+      "sortTagsSeen": [],
+      "peakMemoryValues": [],
+      "direction": {
+        "scans": 1,
+        "sorts": 0,
+        "scanReachesAlongFrom": 1,
+        "sortReachesAlongFrom": null,
+        "scanReachesAlongTo": 0,
+        "sortReachesAlongTo": null
+      },
+      "edges": 1
+    },
+    {
+      "workspaceId": "7000000000000023",
+      "shape": "376fbf8fc6ebf94c",
+      "statementType": "SELECT",
+      "msNow": 520076,
+      "meanMs": 1143,
+      "worstMs": 6444,
+      "medianMs": 701,
+      "representativeMeasured": true,
+      "runs": 1486,
+      "operators": 16,
+      "responseTextLength": 170835,
+      "exchanges": {
+        "counts": {
+          "mapStage": 1,
+          "sink": 1,
+          "queryStage": 0,
+          "reused": 0,
+          "otherExchange": 0
+        },
+        "otherExchangeTags": [],
+        "readings": {
+          "tags": 2,
+          "pairs": 1,
+          "mapStages": 1,
+          "stages": 0
+        },
+        "mapStagesEqualSinks": true
+      },
+      "skew": {
+        "MapStage - Skew max to non-empty median ratio": {
+          "max": 1,
+          "operators": 1,
+          "nonZero": 1
+        },
+        "MapStage - Skew num skewed partitions": {
+          "max": 0,
+          "operators": 1,
+          "nonZero": 0
+        },
+        "MapStage - Skew skewed data size ratio": {
+          "max": 0,
+          "operators": 1,
+          "nonZero": 0
+        },
+        "MapStage - Skew non-empty median partition size": {
+          "max": 24,
+          "operators": 1,
+          "nonZero": 1
+        },
+        "MapStage - Skew num empty partitions": {
+          "max": 0,
+          "operators": 1,
+          "nonZero": 0
+        },
+        "ShuffleQueryStage - Adp reduce-side skew threshold met": {
+          "max": 0,
+          "operators": 1,
+          "nonZero": 0
+        }
+      },
+      "sorts": [],
+      "topKOperators": 3,
+      "sortTagsSeen": [],
+      "peakMemoryValues": [
+        16785408,
+        16843776,
+        151061760,
+        155199600
+      ],
+      "direction": {
+        "scans": 2,
+        "sorts": 0,
+        "scanReachesAlongFrom": 10,
+        "sortReachesAlongFrom": null,
+        "scanReachesAlongTo": 0,
+        "sortReachesAlongTo": null
+      },
+      "edges": 13
+    },
+    {
+      "workspaceId": "7000000000000023",
+      "shape": "62989ae5ee5cd334",
+      "statementType": "SELECT",
+      "msNow": 264066,
+      "meanMs": 5281,
+      "worstMs": 6520,
+      "medianMs": 5192,
+      "representativeMeasured": true,
+      "runs": 51,
+      "operators": 55,
+      "responseTextLength": 824427,
+      "exchanges": {
+        "counts": {
+          "mapStage": 10,
+          "sink": 10,
+          "queryStage": 0,
+          "reused": 0,
+          "otherExchange": 0
+        },
+        "otherExchangeTags": [],
+        "readings": {
+          "tags": 20,
+          "pairs": 10,
+          "mapStages": 10,
+          "stages": 0
+        },
+        "mapStagesEqualSinks": true
+      },
+      "skew": {
+        "MapStage - Skew max to non-empty median ratio": {
+          "max": 3,
+          "operators": 10,
+          "nonZero": 10
+        },
+        "MapStage - Skew num skewed partitions": {
+          "max": 0,
+          "operators": 10,
+          "nonZero": 0
+        },
+        "MapStage - Skew skewed data size ratio": {
+          "max": 0,
+          "operators": 10,
+          "nonZero": 0
+        },
+        "MapStage - Skew non-empty median partition size": {
+          "max": 568,
+          "operators": 10,
+          "nonZero": 10
+        },
+        "MapStage - Skew num empty partitions": {
+          "max": 9,
+          "operators": 10,
+          "nonZero": 7
+        },
+        "AQEShuffleRead - Skew handled by": {
+          "max": 0,
+          "operators": 7,
+          "nonZero": 0
+        },
+        "ShuffleQueryStage - Adp reduce-side skew threshold met": {
+          "max": 2,
+          "operators": 10,
+          "nonZero": 7
+        }
+      },
+      "sorts": [
+        {
+          "tag": "PHOTON_SORT_EXEC",
+          "downstreamOperators": 4,
+          "limited": false,
+          "rows": 9,
+          "peakMemoryBytes": 29360128,
+          "durationMs": 0,
+          "spilledBytes": 0
+        }
+      ],
+      "topKOperators": 0,
+      "sortTagsSeen": [
+        "PHOTON_SORT_EXEC"
+      ],
+      "peakMemoryValues": [
+        4325376,
+        8519680,
+        21364736,
+        29360128,
+        50417773,
+        51168365,
+        142608640,
+        142608712,
+        142608856,
+        142737664,
+        167772848,
+        480248576,
+        480249440
+      ],
+      "direction": {
+        "scans": 4,
+        "sorts": 1,
+        "scanReachesAlongFrom": 20,
+        "sortReachesAlongFrom": 4,
+        "scanReachesAlongTo": 0,
+        "sortReachesAlongTo": 38
+      },
+      "edges": 42
+    },
+    {
+      "workspaceId": "7000000000000023",
+      "shape": "e4a3ff3417be8c5d",
+      "statementType": "SELECT",
+      "msNow": 189964,
+      "meanMs": 3333,
+      "worstMs": 4383,
+      "medianMs": 3312,
+      "representativeMeasured": true,
+      "runs": 57,
+      "operators": 6,
+      "responseTextLength": 75358,
+      "exchanges": {
+        "counts": {
+          "mapStage": 0,
+          "sink": 0,
+          "queryStage": 0,
+          "reused": 0,
+          "otherExchange": 0
+        },
+        "otherExchangeTags": [],
+        "readings": {
+          "tags": 0,
+          "pairs": 0,
+          "mapStages": 0,
+          "stages": 0
+        },
+        "mapStagesEqualSinks": true
+      },
+      "skew": {},
+      "sorts": [],
+      "topKOperators": 0,
+      "sortTagsSeen": [],
+      "peakMemoryValues": [
+        16777216,
+        151045089
+      ],
+      "direction": {
+        "scans": 1,
+        "sorts": 0,
+        "scanReachesAlongFrom": 3,
+        "sortReachesAlongFrom": null,
+        "scanReachesAlongTo": 0,
+        "sortReachesAlongTo": null
+      },
+      "edges": 3
+    },
+    {
+      "workspaceId": "7000000000000023",
+      "shape": "842850397b9a4c99",
+      "statementType": "SELECT",
+      "msNow": 179357,
+      "meanMs": 1172,
+      "worstMs": 7255,
+      "medianMs": 1011,
+      "representativeMeasured": true,
+      "runs": 174,
+      "operators": 5,
+      "responseTextLength": 70601,
+      "exchanges": {
+        "counts": {
+          "mapStage": 0,
+          "sink": 0,
+          "queryStage": 0,
+          "reused": 0,
+          "otherExchange": 0
+        },
+        "otherExchangeTags": [],
+        "readings": {
+          "tags": 0,
+          "pairs": 0,
+          "mapStages": 0,
+          "stages": 0
+        },
+        "mapStagesEqualSinks": true
+      },
+      "skew": {},
+      "sorts": [],
+      "topKOperators": 1,
+      "sortTagsSeen": [],
+      "peakMemoryValues": [
+        16843776,
+        151061760
+      ],
+      "direction": {
+        "scans": 1,
+        "sorts": 0,
+        "scanReachesAlongFrom": 3,
+        "sortReachesAlongFrom": null,
+        "scanReachesAlongTo": 0,
+        "sortReachesAlongTo": null
+      },
+      "edges": 3
+    },
+    {
+      "workspaceId": "7000000000000023",
+      "shape": "f75f32a9f5e6d216",
+      "statementType": "SELECT",
+      "msNow": 143783,
+      "meanMs": 922,
+      "worstMs": 1414,
+      "medianMs": 933,
+      "representativeMeasured": true,
+      "runs": 158,
+      "operators": 5,
+      "responseTextLength": 70639,
+      "exchanges": {
+        "counts": {
+          "mapStage": 0,
+          "sink": 0,
+          "queryStage": 0,
+          "reused": 0,
+          "otherExchange": 0
+        },
+        "otherExchangeTags": [],
+        "readings": {
+          "tags": 0,
+          "pairs": 0,
+          "mapStages": 0,
+          "stages": 0
+        },
+        "mapStagesEqualSinks": true
+      },
+      "skew": {},
+      "sorts": [],
+      "topKOperators": 1,
+      "sortTagsSeen": [],
+      "peakMemoryValues": [
+        16843776,
+        151061760
+      ],
+      "direction": {
+        "scans": 1,
+        "sorts": 0,
+        "scanReachesAlongFrom": 3,
+        "sortReachesAlongFrom": null,
+        "scanReachesAlongTo": 0,
+        "sortReachesAlongTo": null
+      },
+      "edges": 3
+    },
+    {
+      "workspaceId": "7000000000000023",
+      "shape": "4ec489160ab1a688",
+      "statementType": "SELECT",
+      "msNow": 69002,
+      "meanMs": 9857,
+      "worstMs": 15678,
+      "medianMs": 11725,
+      "representativeMeasured": true,
+      "runs": 7,
+      "operators": 14,
+      "responseTextLength": 134201,
+      "exchanges": {
+        "counts": {
+          "mapStage": 1,
+          "sink": 1,
+          "queryStage": 0,
+          "reused": 0,
+          "otherExchange": 0
+        },
+        "otherExchangeTags": [],
+        "readings": {
+          "tags": 2,
+          "pairs": 1,
+          "mapStages": 1,
+          "stages": 0
+        },
+        "mapStagesEqualSinks": true
+      },
+      "skew": {
+        "MapStage - Skew max to non-empty median ratio": {
+          "max": 2,
+          "operators": 1,
+          "nonZero": 1
+        },
+        "MapStage - Skew num skewed partitions": {
+          "max": 0,
+          "operators": 1,
+          "nonZero": 0
+        },
+        "MapStage - Skew skewed data size ratio": {
+          "max": 0,
+          "operators": 1,
+          "nonZero": 0
+        },
+        "MapStage - Skew non-empty median partition size": {
+          "max": 309,
+          "operators": 1,
+          "nonZero": 1
+        },
+        "MapStage - Skew num empty partitions": {
+          "max": 19,
+          "operators": 1,
+          "nonZero": 1
+        },
+        "AQEShuffleRead - Skew handled by": {
+          "max": 0,
+          "operators": 1,
+          "nonZero": 0
+        },
+        "ShuffleQueryStage - Adp reduce-side skew threshold met": {
+          "max": 2,
+          "operators": 1,
+          "nonZero": 1
+        }
+      },
+      "sorts": [],
+      "topKOperators": 0,
+      "sortTagsSeen": [],
+      "peakMemoryValues": [
+        6291456,
+        56623104,
+        140509368,
+        151181312,
+        1443893544,
+        1463814832
+      ],
+      "direction": {
+        "scans": 1,
+        "sorts": 0,
+        "scanReachesAlongFrom": 10,
+        "sortReachesAlongFrom": null,
+        "scanReachesAlongTo": 0,
+        "sortReachesAlongTo": null
+      },
+      "edges": 10
+    },
+    {
+      "workspaceId": "7000000000000023",
+      "shape": "10b32b67c619562f",
+      "statementType": "SELECT",
+      "msNow": 67937,
+      "meanMs": 8492,
+      "worstMs": 12853,
+      "medianMs": 7602,
+      "representativeMeasured": true,
+      "runs": 8,
+      "operators": 13,
+      "responseTextLength": 134039,
+      "exchanges": {
+        "counts": {
+          "mapStage": 1,
+          "sink": 1,
+          "queryStage": 0,
+          "reused": 0,
+          "otherExchange": 0
+        },
+        "otherExchangeTags": [],
+        "readings": {
+          "tags": 2,
+          "pairs": 1,
+          "mapStages": 1,
+          "stages": 0
+        },
+        "mapStagesEqualSinks": true
+      },
+      "skew": {
+        "MapStage - Skew max to non-empty median ratio": {
+          "max": 3,
+          "operators": 1,
+          "nonZero": 1
+        },
+        "MapStage - Skew num skewed partitions": {
+          "max": 0,
+          "operators": 1,
+          "nonZero": 0
+        },
+        "MapStage - Skew skewed data size ratio": {
+          "max": 0,
+          "operators": 1,
+          "nonZero": 0
+        },
+        "MapStage - Skew non-empty median partition size": {
+          "max": 192,
+          "operators": 1,
+          "nonZero": 1
+        },
+        "MapStage - Skew num empty partitions": {
+          "max": 51,
+          "operators": 1,
+          "nonZero": 1
+        },
+        "AQEShuffleRead - Skew handled by": {
+          "max": 0,
+          "operators": 1,
+          "nonZero": 0
+        },
+        "ShuffleQueryStage - Adp reduce-side skew threshold met": {
+          "max": 2,
+          "operators": 1,
+          "nonZero": 1
+        }
+      },
+      "sorts": [
+        {
+          "tag": "PHOTON_SORT_EXEC",
+          "downstreamOperators": 4,
+          "limited": false,
+          "rows": 15,
+          "peakMemoryBytes": 29360128,
+          "durationMs": 0,
+          "spilledBytes": 0
+        }
+      ],
+      "topKOperators": 0,
+      "sortTagsSeen": [
+        "PHOTON_SORT_EXEC"
+      ],
+      "peakMemoryValues": [
+        6291456,
+        29360128,
+        67108864,
+        167772416,
+        201446569,
+        1879167141
+      ],
+      "direction": {
+        "scans": 1,
+        "sorts": 1,
+        "scanReachesAlongFrom": 9,
+        "sortReachesAlongFrom": 4,
+        "scanReachesAlongTo": 0,
+        "sortReachesAlongTo": 5
+      },
+      "edges": 9
+    },
+    {
+      "workspaceId": "7000000000000023",
+      "shape": "3549d300667fc031",
+      "statementType": "SELECT",
+      "msNow": 55460,
+      "meanMs": 11092,
+      "worstMs": 12564,
+      "medianMs": 11193,
+      "representativeMeasured": true,
+      "runs": 5,
+      "operators": 55,
+      "responseTextLength": 814146,
+      "exchanges": {
+        "counts": {
+          "mapStage": 10,
+          "sink": 10,
+          "queryStage": 0,
+          "reused": 0,
+          "otherExchange": 0
+        },
+        "otherExchangeTags": [],
+        "readings": {
+          "tags": 20,
+          "pairs": 10,
+          "mapStages": 10,
+          "stages": 0
+        },
+        "mapStagesEqualSinks": true
+      },
+      "skew": {
+        "MapStage - Skew max to non-empty median ratio": {
+          "max": 2,
+          "operators": 10,
+          "nonZero": 10
+        },
+        "MapStage - Skew num skewed partitions": {
+          "max": 0,
+          "operators": 10,
+          "nonZero": 0
+        },
+        "MapStage - Skew skewed data size ratio": {
+          "max": 0,
+          "operators": 10,
+          "nonZero": 0
+        },
+        "MapStage - Skew non-empty median partition size": {
+          "max": 495,
+          "operators": 10,
+          "nonZero": 10
+        },
+        "MapStage - Skew num empty partitions": {
+          "max": 10,
+          "operators": 10,
+          "nonZero": 7
+        },
+        "AQEShuffleRead - Skew handled by": {
+          "max": 0,
+          "operators": 7,
+          "nonZero": 0
+        },
+        "ShuffleQueryStage - Adp reduce-side skew threshold met": {
+          "max": 2,
+          "operators": 10,
+          "nonZero": 7
+        }
+      },
+      "sorts": [
+        {
+          "tag": "PHOTON_SORT_EXEC",
+          "downstreamOperators": 4,
+          "limited": false,
+          "rows": 8,
+          "peakMemoryBytes": 29360128,
+          "durationMs": 9,
+          "spilledBytes": 0
+        }
+      ],
+      "topKOperators": 0,
+      "sortTagsSeen": [
+        "PHOTON_SORT_EXEC"
+      ],
+      "peakMemoryValues": [
+        4325376,
+        8519680,
+        21364736,
+        29360128,
+        50416747,
+        51168363,
+        142608640,
+        142608856,
+        142737664,
+        167772848,
+        480248576,
+        480249440
+      ],
+      "direction": {
+        "scans": 4,
+        "sorts": 1,
+        "scanReachesAlongFrom": 19,
+        "sortReachesAlongFrom": 4,
+        "scanReachesAlongTo": 0,
+        "sortReachesAlongTo": 38
+      },
+      "edges": 42
+    },
+    {
+      "workspaceId": "7000000000000023",
+      "shape": "6fdebad40a96ccd5",
+      "statementType": "SELECT",
+      "msNow": 51371,
+      "meanMs": 5137,
+      "worstMs": 9248,
+      "medianMs": 4396,
+      "representativeMeasured": true,
+      "runs": 10,
+      "operators": 39,
+      "responseTextLength": 362947,
+      "exchanges": {
+        "counts": {
+          "mapStage": 3,
+          "sink": 3,
+          "queryStage": 1,
+          "reused": 1,
+          "otherExchange": 0
+        },
+        "otherExchangeTags": [],
+        "readings": {
+          "tags": 8,
+          "pairs": 5,
+          "mapStages": 3,
+          "stages": 1
+        },
+        "mapStagesEqualSinks": true
+      },
+      "skew": {
+        "MapStage - Skew max to non-empty median ratio": {
+          "max": 4,
+          "operators": 3,
+          "nonZero": 2
+        },
+        "MapStage - Skew num skewed partitions": {
+          "max": 0,
+          "operators": 3,
+          "nonZero": 0
+        },
+        "MapStage - Skew skewed data size ratio": {
+          "max": 0,
+          "operators": 3,
+          "nonZero": 0
+        },
+        "MapStage - Skew non-empty median partition size": {
+          "max": 656,
+          "operators": 3,
+          "nonZero": 2
+        },
+        "MapStage - Skew num empty partitions": {
+          "max": 38,
+          "operators": 3,
+          "nonZero": 2
+        },
+        "AQEShuffleRead - Skew handled by": {
+          "max": 0,
+          "operators": 3,
+          "nonZero": 0
+        },
+        "ShuffleQueryStage - Adp reduce-side skew threshold met": {
+          "max": 2,
+          "operators": 3,
+          "nonZero": 2
+        }
+      },
+      "sorts": [
+        {
+          "tag": "PHOTON_SORT_EXEC",
+          "downstreamOperators": 4,
+          "limited": false,
+          "rows": 16,
+          "peakMemoryBytes": 29360128,
+          "durationMs": 0,
+          "spilledBytes": 0
+        }
+      ],
+      "topKOperators": 0,
+      "sortTagsSeen": [
+        "PHOTON_SORT_EXEC"
+      ],
+      "peakMemoryValues": [
+        0,
+        4196352,
+        4325376,
+        6291456,
+        8519680,
+        29360128,
+        104857600,
+        140511600,
+        167968768,
+        168159232,
+        171966792,
+        1615005488,
+        1646662200
+      ],
+      "direction": {
+        "scans": 2,
+        "sorts": 1,
+        "scanReachesAlongFrom": 18,
+        "sortReachesAlongFrom": 4,
+        "scanReachesAlongTo": 0,
+        "sortReachesAlongTo": 29
+      },
+      "edges": 33
+    },
+    {
+      "workspaceId": "7000000000000023",
+      "shape": "1dad487b345d38f0",
+      "statementType": "SELECT",
+      "msNow": 49145,
+      "meanMs": 4915,
+      "worstMs": 11447,
+      "medianMs": 4263,
+      "representativeMeasured": true,
+      "runs": 10,
+      "operators": 18,
+      "responseTextLength": 169847,
+      "exchanges": {
+        "counts": {
+          "mapStage": 2,
+          "sink": 2,
+          "queryStage": 0,
+          "reused": 0,
+          "otherExchange": 0
+        },
+        "otherExchangeTags": [],
+        "readings": {
+          "tags": 4,
+          "pairs": 2,
+          "mapStages": 2,
+          "stages": 0
+        },
+        "mapStagesEqualSinks": true
+      },
+      "skew": {
+        "MapStage - Skew max to non-empty median ratio": {
+          "max": 1,
+          "operators": 2,
+          "nonZero": 1
+        },
+        "MapStage - Skew num skewed partitions": {
+          "max": 0,
+          "operators": 2,
+          "nonZero": 0
+        },
+        "MapStage - Skew skewed data size ratio": {
+          "max": 0,
+          "operators": 2,
+          "nonZero": 0
+        },
+        "MapStage - Skew non-empty median partition size": {
+          "max": 148,
+          "operators": 2,
+          "nonZero": 1
+        },
+        "MapStage - Skew num empty partitions": {
+          "max": 0,
+          "operators": 2,
+          "nonZero": 0
+        },
+        "ShuffleQueryStage - Adp reduce-side skew threshold met": {
+          "max": 0,
+          "operators": 1,
+          "nonZero": 0
+        }
+      },
+      "sorts": [],
+      "topKOperators": 2,
+      "sortTagsSeen": [],
+      "peakMemoryValues": [
+        4259840,
+        4325376,
+        8849760,
+        79701904,
+        143067744,
+        167954541,
+        281088368,
+        1589666127
+      ],
+      "direction": {
+        "scans": 2,
+        "sorts": 0,
+        "scanReachesAlongFrom": 11,
+        "sortReachesAlongFrom": null,
+        "scanReachesAlongTo": 0,
+        "sortReachesAlongTo": null
+      },
+      "edges": 13
+    },
+    {
+      "workspaceId": "7000000000000023",
+      "shape": "3f9e868283ad330b",
+      "statementType": "SELECT",
+      "msNow": 45175,
+      "meanMs": 3765,
+      "worstMs": 4235,
+      "medianMs": 3681,
+      "representativeMeasured": true,
+      "runs": 12,
+      "operators": 6,
+      "responseTextLength": 88044,
+      "exchanges": {
+        "counts": {
+          "mapStage": 0,
+          "sink": 0,
+          "queryStage": 0,
+          "reused": 0,
+          "otherExchange": 0
+        },
+        "otherExchangeTags": [],
+        "readings": {
+          "tags": 0,
+          "pairs": 0,
+          "mapStages": 0,
+          "stages": 0
+        },
+        "mapStagesEqualSinks": true
+      },
+      "skew": {},
+      "sorts": [],
+      "topKOperators": 0,
+      "sortTagsSeen": [],
+      "peakMemoryValues": [
+        268437504,
+        2416351088
+      ],
+      "direction": {
+        "scans": 1,
+        "sorts": 0,
+        "scanReachesAlongFrom": 3,
+        "sortReachesAlongFrom": null,
+        "scanReachesAlongTo": 0,
+        "sortReachesAlongTo": null
+      },
+      "edges": 3
+    },
+    {
+      "workspaceId": "7000000000000023",
+      "shape": "b0a0fba99957e825",
+      "statementType": "SELECT",
+      "msNow": 41886,
+      "meanMs": 8377,
+      "worstMs": 10889,
+      "medianMs": 8169,
+      "representativeMeasured": true,
+      "runs": 5,
+      "operators": 12,
+      "responseTextLength": 106399,
+      "exchanges": {
+        "counts": {
+          "mapStage": 1,
+          "sink": 1,
+          "queryStage": 0,
+          "reused": 0,
+          "otherExchange": 0
+        },
+        "otherExchangeTags": [],
+        "readings": {
+          "tags": 2,
+          "pairs": 1,
+          "mapStages": 1,
+          "stages": 0
+        },
+        "mapStagesEqualSinks": true
+      },
+      "skew": {
+        "MapStage - Skew max to non-empty median ratio": {
+          "max": 1,
+          "operators": 1,
+          "nonZero": 1
+        },
+        "MapStage - Skew num skewed partitions": {
+          "max": 0,
+          "operators": 1,
+          "nonZero": 0
+        },
+        "MapStage - Skew skewed data size ratio": {
+          "max": 0,
+          "operators": 1,
+          "nonZero": 0
+        },
+        "MapStage - Skew non-empty median partition size": {
+          "max": 368,
+          "operators": 1,
+          "nonZero": 1
+        },
+        "MapStage - Skew num empty partitions": {
+          "max": 0,
+          "operators": 1,
+          "nonZero": 0
+        },
+        "ShuffleQueryStage - Adp reduce-side skew threshold met": {
+          "max": 0,
+          "operators": 1,
+          "nonZero": 0
+        }
+      },
+      "sorts": [],
+      "topKOperators": 0,
+      "sortTagsSeen": [],
+      "peakMemoryValues": [
+        134222843,
+        251843122,
+        2327871120
+      ],
+      "direction": {
+        "scans": 1,
+        "sorts": 0,
+        "scanReachesAlongFrom": 8,
+        "sortReachesAlongFrom": null,
+        "scanReachesAlongTo": 0,
+        "sortReachesAlongTo": null
+      },
+      "edges": 8
+    },
+    {
+      "workspaceId": "7000000000000023",
+      "shape": "ad271720e9165ee2",
+      "statementType": "SELECT",
+      "msNow": 41802,
+      "meanMs": 4180,
+      "worstMs": 5519,
+      "medianMs": 3896,
+      "representativeMeasured": true,
+      "runs": 10,
+      "operators": 15,
+      "responseTextLength": 119793,
+      "exchanges": {
+        "counts": {
+          "mapStage": 1,
+          "sink": 1,
+          "queryStage": 0,
+          "reused": 0,
+          "otherExchange": 0
+        },
+        "otherExchangeTags": [],
+        "readings": {
+          "tags": 2,
+          "pairs": 1,
+          "mapStages": 1,
+          "stages": 0
+        },
+        "mapStagesEqualSinks": true
+      },
+      "skew": {
+        "MapStage - Skew max to non-empty median ratio": {
+          "max": 1,
+          "operators": 1,
+          "nonZero": 1
+        },
+        "MapStage - Skew num skewed partitions": {
+          "max": 0,
+          "operators": 1,
+          "nonZero": 0
+        },
+        "MapStage - Skew skewed data size ratio": {
+          "max": 0,
+          "operators": 1,
+          "nonZero": 0
+        },
+        "MapStage - Skew non-empty median partition size": {
+          "max": 143398,
+          "operators": 1,
+          "nonZero": 1
+        },
+        "MapStage - Skew num empty partitions": {
+          "max": 0,
+          "operators": 1,
+          "nonZero": 0
+        },
+        "ShuffleQueryStage - Adp reduce-side skew threshold met": {
+          "max": 0,
+          "operators": 1,
+          "nonZero": 0
+        }
+      },
+      "sorts": [
+        {
+          "tag": "PHOTON_SORT_EXEC",
+          "downstreamOperators": 8,
+          "limited": false,
+          "rows": 17010,
+          "peakMemoryBytes": 27262976,
+          "durationMs": 1,
+          "spilledBytes": 0
+        }
+      ],
+      "topKOperators": 0,
+      "sortTagsSeen": [
+        "PHOTON_SORT_EXEC"
+      ],
+      "peakMemoryValues": [
+        2208322,
+        27262976,
+        161480816,
+        167847936,
+        1552207968
+      ],
+      "direction": {
+        "scans": 1,
+        "sorts": 1,
+        "scanReachesAlongFrom": 11,
+        "sortReachesAlongFrom": 8,
+        "scanReachesAlongTo": 0,
+        "sortReachesAlongTo": 3
+      },
+      "edges": 11
+    },
+    {
+      "workspaceId": "7000000000000023",
+      "shape": "66a1377ea59507a3",
+      "statementType": "SELECT",
+      "msNow": 41288,
+      "meanMs": 5161,
+      "worstMs": 10756,
+      "medianMs": 3030,
+      "representativeMeasured": true,
+      "runs": 8,
+      "operators": 13,
+      "responseTextLength": 128478,
+      "exchanges": {
+        "counts": {
+          "mapStage": 1,
+          "sink": 1,
+          "queryStage": 0,
+          "reused": 0,
+          "otherExchange": 0
+        },
+        "otherExchangeTags": [],
+        "readings": {
+          "tags": 2,
+          "pairs": 1,
+          "mapStages": 1,
+          "stages": 0
+        },
+        "mapStagesEqualSinks": true
+      },
+      "skew": {
+        "MapStage - Skew max to non-empty median ratio": {
+          "max": 2,
+          "operators": 1,
+          "nonZero": 1
+        },
+        "MapStage - Skew num skewed partitions": {
+          "max": 0,
+          "operators": 1,
+          "nonZero": 0
+        },
+        "MapStage - Skew skewed data size ratio": {
+          "max": 0,
+          "operators": 1,
+          "nonZero": 0
+        },
+        "MapStage - Skew non-empty median partition size": {
+          "max": 233,
+          "operators": 1,
+          "nonZero": 1
+        },
+        "MapStage - Skew num empty partitions": {
+          "max": 60,
+          "operators": 1,
+          "nonZero": 1
+        },
+        "AQEShuffleRead - Skew handled by": {
+          "max": 0,
+          "operators": 1,
+          "nonZero": 0
+        },
+        "ShuffleQueryStage - Adp reduce-side skew threshold met": {
+          "max": 2,
+          "operators": 1,
+          "nonZero": 1
+        }
+      },
+      "sorts": [
+        {
+          "tag": "PHOTON_SORT_EXEC",
+          "downstreamOperators": 4,
+          "limited": false,
+          "rows": 4,
+          "peakMemoryBytes": 29360128,
+          "durationMs": 1,
+          "spilledBytes": 0
+        }
+      ],
+      "topKOperators": 0,
+      "sortTagsSeen": [
+        "PHOTON_SORT_EXEC"
+      ],
+      "peakMemoryValues": [
+        6291456,
+        29360128,
+        41943040,
+        100940800,
+        167772344,
+        948191744
+      ],
+      "direction": {
+        "scans": 1,
+        "sorts": 1,
+        "scanReachesAlongFrom": 9,
+        "sortReachesAlongFrom": 4,
+        "scanReachesAlongTo": 0,
+        "sortReachesAlongTo": 5
+      },
+      "edges": 9
+    },
+    {
+      "workspaceId": "7000000000000023",
+      "shape": "77689d5b6a6dc354",
+      "statementType": "SELECT",
+      "msNow": 40282,
+      "meanMs": 8056,
+      "worstMs": 9393,
+      "medianMs": 8031,
+      "representativeMeasured": true,
+      "runs": 5,
+      "operators": 16,
+      "responseTextLength": 177653,
+      "exchanges": {
+        "counts": {
+          "mapStage": 1,
+          "sink": 1,
+          "queryStage": 0,
+          "reused": 0,
+          "otherExchange": 0
+        },
+        "otherExchangeTags": [],
+        "readings": {
+          "tags": 2,
+          "pairs": 1,
+          "mapStages": 1,
+          "stages": 0
+        },
+        "mapStagesEqualSinks": true
+      },
+      "skew": {
+        "MapStage - Skew max to non-empty median ratio": {
+          "max": 2,
+          "operators": 1,
+          "nonZero": 1
+        },
+        "MapStage - Skew num skewed partitions": {
+          "max": 0,
+          "operators": 1,
+          "nonZero": 0
+        },
+        "MapStage - Skew skewed data size ratio": {
+          "max": 0,
+          "operators": 1,
+          "nonZero": 0
+        },
+        "MapStage - Skew non-empty median partition size": {
+          "max": 5359,
+          "operators": 1,
+          "nonZero": 1
+        },
+        "MapStage - Skew num empty partitions": {
+          "max": 0,
+          "operators": 1,
+          "nonZero": 0
+        },
+        "AQEShuffleRead - Skew handled by": {
+          "max": 0,
+          "operators": 1,
+          "nonZero": 0
+        },
+        "ShuffleQueryStage - Adp reduce-side skew threshold met": {
+          "max": 1,
+          "operators": 1,
+          "nonZero": 1
+        }
+      },
+      "sorts": [],
+      "topKOperators": 0,
+      "sortTagsSeen": [],
+      "peakMemoryValues": [
+        4325376,
+        8519680,
+        76677120,
+        146932328,
+        151219410,
+        1453331880
+      ],
+      "direction": {
+        "scans": 1,
+        "sorts": 0,
+        "scanReachesAlongFrom": 12,
+        "sortReachesAlongFrom": null,
+        "scanReachesAlongTo": 0,
+        "sortReachesAlongTo": null
+      },
+      "edges": 12
+    },
+    {
+      "workspaceId": "7000000000000023",
+      "shape": "1eaa93f97b984402",
+      "statementType": "SELECT",
+      "msNow": 39088,
+      "meanMs": 7818,
+      "worstMs": 9264,
+      "medianMs": 7914,
+      "representativeMeasured": true,
+      "runs": 5,
+      "operators": 13,
+      "responseTextLength": 128123,
+      "exchanges": {
+        "counts": {
+          "mapStage": 1,
+          "sink": 1,
+          "queryStage": 0,
+          "reused": 0,
+          "otherExchange": 0
+        },
+        "otherExchangeTags": [],
+        "readings": {
+          "tags": 2,
+          "pairs": 1,
+          "mapStages": 1,
+          "stages": 0
+        },
+        "mapStagesEqualSinks": true
+      },
+      "skew": {
+        "MapStage - Skew max to non-empty median ratio": {
+          "max": 1,
+          "operators": 1,
+          "nonZero": 1
+        },
+        "MapStage - Skew num skewed partitions": {
+          "max": 0,
+          "operators": 1,
+          "nonZero": 0
+        },
+        "MapStage - Skew skewed data size ratio": {
+          "max": 0,
+          "operators": 1,
+          "nonZero": 0
+        },
+        "MapStage - Skew non-empty median partition size": {
+          "max": 403,
+          "operators": 1,
+          "nonZero": 1
+        },
+        "MapStage - Skew num empty partitions": {
+          "max": 62,
+          "operators": 1,
+          "nonZero": 1
+        },
+        "AQEShuffleRead - Skew handled by": {
+          "max": 0,
+          "operators": 1,
+          "nonZero": 0
+        },
+        "ShuffleQueryStage - Adp reduce-side skew threshold met": {
+          "max": 2,
+          "operators": 1,
+          "nonZero": 1
+        }
+      },
+      "sorts": [
+        {
+          "tag": "PHOTON_SORT_EXEC",
+          "downstreamOperators": 4,
+          "limited": false,
+          "rows": 2,
+          "peakMemoryBytes": 29360128,
+          "durationMs": 0,
+          "spilledBytes": 0
+        }
+      ],
+      "topKOperators": 0,
+      "sortTagsSeen": [
+        "PHOTON_SORT_EXEC"
+      ],
+      "peakMemoryValues": [
+        6291456,
+        29360128,
+        75497472,
+        167772344,
+        201436258,
+        1887542505
+      ],
+      "direction": {
+        "scans": 1,
+        "sorts": 1,
+        "scanReachesAlongFrom": 9,
+        "sortReachesAlongFrom": 4,
+        "scanReachesAlongTo": 0,
+        "sortReachesAlongTo": 5
+      },
+      "edges": 9
+    },
+    {
+      "workspaceId": "7000000000000023",
+      "shape": "ecd64abbfcc664cc",
+      "statementType": "SELECT",
+      "msNow": 37344,
+      "meanMs": 37344,
+      "worstMs": 37344,
+      "medianMs": 37344,
+      "representativeMeasured": true,
+      "runs": 1,
+      "operators": 22,
+      "responseTextLength": 262418,
+      "exchanges": {
+        "counts": {
+          "mapStage": 2,
+          "sink": 2,
+          "queryStage": 0,
+          "reused": 0,
+          "otherExchange": 0
+        },
+        "otherExchangeTags": [],
+        "readings": {
+          "tags": 4,
+          "pairs": 2,
+          "mapStages": 2,
+          "stages": 0
+        },
+        "mapStagesEqualSinks": true
+      },
+      "skew": {
+        "MapStage - Skew max to non-empty median ratio": {
+          "max": 2,
+          "operators": 2,
+          "nonZero": 2
+        },
+        "MapStage - Skew num skewed partitions": {
+          "max": 0,
+          "operators": 2,
+          "nonZero": 0
+        },
+        "MapStage - Skew skewed data size ratio": {
+          "max": 0,
+          "operators": 2,
+          "nonZero": 0
+        },
+        "MapStage - Skew non-empty median partition size": {
+          "max": 166,
+          "operators": 2,
+          "nonZero": 2
+        },
+        "MapStage - Skew num empty partitions": {
+          "max": 44,
+          "operators": 2,
+          "nonZero": 2
+        },
+        "AQEShuffleRead - Skew handled by": {
+          "max": 0,
+          "operators": 2,
+          "nonZero": 0
+        },
+        "ShuffleQueryStage - Adp reduce-side skew threshold met": {
+          "max": 2,
+          "operators": 2,
+          "nonZero": 2
+        }
+      },
+      "sorts": [
+        {
+          "tag": "PHOTON_SORT_EXEC",
+          "downstreamOperators": 4,
+          "limited": false,
+          "rows": 2,
+          "peakMemoryBytes": 29360128,
+          "durationMs": 0,
+          "spilledBytes": 0
+        }
+      ],
+      "topKOperators": 0,
+      "sortTagsSeen": [
+        "PHOTON_SORT_EXEC"
+      ],
+      "peakMemoryValues": [
+        4325376,
+        6291456,
+        8650752,
+        16781312,
+        29360128,
+        42598400,
+        83889152,
+        153096376,
+        167772416,
+        807405160
+      ],
+      "direction": {
+        "scans": 2,
+        "sorts": 1,
+        "scanReachesAlongFrom": 15,
+        "sortReachesAlongFrom": 4,
+        "scanReachesAlongTo": 0,
+        "sortReachesAlongTo": 13
+      },
+      "edges": 17
+    },
+    {
+      "workspaceId": "7000000000000023",
+      "shape": "c478317ffe822dc7",
+      "statementType": "SELECT",
+      "msNow": 36309,
+      "meanMs": 9077,
+      "worstMs": 16188,
+      "medianMs": 6576,
+      "representativeMeasured": true,
+      "runs": 4,
+      "operators": 14,
+      "responseTextLength": 98275,
+      "exchanges": {
+        "counts": {
+          "mapStage": 1,
+          "sink": 1,
+          "queryStage": 0,
+          "reused": 0,
+          "otherExchange": 0
+        },
+        "otherExchangeTags": [],
+        "readings": {
+          "tags": 2,
+          "pairs": 1,
+          "mapStages": 1,
+          "stages": 0
+        },
+        "mapStagesEqualSinks": true
+      },
+      "skew": {
+        "MapStage - Skew max to non-empty median ratio": {
+          "max": 0,
+          "operators": 1,
+          "nonZero": 0
+        },
+        "MapStage - Skew num skewed partitions": {
+          "max": 0,
+          "operators": 1,
+          "nonZero": 0
+        },
+        "MapStage - Skew skewed data size ratio": {
+          "max": 0,
+          "operators": 1,
+          "nonZero": 0
+        },
+        "MapStage - Skew non-empty median partition size": {
+          "max": 0,
+          "operators": 1,
+          "nonZero": 0
+        },
+        "MapStage - Skew num empty partitions": {
+          "max": 0,
+          "operators": 1,
+          "nonZero": 0
+        }
+      },
+      "sorts": [],
+      "topKOperators": 0,
+      "sortTagsSeen": [],
+      "peakMemoryValues": [
+        0,
+        25165824,
+        204559360,
+        1840339264
+      ],
+      "direction": {
+        "scans": 1,
+        "sorts": 0,
+        "scanReachesAlongFrom": 10,
+        "sortReachesAlongFrom": null,
+        "scanReachesAlongTo": 0,
+        "sortReachesAlongTo": null
+      },
+      "edges": 10
+    },
+    {
+      "workspaceId": "7000000000000023",
+      "shape": "34ff54f44816803e",
+      "statementType": "SELECT",
+      "msNow": 35836,
+      "meanMs": 35836,
+      "worstMs": 35836,
+      "medianMs": 35836,
+      "representativeMeasured": true,
+      "runs": 1,
+      "operators": 124,
+      "responseTextLength": 1186670,
+      "exchanges": {
+        "counts": {
+          "mapStage": 9,
+          "sink": 9,
+          "queryStage": 0,
+          "reused": 0,
+          "otherExchange": 0
+        },
+        "otherExchangeTags": [],
+        "readings": {
+          "tags": 18,
+          "pairs": 9,
+          "mapStages": 9,
+          "stages": 0
+        },
+        "mapStagesEqualSinks": true
+      },
+      "skew": {
+        "MapStage - Skew max to non-empty median ratio": {
+          "max": 4,
+          "operators": 9,
+          "nonZero": 9
+        },
+        "MapStage - Skew num skewed partitions": {
+          "max": 0,
+          "operators": 9,
+          "nonZero": 0
+        },
+        "MapStage - Skew skewed data size ratio": {
+          "max": 0,
+          "operators": 9,
+          "nonZero": 0
+        },
+        "MapStage - Skew non-empty median partition size": {
+          "max": 58,
+          "operators": 9,
+          "nonZero": 9
+        },
+        "MapStage - Skew num empty partitions": {
+          "max": 54,
+          "operators": 9,
+          "nonZero": 5
+        },
+        "AQEShuffleRead - Skew handled by": {
+          "max": 0,
+          "operators": 5,
+          "nonZero": 0
+        },
+        "ShuffleQueryStage - Adp reduce-side skew threshold met": {
+          "max": 2,
+          "operators": 9,
+          "nonZero": 5
+        }
+      },
+      "sorts": [],
+      "topKOperators": 6,
+      "sortTagsSeen": [],
+      "peakMemoryValues": [
+        0,
+        65552,
+        327840,
+        4325376,
+        6291456,
+        16779264,
+        18874368,
+        31457280,
+        50372608,
+        83886080,
+        134283392,
+        140509296,
+        157288560,
+        471900496,
+        755303120,
+        765461040,
+        786432560
+      ],
+      "direction": {
+        "scans": 13,
+        "sorts": 0,
+        "scanReachesAlongFrom": 24,
+        "sortReachesAlongFrom": null,
+        "scanReachesAlongTo": 14,
+        "sortReachesAlongTo": null
+      },
+      "edges": 104
+    },
+    {
+      "workspaceId": "7000000000000023",
+      "shape": "50c2af806ca40f94",
+      "statementType": "SELECT",
+      "msNow": 33558,
+      "meanMs": 3356,
+      "worstMs": 4531,
+      "medianMs": 3258,
+      "representativeMeasured": true,
+      "runs": 10,
+      "operators": 17,
+      "responseTextLength": 167211,
+      "exchanges": {
+        "counts": {
+          "mapStage": 2,
+          "sink": 2,
+          "queryStage": 0,
+          "reused": 0,
+          "otherExchange": 0
+        },
+        "otherExchangeTags": [],
+        "readings": {
+          "tags": 4,
+          "pairs": 2,
+          "mapStages": 2,
+          "stages": 0
+        },
+        "mapStagesEqualSinks": true
+      },
+      "skew": {
+        "MapStage - Skew max to non-empty median ratio": {
+          "max": 1,
+          "operators": 2,
+          "nonZero": 2
+        },
+        "MapStage - Skew num skewed partitions": {
+          "max": 0,
+          "operators": 2,
+          "nonZero": 0
+        },
+        "MapStage - Skew skewed data size ratio": {
+          "max": 0,
+          "operators": 2,
+          "nonZero": 0
+        },
+        "MapStage - Skew non-empty median partition size": {
+          "max": 92,
+          "operators": 2,
+          "nonZero": 2
+        },
+        "MapStage - Skew num empty partitions": {
+          "max": 60,
+          "operators": 2,
+          "nonZero": 2
+        },
+        "AQEShuffleRead - Skew handled by": {
+          "max": 0,
+          "operators": 2,
+          "nonZero": 0
+        },
+        "ShuffleQueryStage - Adp reduce-side skew threshold met": {
+          "max": 2,
+          "operators": 2,
+          "nonZero": 2
+        }
+      },
+      "sorts": [
+        {
+          "tag": "PHOTON_SORT_EXEC",
+          "downstreamOperators": 4,
+          "limited": false,
+          "rows": 4,
+          "peakMemoryBytes": 29360128,
+          "durationMs": 0,
+          "spilledBytes": 0
+        }
+      ],
+      "topKOperators": 0,
+      "sortTagsSeen": [
+        "PHOTON_SORT_EXEC"
+      ],
+      "peakMemoryValues": [
+        6291456,
+        16779264,
+        29360128,
+        144703672,
+        157288632,
+        167772344
+      ],
+      "direction": {
+        "scans": 1,
+        "sorts": 1,
+        "scanReachesAlongFrom": 12,
+        "sortReachesAlongFrom": 4,
+        "scanReachesAlongTo": 0,
+        "sortReachesAlongTo": 8
+      },
+      "edges": 12
+    },
+    {
+      "workspaceId": "7000000000000023",
+      "shape": "b8ddf71bf174bb30",
+      "statementType": "SELECT",
+      "msNow": 33405,
+      "meanMs": 5568,
+      "worstMs": 10746,
+      "medianMs": 3968,
+      "representativeMeasured": true,
+      "runs": 6,
+      "operators": 11,
+      "responseTextLength": 123232,
+      "exchanges": {
+        "counts": {
+          "mapStage": 1,
+          "sink": 1,
+          "queryStage": 0,
+          "reused": 0,
+          "otherExchange": 0
+        },
+        "otherExchangeTags": [],
+        "readings": {
+          "tags": 2,
+          "pairs": 1,
+          "mapStages": 1,
+          "stages": 0
+        },
+        "mapStagesEqualSinks": true
+      },
+      "skew": {
+        "MapStage - Skew max to non-empty median ratio": {
+          "max": 0,
+          "operators": 1,
+          "nonZero": 0
+        },
+        "MapStage - Skew num skewed partitions": {
+          "max": 0,
+          "operators": 1,
+          "nonZero": 0
+        },
+        "MapStage - Skew skewed data size ratio": {
+          "max": 0,
+          "operators": 1,
+          "nonZero": 0
+        },
+        "MapStage - Skew non-empty median partition size": {
+          "max": 0,
+          "operators": 1,
+          "nonZero": 0
+        },
+        "MapStage - Skew num empty partitions": {
+          "max": 0,
+          "operators": 1,
+          "nonZero": 0
+        }
+      },
+      "sorts": [],
+      "topKOperators": 2,
+      "sortTagsSeen": [],
+      "peakMemoryValues": [
+        8847744,
+        70781664,
+        134682877,
+        143065584,
+        1278742688
+      ],
+      "direction": {
+        "scans": 1,
+        "sorts": 0,
+        "scanReachesAlongFrom": 7,
+        "sortReachesAlongFrom": null,
+        "scanReachesAlongTo": 0,
+        "sortReachesAlongTo": null
+      },
+      "edges": 7
+    },
+    {
+      "workspaceId": "7000000000000023",
+      "shape": "b904e83eac33b7a2",
+      "statementType": "SELECT",
+      "msNow": 32064,
+      "meanMs": 4008,
+      "worstMs": 8461,
+      "medianMs": 3297,
+      "representativeMeasured": true,
+      "runs": 8,
+      "operators": 12,
+      "responseTextLength": 118891,
+      "exchanges": {
+        "counts": {
+          "mapStage": 1,
+          "sink": 1,
+          "queryStage": 0,
+          "reused": 0,
+          "otherExchange": 0
+        },
+        "otherExchangeTags": [],
+        "readings": {
+          "tags": 2,
+          "pairs": 1,
+          "mapStages": 1,
+          "stages": 0
+        },
+        "mapStagesEqualSinks": true
+      },
+      "skew": {
+        "MapStage - Skew max to non-empty median ratio": {
+          "max": 1,
+          "operators": 1,
+          "nonZero": 1
+        },
+        "MapStage - Skew num skewed partitions": {
+          "max": 0,
+          "operators": 1,
+          "nonZero": 0
+        },
+        "MapStage - Skew skewed data size ratio": {
+          "max": 0,
+          "operators": 1,
+          "nonZero": 0
+        },
+        "MapStage - Skew non-empty median partition size": {
+          "max": 1344,
+          "operators": 1,
+          "nonZero": 1
+        },
+        "MapStage - Skew num empty partitions": {
+          "max": 0,
+          "operators": 1,
+          "nonZero": 0
+        },
+        "ShuffleQueryStage - Adp reduce-side skew threshold met": {
+          "max": 0,
+          "operators": 1,
+          "nonZero": 0
+        }
+      },
+      "sorts": [],
+      "topKOperators": 0,
+      "sortTagsSeen": [],
+      "peakMemoryValues": [
+        134228843,
+        151076864,
+        1396726560
+      ],
+      "direction": {
+        "scans": 1,
+        "sorts": 0,
+        "scanReachesAlongFrom": 8,
+        "sortReachesAlongFrom": null,
+        "scanReachesAlongTo": 0,
+        "sortReachesAlongTo": null
+      },
+      "edges": 8
+    },
+    {
+      "workspaceId": "7000000000000023",
+      "shape": "38e3f5a3e3ff53d8",
+      "statementType": "CREATE",
+      "msNow": 29439,
+      "meanMs": 2265,
+      "worstMs": 3283,
+      "medianMs": 2110,
+      "representativeMeasured": true,
+      "runs": 13,
+      "operators": 8,
+      "responseTextLength": 65013,
+      "exchanges": {
+        "counts": {
+          "mapStage": 0,
+          "sink": 0,
+          "queryStage": 0,
+          "reused": 0,
+          "otherExchange": 0
+        },
+        "otherExchangeTags": [],
+        "readings": {
+          "tags": 0,
+          "pairs": 0,
+          "mapStages": 0,
+          "stages": 0
+        },
+        "mapStagesEqualSinks": true
+      },
+      "skew": {},
+      "sorts": [],
+      "topKOperators": 1,
+      "sortTagsSeen": [],
+      "peakMemoryValues": [],
+      "direction": {
+        "scans": 1,
+        "sorts": 0,
+        "scanReachesAlongFrom": 6,
+        "sortReachesAlongFrom": null,
+        "scanReachesAlongTo": 0,
+        "sortReachesAlongTo": null
+      },
+      "edges": 6
+    },
+    {
+      "workspaceId": "7000000000000023",
+      "shape": "705b984b79332aed",
+      "statementType": "SELECT",
+      "msNow": 29089,
+      "meanMs": 3636,
+      "worstMs": 3973,
+      "medianMs": 3565,
+      "representativeMeasured": true,
+      "runs": 8,
+      "operators": 6,
+      "responseTextLength": 73758,
+      "exchanges": {
+        "counts": {
+          "mapStage": 0,
+          "sink": 0,
+          "queryStage": 0,
+          "reused": 0,
+          "otherExchange": 0
+        },
+        "otherExchangeTags": [],
+        "readings": {
+          "tags": 0,
+          "pairs": 0,
+          "mapStages": 0,
+          "stages": 0
+        },
+        "mapStagesEqualSinks": true
+      },
+      "skew": {},
+      "sorts": [],
+      "topKOperators": 0,
+      "sortTagsSeen": [],
+      "peakMemoryValues": [
+        16777216,
+        151041264
+      ],
+      "direction": {
+        "scans": 1,
+        "sorts": 0,
+        "scanReachesAlongFrom": 3,
+        "sortReachesAlongFrom": null,
+        "scanReachesAlongTo": 0,
+        "sortReachesAlongTo": null
+      },
+      "edges": 3
+    },
+    {
+      "workspaceId": "7000000000000023",
+      "shape": "ac83fddf2aa232da",
+      "statementType": "SELECT",
+      "msNow": 28893,
+      "meanMs": 3612,
+      "worstMs": 5063,
+      "medianMs": 3255,
+      "representativeMeasured": true,
+      "runs": 8,
+      "operators": 13,
+      "responseTextLength": 131740,
+      "exchanges": {
+        "counts": {
+          "mapStage": 1,
+          "sink": 1,
+          "queryStage": 0,
+          "reused": 0,
+          "otherExchange": 0
+        },
+        "otherExchangeTags": [],
+        "readings": {
+          "tags": 2,
+          "pairs": 1,
+          "mapStages": 1,
+          "stages": 0
+        },
+        "mapStagesEqualSinks": true
+      },
+      "skew": {
+        "MapStage - Skew max to non-empty median ratio": {
+          "max": 19,
+          "operators": 1,
+          "nonZero": 1
+        },
+        "MapStage - Skew num skewed partitions": {
+          "max": 0,
+          "operators": 1,
+          "nonZero": 0
+        },
+        "MapStage - Skew skewed data size ratio": {
+          "max": 0,
+          "operators": 1,
+          "nonZero": 0
+        },
+        "MapStage - Skew non-empty median partition size": {
+          "max": 4457,
+          "operators": 1,
+          "nonZero": 1
+        },
+        "MapStage - Skew num empty partitions": {
+          "max": 56,
+          "operators": 1,
+          "nonZero": 1
+        },
+        "AQEShuffleRead - Skew handled by": {
+          "max": 0,
+          "operators": 1,
+          "nonZero": 0
+        },
+        "ShuffleQueryStage - Adp reduce-side skew threshold met": {
+          "max": 2,
+          "operators": 1,
+          "nonZero": 1
+        }
+      },
+      "sorts": [
+        {
+          "tag": "PHOTON_SORT_EXEC",
+          "downstreamOperators": 4,
+          "limited": false,
+          "rows": 8,
+          "peakMemoryBytes": 27262976,
+          "durationMs": 0,
+          "spilledBytes": 0
+        }
+      ],
+      "topKOperators": 0,
+      "sortTagsSeen": [
+        "PHOTON_SORT_EXEC"
+      ],
+      "peakMemoryValues": [
+        8388608,
+        27262976,
+        106954752,
+        151027712,
+        167772488,
+        1503693704
+      ],
+      "direction": {
+        "scans": 1,
+        "sorts": 1,
+        "scanReachesAlongFrom": 9,
+        "sortReachesAlongFrom": 4,
+        "scanReachesAlongTo": 0,
+        "sortReachesAlongTo": 5
+      },
+      "edges": 9
+    },
+    {
+      "workspaceId": "7000000000000023",
+      "shape": "c41b5e0f0bd09dd4",
+      "statementType": "SELECT",
+      "msNow": 28806,
+      "meanMs": 3201,
+      "worstMs": 4401,
+      "medianMs": 2940,
+      "representativeMeasured": true,
+      "runs": 9,
+      "operators": 14,
+      "responseTextLength": 135462,
+      "exchanges": {
+        "counts": {
+          "mapStage": 1,
+          "sink": 1,
+          "queryStage": 0,
+          "reused": 0,
+          "otherExchange": 0
+        },
+        "otherExchangeTags": [],
+        "readings": {
+          "tags": 2,
+          "pairs": 1,
+          "mapStages": 1,
+          "stages": 0
+        },
+        "mapStagesEqualSinks": true
+      },
+      "skew": {
+        "MapStage - Skew max to non-empty median ratio": {
+          "max": 1,
+          "operators": 1,
+          "nonZero": 1
+        },
+        "MapStage - Skew num skewed partitions": {
+          "max": 0,
+          "operators": 1,
+          "nonZero": 0
+        },
+        "MapStage - Skew skewed data size ratio": {
+          "max": 0,
+          "operators": 1,
+          "nonZero": 0
+        },
+        "MapStage - Skew non-empty median partition size": {
+          "max": 132,
+          "operators": 1,
+          "nonZero": 1
+        },
+        "MapStage - Skew num empty partitions": {
+          "max": 52,
+          "operators": 1,
+          "nonZero": 1
+        },
+        "AQEShuffleRead - Skew handled by": {
+          "max": 0,
+          "operators": 1,
+          "nonZero": 0
+        },
+        "ShuffleQueryStage - Adp reduce-side skew threshold met": {
+          "max": 2,
+          "operators": 1,
+          "nonZero": 1
+        }
+      },
+      "sorts": [
+        {
+          "tag": "PHOTON_SORT_EXEC",
+          "downstreamOperators": 4,
+          "limited": false,
+          "rows": 4,
+          "peakMemoryBytes": 29360128,
+          "durationMs": 0,
+          "spilledBytes": 0
+        }
+      ],
+      "topKOperators": 0,
+      "sortTagsSeen": [
+        "PHOTON_SORT_EXEC"
+      ],
+      "peakMemoryValues": [
+        6291456,
+        16779264,
+        29360128,
+        157288776,
+        167772416
+      ],
+      "direction": {
+        "scans": 1,
+        "sorts": 1,
+        "scanReachesAlongFrom": 10,
+        "sortReachesAlongFrom": 4,
+        "scanReachesAlongTo": 0,
+        "sortReachesAlongTo": 6
+      },
+      "edges": 10
+    },
+    {
+      "workspaceId": "7000000000000023",
+      "shape": "67c4794219e4a3b4",
+      "statementType": "SELECT",
+      "msNow": 27498,
+      "meanMs": 3437,
+      "worstMs": 4254,
+      "medianMs": 3182,
+      "representativeMeasured": true,
+      "runs": 8,
+      "operators": 12,
+      "responseTextLength": 113718,
+      "exchanges": {
+        "counts": {
+          "mapStage": 1,
+          "sink": 1,
+          "queryStage": 0,
+          "reused": 0,
+          "otherExchange": 0
+        },
+        "otherExchangeTags": [],
+        "readings": {
+          "tags": 2,
+          "pairs": 1,
+          "mapStages": 1,
+          "stages": 0
+        },
+        "mapStagesEqualSinks": true
+      },
+      "skew": {
+        "MapStage - Skew max to non-empty median ratio": {
+          "max": 1,
+          "operators": 1,
+          "nonZero": 1
+        },
+        "MapStage - Skew num skewed partitions": {
+          "max": 0,
+          "operators": 1,
+          "nonZero": 0
+        },
+        "MapStage - Skew skewed data size ratio": {
+          "max": 0,
+          "operators": 1,
+          "nonZero": 0
+        },
+        "MapStage - Skew non-empty median partition size": {
+          "max": 87515,
+          "operators": 1,
+          "nonZero": 1
+        },
+        "MapStage - Skew num empty partitions": {
+          "max": 0,
+          "operators": 1,
+          "nonZero": 0
+        },
+        "ShuffleQueryStage - Adp reduce-side skew threshold met": {
+          "max": 0,
+          "operators": 1,
+          "nonZero": 0
+        }
+      },
+      "sorts": [],
+      "topKOperators": 0,
+      "sortTagsSeen": [],
+      "peakMemoryValues": [
+        142606592,
+        151042048,
+        1449184512
+      ],
+      "direction": {
+        "scans": 1,
+        "sorts": 0,
+        "scanReachesAlongFrom": 8,
+        "sortReachesAlongFrom": null,
+        "scanReachesAlongTo": 0,
+        "sortReachesAlongTo": null
+      },
+      "edges": 8
+    },
+    {
+      "workspaceId": "7000000000000023",
+      "shape": "912aa1830d3947aa",
+      "statementType": "SELECT",
+      "msNow": 27181,
+      "meanMs": 5436,
+      "worstMs": 5563,
+      "medianMs": 5487,
+      "representativeMeasured": true,
+      "runs": 5,
+      "operators": 46,
+      "responseTextLength": 407988,
+      "exchanges": {
+        "counts": {
+          "mapStage": 2,
+          "sink": 2,
+          "queryStage": 0,
+          "reused": 0,
+          "otherExchange": 0
+        },
+        "otherExchangeTags": [],
+        "readings": {
+          "tags": 4,
+          "pairs": 2,
+          "mapStages": 2,
+          "stages": 0
+        },
+        "mapStagesEqualSinks": true
+      },
+      "skew": {
+        "MapStage - Skew max to non-empty median ratio": {
+          "max": 2,
+          "operators": 2,
+          "nonZero": 2
+        },
+        "MapStage - Skew num skewed partitions": {
+          "max": 0,
+          "operators": 2,
+          "nonZero": 0
+        },
+        "MapStage - Skew skewed data size ratio": {
+          "max": 0,
+          "operators": 2,
+          "nonZero": 0
+        },
+        "MapStage - Skew non-empty median partition size": {
+          "max": 463,
+          "operators": 2,
+          "nonZero": 2
+        },
+        "MapStage - Skew num empty partitions": {
+          "max": 41,
+          "operators": 2,
+          "nonZero": 1
+        },
+        "AQEShuffleRead - Skew handled by": {
+          "max": 0,
+          "operators": 2,
+          "nonZero": 0
+        },
+        "ShuffleQueryStage - Adp reduce-side skew threshold met": {
+          "max": 2,
+          "operators": 2,
+          "nonZero": 2
+        }
+      },
+      "sorts": [
+        {
+          "tag": "PHOTON_SORT_EXEC",
+          "downstreamOperators": 4,
+          "limited": false,
+          "rows": 130,
+          "peakMemoryBytes": 29360128,
+          "durationMs": 0,
+          "spilledBytes": 0
+        }
+      ],
+      "topKOperators": 3,
+      "sortTagsSeen": [
+        "PHOTON_SORT_EXEC"
+      ],
+      "peakMemoryValues": [
+        65536,
+        68768,
+        16811008,
+        17301504,
+        29360128,
+        68157440,
+        151094384,
+        151097616,
+        153126000,
+        163578112,
+        4565578864
+      ],
+      "direction": {
+        "scans": 6,
+        "sorts": 1,
+        "scanReachesAlongFrom": 15,
+        "sortReachesAlongFrom": 4,
+        "scanReachesAlongTo": 0,
+        "sortReachesAlongTo": 34
+      },
+      "edges": 38
+    },
+    {
+      "workspaceId": "7000000000000023",
+      "shape": "3cb9547372e2bf53",
+      "statementType": "SELECT",
+      "msNow": 26923,
+      "meanMs": 3365,
+      "worstMs": 5195,
+      "medianMs": 3048,
+      "representativeMeasured": true,
+      "runs": 8,
+      "operators": 12,
+      "responseTextLength": 101987,
+      "exchanges": {
+        "counts": {
+          "mapStage": 1,
+          "sink": 1,
+          "queryStage": 0,
+          "reused": 0,
+          "otherExchange": 0
+        },
+        "otherExchangeTags": [],
+        "readings": {
+          "tags": 2,
+          "pairs": 1,
+          "mapStages": 1,
+          "stages": 0
+        },
+        "mapStagesEqualSinks": true
+      },
+      "skew": {
+        "MapStage - Skew max to non-empty median ratio": {
+          "max": 0,
+          "operators": 1,
+          "nonZero": 0
+        },
+        "MapStage - Skew num skewed partitions": {
+          "max": 0,
+          "operators": 1,
+          "nonZero": 0
+        },
+        "MapStage - Skew skewed data size ratio": {
+          "max": 0,
+          "operators": 1,
+          "nonZero": 0
+        },
+        "MapStage - Skew non-empty median partition size": {
+          "max": 0,
+          "operators": 1,
+          "nonZero": 0
+        },
+        "MapStage - Skew num empty partitions": {
+          "max": 0,
+          "operators": 1,
+          "nonZero": 0
+        },
+        "ShuffleQueryStage - Adp reduce-side skew threshold met": {
+          "max": 0,
+          "operators": 1,
+          "nonZero": 0
+        }
+      },
+      "sorts": [],
+      "topKOperators": 0,
+      "sortTagsSeen": [],
+      "peakMemoryValues": [
+        0,
+        134226053
+      ],
+      "direction": {
+        "scans": 1,
+        "sorts": 0,
+        "scanReachesAlongFrom": 8,
+        "sortReachesAlongFrom": null,
+        "scanReachesAlongTo": 0,
+        "sortReachesAlongTo": null
+      },
+      "edges": 8
+    },
+    {
+      "workspaceId": "7000000000000023",
+      "shape": "89d1e81e9f5b1e38",
+      "statementType": "SELECT",
+      "msNow": 26075,
+      "meanMs": 3259,
+      "worstMs": 3844,
+      "medianMs": 3140,
+      "representativeMeasured": true,
+      "runs": 8,
+      "operators": 17,
+      "responseTextLength": 177566,
+      "exchanges": {
+        "counts": {
+          "mapStage": 2,
+          "sink": 2,
+          "queryStage": 0,
+          "reused": 0,
+          "otherExchange": 0
+        },
+        "otherExchangeTags": [],
+        "readings": {
+          "tags": 4,
+          "pairs": 2,
+          "mapStages": 2,
+          "stages": 0
+        },
+        "mapStagesEqualSinks": true
+      },
+      "skew": {
+        "MapStage - Skew max to non-empty median ratio": {
+          "max": 1,
+          "operators": 2,
+          "nonZero": 2
+        },
+        "MapStage - Skew num skewed partitions": {
+          "max": 0,
+          "operators": 2,
+          "nonZero": 0
+        },
+        "MapStage - Skew skewed data size ratio": {
+          "max": 0,
+          "operators": 2,
+          "nonZero": 0
+        },
+        "MapStage - Skew non-empty median partition size": {
+          "max": 136,
+          "operators": 2,
+          "nonZero": 2
+        },
+        "MapStage - Skew num empty partitions": {
+          "max": 57,
+          "operators": 2,
+          "nonZero": 2
+        },
+        "AQEShuffleRead - Skew handled by": {
+          "max": 0,
+          "operators": 2,
+          "nonZero": 0
+        },
+        "ShuffleQueryStage - Adp reduce-side skew threshold met": {
+          "max": 2,
+          "operators": 2,
+          "nonZero": 2
+        }
+      },
+      "sorts": [
+        {
+          "tag": "PHOTON_SORT_EXEC",
+          "downstreamOperators": 4,
+          "limited": false,
+          "rows": 7,
+          "peakMemoryBytes": 29360128,
+          "durationMs": 0,
+          "spilledBytes": 0
+        }
+      ],
+      "topKOperators": 0,
+      "sortTagsSeen": [
+        "PHOTON_SORT_EXEC"
+      ],
+      "peakMemoryValues": [
+        4325376,
+        6291456,
+        16780288,
+        29360128,
+        144703744,
+        157286656,
+        167772416
+      ],
+      "direction": {
+        "scans": 1,
+        "sorts": 1,
+        "scanReachesAlongFrom": 12,
+        "sortReachesAlongFrom": 4,
+        "scanReachesAlongTo": 0,
+        "sortReachesAlongTo": 8
+      },
+      "edges": 12
+    },
+    {
+      "workspaceId": "7000000000000023",
+      "shape": "5997a91662082c24",
+      "statementType": "SELECT",
+      "msNow": 25666,
+      "meanMs": 3208,
+      "worstMs": 3975,
+      "medianMs": 3074,
+      "representativeMeasured": true,
+      "runs": 8,
+      "operators": 12,
+      "responseTextLength": 102128,
+      "exchanges": {
+        "counts": {
+          "mapStage": 1,
+          "sink": 1,
+          "queryStage": 0,
+          "reused": 0,
+          "otherExchange": 0
+        },
+        "otherExchangeTags": [],
+        "readings": {
+          "tags": 2,
+          "pairs": 1,
+          "mapStages": 1,
+          "stages": 0
+        },
+        "mapStagesEqualSinks": true
+      },
+      "skew": {
+        "MapStage - Skew max to non-empty median ratio": {
+          "max": 0,
+          "operators": 1,
+          "nonZero": 0
+        },
+        "MapStage - Skew num skewed partitions": {
+          "max": 0,
+          "operators": 1,
+          "nonZero": 0
+        },
+        "MapStage - Skew skewed data size ratio": {
+          "max": 0,
+          "operators": 1,
+          "nonZero": 0
+        },
+        "MapStage - Skew non-empty median partition size": {
+          "max": 0,
+          "operators": 1,
+          "nonZero": 0
+        },
+        "MapStage - Skew num empty partitions": {
+          "max": 0,
+          "operators": 1,
+          "nonZero": 0
+        },
+        "ShuffleQueryStage - Adp reduce-side skew threshold met": {
+          "max": 0,
+          "operators": 1,
+          "nonZero": 0
+        }
+      },
+      "sorts": [],
+      "topKOperators": 0,
+      "sortTagsSeen": [],
+      "peakMemoryValues": [
+        0,
+        134225648
+      ],
+      "direction": {
+        "scans": 1,
+        "sorts": 0,
+        "scanReachesAlongFrom": 8,
+        "sortReachesAlongFrom": null,
+        "scanReachesAlongTo": 0,
+        "sortReachesAlongTo": null
+      },
+      "edges": 8
+    },
+    {
+      "workspaceId": "7000000000000023",
+      "shape": "0bf1477aea21a240",
+      "statementType": "MERGE",
+      "msNow": 25643,
+      "meanMs": 4274,
+      "worstMs": 5699,
+      "medianMs": 3811,
+      "representativeMeasured": true,
+      "runs": 6,
+      "operators": 25,
+      "responseTextLength": 418542,
+      "exchanges": {
+        "counts": {
+          "mapStage": 1,
+          "sink": 1,
+          "queryStage": 0,
+          "reused": 0,
+          "otherExchange": 1
+        },
+        "otherExchangeTags": [
+          "SHUFFLE_EXCHANGE_EXEC"
+        ],
+        "readings": {
+          "tags": 3,
+          "pairs": 1,
+          "mapStages": 1,
+          "stages": 0
+        },
+        "mapStagesEqualSinks": true
+      },
+      "skew": {
+        "MapStage - Skew max to non-empty median ratio": {
+          "max": 1,
+          "operators": 1,
+          "nonZero": 1
+        },
+        "MapStage - Skew num skewed partitions": {
+          "max": 0,
+          "operators": 1,
+          "nonZero": 0
+        },
+        "MapStage - Skew skewed data size ratio": {
+          "max": 0,
+          "operators": 1,
+          "nonZero": 0
+        },
+        "MapStage - Skew non-empty median partition size": {
+          "max": 4,
+          "operators": 1,
+          "nonZero": 1
+        },
+        "MapStage - Skew num empty partitions": {
+          "max": 0,
+          "operators": 1,
+          "nonZero": 0
+        },
+        "AQEShuffleRead - Skew handled by": {
+          "max": 0,
+          "operators": 1,
+          "nonZero": 0
+        },
+        "ShuffleQueryStage - Adp reduce-side skew threshold met": {
+          "max": 2,
+          "operators": 2,
+          "nonZero": 1
+        }
+      },
+      "sorts": [],
+      "topKOperators": 0,
+      "sortTagsSeen": [],
+      "peakMemoryValues": [
+        2129920,
+        16777216,
+        140544040,
+        151053399
+      ],
+      "direction": {
+        "scans": 2,
+        "sorts": 0,
+        "scanReachesAlongFrom": 17,
+        "sortReachesAlongFrom": null,
+        "scanReachesAlongTo": 0,
+        "sortReachesAlongTo": null
+      },
+      "edges": 20
+    },
+    {
+      "workspaceId": "7000000000000023",
+      "shape": "eb01ae9f9067de8b",
+      "statementType": "SELECT",
+      "msNow": 25515,
+      "meanMs": 1701,
+      "worstMs": 6277,
+      "medianMs": 295,
+      "representativeMeasured": true,
+      "runs": 15,
+      "operators": 2,
+      "responseTextLength": 5005,
+      "exchanges": {
+        "counts": {
+          "mapStage": 0,
+          "sink": 0,
+          "queryStage": 0,
+          "reused": 0,
+          "otherExchange": 0
+        },
+        "otherExchangeTags": [],
+        "readings": {
+          "tags": 0,
+          "pairs": 0,
+          "mapStages": 0,
+          "stages": 0
+        },
+        "mapStagesEqualSinks": true
+      },
+      "skew": {},
+      "sorts": [],
+      "topKOperators": 0,
+      "sortTagsSeen": [],
+      "peakMemoryValues": [],
+      "direction": {
+        "scans": 1,
+        "sorts": 0,
+        "scanReachesAlongFrom": 1,
+        "sortReachesAlongFrom": null,
+        "scanReachesAlongTo": 0,
+        "sortReachesAlongTo": null
+      },
+      "edges": 1
+    },
+    {
+      "workspaceId": "7000000000000023",
+      "shape": "dfad9574f3a8145b",
+      "statementType": "SELECT",
+      "msNow": 25343,
+      "meanMs": 3168,
+      "worstMs": 3610,
+      "medianMs": 3011,
+      "representativeMeasured": true,
+      "runs": 8,
+      "operators": 13,
+      "responseTextLength": 136040,
+      "exchanges": {
+        "counts": {
+          "mapStage": 1,
+          "sink": 1,
+          "queryStage": 0,
+          "reused": 0,
+          "otherExchange": 0
+        },
+        "otherExchangeTags": [],
+        "readings": {
+          "tags": 2,
+          "pairs": 1,
+          "mapStages": 1,
+          "stages": 0
+        },
+        "mapStagesEqualSinks": true
+      },
+      "skew": {
+        "MapStage - Skew max to non-empty median ratio": {
+          "max": 5,
+          "operators": 1,
+          "nonZero": 1
+        },
+        "MapStage - Skew num skewed partitions": {
+          "max": 0,
+          "operators": 1,
+          "nonZero": 0
+        },
+        "MapStage - Skew skewed data size ratio": {
+          "max": 0,
+          "operators": 1,
+          "nonZero": 0
+        },
+        "MapStage - Skew non-empty median partition size": {
+          "max": 399,
+          "operators": 1,
+          "nonZero": 1
+        },
+        "MapStage - Skew num empty partitions": {
+          "max": 46,
+          "operators": 1,
+          "nonZero": 1
+        },
+        "AQEShuffleRead - Skew handled by": {
+          "max": 0,
+          "operators": 1,
+          "nonZero": 0
+        },
+        "ShuffleQueryStage - Adp reduce-side skew threshold met": {
+          "max": 2,
+          "operators": 1,
+          "nonZero": 1
+        }
+      },
+      "sorts": [
+        {
+          "tag": "PHOTON_SORT_EXEC",
+          "downstreamOperators": 4,
+          "limited": false,
+          "rows": 23,
+          "peakMemoryBytes": 29360128,
+          "durationMs": 0,
+          "spilledBytes": 0
+        }
+      ],
+      "topKOperators": 0,
+      "sortTagsSeen": [
+        "PHOTON_SORT_EXEC"
+      ],
+      "peakMemoryValues": [
+        6291456,
+        29360128,
+        148897792,
+        167772416,
+        251717632,
+        2413875968
+      ],
+      "direction": {
+        "scans": 1,
+        "sorts": 1,
+        "scanReachesAlongFrom": 9,
+        "sortReachesAlongFrom": 4,
+        "scanReachesAlongTo": 0,
+        "sortReachesAlongTo": 5
+      },
+      "edges": 9
+    }
+  ]
+}

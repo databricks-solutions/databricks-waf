@@ -1,0 +1,205 @@
+name: Security
+
+# Every tool here runs inside the Actions runner rather than relying on a
+# GitHub-native feature. Code scanning and secret scanning are free on public
+# repositories but gated behind Advanced Security on private ones, and this
+# repository starts private and later moves to an organisation. Running the
+# tools ourselves means the pipeline behaves identically in both places and
+# needs no rework at migration. Native code scanning can be enabled later as an
+# additional layer, not as a replacement.
+#
+# # Why only one of these four runs on a pull request
+#
+# Measured over five runs: SAST 80s, dependencies 50s, SBOM 31s, secrets 15s. Actions
+# bills a whole minute per job, so these four cost 5 billed minutes of every push on a
+# repository with a 2,000-minute monthly allowance — and a branch is pushed to many
+# times per pull request, each push commissioning a fresh bill of materials for
+# software that has not shipped.
+#
+# So the gate moved from the push to the merge. On a pull request only `secrets` runs.
+# The other three run on main, weekly, and on demand.
+#
+# `secrets` is the one that cannot move, and the reason is what it reads. The others
+# assess a tree: the same tree gives the same verdict, so assessing it at merge is
+# assessing it at the only moment that matters. A leaked credential is a property of
+# the *diff* — it is compromised the moment it is pushed, and a scan that finds it
+# after the merge finds it too late to matter. It is also the cheapest job here.
+#
+# What this costs, stated plainly: a pull request can now go green with a Semgrep
+# finding, a new advisory or a copyleft dependency in it, and main turns red when it
+# lands. That is a worse moment to find out than before the merge, and it is the trade
+# that was bought. Two things make it survivable — the finding is on main within a
+# minute of the merge rather than never, and `workflow_dispatch` runs the full suite on
+# a branch before merging anything that touches dependencies or query construction.
+# Restore the pull-request gate by deleting the `if:` on the three jobs below; it is
+# one line each, and the day this repository stops paying by the minute it should be.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sast:
+    name: SAST
+    # Everything except a pull request: main, the weekly schedule, and on demand. See the header.
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    container:
+      image: semgrep/semgrep:1.148.0
+    steps:
+      - uses: actions/checkout@v7
+
+      # Pinned rulesets rather than 'auto', which requires an account. The
+      # injection rules matter most here: this app builds SQL from workspace
+      # metadata such as catalog, schema and table names.
+      - name: Run Semgrep
+        run: |
+          semgrep scan \
+            --config p/typescript \
+            --config p/javascript \
+            --config p/nodejs \
+            --config p/secrets \
+            --error \
+            --metrics=off \
+            --exclude 'app/dist' \
+            --exclude 'app/vendor' \
+            --sarif --output semgrep.sarif
+
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: semgrep-sarif
+          path: semgrep.sarif
+          if-no-files-found: ignore
+
+  # The one job with no `if:`. A credential is compromised when it is pushed, not when it is merged,
+  # so this is the scan that has to happen before the merge rather than at it.
+  secrets:
+    name: Secret scanning
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      # The gitleaks CLI is MIT licensed and used directly. The wrapper action
+      # requires a paid licence for organisation accounts, which would break
+      # precisely at migration.
+      - name: Install gitleaks
+        env:
+          GITLEAKS_VERSION: 8.30.1
+        run: |
+          curl -fsSL -o gitleaks.tar.gz \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          tar -xzf gitleaks.tar.gz gitleaks
+          chmod +x gitleaks
+
+      - name: Scan working tree and history
+        run: |
+          ./gitleaks dir . --redact --verbose --no-banner
+          ./gitleaks git . --redact --verbose --no-banner
+
+  dependencies:
+    name: Dependency and licence scanning
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - run: npm ci
+
+      # Gate on what ships. The production tree is held at zero advisories via
+      # the overrides block in package.json, so any new high-severity finding
+      # here is a real regression and fails the build.
+      #
+      # It is also gated before the merge now, by `dependency-advisories.yml`, on
+      # any pull request that touches the manifest or the lockfile. This copy
+      # stays: it is what catches a pin that goes stale while nothing is being
+      # touched, which is how the last three arrived. ADR 0096, row `102`.
+      - name: npm audit (production — blocking)
+        run: npm audit --omit=dev --audit-level=high
+
+      # Report on the full tree without gating. Seven high-severity advisories
+      # currently sit in ESLint's own minimatch/brace-expansion transitives and
+      # cannot be fixed without breaking ESLint; see
+      # docs/decisions/0004-dependency-currency.md. Gating here would make the
+      # pipeline permanently red for something we cannot act on, which trains
+      # people to ignore it. Reporting keeps it visible instead.
+      - name: npm audit (full tree — advisory)
+        continue-on-error: true
+        run: npm audit --audit-level=high
+
+      # OSV covers advisories npm audit misses, and is a second independent
+      # source rather than a duplicate of the first. Unlike the audit steps above
+      # it gates on the whole tree, so dev-only findings that cannot be fixed are
+      # named individually in app/osv-scanner.toml with a reason and an expiry,
+      # rather than waved through by loosening the gate.
+      - name: OSV scanner
+        uses: google/osv-scanner-action/osv-scanner-action@v2.5.1
+        with:
+          scan-args: |-
+            --config=app/osv-scanner.toml
+            --lockfile=app/package-lock.json
+
+      # Third-party packages retain their own licences alongside the Databricks
+      # License governing this application. A copyleft dependency arriving transitively is the
+      # realistic failure, so the allowlist is enforced rather than reviewed.
+      #
+      # The allowlist and its exclusions live in the script, not here, so the same
+      # check can be run before pushing. Keeping it inline meant it ran only in CI,
+      # and it duly failed on a package that would have failed locally too.
+      - name: Dependency licence allowlist
+        run: npm run licences
+
+      - name: Complete third-party licence inventory
+        run: npm run check:third-party-licenses
+
+  sbom:
+    name: SBOM
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - name: Install production dependencies
+        working-directory: app
+        run: npm ci --omit=dev
+
+      - name: Generate SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          path: app
+          format: spdx-json
+          artifact-name: sbom.spdx.json
+          output-file: sbom.spdx.json
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: sbom
+          path: sbom.spdx.json

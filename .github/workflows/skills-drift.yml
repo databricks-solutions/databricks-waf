@@ -1,0 +1,34 @@
+name: Official skill drift
+
+# The application does not redistribute the official Databricks skills. Its
+# serverless rules cite public product documentation instead. The source check
+# fails if a skills lock file or vendored directory appears without an explicit
+# change to that distribution arrangement.
+
+on:
+  schedule:
+    - cron: "0 8 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  drift:
+    name: Check the vendoring branch is still the one ADR 0002 records
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      # No `npm ci`: the check reads the source with Node's own library, and a
+      # weekly job that installs a dependency tree to read four files is a
+      # weekly job that fails for reasons of its own.
+      - name: The repository is still on ADR 0002's fallback branch
+        run: npm run check:skill-vendoring

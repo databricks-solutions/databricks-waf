@@ -1,0 +1,144 @@
+{
+  "measuredAt": "2026-08-16T21:17:08.524Z",
+  "host": "https://dbc-example.cloud.databricks.com",
+  "profile": "labs",
+  "warehouse": "0123456789abcdef",
+  "statement": "SELECT 1",
+  "waitTimeout": "0s",
+  "rounds": [
+    {
+      "size": 2,
+      "byStatus": {
+        "200": 2
+      },
+      "refused": 0,
+      "refusals": [],
+      "acceptedHeaders": {
+        "x-databricks-org-id": "7000000000000023",
+        "x-request-id": "b29128b7-73cb-40ca-b8ba-2d016b47edbb"
+      },
+      "medianMs": 325,
+      "slowestMs": 325
+    },
+    {
+      "size": 4,
+      "byStatus": {
+        "200": 4
+      },
+      "refused": 0,
+      "refusals": [],
+      "acceptedHeaders": {
+        "x-databricks-org-id": "7000000000000023",
+        "x-request-id": "f90fb501-c014-4988-8233-ebe5fc9658f4"
+      },
+      "medianMs": 277,
+      "slowestMs": 281
+    },
+    {
+      "size": 8,
+      "byStatus": {
+        "200": 8
+      },
+      "refused": 0,
+      "refusals": [],
+      "acceptedHeaders": {
+        "x-databricks-org-id": "7000000000000023",
+        "x-request-id": "a17ac9ef-47b3-48ab-aa02-6287e3be22d0"
+      },
+      "medianMs": 321,
+      "slowestMs": 344
+    },
+    {
+      "size": 16,
+      "byStatus": {
+        "200": 16
+      },
+      "refused": 0,
+      "refusals": [],
+      "acceptedHeaders": {
+        "x-databricks-org-id": "7000000000000023",
+        "x-request-id": "6bd51fee-481b-4baf-aad2-16a9f5d1bdad"
+      },
+      "medianMs": 267,
+      "slowestMs": 292
+    },
+    {
+      "size": 32,
+      "byStatus": {
+        "200": 32
+      },
+      "refused": 0,
+      "refusals": [],
+      "acceptedHeaders": {
+        "x-databricks-org-id": "7000000000000023",
+        "x-request-id": "2b1ee2df-4988-40c0-b18d-b107164a2224"
+      },
+      "medianMs": 262,
+      "slowestMs": 312
+    },
+    {
+      "size": 64,
+      "byStatus": {
+        "200": 64
+      },
+      "refused": 0,
+      "refusals": [],
+      "acceptedHeaders": {
+        "x-databricks-org-id": "7000000000000023",
+        "x-request-id": "7e2858a7-b99f-48d1-b7ff-77341a3db6d7"
+      },
+      "medianMs": 291,
+      "slowestMs": 324
+    },
+    {
+      "size": 128,
+      "byStatus": {
+        "200": 128
+      },
+      "refused": 0,
+      "refusals": [],
+      "acceptedHeaders": {
+        "x-databricks-org-id": "7000000000000023",
+        "x-request-id": "4e070ecc-6fdf-49f2-9003-0ccc1b342a95"
+      },
+      "medianMs": 302,
+      "slowestMs": 373
+    },
+    {
+      "size": 256,
+      "byStatus": {
+        "200": 256
+      },
+      "refused": 0,
+      "refusals": [],
+      "acceptedHeaders": {
+        "x-databricks-org-id": "7000000000000023",
+        "x-request-id": "44a9fb48-ae92-4dd1-b59b-ec3c4aa55ab1"
+      },
+      "medianMs": 464,
+      "slowestMs": 548
+    }
+  ],
+  "sustained": {
+    "endpoint": "/api/2.0/serving-endpoints",
+    "perSecond": 20,
+    "seconds": 30,
+    "issued": 600,
+    "byStatus": {
+      "200": 600
+    },
+    "refused": 0,
+    "refusals": [],
+    "acceptedHeaders": {
+      "x-databricks-org-id": "7000000000000023",
+      "x-request-id": "23ac491e-80db-4691-a3cd-8e8324e35d77"
+    },
+    "medianMs": 143,
+    "slowestMs": 218
+  },
+  "refusedAt": null,
+  "ceilingReached": 256,
+  "sustainedRefused": 0,
+  "sendsRetryAfter": false,
+  "sendsRateLimitHeaders": false
+}

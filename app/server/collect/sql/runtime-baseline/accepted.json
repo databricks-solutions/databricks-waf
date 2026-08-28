@@ -1,0 +1,359 @@
+{
+  "factor": 1.5,
+  "scannedFactor": 1.75,
+  "scannedFloorBytes": 4194304,
+  "why": "Each duration here is the median of a recording in an earlier commit than the one the gate checks, which is what lets the comparison fail on a change. `samples` and `spreadRatio` are that recording's, so a reader can see how thick the median under a number is. The factor is the slowdown tolerated without a fresh acceptance; it is a choice, not a measurement. `scannedBytes` is the data read to compute the answer rather than the size of the answer, it is one reading rather than a median, and it carries its own factor because it moves for different reasons: two recordings 30 minutes apart, with no change between them, ranged from 0.325x to 1.094x of each other. So the factor is above observed growth and below one extra full read of a dominant relation, which is the regression it is for. Below `scannedFloorBytes` the ratio is not held: seven statements scan zero counted bytes, so a ratio there would fail on how the platform serves a metadata view rather than on our SQL.",
+  "acceptedAt": "2026-08-16T20:45:15.753Z",
+  "statements": {
+    "auth_login_paths": {
+      "durationMs": 8641,
+      "scannedBytes": 32965699,
+      "samples": 5,
+      "spreadRatio": 1.21,
+      "statementId": "01f1955e-3e67-12bf-9fbc-85924b0fd120",
+      "statementSha": "sha256:5d5efc0887d19da4cf0a947f8477712a00c261605cba694e04d7cbf604d8f638",
+      "measuredAt": "2026-08-11T08:25:42.855Z",
+      "acceptedAt": "2026-08-16T18:38:45.836Z"
+    },
+    "compute_cluster_inventory": {
+      "durationMs": 2401,
+      "scannedBytes": 0,
+      "samples": 5,
+      "spreadRatio": 1.16,
+      "statementId": "01f1955e-592a-157a-8d1b-e5856faa133e",
+      "statementSha": "sha256:d9455c269d21ffed4107bc5f830b92aefbba756fdd483334bcb1a6496e688b36",
+      "measuredAt": "2026-08-11T08:26:27.814Z",
+      "acceptedAt": "2026-08-16T18:38:45.836Z"
+    },
+    "compute_warehouse_inventory": {
+      "durationMs": 3715,
+      "scannedBytes": 10939,
+      "samples": 5,
+      "spreadRatio": 1.14,
+      "statementId": "01f1955e-604d-1bd4-87dc-16721c22e372",
+      "statementSha": "sha256:254bc0a1b0d0aa5db5db1940956bde4fbec79fdf9192b78fa3e944fcece2400c",
+      "measuredAt": "2026-08-11T08:26:39.797Z",
+      "acceptedAt": "2026-08-16T18:38:45.836Z"
+    },
+    "cost_attribution_coverage": {
+      "durationMs": 5185,
+      "scannedBytes": 2865050,
+      "samples": 5,
+      "spreadRatio": 1.16,
+      "statementId": "01f1955e-6b2a-108e-ab36-f7f362c576d2",
+      "statementSha": "sha256:1da298c4591b4ed666e24f50b313c671df914e39219f196dadd1fc48f7bdda70",
+      "measuredAt": "2026-08-11T08:26:58.018Z",
+      "acceptedAt": "2026-08-16T18:38:45.836Z"
+    },
+    "cost_compute_mix": {
+      "durationMs": 5035,
+      "scannedBytes": 2882016,
+      "samples": 5,
+      "spreadRatio": 1.07,
+      "statementId": "01f1955e-7aa5-17a2-aaf7-0bf2f8faa1da",
+      "statementSha": "sha256:095e1039bce05daab54b7282aefc4f6f4581d92a3b7d7dbd36a9217093fc0e57",
+      "measuredAt": "2026-08-11T08:27:23.980Z",
+      "acceptedAt": "2026-08-16T18:38:45.836Z"
+    },
+    "estate_compute_profile": {
+      "durationMs": 2943,
+      "scannedBytes": 576807,
+      "samples": 5,
+      "spreadRatio": 1.05,
+      "statementId": "01f1955e-89aa-19b5-b20d-89004c392caf",
+      "statementSha": "sha256:a67c53e791e21486f77db3a444a85aca9d0e0e61c9f6029050cc0af6ee8e0e1d",
+      "measuredAt": "2026-08-11T08:27:49.188Z",
+      "acceptedAt": "2026-08-16T18:38:45.836Z"
+    },
+    "governance_audit_coverage": {
+      "durationMs": 8018,
+      "scannedBytes": 33760506,
+      "samples": 5,
+      "spreadRatio": 1.16,
+      "statementId": "01f1955e-9289-1485-8286-b0eb71310076",
+      "statementSha": "sha256:258acae90708887365ee2583210b173838c5f0675089e6bac7353ebe740cf202",
+      "measuredAt": "2026-08-11T08:28:04.064Z",
+      "acceptedAt": "2026-08-16T18:38:45.836Z"
+    },
+    "job_compute_utilisation": {
+      "durationMs": 7949,
+      "scannedBytes": 0,
+      "samples": 5,
+      "spreadRatio": 1.17,
+      "statementId": "01f199a6-f5a1-10a2-abe7-41f1b8fcef0d",
+      "statementSha": "sha256:00cd5c5e04847f82a0810f1bd67ea122a5e8a9bc2709dcc2a25de8096de222d3",
+      "measuredAt": "2026-08-16T19:16:18.758Z",
+      "acceptedAt": "2026-08-16T20:11:53.743Z"
+    },
+    "job_run_health": {
+      "durationMs": 7873,
+      "scannedBytes": 1179421,
+      "samples": 5,
+      "spreadRatio": 1.24,
+      "statementId": "01f199a6-df11-12da-8091-2d266801420d",
+      "statementSha": "sha256:203fc527c578fad828cdcdfc50a13d8228020379b746a4945d34b77c1aba7a93",
+      "measuredAt": "2026-08-16T19:15:40.919Z",
+      "acceptedAt": "2026-08-16T20:11:53.743Z"
+    },
+    "jobs_inventory": {
+      "durationMs": 4546,
+      "scannedBytes": 14958,
+      "samples": 5,
+      "spreadRatio": 1.17,
+      "statementId": "01f1955e-aa7b-10c8-8cfc-a2034b7b5eab",
+      "statementSha": "sha256:6a15afa100109201de028dfb155760df701b5cb8f7c262e2a9bab2bf424b3f6a",
+      "measuredAt": "2026-08-11T08:28:44.239Z",
+      "acceptedAt": "2026-08-16T18:38:45.836Z"
+    },
+    "lakeflow_pipeline_inventory": {
+      "durationMs": 4691,
+      "scannedBytes": 16595,
+      "samples": 5,
+      "spreadRatio": 1.09,
+      "statementId": "01f1955e-b82e-1f0a-84c4-4fba78b8dbfd",
+      "statementSha": "sha256:8d235ce103e313e9c69cc217fb93d581e913ab1cb376f400908f2a679f40c1dd",
+      "measuredAt": "2026-08-11T08:29:07.231Z",
+      "acceptedAt": "2026-08-16T18:38:45.836Z"
+    },
+    "maintenance_recency": {
+      "durationMs": 5400,
+      "scannedBytes": 18205776,
+      "samples": 5,
+      "spreadRatio": 1.67,
+      "statementId": "01f19995-37b1-1e5d-a57c-5954a60533a4",
+      "statementSha": "sha256:d69c9264e09e2ebd2238f7abc91836877381d7095b1397a7724a637cefc77cc2",
+      "measuredAt": "2026-08-16T17:09:18.622Z",
+      "acceptedAt": "2026-08-16T18:38:45.836Z"
+    },
+    "mlflow_run_tracking": {
+      "durationMs": 5788,
+      "scannedBytes": 0,
+      "samples": 5,
+      "spreadRatio": 1.24,
+      "statementId": "01f199b2-8b47-10fd-a051-5fe6bba45fdd",
+      "statementSha": "sha256:51048eb112242f2e01875c3b09e3256d25a97eb995e72e4a8697b99189db0cf9",
+      "measuredAt": "2026-08-16T20:39:14.352Z",
+      "acceptedAt": "2026-08-16T20:45:15.753Z"
+    },
+    "node_utilization": {
+      "durationMs": 4115,
+      "scannedBytes": 0,
+      "samples": 5,
+      "spreadRatio": 1.21,
+      "statementId": "01f1955e-d828-19e3-a556-6a1a32d07e57",
+      "statementSha": "sha256:8c7e23b92cb19ad84be4f222a40248984d8da16896fdca179fdeaa3d95b328ad",
+      "measuredAt": "2026-08-11T08:30:00.879Z",
+      "acceptedAt": "2026-08-16T18:38:45.836Z"
+    },
+    "serverless_job_readiness": {
+      "durationMs": 4096,
+      "scannedBytes": 30972,
+      "samples": 5,
+      "spreadRatio": 1.15,
+      "statementId": "01f1955e-e4bb-17d9-833e-784c662c451f",
+      "statementSha": "sha256:cfc77b15c4c0c4b69a599998159f763c94a93a8ff799d412d4e7d3e75e9aea8a",
+      "measuredAt": "2026-08-11T08:30:21.969Z",
+      "acceptedAt": "2026-08-16T18:38:45.836Z"
+    },
+    "serverless_job_spend": {
+      "durationMs": 6359,
+      "scannedBytes": 1913063,
+      "samples": 5,
+      "spreadRatio": 1.29,
+      "statementId": "01f1955e-f171-1cf7-922f-e8062e1273a9",
+      "statementSha": "sha256:e00c763b23c1117da46cb3c12e496a88f247b5a40cc61ade731f385eea468e49",
+      "measuredAt": "2026-08-11T08:30:43.299Z",
+      "acceptedAt": "2026-08-16T18:38:45.836Z"
+    },
+    "serving_asset_facts": {
+      "durationMs": 12238,
+      "scannedBytes": 874973,
+      "samples": 5,
+      "spreadRatio": 1.33,
+      "statementId": "01f19996-2d5a-11c0-821e-401bc3b2a9ec",
+      "statementSha": "sha256:69ad9ceb3869b5114ec67208de574b902a5b51905c67c301d93adb8a19092bcd",
+      "measuredAt": "2026-08-16T17:16:10.782Z",
+      "acceptedAt": "2026-08-16T18:38:45.836Z"
+    },
+    "serving_asset_tags": {
+      "durationMs": 958,
+      "scannedBytes": 0,
+      "samples": 5,
+      "spreadRatio": 1.12,
+      "statementId": "01f19910-7a95-1a84-b64a-69081528e9bf",
+      "statementSha": "sha256:4932636c90d095f81f1a8bf77cf10971d3dce91f26e442c793f34673cca251e9",
+      "measuredAt": "2026-08-16T01:19:07.924Z",
+      "acceptedAt": "2026-08-16T01:25:54.233Z"
+    },
+    "serving_model_entities": {
+      "durationMs": 7017,
+      "scannedBytes": 97253,
+      "samples": 5,
+      "spreadRatio": 1.12,
+      "statementId": "01f199b2-75c3-1eae-ad29-81e4720c006b",
+      "statementSha": "sha256:a63d914eb08ec0cf3161a3cf6ff301a0768d80f8e6f6a3ffc8cb4302d7779016",
+      "measuredAt": "2026-08-16T20:38:38.256Z",
+      "acceptedAt": "2026-08-16T20:45:15.753Z"
+    },
+    "serving_population": {
+      "durationMs": 2879,
+      "scannedBytes": 0,
+      "samples": 5,
+      "spreadRatio": 1.38,
+      "statementId": "01f19996-247b-139c-88e2-a73f6c91c39f",
+      "statementSha": "sha256:0982f8d927c816fc22144d422a98c459c6b752e5cc379f5e2da6d7555d0bce64",
+      "measuredAt": "2026-08-16T17:15:55.902Z",
+      "acceptedAt": "2026-08-16T18:38:45.836Z"
+    },
+    "storage_sample_selection": {
+      "durationMs": 3709,
+      "scannedBytes": 299872,
+      "samples": 5,
+      "spreadRatio": 1.08,
+      "statementId": "01f19996-5485-17e8-acf5-5f2afe45af2d",
+      "statementSha": "sha256:dffe7d32f57d64c483c1d4b5d1961af720cdda8c80f4f39e3aedc0ea0650e891",
+      "measuredAt": "2026-08-16T17:17:16.513Z",
+      "acceptedAt": "2026-08-16T18:38:45.836Z"
+    },
+    "storage_table_metrics": {
+      "durationMs": 4961,
+      "scannedBytes": 0,
+      "samples": 5,
+      "spreadRatio": 1.43,
+      "statementId": "01f19611-0a57-1515-a0c0-6fd523f99167",
+      "statementSha": "sha256:18cbf40f4743bb685acbc9e54454ee9e228d084f475d3b28f67bed65970d7b87",
+      "measuredAt": "2026-08-12T05:45:35.495Z",
+      "acceptedAt": "2026-08-16T18:38:45.836Z"
+    },
+    "uc_asset_census": {
+      "durationMs": 1510,
+      "scannedBytes": 0,
+      "samples": 5,
+      "spreadRatio": 1.2,
+      "statementId": "01f19996-5fa2-161a-b9cd-3b15576bf46a",
+      "statementSha": "sha256:58f906b9b24de035beb6ea59ce5b1301897869b8fe4d0b20cf0e4a3faa4f09fd",
+      "measuredAt": "2026-08-16T17:17:35.164Z",
+      "acceptedAt": "2026-08-16T18:38:45.836Z"
+    },
+    "uc_catalog_inventory": {
+      "durationMs": 837,
+      "scannedBytes": 0,
+      "samples": 5,
+      "spreadRatio": 1.07,
+      "statementId": "01f19996-6436-1a1f-ad97-4e8b0d6a924f",
+      "statementSha": "sha256:7e094553d8fa5eb2ad2033762568bc76e6e2cd465cf48b28b943b1dd318fec2a",
+      "measuredAt": "2026-08-16T17:17:42.849Z",
+      "acceptedAt": "2026-08-16T18:38:45.836Z"
+    },
+    "uc_discovery_columns": {
+      "durationMs": 5624,
+      "scannedBytes": 565716,
+      "samples": 5,
+      "spreadRatio": 1.11,
+      "statementId": "01f1999d-d618-1de7-8d2e-544e195cc0e1",
+      "statementSha": "sha256:acbc56ef10772089ecccbe327ddb968e5a222dbddce1a5e009a3e21a3c78aa4d",
+      "measuredAt": "2026-08-16T18:11:00.373Z",
+      "acceptedAt": "2026-08-16T18:18:04.516Z"
+    },
+    "uc_discovery_metadata": {
+      "durationMs": 4239,
+      "scannedBytes": 564409,
+      "samples": 5,
+      "spreadRatio": 1.09,
+      "statementId": "01f1999d-c952-10a0-950a-ef309811f729",
+      "statementSha": "sha256:99c124026098e7a5061322b45d69747b934d2ba7dbe3a3e089630964d06c5342",
+      "measuredAt": "2026-08-16T18:10:38.848Z",
+      "acceptedAt": "2026-08-16T18:18:04.516Z"
+    },
+    "uc_lineage_coverage": {
+      "durationMs": 3912,
+      "scannedBytes": 477607,
+      "samples": 5,
+      "spreadRatio": 1.12,
+      "statementId": "01f19996-7695-1e9b-8883-41a88d1d6a96",
+      "statementSha": "sha256:795b73989211a3e1574a067c42f00ce53a44bff42cf00163c8f1c57df96b6ea2",
+      "measuredAt": "2026-08-16T17:18:13.662Z",
+      "acceptedAt": "2026-08-16T18:38:45.836Z"
+    },
+    "uc_platform_census": {
+      "durationMs": 2716,
+      "scannedBytes": 0,
+      "samples": 5,
+      "spreadRatio": 1.15,
+      "statementId": "01f19996-824c-110a-83fa-bd5df850cbca",
+      "statementSha": "sha256:1981702d4355a6e5846bfce30f80b4a755819223b4167c3bdb5dc5e1cccf4d11",
+      "measuredAt": "2026-08-16T17:18:33.304Z",
+      "acceptedAt": "2026-08-16T18:38:45.836Z"
+    },
+    "uc_schema_census": {
+      "durationMs": 925,
+      "scannedBytes": 0,
+      "samples": 5,
+      "spreadRatio": 1.13,
+      "statementId": "01f19996-8a95-1029-b161-f430b21bf961",
+      "statementSha": "sha256:540acc6120af5bb0355a0bc5b35a8e22649b8823011f037adb2c0afe5b848aff",
+      "measuredAt": "2026-08-16T17:18:47.215Z",
+      "acceptedAt": "2026-08-16T18:38:45.836Z"
+    },
+    "workload_query_shapes": {
+      "durationMs": 14751,
+      "scannedBytes": 208612270,
+      "samples": 5,
+      "spreadRatio": 1.15,
+      "statementId": "01f1955f-4dc8-1b51-aeb4-00cfa39188a1",
+      "statementSha": "sha256:77aeb204ca48391e889720107aa986843c8b9aeacf66b01696a15f9725bd075b",
+      "measuredAt": "2026-08-11T08:33:18.227Z",
+      "acceptedAt": "2026-08-16T18:38:45.836Z"
+    },
+    "workload_sql_paths": {
+      "durationMs": 6841,
+      "scannedBytes": 51966509,
+      "samples": 5,
+      "spreadRatio": 1.51,
+      "statementId": "01f1955f-7a67-1726-af99-b658419c47d0",
+      "statementSha": "sha256:cf45205873c73eb1a3f08c5609aea2ecb283a417f6f2fdb511a95cf60afbf3e0",
+      "measuredAt": "2026-08-11T08:34:33.088Z",
+      "acceptedAt": "2026-08-16T18:38:45.836Z"
+    },
+    "workload_table_statistics": {
+      "durationMs": 5480,
+      "scannedBytes": 426501,
+      "samples": 5,
+      "spreadRatio": 1.12,
+      "statementId": "01f19997-796d-1ccc-a660-47cbd2bd4d36",
+      "statementSha": "sha256:b59217f3bad0ad369d9d2a4d105f59144cb441d83f866b8e8047090fdf6ae6a9",
+      "measuredAt": "2026-08-16T17:25:27.921Z",
+      "acceptedAt": "2026-08-16T18:38:45.836Z"
+    },
+    "workload_warehouse_pressure": {
+      "durationMs": 11371,
+      "scannedBytes": 89932947,
+      "samples": 5,
+      "spreadRatio": 1.81,
+      "statementId": "01f1955f-90ee-1071-a122-7eb3a0f379c1",
+      "statementSha": "sha256:735ede35ab01b949ab277183c4a1652729d8c83806791259b4d6b2dba64f617b",
+      "measuredAt": "2026-08-11T08:35:10.873Z",
+      "acceptedAt": "2026-08-11T09:14:01.662Z"
+    },
+    "workload_write_patterns": {
+      "durationMs": 8716,
+      "scannedBytes": 108756310,
+      "samples": 5,
+      "spreadRatio": 1.15,
+      "statementId": "01f199ae-0126-1c1e-86af-487408c0f98c",
+      "statementSha": "sha256:78ec46b1759f7200f057c8fc54d480d634fd8d5dd54c43766234aa135b33a4e6",
+      "measuredAt": "2026-08-16T20:06:44.615Z",
+      "acceptedAt": "2026-08-16T20:11:53.743Z"
+    },
+    "workspace_directory": {
+      "durationMs": 4020,
+      "scannedBytes": 1020176,
+      "samples": 5,
+      "spreadRatio": 1.1,
+      "statementId": "01f199b2-69e2-1a82-aa89-8d10008b2757",
+      "statementSha": "sha256:e1c94c8fcbd8f5e4fe8e3bb186374cb248df04fd9851c0c28ebee44f525c83b8",
+      "measuredAt": "2026-08-16T20:38:18.320Z",
+      "acceptedAt": "2026-08-16T20:45:15.753Z"
+    }
+  }
+}

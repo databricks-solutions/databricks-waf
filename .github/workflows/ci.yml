@@ -1,0 +1,200 @@
+name: CI
+
+# # Why this is two jobs and not nine
+#
+# Measured over five runs, the nine jobs across this file and `security.yml` billed 13 minutes per
+# push for 7.6 minutes of work. The 5.4-minute difference is per-job overhead: Actions bills each
+# job a whole minute minimum, and four of the nine finished in under 50 seconds. A repository on the
+# 2,000-minute allowance was therefore spending two fifths of it on rounding, and paying the bill
+# twice per change — once on the pull request and again when the merge landed on main.
+#
+# What went, and why each was safe to lose rather than merely cheap:
+#
+#   * `bundle-freshness` was deleted. It ran `npm run bundle` and diffed `dist` and `client/dist`,
+#     which is what `check:bundle` inside `npm run verify` already does — the same commands in the
+#     same order. A duplicate check does not double the confidence, it doubles the bill.
+#   * `lockfile` and `deployability` were folded into `verify`. Both are seconds of work that were
+#     paying a minute each for their own runner, and both need only a checkout. They run before
+#     `npm ci` here, so they keep the property that made them separate jobs: they report even when
+#     the install is what is broken.
+#   * `cold-start` stayed on its own runner, because it cannot share one. It installs with
+#     `--omit=dev` on the exact Node the Apps runtime reports, and the fault it catches — a shipped
+#     file importing a dev-only package — is invisible in a tree where the dev dependencies are
+#     present. Sharing a runner with `verify` would make it pass for the wrong reason.
+#
+# The two-job form was re-measured on 2026-08-16 over five consecutive `workflow_dispatch`
+# successes. `verify` ran 3m35s–4m53s (4 or 5 billed minutes); `cold-start` ran 26–31s (1 billed
+# minute). Actions rounds each job up, so a run bills 5 or 6 minutes. Wall clock to green is the
+# verify job. The consolidation's leftover "roughly three minutes" was not a reading of this file.
+#
+# `pull_request` is on; `push` to `main` is not. Paying twice per change was the original complaint,
+# and `npm run verify` before push is still required so a broken change is found before the runner
+# spends four minutes saying so. `workflow_dispatch` stays so any change can still request the
+# independent runner. The decision is ADR 0097, not this comment.
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: app
+
+jobs:
+  verify:
+    name: Lint, typecheck, test
+    runs-on: ubuntu-latest
+    steps:
+      # The customer-journey release record names the exact deployed source commit and verifies that
+      # it is an ancestor of the candidate. A depth-one pull-request checkout contains only GitHub's
+      # synthetic merge commit, so Git cannot establish that relationship even when the recorded
+      # commit is the candidate's direct ancestor. Keep the history the release check reads.
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      # Before the install, and deliberately so. A lockfile pointing at an unreachable registry does
+      # not fail — it hangs until the job times out, with nothing in the log to say why. Checking it
+      # first turns a twenty-minute mystery into a five-second error message. This was its own job
+      # for that reason and does not need to be: what mattered was running before `npm ci`, not
+      # running on another machine.
+      - name: Every tarball resolves from the public registry
+        run: node scripts/lockfile-registry.mjs --check
+
+      # Also before the install, so that a broken lockfile does not hide a structural fault. Each
+      # one is cheap to check and expensive to discover late.
+      #
+      # These were "Marketplace structural requirements" until ADR 0030 dropped Marketplace as a
+      # distribution path. They are not Marketplace rules — a hardcoded warehouse id, a file over
+      # the deployment limit or a blanket scope breaks a deploy from Git exactly as it broke an
+      # install.
+      - name: App source lives in a subfolder, not the repo root
+        run: |
+          cd "$GITHUB_WORKSPACE"
+          if [ -f app.yaml ] || [ -f package.json ]; then
+            echo "::error::App source must not be at the repository root."
+            exit 1
+          fi
+          test -f app/app.yaml || { echo "::error::app/app.yaml is missing."; exit 1; }
+
+      - name: No file exceeds the 10 MB deployment limit
+        run: |
+          cd "$GITHUB_WORKSPACE"
+          oversized=$(find app -type f -size +10M -not -path '*/node_modules/*' || true)
+          if [ -n "$oversized" ]; then
+            echo "::error::Files over 10 MB fail Apps deployment:"
+            echo "$oversized"
+            exit 1
+          fi
+          echo "No file exceeds 10 MB."
+
+      - name: No hardcoded resource identifiers in app.yaml
+        run: |
+          cd "$GITHUB_WORKSPACE"
+          # Resources must be declared and bound by the consuming admin at install. A hardcoded
+          # warehouse id or an email address means the app only works in the workspace it was
+          # built in.
+          if grep -nEi '(warehouse_id|instance_name)[[:space:]]*:[[:space:]]*["'"'"']?[0-9a-f]{8,}' app/app.yaml; then
+            echo "::error::app.yaml appears to hardcode a resource id."
+            exit 1
+          fi
+          if grep -nEi '[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}' app/app.yaml; then
+            echo "::error::app.yaml contains an email address."
+            exit 1
+          fi
+          echo "No hardcoded resources found."
+
+      - name: API scopes are enumerated, never blanket
+        run: |
+          cd "$GITHUB_WORKSPACE"
+          if grep -nE '(^|[^a-z-])all-apis' app/app.yaml app/databricks.yml; then
+            echo "::error::all-apis is not an acceptable scope. Enumerate the minimum set."
+            exit 1
+          fi
+          echo "Scopes are enumerated."
+
+      # app.yaml against databricks.yml. The scopes that take effect are the app object's, which
+      # databricks.yml sets, so this is the load-bearing comparison. `check:resources` in
+      # `npm run verify` asserts the same thing from Node with better messages; this stays because it
+      # runs without node_modules and so still reports when a lockfile install is what failed.
+      - name: Declared scopes agree between app.yaml and databricks.yml
+        run: |
+          cd "$GITHUB_WORKSPACE"
+          # The key is matched on a whole line so that prose mentioning it does not start the block
+          # early: app.yaml has a comment about `effective_user_api_scopes` above the real key, and
+          # an unanchored match reads that as the block opening and only works because every line
+          # between the two happens to be a comment.
+          scopes() {
+            awk '/^[[:space:]]*user_api_scopes:[[:space:]]*$/{f=1;next} f&&/^[[:space:]]*[^[:space:]#-]/{f=0} f&&/^[[:space:]]*-[[:space:]]/{gsub(/^[[:space:]]*-[[:space:]]*/,"");print}' "$1" | sort
+          }
+          if ! diff <(scopes app/app.yaml) <(scopes app/databricks.yml); then
+            echo "::error::app.yaml and databricks.yml declare different user_api_scopes."
+            exit 1
+          fi
+          echo "Scope declarations agree."
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      # ci rather than install, so a lockfile that cannot reproduce the build fails here rather than
+      # on a customer's deploy.
+      - run: npm ci
+
+      # One step calling one script, rather than a step per check, so that `npm run verify` locally
+      # and this job cannot come to mean different things. They did not drift here yet, but the
+      # direction is predictable: the local one gets forgotten, stops matching, stops being trusted,
+      # and people go back to pushing to find out what CI thinks.
+      #
+      # The reason each individual check exists is documented in the script, next to the command it
+      # justifies. It reports every failure rather than stopping at the first, which is the behaviour
+      # that turned one bad push into three sequential ones. `check:bundle` is one of them, which is
+      # why there is no longer a separate job rebuilding the bundle.
+      - name: Lint, typecheck, test, catalogue
+        run: npm run verify
+
+  # Reproduce what the platform does with the committed bundle: install dependencies, then run it.
+  # No build, because there is deliberately no `build` script for the platform to find.
+  #
+  # The fault it exists to catch is a shipped file importing a dev-only package. That passes lint,
+  # typecheck, test and bundling, because all four run in a tree where the package is present, and
+  # then fails on first boot in the customer's workspace. This is why it keeps its own runner: it is
+  # the one job whose whole value is the absence of the dev dependencies.
+  #
+  # It stops short of proving the app serves traffic. AppKit's startup blocks on resolving the bound
+  # warehouse and calling SCIM /Me, so a listening state is unreachable without a live workspace.
+  # That part is verified by deploying to a real workspace, and was.
+  cold-start:
+    name: Committed bundle runs without a build step
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # Pinned to the exact version the Apps runtime reports, not the 22 line. This started as `22`,
+      # which resolves to the newest 22.x and is far ahead of the runtime: the bundler needs ^22.18,
+      # the runtime has 22.16.0, and so a build that CI proved fine failed on deploy. Floating the
+      # minor hid the one difference that mattered.
+      #
+      # Read from a deployment log rather than documentation, so re-check it when the runtime moves.
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22.16.0
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      # --omit=dev is the whole point of the job. Installing dev dependencies here would let the leak
+      # this catches resolve, and the check would pass for the wrong reason.
+      - name: Install production dependencies only
+        run: npm ci --omit=dev
+
+      - name: Run the committed bundle
+        run: npm run check:shipped

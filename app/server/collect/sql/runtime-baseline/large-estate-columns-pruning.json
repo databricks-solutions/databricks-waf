@@ -1,0 +1,114 @@
+{
+  "what": "What the planner must load to reference system.information_schema.columns, for row 75.",
+  "measuredAt": "2026-08-16T16:41:40.296Z",
+  "profile": "large-estate",
+  "host": "https://example.cloud.databricks.com",
+  "warehouseId": "fedcba9876543210",
+  "probeDeadlineMs": 900000,
+  "forms": [
+    {
+      "label": "literal one",
+      "predicateChars": 29,
+      "statementId": "01f19991-650e-16fc-a9a0-b2c34a347803",
+      "verdict": "ran",
+      "wallMs": 361767,
+      "columnsSeen": 31255,
+      "platform": {
+        "status": "FINISHED",
+        "totalMs": 361329,
+        "compilationMs": 360720,
+        "executionMs": 574,
+        "waitingForComputeMs": 0,
+        "readBytes": 0,
+        "readFiles": 0
+      }
+    },
+    {
+      "label": "literal in",
+      "predicateChars": 82326,
+      "statementId": "01f19992-3cd0-1546-af84-7e1034d562d9",
+      "verdict": "cancelled",
+      "wallMs": 903439,
+      "platform": {
+        "status": "CANCELED",
+        "totalMs": 902940,
+        "compilationMs": null,
+        "executionMs": null,
+        "waitingForComputeMs": 0,
+        "readBytes": 0,
+        "readFiles": 0
+      }
+    },
+    {
+      "label": "shipped",
+      "predicateChars": 197,
+      "statementId": "01f19994-57a8-1eb0-ac7e-62bcbd20b8dc",
+      "verdict": "cancelled",
+      "wallMs": 902785,
+      "platform": {
+        "status": "CANCELED",
+        "totalMs": 901720,
+        "compilationMs": null,
+        "executionMs": null,
+        "waitingForComputeMs": 0,
+        "readBytes": 0,
+        "readFiles": 0
+      }
+    },
+    {
+      "label": "no predicate",
+      "predicateChars": 0,
+      "statementId": "01f19996-71bb-1d76-a54d-d951cb45610f",
+      "verdict": "cancelled",
+      "wallMs": 902646,
+      "platform": null
+    }
+  ],
+  "estate": {
+    "customerCatalogs": 3558,
+    "customerRelations": 604746,
+    "largestTen": [
+      {
+        "catalog": "catalog_01",
+        "relations": 67466
+      },
+      {
+        "catalog": "catalog_02",
+        "relations": 67446
+      },
+      {
+        "catalog": "catalog_03",
+        "relations": 67436
+      },
+      {
+        "catalog": "catalog_04",
+        "relations": 34245
+      },
+      {
+        "catalog": "catalog_05",
+        "relations": 30161
+      },
+      {
+        "catalog": "catalog_06",
+        "relations": 28248
+      },
+      {
+        "catalog": "catalog_07",
+        "relations": 17181
+      },
+      {
+        "catalog": "catalog_08",
+        "relations": 8871
+      },
+      {
+        "catalog": "catalog_09",
+        "relations": 6030
+      },
+      {
+        "catalog": "catalog_10",
+        "relations": 3687
+      }
+    ],
+    "shareInLargestTen": 0.5469585578077407
+  }
+}

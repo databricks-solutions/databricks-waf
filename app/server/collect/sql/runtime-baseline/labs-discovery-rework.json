@@ -1,0 +1,42 @@
+{
+  "runFinishedAt": "2026-08-16T06:30:02.022Z",
+  "profile": "labs",
+  "host": "https://dbc-example.cloud.databricks.com",
+  "warehouse": "0123456789abcdef",
+  "lookbackDays": 30,
+  "statement": "uc_discovery_metadata",
+  "asShipped": {
+    "verdict": "ran",
+    "ms": 5455,
+    "error": null,
+    "row": {
+      "estate_tables": "49",
+      "estate_tables_described": "34",
+      "read_tables": "39",
+      "read_tables_described": "30",
+      "read_tables_tagged": "8",
+      "read_tables_owned": "39",
+      "read_table_columns": "333",
+      "read_table_columns_described": "73",
+      "read_events": "2555"
+    }
+  },
+  "forms": [
+    {
+      "name": "both restricted",
+      "verdict": "ran",
+      "ms": 10909,
+      "error": null,
+      "identical": true,
+      "differences": []
+    },
+    {
+      "name": "columns only",
+      "verdict": "ran",
+      "ms": 8618,
+      "error": null,
+      "identical": true,
+      "differences": []
+    }
+  ]
+}

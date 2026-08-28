@@ -1,0 +1,283 @@
+/*
+ * Paper. The structural half of it — the palette half is the @media print block in wa-theme.css,
+ * because that file is where colour lives and this one may not name a value.
+ *
+ * Two things about printing a web application are worth stating, because both are invisible until
+ * somebody prints and neither is a styling preference.
+ *
+ * The first is that a scrolling region prints its first screenful and silently drops the rest. Every
+ * `overflow: auto` in the app is a page of the report the reader will never see and will never know
+ * they did not see, which is worse than a broken layout: a truncated document reads as a complete
+ * one. So overflow is released here rather than tuned.
+ *
+ * The second is that Chrome's "Background graphics" checkbox is OFF by default. Every fill in this
+ * app — the zebra band, the severity chip's tint, the score bar, the coverage segments — is absent
+ * from a default print. That is not a rule to work around with print-color-adjust, which is honoured
+ * inconsistently; it is a constraint on the design of the report, and it is met by never letting a
+ * fill be the only carrier of a fact. The outcome is a word, the severity is a word, the coverage is
+ * a fraction. What the fills add on a colour print is emphasis, and what they take away when dropped
+ * is nothing.
+ */
+
+@media print {
+  /*
+   * 14mm gives a stapled or hole-punched copy its margin without narrowing the measure so far that
+   * the appendix table's four columns stop fitting. No `size` declaration: the reader's own paper is
+   * A4 or Letter and the browser knows which, whereas this stylesheet does not.
+   */
+  @page {
+    margin: 14mm 13mm;
+  }
+
+  /*
+   * The shell stops being a shell.
+   *
+   * .wa-app is a two-column grid with a sticky 204px navy rail, and on screen it is exactly 100dvh
+   * tall with its overflow hidden so that the document never scrolls. On paper a viewport height is
+   * meaningless, a sticky element lands wherever the first page happened to end, and the rail is
+   * 204px of ink for a navigation nobody can use.
+   *
+   * `height: auto` is the load-bearing line. Without it the whole report is one viewport tall with
+   * its remainder clipped — the exact failure the note at the top of this file describes, arrived at
+   * from the shell rather than from a pane.
+   */
+  .wa-app {
+    display: block;
+    height: auto;
+    min-height: 0;
+    overflow: visible !important;
+  }
+
+  .wa-chrome,
+  .wa-page-header,
+  .wa-tabs,
+  .wa-subtabs,
+  .wa-differential-strip,
+  [data-print='omit'] {
+    display: none !important;
+  }
+
+  /*
+   * The measure is the paper's, the canvas gutters are the @page margin, and the page is a block.
+   *
+   * The last of those is the one that matters and it was found by measuring. .wa-page is a flex
+   * column on screen, and Chromium does not fragment a flex container across pages the way it
+   * fragments blocks: with a `break-inside: avoid` on each child, the first printed report put every
+   * one of its 33 findings on a page of its own and ran to 55 pages, two thirds of which were white.
+   * As blocks with margins between them the same content fills the page it is on. Nothing about the
+   * screen layout changes, because a flex column with a gap and a block with margins look identical
+   * until something has to break.
+   */
+  .wa-page,
+  .wa-customer-page {
+    display: block;
+    max-width: none;
+    padding: 0;
+  }
+
+  .wa-page > * + *,
+  .wa-customer-page > * + * {
+    margin-top: 16px;
+  }
+
+  /*
+   * Released, not tuned. See the note at the top: a region that scrolls on screen prints its first
+   * screenful, so any of these left alone is a silent truncation.
+   */
+  .wa-page,
+  .wa-canvas-scroll,
+  .wa-table,
+  .wa-segment-track,
+  pre {
+    max-height: none;
+    overflow: visible !important;
+  }
+
+  /* A truncating cell has a whole page to wrap into; an ellipsis on paper loses the content. */
+  .truncate {
+    overflow: visible !important;
+    white-space: normal !important;
+  }
+
+  /* A remediation statement is the most valuable thing in the document and the widest. */
+  pre {
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  /*
+   * Anything the reader would have to click is opened.
+   *
+   * Two rules for two engine generations: `::details-content` is how current Chromium hides the
+   * closed body, and the child selector is how everything before it did. Neither is a fallback for
+   * the other so both are declared, and an engine that supports neither was never hiding it this way.
+   */
+  details > *:not(summary) {
+    display: block !important;
+  }
+
+  details::details-content {
+    content-visibility: visible !important;
+  }
+
+  details > summary {
+    /* The chevron rotates to indicate a state the printed copy no longer has. */
+    list-style: none;
+  }
+
+  /*
+   * Where a page may break.
+   *
+   * A heading is worthless at the foot of a page and a table header is worthless on the page before
+   * its rows, so both are held to what follows them. Rows are kept whole because a finding's title
+   * and its outcome are in the same row and reading one without the other is how a reader
+   * misattributes a verdict.
+   */
+  h1,
+  h2,
+  h3,
+  .wa-section-header,
+  .wa-report-heading,
+  .wa-table thead {
+    break-after: avoid;
+  }
+
+  .wa-report-block,
+  .wa-report-heading,
+  .wa-customer-surface,
+  .wa-signal,
+  .wa-row,
+  .wa-table tr,
+  .wa-metric,
+  .wa-scorecard {
+    break-inside: avoid;
+  }
+
+  .wa-report-record-surface {
+    break-inside: auto;
+  }
+
+  .wa-report-gap-list > li {
+    break-inside: avoid;
+  }
+
+  /*
+   * The pairs, kept whole.
+   *
+   * These are the units inside a finding that mean something different when they are read apart: an
+   * observation without the expectation beneath it is a number with no verdict, a SQL statement
+   * without its label is a command of unknown purpose, and a quoted attestation without the line
+   * naming who wrote it is hearsay. A finding may break across pages; none of these may.
+   */
+  dl > div,
+  blockquote,
+  pre,
+  .wa-callout {
+    break-inside: avoid;
+  }
+
+  /* No line left behind. Two is the convention and it is what stops a page ending mid-thought. */
+  p,
+  li,
+  dd {
+    orphans: 2;
+    widows: 2;
+  }
+
+  /*
+   * A row is a line of text, not a target for a finger.
+   *
+   * The 44px and 36px minimums exist because a pointer needs somewhere to land. Paper has no
+   * pointer, and on a page where a finding must be kept whole those minimums decide how many
+   * findings fit: at their screen heights two consecutive findings measured 1,066px against a
+   * printable 1,017, so nearly every page took one finding and left a third of itself white.
+   */
+  .wa-section-header,
+  .wa-row {
+    min-height: 0;
+  }
+
+  .wa-section-header {
+    padding-block: 6px;
+  }
+
+  /* Repeated at the top of every page the table continues onto. */
+  .wa-table thead {
+    display: table-header-group;
+  }
+
+  /*
+   * The census starts on its own sheet.
+   *
+   * `break-after: avoid` on a table header is declared above and Chromium does not honour it, so the
+   * appendix's header row landed alone at the foot of a page with its first row overleaf — a column
+   * of headings introducing nothing. Since the appendix is a reference section rather than a
+   * continuation of the argument, starting it on a fresh sheet fixes the orphan and reads as
+   * deliberate.
+   */
+  .wa-report-fresh {
+    break-before: page;
+  }
+
+  /*
+   * Sticky is a scroll behaviour and there is no scroll. Left in place, a sticky header composites
+   * onto the first page's rows in Chromium and prints twice.
+   */
+  .wa-table th {
+    position: static;
+  }
+
+  /*
+   * A document, not a stack of cards.
+   *
+   * Surface radius and fill make the app read as a console; on paper the same
+   * treatment reads as a slide deck pasted into a report. The border stays — it is what tells the
+   * appendix table where it begins — and the corners and the tint go.
+   */
+  .wa-customer-surface,
+  .wa-action-panel,
+  .wa-signal,
+  .wa-callout,
+  .wa-notice-warning {
+    border-radius: 0;
+    background: var(--wa-surface);
+  }
+
+  .wa-customer-surface,
+  .wa-action-panel,
+  .wa-signal {
+    box-shadow: none;
+  }
+
+  /* Nothing casts. The only shadowed things in the app are transient layers, which cannot print. */
+  .wa-transient-surface {
+    box-shadow: none;
+  }
+
+  /*
+   * A link that still goes somewhere keeps its colour and its underline, and does not grow its URL
+   * in brackets.
+   *
+   * The deep links this report carries are long, and `a::after { content: attr(href) }` turns a
+   * five-name evidence sentence into an unreadable paragraph. Chromium and WebKit both keep the
+   * anchor as a link annotation when printing to PDF, so the link survives where it matters; where
+   * the copy is paper, the machine-readable exports carry the URLs. See ADR 0023.
+   */
+  a[href^='http'] {
+    text-decoration-line: underline;
+  }
+
+  /*
+   * A link into this app is not a link in this document.
+   *
+   * Every pillar name in the matrix and every requirement id in a row is a route, and a route in a
+   * PDF resolves against wherever the file was opened — which for the reader this document exists
+   * for is nowhere. Underlining them promises a destination the copy cannot reach, and the first
+   * printed draft had a pillar matrix of thirteen blue underlined names none of which did anything.
+   * They stay as text.
+   */
+  a:not([href^='http']) {
+    color: inherit;
+    text-decoration-line: none;
+  }
+}

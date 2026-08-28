@@ -1,0 +1,237 @@
+{
+  "what": "Serialised topology payload size at the candidate caps, from the 32h recordings.",
+  "takenAt": "2026-08-18T11:04:58.229Z",
+  "shape": "Each edge is id, source, target, relation, joinedBy, lastSeen. Each node is id, kind, label. The body also carries cap and truncated.",
+  "fieldeng": {
+    "profile": "large-estate",
+    "lookbackDays": 7,
+    "drawnEdges": 20641,
+    "largestRelation": {
+      "id": "job-to-table",
+      "edges": 8510
+    },
+    "byRelation": {
+      "table-to-table": {
+        "edges": 5194,
+        "from_ends": 2520,
+        "to_ends": 3146,
+        "source": "system.access.table_lineage"
+      },
+      "job-to-table": {
+        "edges": 8510,
+        "from_ends": 1591,
+        "to_ends": 2940,
+        "source": "system.access.table_lineage"
+      },
+      "pipeline-to-table": {
+        "edges": 2109,
+        "from_ends": 638,
+        "to_ends": 1983,
+        "source": "system.access.table_lineage"
+      },
+      "job-to-cluster": {
+        "edges": 455,
+        "from_ends": 252,
+        "to_ends": 369,
+        "source": "system.lakeflow.job_task_run_timeline"
+      },
+      "job-to-warehouse": {
+        "edges": 16,
+        "from_ends": 16,
+        "to_ends": 4,
+        "source": "system.lakeflow.job_task_run_timeline"
+      },
+      "warehouse-to-table": {
+        "edges": 4342,
+        "from_ends": 82,
+        "to_ends": 3507,
+        "source": "system.access.table_lineage ⋈ system.query.history"
+      },
+      "job-to-job": {
+        "edges": 15,
+        "from_ends": 6,
+        "to_ends": 15,
+        "source": "system.lakeflow.job_run_timeline ⋈ system.lakeflow.job_task_run_timeline"
+      }
+    },
+    "declined": [
+      {
+        "id": "pipeline-to-cluster",
+        "edges": 22061,
+        "why": "one cluster per update — an event log, not a relation"
+      },
+      {
+        "id": "cluster-to-table",
+        "edges": 0,
+        "why": "zero edges on both estates; the join does not carry cluster"
+      },
+      {
+        "id": "bill-derived-pairs",
+        "edges": 642,
+        "why": "32i's rule declines an edge drawn from a bill"
+      }
+    ],
+    "payload": {
+      "uncapped": {
+        "edges": 20641,
+        "nodes": 23927,
+        "bytes": 4933418,
+        "bytesPerEdge": 239.01060995106826
+      },
+      "at": {
+        "250": {
+          "edges": 250,
+          "nodes": 251,
+          "bytes": 53804,
+          "bytesPerEdge": 215.216
+        },
+        "500": {
+          "edges": 500,
+          "nodes": 501,
+          "bytes": 108054,
+          "bytesPerEdge": 216.108
+        },
+        "1000": {
+          "edges": 1000,
+          "nodes": 1001,
+          "bytes": 216558,
+          "bytesPerEdge": 216.558
+        },
+        "2000": {
+          "edges": 2000,
+          "nodes": 2001,
+          "bytes": 438558,
+          "bytesPerEdge": 219.279
+        },
+        "5000": {
+          "edges": 5000,
+          "nodes": 5001,
+          "bytes": 1104558,
+          "bytesPerEdge": 220.9116
+        },
+        "10000": {
+          "edges": 10000,
+          "nodes": 10001,
+          "bytes": 2153562,
+          "bytesPerEdge": 215.3562
+        }
+      }
+    }
+  },
+  "labs": {
+    "profile": "labs",
+    "lookbackDays": 30,
+    "drawnEdges": 306,
+    "largestRelation": {
+      "id": "warehouse-to-table",
+      "edges": 206
+    },
+    "byRelation": {
+      "table-to-table": {
+        "edges": 90,
+        "from_ends": 34,
+        "to_ends": 41,
+        "source": "system.access.table_lineage"
+      },
+      "job-to-table": {
+        "edges": 3,
+        "from_ends": 1,
+        "to_ends": 3,
+        "source": "system.access.table_lineage"
+      },
+      "pipeline-to-table": {
+        "edges": 7,
+        "from_ends": 3,
+        "to_ends": 5,
+        "source": "system.access.table_lineage"
+      },
+      "job-to-cluster": {
+        "edges": 0,
+        "from_ends": 0,
+        "to_ends": 0,
+        "source": "system.lakeflow.job_task_run_timeline"
+      },
+      "job-to-warehouse": {
+        "edges": 0,
+        "from_ends": 0,
+        "to_ends": 0,
+        "source": "system.lakeflow.job_task_run_timeline"
+      },
+      "warehouse-to-table": {
+        "edges": 206,
+        "from_ends": 13,
+        "to_ends": 137,
+        "source": "system.access.table_lineage ⋈ system.query.history"
+      },
+      "job-to-job": {
+        "edges": 0,
+        "from_ends": 0,
+        "to_ends": 0,
+        "source": "system.lakeflow.job_run_timeline ⋈ system.lakeflow.job_task_run_timeline"
+      }
+    },
+    "declined": [
+      {
+        "id": "pipeline-to-cluster",
+        "edges": 0,
+        "why": "one cluster per update — an event log, not a relation"
+      },
+      {
+        "id": "cluster-to-table",
+        "edges": 0,
+        "why": "zero edges on both estates; the join does not carry cluster"
+      },
+      {
+        "id": "bill-derived-pairs",
+        "edges": 1,
+        "why": "32i's rule declines an edge drawn from a bill"
+      }
+    ],
+    "payload": {
+      "uncapped": {
+        "edges": 306,
+        "nodes": 423,
+        "bytes": 82047,
+        "bytesPerEdge": 268.12745098039215
+      },
+      "at": {
+        "250": {
+          "edges": 250,
+          "nodes": 311,
+          "bytes": 64125,
+          "bytesPerEdge": 256.5
+        },
+        "500": {
+          "edges": 306,
+          "nodes": 423,
+          "bytes": 82046,
+          "bytesPerEdge": 268.12418300653593
+        },
+        "1000": {
+          "edges": 306,
+          "nodes": 423,
+          "bytes": 82047,
+          "bytesPerEdge": 268.12745098039215
+        },
+        "2000": {
+          "edges": 306,
+          "nodes": 423,
+          "bytes": 82047,
+          "bytesPerEdge": 268.12745098039215
+        },
+        "5000": {
+          "edges": 306,
+          "nodes": 423,
+          "bytes": 82047,
+          "bytesPerEdge": 268.12745098039215
+        },
+        "10000": {
+          "edges": 306,
+          "nodes": 423,
+          "bytes": 82048,
+          "bytesPerEdge": 268.1307189542484
+        }
+      }
+    }
+  }
+}

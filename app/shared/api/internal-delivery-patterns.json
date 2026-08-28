@@ -1,0 +1,5 @@
+[
+  "\\b(?:PR|pull request)\\s*#?\\d+\\b",
+  "\\b(?:row|phase)\\s+(?:[A-Z]\\d+[a-z]*|\\d+[a-z]*)\\b",
+  "\\b(?:[A-Z]\\d+[a-z]*|\\d+[a-z]+)\\s+(?:labs|served|customer|CUJ|journey|pilot)\\b"
+]

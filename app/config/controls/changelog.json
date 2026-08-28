@@ -1,0 +1,237 @@
+[
+  {
+    "version": 9,
+    "fingerprint": "sha256:5e57d6890434465a9c4792e4abafdd155a08eeab9f48657bcad49899d009290d",
+    "recordedAt": "2026-08-03",
+    "scored_units": 167,
+    "describes": false
+  },
+  {
+    "version": 10,
+    "fingerprint": "sha256:3193e6eaeb74b82a14c08b9c14113e40ee1adce50820ba798855d30df630d5cb",
+    "recordedAt": "2026-08-07",
+    "scored_units": 165,
+    "describes": true,
+    "added": [],
+    "removed": [],
+    "renamed": [],
+    "changed": [
+      {
+        "id": "OE-01-02",
+        "fields": [
+          "alias_group",
+          "measurability"
+        ]
+      },
+      {
+        "id": "PE-05-04",
+        "fields": [
+          "alias_group",
+          "measurability",
+          "thresholds"
+        ]
+      }
+    ]
+  },
+  {
+    "version": 11,
+    "fingerprint": "sha256:90225a4b9e78be19092e1d11ab33eb6fd5d4885cef08a5ad024893933ac4e39d",
+    "recordedAt": "2026-08-07",
+    "scored_units": 165,
+    "describes": true,
+    "added": [],
+    "removed": [],
+    "renamed": [],
+    "changed": [
+      {
+        "id": "CO-01-03",
+        "fields": [
+          "measurability",
+          "thresholds"
+        ]
+      },
+      {
+        "id": "PE-03-10",
+        "fields": [
+          "measurability",
+          "thresholds"
+        ]
+      }
+    ]
+  },
+  {
+    "version": 12,
+    "fingerprint": "sha256:8bf57d2aaedadd9947b911a1344e189ad0d5f8e0df37e432e0922ff9207e1a82",
+    "recordedAt": "2026-08-09",
+    "scored_units": 165,
+    "describes": true,
+    "added": [],
+    "removed": [],
+    "renamed": [],
+    "changed": [
+      {
+        "id": "REL-02-04",
+        "fields": [
+          "coverage_mode",
+          "measurability",
+          "thresholds"
+        ]
+      }
+    ]
+  },
+  {
+    "version": 13,
+    "fingerprint": "sha256:9eb9a58229366624a42c35acbc870101abea8876be9a4628dcffd8fb88be2f28",
+    "recordedAt": "2026-08-09",
+    "scored_units": 165,
+    "describes": true,
+    "added": [],
+    "removed": [],
+    "renamed": [],
+    "changed": [
+      {
+        "id": "SCP-01-01",
+        "fields": [
+          "measurability"
+        ]
+      }
+    ]
+  },
+  {
+    "version": 14,
+    "fingerprint": "sha256:68ea8802f521bc97373a028f302fc97c780450d88d200be910622e781478d07c",
+    "recordedAt": "2026-08-09",
+    "scored_units": 165,
+    "describes": true,
+    "added": [],
+    "removed": [],
+    "renamed": [],
+    "changed": [
+      {
+        "id": "CO-01-08",
+        "fields": [
+          "measurability"
+        ]
+      },
+      {
+        "id": "OE-02-05",
+        "fields": [
+          "measurability"
+        ]
+      },
+      {
+        "id": "PE-05-03",
+        "fields": [
+          "measurability",
+          "thresholds"
+        ]
+      },
+      {
+        "id": "REL-01-02",
+        "fields": [
+          "measurability",
+          "preconditions",
+          "severity",
+          "thresholds"
+        ]
+      }
+    ]
+  },
+  {
+    "version": 15,
+    "fingerprint": "sha256:eec3be18f8bd940cc1770acd1465b378095822ab83060cc7e5bc53cef8e79afc",
+    "recordedAt": "2026-08-10",
+    "scored_units": 165,
+    "describes": true,
+    "added": [],
+    "removed": [],
+    "renamed": [],
+    "changed": [
+      {
+        "id": "DG-01-06",
+        "fields": [
+          "measurability",
+          "thresholds"
+        ]
+      }
+    ]
+  },
+  {
+    "version": 16,
+    "fingerprint": "sha256:96cd53aa65708ef6f2fa8eeb202432f4ad18ef252e09611a398ce31eec89fd42",
+    "recordedAt": "2026-08-16",
+    "scored_units": 165,
+    "describes": true,
+    "added": [],
+    "removed": [],
+    "renamed": [],
+    "changed": [
+      {
+        "id": "OE-02-08",
+        "fields": [
+          "measurability"
+        ]
+      },
+      {
+        "id": "OE-02-09",
+        "fields": [
+          "measurability"
+        ]
+      },
+      {
+        "id": "PE-02-02",
+        "fields": [
+          "measurability"
+        ]
+      }
+    ]
+  },
+  {
+    "version": 17,
+    "fingerprint": "sha256:525cee49a12d62863b6d769f4cb2c0f9672379f94dbdfa4a016bca73d342446c",
+    "recordedAt": "2026-08-18",
+    "scored_units": 165,
+    "describes": true,
+    "added": [],
+    "removed": [],
+    "renamed": [],
+    "changed": [
+      {
+        "id": "DG-01-02",
+        "fields": [
+          "thresholds"
+        ]
+      },
+      {
+        "id": "DG-01-03",
+        "fields": [
+          "thresholds"
+        ]
+      },
+      {
+        "id": "PE-03-15",
+        "fields": [
+          "thresholds"
+        ]
+      }
+    ]
+  },
+  {
+    "version": 18,
+    "fingerprint": "sha256:755d42025cf0f621c064089147c00748165277afd338986f2392edbb9cd36193",
+    "recordedAt": "2026-08-19",
+    "scored_units": 165,
+    "describes": true,
+    "added": [],
+    "removed": [],
+    "renamed": [],
+    "changed": [
+      {
+        "id": "DG-03-02",
+        "fields": [
+          "measurability"
+        ]
+      }
+    ]
+  }
+]

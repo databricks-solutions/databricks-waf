@@ -1,0 +1,1047 @@
+{
+  "runFinishedAt": "2026-08-12T05:32:49.869Z",
+  "profile": "labs",
+  "host": "https://dbc-example.cloud.databricks.com",
+  "warehouse": "0123456789abcdef",
+  "catalogLimit": 3,
+  "selectLimit": 200,
+  "describeLimit": 50,
+  "lookbackDays": 30,
+  "metricsTable": {
+    "verdict": "unwritten",
+    "readable": true,
+    "bounded": false,
+    "rows": 0,
+    "tables": 0,
+    "cataloguedRelations": 408,
+    "cataloguedStoredTables": 221,
+    "siblingRows": 47,
+    "listedInTheSchema": true
+  },
+  "census": {
+    "catalogsVisited": 3,
+    "relationsCovered": 131,
+    "perCatalog": [
+      {
+        "catalog": "workshop_demo",
+        "tables": 51,
+        "returned": true,
+        "ms": 1045,
+        "partitionedTables": 0,
+        "deepestPartitionIndex": null
+      },
+      {
+        "catalog": "main",
+        "tables": 42,
+        "returned": true,
+        "ms": 1053,
+        "partitionedTables": 0,
+        "deepestPartitionIndex": null
+      },
+      {
+        "catalog": "quest_e2e",
+        "tables": 38,
+        "returned": true,
+        "ms": 1006,
+        "partitionedTables": 0,
+        "deepestPartitionIndex": null
+      }
+    ]
+  },
+  "sample": {
+    "selected": 38,
+    "attempted": 38,
+    "eligible": 38,
+    "described": 38,
+    "failed": 0,
+    "partitioned": 0,
+    "sized": 38,
+    "overPartitioned": 0,
+    "clustered": 0,
+    "compactable": 4,
+    "withSizeAndFileCount": 38
+  },
+  "described": [
+    {
+      "table": "`main`.`lakeload`.`lakeload_account`",
+      "sizeBytes": 289469,
+      "fileCount": 16,
+      "partitionColumns": [],
+      "clusteringColumns": [],
+      "automaticClustering": false
+    },
+    {
+      "table": "`main`.`lakeload`.`lakeload_product`",
+      "sizeBytes": 48357,
+      "fileCount": 16,
+      "partitionColumns": [],
+      "clusteringColumns": [],
+      "automaticClustering": false
+    },
+    {
+      "table": "`main`.`lakeload`.`account`",
+      "sizeBytes": 154189,
+      "fileCount": 8,
+      "partitionColumns": [],
+      "clusteringColumns": [],
+      "automaticClustering": false
+    },
+    {
+      "table": "`workshop_demo`.`automotive_mobility`.`parts`",
+      "sizeBytes": 975109,
+      "fileCount": 8,
+      "partitionColumns": [],
+      "clusteringColumns": [],
+      "automaticClustering": false
+    },
+    {
+      "table": "`main`.`lakeload`.`lakeload_serving_profile`",
+      "sizeBytes": 34600,
+      "fileCount": 17,
+      "partitionColumns": [],
+      "clusteringColumns": [],
+      "automaticClustering": false
+    },
+    {
+      "table": "`workshop_demo`.`automotive_mobility`.`telematics_events`",
+      "sizeBytes": 254723381,
+      "fileCount": 8,
+      "partitionColumns": [],
+      "clusteringColumns": [],
+      "automaticClustering": false
+    },
+    {
+      "table": "`workshop_demo`.`automotive_mobility`.`vehicles`",
+      "sizeBytes": 3940186,
+      "fileCount": 8,
+      "partitionColumns": [],
+      "clusteringColumns": [],
+      "automaticClustering": false
+    },
+    {
+      "table": "`workshop_demo`.`automotive_mobility`.`service_orders`",
+      "sizeBytes": 22459551,
+      "fileCount": 8,
+      "partitionColumns": [],
+      "clusteringColumns": [],
+      "automaticClustering": false
+    },
+    {
+      "table": "`workshop_demo`.`automotive_mobility`.`suppliers`",
+      "sizeBytes": 11904,
+      "fileCount": 1,
+      "partitionColumns": [],
+      "clusteringColumns": [],
+      "automaticClustering": false
+    },
+    {
+      "table": "`main`.`lakeload`.`history`",
+      "sizeBytes": 7520557,
+      "fileCount": 8,
+      "partitionColumns": [],
+      "clusteringColumns": [],
+      "automaticClustering": false
+    },
+    {
+      "table": "`workshop_demo`.`automotive_mobility`.`dealers`",
+      "sizeBytes": 8543,
+      "fileCount": 1,
+      "partitionColumns": [],
+      "clusteringColumns": [],
+      "automaticClustering": false
+    },
+    {
+      "table": "`workshop_demo`.`automotive_mobility`.`service_order_parts`",
+      "sizeBytes": 88864318,
+      "fileCount": 8,
+      "partitionColumns": [],
+      "clusteringColumns": [],
+      "automaticClustering": false
+    },
+    {
+      "table": "`main`.`lakeload`.`lakeload_history`",
+      "sizeBytes": 8041009,
+      "fileCount": 16,
+      "partitionColumns": [],
+      "clusteringColumns": [],
+      "automaticClustering": false
+    },
+    {
+      "table": "`main`.`lakeload`.`product`",
+      "sizeBytes": 60534,
+      "fileCount": 8,
+      "partitionColumns": [],
+      "clusteringColumns": [],
+      "automaticClustering": false
+    },
+    {
+      "table": "`workshop_demo`.`automotive_mobility`.`customers`",
+      "sizeBytes": 7332671,
+      "fileCount": 8,
+      "partitionColumns": [],
+      "clusteringColumns": [],
+      "automaticClustering": false
+    },
+    {
+      "table": "`workshop_demo`.`automotive_mobility`.`vehicle_ownership`",
+      "sizeBytes": 4555913,
+      "fileCount": 8,
+      "partitionColumns": [],
+      "clusteringColumns": [],
+      "automaticClustering": false
+    },
+    {
+      "table": "`workshop_demo`.`automotive_mobility`.`warranty_claims`",
+      "sizeBytes": 4887589,
+      "fileCount": 1,
+      "partitionColumns": [],
+      "clusteringColumns": [],
+      "automaticClustering": false
+    },
+    {
+      "table": "`quest_e2e`.`quest`.`app_settings`",
+      "sizeBytes": 0,
+      "fileCount": 0,
+      "partitionColumns": [],
+      "clusteringColumns": [],
+      "automaticClustering": false
+    },
+    {
+      "table": "`workshop_demo`.`automotive_mobility`.`campaign_vehicles`",
+      "sizeBytes": 5603881,
+      "fileCount": 1,
+      "partitionColumns": [],
+      "clusteringColumns": [],
+      "automaticClustering": false
+    },
+    {
+      "table": "`workshop_demo`.`automotive_mobility`.`parts_inventory`",
+      "sizeBytes": 1678338,
+      "fileCount": 1,
+      "partitionColumns": [],
+      "clusteringColumns": [],
+      "automaticClustering": false
+    },
+    {
+      "table": "`workshop_demo`.`automotive_mobility`.`sales_transactions`",
+      "sizeBytes": 6106051,
+      "fileCount": 8,
+      "partitionColumns": [],
+      "clusteringColumns": [],
+      "automaticClustering": false
+    },
+    {
+      "table": "`main`.`claude_demos`.`movies`",
+      "sizeBytes": 2272,
+      "fileCount": 1,
+      "partitionColumns": [],
+      "clusteringColumns": [],
+      "automaticClustering": false
+    },
+    {
+      "table": "`main`.`claude_demos`.`showtimes`",
+      "sizeBytes": 4776,
+      "fileCount": 1,
+      "partitionColumns": [],
+      "clusteringColumns": [],
+      "automaticClustering": false
+    },
+    {
+      "table": "`main`.`claude_demos`.`theatres`",
+      "sizeBytes": 1935,
+      "fileCount": 1,
+      "partitionColumns": [],
+      "clusteringColumns": [],
+      "automaticClustering": false
+    },
+    {
+      "table": "`main`.`claude_demos`.`ticket_sales`",
+      "sizeBytes": 619841,
+      "fileCount": 1,
+      "partitionColumns": [],
+      "clusteringColumns": [],
+      "automaticClustering": false
+    },
+    {
+      "table": "`quest_e2e`.`quest`.`badges`",
+      "sizeBytes": 6086,
+      "fileCount": 3,
+      "partitionColumns": [],
+      "clusteringColumns": [],
+      "automaticClustering": false
+    },
+    {
+      "table": "`quest_e2e`.`quest`.`leaderboard`",
+      "sizeBytes": 3766,
+      "fileCount": 1,
+      "partitionColumns": [],
+      "clusteringColumns": [],
+      "automaticClustering": false
+    },
+    {
+      "table": "`quest_e2e`.`quest`.`mission_completions`",
+      "sizeBytes": 33360,
+      "fileCount": 12,
+      "partitionColumns": [],
+      "clusteringColumns": [],
+      "automaticClustering": false
+    },
+    {
+      "table": "`quest_e2e`.`quest`.`notifications`",
+      "sizeBytes": 6932,
+      "fileCount": 2,
+      "partitionColumns": [],
+      "clusteringColumns": [],
+      "automaticClustering": false
+    },
+    {
+      "table": "`quest_e2e`.`quest`.`user_points_fact`",
+      "sizeBytes": 6437,
+      "fileCount": 2,
+      "partitionColumns": [],
+      "clusteringColumns": [],
+      "automaticClustering": false
+    },
+    {
+      "table": "`quest_e2e`.`quest`.`user_profile_snapshot`",
+      "sizeBytes": 8800,
+      "fileCount": 2,
+      "partitionColumns": [],
+      "clusteringColumns": [],
+      "automaticClustering": false
+    },
+    {
+      "table": "`workshop_demo`.`automotive_mobility`.`charging_sessions`",
+      "sizeBytes": 12552915,
+      "fileCount": 16,
+      "partitionColumns": [],
+      "clusteringColumns": [],
+      "automaticClustering": false
+    },
+    {
+      "table": "`workshop_demo`.`automotive_mobility`.`customer360`",
+      "sizeBytes": 8589777,
+      "fileCount": 8,
+      "partitionColumns": [],
+      "clusteringColumns": [],
+      "automaticClustering": false
+    },
+    {
+      "table": "`workshop_demo`.`automotive_mobility`.`dtc_codes`",
+      "sizeBytes": 11209,
+      "fileCount": 2,
+      "partitionColumns": [],
+      "clusteringColumns": [],
+      "automaticClustering": false
+    },
+    {
+      "table": "`workshop_demo`.`automotive_mobility`.`parts360`",
+      "sizeBytes": 2724923,
+      "fileCount": 8,
+      "partitionColumns": [],
+      "clusteringColumns": [],
+      "automaticClustering": false
+    },
+    {
+      "table": "`workshop_demo`.`automotive_mobility`.`recall_campaigns`",
+      "sizeBytes": 3061,
+      "fileCount": 1,
+      "partitionColumns": [],
+      "clusteringColumns": [],
+      "automaticClustering": false
+    },
+    {
+      "table": "`workshop_demo`.`automotive_mobility`.`trips`",
+      "sizeBytes": 82876061,
+      "fileCount": 16,
+      "partitionColumns": [],
+      "clusteringColumns": [],
+      "automaticClustering": false
+    },
+    {
+      "table": "`workshop_demo`.`automotive_mobility`.`vehicle360`",
+      "sizeBytes": 7889203,
+      "fileCount": 2,
+      "partitionColumns": [],
+      "clusteringColumns": [],
+      "automaticClustering": false
+    }
+  ],
+  "probes": [
+    {
+      "label": "the metrics table, unbounded",
+      "ok": true,
+      "ms": 2989,
+      "rows": [
+        {
+          "rows": "0",
+          "tables": "0",
+          "earliest": null,
+          "latest": null
+        }
+      ]
+    },
+    {
+      "label": "the metrics table schema",
+      "ok": true,
+      "ms": 815,
+      "rows": [
+        {
+          "col_name": "snapshot_date",
+          "data_type": "date",
+          "comment": "The UTC date when the record was captured."
+        },
+        {
+          "col_name": "account_id",
+          "data_type": "string",
+          "comment": "The account identifier (UUID)."
+        },
+        {
+          "col_name": "metastore_id",
+          "data_type": "string",
+          "comment": "The metastore identifier (UUID)."
+        },
+        {
+          "col_name": "table_id",
+          "data_type": "string",
+          "comment": "The table identifier (UUID)."
+        },
+        {
+          "col_name": "catalog_name",
+          "data_type": "string",
+          "comment": "The name of the catalog containing the table."
+        },
+        {
+          "col_name": "schema_name",
+          "data_type": "string",
+          "comment": "The name of the schema containing the table."
+        },
+        {
+          "col_name": "table_name",
+          "data_type": "string",
+          "comment": "The name of the table."
+        },
+        {
+          "col_name": "table_type",
+          "data_type": "string",
+          "comment": "The type of table."
+        },
+        {
+          "col_name": "clone_details",
+          "data_type": "struct<parent_id:string,type:string>",
+          "comment": "Details about the clone source table, if this table is a shallow clone."
+        },
+        {
+          "col_name": "table_owner",
+          "data_type": "string",
+          "comment": "The owner of the table."
+        },
+        {
+          "col_name": "active_bytes",
+          "data_type": "bigint",
+          "comment": "Size of active table data in bytes."
+        },
+        {
+          "col_name": "active_files",
+          "data_type": "bigint",
+          "comment": "Number of active files in the table."
+        },
+        {
+          "col_name": "table_creation_time",
+          "data_type": "timestamp",
+          "comment": "The timestamp when the table was created in UTC."
+        },
+        {
+          "col_name": "table_dropped_time",
+          "data_type": "timestamp",
+          "comment": "The timestamp when the table was dropped, if applicable."
+        },
+        {
+          "col_name": "predictive_optimization_enabled",
+          "data_type": "boolean",
+          "comment": "Whether predictive optimization is enabled for this table."
+        },
+        {
+          "col_name": "record_generation_time",
+          "data_type": "timestamp",
+          "comment": "The UTC timestamp when this record was generated."
+        }
+      ]
+    },
+    {
+      "label": "what the storage schema exposes",
+      "ok": true,
+      "ms": 878,
+      "rows": [
+        {
+          "table_name": "predictive_optimization_operations_history",
+          "table_type": "MANAGED"
+        },
+        {
+          "table_name": "table_metrics_history",
+          "table_type": "MANAGED"
+        }
+      ]
+    },
+    {
+      "label": "the sibling table in the same schema, unbounded",
+      "ok": true,
+      "ms": 2216,
+      "rows": [
+        {
+          "rows": "47",
+          "earliest": "2026-06-14T05:57:54.952Z",
+          "latest": "2026-08-11T11:56:41.448Z",
+          "operation_types": "1"
+        }
+      ]
+    },
+    {
+      "label": "tables the metastore catalogues",
+      "ok": true,
+      "ms": 930,
+      "rows": [
+        {
+          "tables": "408",
+          "catalogs": "8",
+          "stored_tables": "221"
+        }
+      ]
+    },
+    {
+      "label": "what the census relation carries",
+      "ok": true,
+      "ms": 618,
+      "rows": [
+        {
+          "col_name": "table_catalog",
+          "data_type": "string",
+          "comment": "Catalog that contains the relation."
+        },
+        {
+          "col_name": "table_schema",
+          "data_type": "string",
+          "comment": "Schema that contains the relation."
+        },
+        {
+          "col_name": "table_name",
+          "data_type": "string",
+          "comment": "Name of the relation the column is part of."
+        },
+        {
+          "col_name": "column_name",
+          "data_type": "string",
+          "comment": "Name of the column."
+        },
+        {
+          "col_name": "ordinal_position",
+          "data_type": "int",
+          "comment": "The position (numbered from 1) of the column within the relation."
+        },
+        {
+          "col_name": "column_default",
+          "data_type": "string",
+          "comment": "The default value used when the column is not specified in an INSERT, NULL if undefined."
+        },
+        {
+          "col_name": "is_nullable",
+          "data_type": "string",
+          "comment": "YES if column is nullable, NO otherwise."
+        },
+        {
+          "col_name": "full_data_type",
+          "data_type": "string",
+          "comment": "The data type as specified in the column definition."
+        },
+        {
+          "col_name": "data_type",
+          "data_type": "string",
+          "comment": "The simple data type name of the column, or STRUCT, or ARRAY."
+        },
+        {
+          "col_name": "character_maximum_length",
+          "data_type": "bigint",
+          "comment": "Always NULL, reserved for future use."
+        },
+        {
+          "col_name": "character_octet_length",
+          "data_type": "bigint",
+          "comment": "Always NULL, reserved for future use."
+        },
+        {
+          "col_name": "numeric_precision",
+          "data_type": "int",
+          "comment": "For base-2 integral numeric types, FLOAT, and DOUBLE, the number of supported bits. For DECIMAL the number of digits, NULL otherwise."
+        },
+        {
+          "col_name": "numeric_precision_radix",
+          "data_type": "int",
+          "comment": "For DECIMAL 10, for all other numeric types 2, NULL otherwise."
+        },
+        {
+          "col_name": "numeric_scale",
+          "data_type": "int",
+          "comment": "For integral numeric types 0, for DECIMAL the number of digits to the right of the decimal point, NULL otherwise."
+        },
+        {
+          "col_name": "datetime_precision",
+          "data_type": "int",
+          "comment": "For DATE 0, for TIMESTAMP, and INTERVAL … SECOND 6, any other INTERVAL 0, NULL otherwise."
+        },
+        {
+          "col_name": "interval_type",
+          "data_type": "string",
+          "comment": "For INTERVAL the unit portion of the interval, e.g. 'YEAR TO MONTH', NULL otherwise."
+        },
+        {
+          "col_name": "interval_precision",
+          "data_type": "int",
+          "comment": "Always NULL, reserved for future use."
+        },
+        {
+          "col_name": "maximum_cardinality",
+          "data_type": "bigint",
+          "comment": "Always NULL, reserved for future use."
+        },
+        {
+          "col_name": "is_identity",
+          "data_type": "string",
+          "comment": "Always 'NO', reserved for future use."
+        },
+        {
+          "col_name": "identity_generation",
+          "data_type": "string",
+          "comment": "Always NULL, reserved for future use."
+        },
+        {
+          "col_name": "identity_start",
+          "data_type": "string",
+          "comment": "Always NULL, reserved for future use."
+        },
+        {
+          "col_name": "identity_increment",
+          "data_type": "string",
+          "comment": "Always NULL, reserved for future use."
+        },
+        {
+          "col_name": "identity_maximum",
+          "data_type": "string",
+          "comment": "Always NULL, reserved for future use."
+        },
+        {
+          "col_name": "identity_minimum",
+          "data_type": "string",
+          "comment": "Always NULL, reserved for future use."
+        },
+        {
+          "col_name": "identity_cycle",
+          "data_type": "string",
+          "comment": "Always NULL, reserved for future use."
+        },
+        {
+          "col_name": "is_generated",
+          "data_type": "string",
+          "comment": "Always NULL, reserved for future use."
+        },
+        {
+          "col_name": "generation_expression",
+          "data_type": "string",
+          "comment": "Always NULL, reserved for future use."
+        },
+        {
+          "col_name": "is_system_time_period_start",
+          "data_type": "string",
+          "comment": "Always NO, reserved for future use."
+        },
+        {
+          "col_name": "is_system_time_period_end",
+          "data_type": "string",
+          "comment": "Always NO, reserved for future use."
+        },
+        {
+          "col_name": "system_time_period_timestamp_generation",
+          "data_type": "string",
+          "comment": "Always NULL, reserved for future use."
+        },
+        {
+          "col_name": "is_updatable",
+          "data_type": "string",
+          "comment": "YES if column is updatable, NO otherwise."
+        },
+        {
+          "col_name": "partition_index",
+          "data_type": "int",
+          "comment": "Position (numbered from 1) of the column in the partition, NULL if not a partitioning column."
+        },
+        {
+          "col_name": "comment",
+          "data_type": "string",
+          "comment": "Optional description of the column."
+        }
+      ]
+    },
+    {
+      "label": "catalogs by table count",
+      "ok": true,
+      "ms": 951,
+      "rows": [
+        {
+          "table_catalog": "workshop_demo",
+          "tables": "51"
+        },
+        {
+          "table_catalog": "main",
+          "tables": "42"
+        },
+        {
+          "table_catalog": "quest_e2e",
+          "tables": "38"
+        }
+      ]
+    },
+    {
+      "label": "partitioned tables in workshop_demo",
+      "ok": true,
+      "ms": 1045,
+      "rows": [
+        {
+          "partitioned_tables": "0",
+          "deepest_partition_index": null
+        }
+      ]
+    },
+    {
+      "label": "partitioned tables in main",
+      "ok": true,
+      "ms": 1053,
+      "rows": [
+        {
+          "partitioned_tables": "0",
+          "deepest_partition_index": null
+        }
+      ]
+    },
+    {
+      "label": "partitioned tables in quest_e2e",
+      "ok": true,
+      "ms": 1006,
+      "rows": [
+        {
+          "partitioned_tables": "0",
+          "deepest_partition_index": null
+        }
+      ]
+    },
+    {
+      "label": "the sample the app describes",
+      "ok": true,
+      "ms": 4405,
+      "rows": [
+        {
+          "table_catalog": "main",
+          "table_schema": "lakeload",
+          "table_name": "lakeload_account",
+          "table_type": "MANAGED",
+          "read_events": "616",
+          "eligible_tables": "38"
+        },
+        {
+          "table_catalog": "main",
+          "table_schema": "lakeload",
+          "table_name": "lakeload_product",
+          "table_type": "MANAGED",
+          "read_events": "457",
+          "eligible_tables": "38"
+        },
+        {
+          "table_catalog": "main",
+          "table_schema": "lakeload",
+          "table_name": "account",
+          "table_type": "MANAGED",
+          "read_events": "154",
+          "eligible_tables": "38"
+        },
+        {
+          "table_catalog": "workshop_demo",
+          "table_schema": "automotive_mobility",
+          "table_name": "parts",
+          "table_type": "MANAGED",
+          "read_events": "11",
+          "eligible_tables": "38"
+        },
+        {
+          "table_catalog": "main",
+          "table_schema": "lakeload",
+          "table_name": "lakeload_serving_profile",
+          "table_type": "MANAGED",
+          "read_events": "10",
+          "eligible_tables": "38"
+        },
+        {
+          "table_catalog": "workshop_demo",
+          "table_schema": "automotive_mobility",
+          "table_name": "telematics_events",
+          "table_type": "MANAGED",
+          "read_events": "8",
+          "eligible_tables": "38"
+        },
+        {
+          "table_catalog": "workshop_demo",
+          "table_schema": "automotive_mobility",
+          "table_name": "vehicles",
+          "table_type": "MANAGED",
+          "read_events": "8",
+          "eligible_tables": "38"
+        },
+        {
+          "table_catalog": "workshop_demo",
+          "table_schema": "automotive_mobility",
+          "table_name": "service_orders",
+          "table_type": "MANAGED",
+          "read_events": "7",
+          "eligible_tables": "38"
+        },
+        {
+          "table_catalog": "workshop_demo",
+          "table_schema": "automotive_mobility",
+          "table_name": "suppliers",
+          "table_type": "MANAGED",
+          "read_events": "4",
+          "eligible_tables": "38"
+        },
+        {
+          "table_catalog": "main",
+          "table_schema": "lakeload",
+          "table_name": "history",
+          "table_type": "MANAGED",
+          "read_events": "3",
+          "eligible_tables": "38"
+        },
+        {
+          "table_catalog": "workshop_demo",
+          "table_schema": "automotive_mobility",
+          "table_name": "dealers",
+          "table_type": "MANAGED",
+          "read_events": "3",
+          "eligible_tables": "38"
+        },
+        {
+          "table_catalog": "workshop_demo",
+          "table_schema": "automotive_mobility",
+          "table_name": "service_order_parts",
+          "table_type": "MANAGED",
+          "read_events": "3",
+          "eligible_tables": "38"
+        },
+        {
+          "table_catalog": "main",
+          "table_schema": "lakeload",
+          "table_name": "lakeload_history",
+          "table_type": "MANAGED",
+          "read_events": "2",
+          "eligible_tables": "38"
+        },
+        {
+          "table_catalog": "main",
+          "table_schema": "lakeload",
+          "table_name": "product",
+          "table_type": "MANAGED",
+          "read_events": "2",
+          "eligible_tables": "38"
+        },
+        {
+          "table_catalog": "workshop_demo",
+          "table_schema": "automotive_mobility",
+          "table_name": "customers",
+          "table_type": "MANAGED",
+          "read_events": "2",
+          "eligible_tables": "38"
+        },
+        {
+          "table_catalog": "workshop_demo",
+          "table_schema": "automotive_mobility",
+          "table_name": "vehicle_ownership",
+          "table_type": "MANAGED",
+          "read_events": "2",
+          "eligible_tables": "38"
+        },
+        {
+          "table_catalog": "workshop_demo",
+          "table_schema": "automotive_mobility",
+          "table_name": "warranty_claims",
+          "table_type": "MANAGED",
+          "read_events": "2",
+          "eligible_tables": "38"
+        },
+        {
+          "table_catalog": "quest_e2e",
+          "table_schema": "quest",
+          "table_name": "app_settings",
+          "table_type": "MANAGED",
+          "read_events": "1",
+          "eligible_tables": "38"
+        },
+        {
+          "table_catalog": "workshop_demo",
+          "table_schema": "automotive_mobility",
+          "table_name": "campaign_vehicles",
+          "table_type": "MANAGED",
+          "read_events": "1",
+          "eligible_tables": "38"
+        },
+        {
+          "table_catalog": "workshop_demo",
+          "table_schema": "automotive_mobility",
+          "table_name": "parts_inventory",
+          "table_type": "MANAGED",
+          "read_events": "1",
+          "eligible_tables": "38"
+        },
+        {
+          "table_catalog": "workshop_demo",
+          "table_schema": "automotive_mobility",
+          "table_name": "sales_transactions",
+          "table_type": "MANAGED",
+          "read_events": "1",
+          "eligible_tables": "38"
+        },
+        {
+          "table_catalog": "main",
+          "table_schema": "claude_demos",
+          "table_name": "movies",
+          "table_type": "MANAGED",
+          "read_events": "0",
+          "eligible_tables": "38"
+        },
+        {
+          "table_catalog": "main",
+          "table_schema": "claude_demos",
+          "table_name": "showtimes",
+          "table_type": "MANAGED",
+          "read_events": "0",
+          "eligible_tables": "38"
+        },
+        {
+          "table_catalog": "main",
+          "table_schema": "claude_demos",
+          "table_name": "theatres",
+          "table_type": "MANAGED",
+          "read_events": "0",
+          "eligible_tables": "38"
+        },
+        {
+          "table_catalog": "main",
+          "table_schema": "claude_demos",
+          "table_name": "ticket_sales",
+          "table_type": "MANAGED",
+          "read_events": "0",
+          "eligible_tables": "38"
+        },
+        {
+          "table_catalog": "quest_e2e",
+          "table_schema": "quest",
+          "table_name": "badges",
+          "table_type": "MANAGED",
+          "read_events": "0",
+          "eligible_tables": "38"
+        },
+        {
+          "table_catalog": "quest_e2e",
+          "table_schema": "quest",
+          "table_name": "leaderboard",
+          "table_type": "MANAGED",
+          "read_events": "0",
+          "eligible_tables": "38"
+        },
+        {
+          "table_catalog": "quest_e2e",
+          "table_schema": "quest",
+          "table_name": "mission_completions",
+          "table_type": "MANAGED",
+          "read_events": "0",
+          "eligible_tables": "38"
+        },
+        {
+          "table_catalog": "quest_e2e",
+          "table_schema": "quest",
+          "table_name": "notifications",
+          "table_type": "MANAGED",
+          "read_events": "0",
+          "eligible_tables": "38"
+        },
+        {
+          "table_catalog": "quest_e2e",
+          "table_schema": "quest",
+          "table_name": "user_points_fact",
+          "table_type": "MANAGED",
+          "read_events": "0",
+          "eligible_tables": "38"
+        },
+        {
+          "table_catalog": "quest_e2e",
+          "table_schema": "quest",
+          "table_name": "user_profile_snapshot",
+          "table_type": "MANAGED",
+          "read_events": "0",
+          "eligible_tables": "38"
+        },
+        {
+          "table_catalog": "workshop_demo",
+          "table_schema": "automotive_mobility",
+          "table_name": "charging_sessions",
+          "table_type": "MANAGED",
+          "read_events": "0",
+          "eligible_tables": "38"
+        },
+        {
+          "table_catalog": "workshop_demo",
+          "table_schema": "automotive_mobility",
+          "table_name": "customer360",
+          "table_type": "MANAGED",
+          "read_events": "0",
+          "eligible_tables": "38"
+        },
+        {
+          "table_catalog": "workshop_demo",
+          "table_schema": "automotive_mobility",
+          "table_name": "dtc_codes",
+          "table_type": "MANAGED",
+          "read_events": "0",
+          "eligible_tables": "38"
+        },
+        {
+          "table_catalog": "workshop_demo",
+          "table_schema": "automotive_mobility",
+          "table_name": "parts360",
+          "table_type": "MANAGED",
+          "read_events": "0",
+          "eligible_tables": "38"
+        },
+        {
+          "table_catalog": "workshop_demo",
+          "table_schema": "automotive_mobility",
+          "table_name": "recall_campaigns",
+          "table_type": "MANAGED",
+          "read_events": "0",
+          "eligible_tables": "38"
+        },
+        {
+          "table_catalog": "workshop_demo",
+          "table_schema": "automotive_mobility",
+          "table_name": "trips",
+          "table_type": "MANAGED",
+          "read_events": "0",
+          "eligible_tables": "38"
+        },
+        {
+          "table_catalog": "workshop_demo",
+          "table_schema": "automotive_mobility",
+          "table_name": "vehicle360",
+          "table_type": "MANAGED",
+          "read_events": "0",
+          "eligible_tables": "38"
+        }
+      ]
+    }
+  ]
+}

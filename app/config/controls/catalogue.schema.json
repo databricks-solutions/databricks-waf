@@ -1,0 +1,267 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/databricks-solutions/databricks-waf/blob/main/app/config/controls/catalogue.schema.json",
+  "title": "WAF assessment control catalogue (one pillar per file)",
+  "type": "object",
+  "required": ["pillar", "principles"],
+  "additionalProperties": false,
+  "properties": {
+    "pillar": { "$ref": "#/$defs/pillar" },
+    "principles": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/principle" }
+    }
+  },
+
+  "$defs": {
+    "pillar": {
+      "type": "object",
+      "required": ["id", "code", "title", "page"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+        "code": { "enum": ["DG", "IU", "OE", "SCP", "REL", "PE", "CO"] },
+        "title": { "type": "string", "minLength": 1 },
+        "page": { "type": "string", "format": "uri" }
+      }
+    },
+
+    "principle": {
+      "type": "object",
+      "required": ["id", "title", "source_anchor", "controls"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "pattern": "^(DG|IU|OE|SCP|REL|PE|CO)-[0-9]{2}$" },
+        "title": { "type": "string", "minLength": 1 },
+        "source_anchor": { "type": "string", "format": "uri" },
+        "notes": { "type": "string" },
+        "controls": {
+          "type": "array",
+          "comment": "Deliberately allows zero. Some documented principles carry no individually assessable best practice, and inventing filler controls to avoid an empty array would inflate the denominator.",
+          "items": { "$ref": "#/$defs/control" }
+        }
+      }
+    },
+
+    "control": {
+      "type": "object",
+      "required": ["id", "title", "provenance", "measurability", "severity", "evaluator_status"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "pattern": "^(DG|IU|OE|SCP|REL|PE|CO)-[0-9]{2}-[0-9]{2}$" },
+        "title": { "type": "string", "minLength": 1 },
+
+        "provenance": {
+          "enum": ["waf-docs", "security-guide", "extension"],
+          "description": "Where this control comes from. waf-docs is a best practice published on a WAF pillar page. security-guide is a control from the Databricks security guidance that the WAF security pillar page formally delegates to, rather than from the pillar page itself. extension is authored by this project and is not published Databricks guidance. The distinction is surfaced in the UI so the app can answer 'is this the actual WAF?' truthfully."
+        },
+        "source_anchor": {
+          "type": "string",
+          "format": "uri",
+          "description": "Deep link to the published guidance this control was taken from."
+        },
+        "source_ref": {
+          "type": "string",
+          "description": "Identifier in the upstream source, e.g. a SAT check id such as GOV-12."
+        },
+        "rationale": {
+          "type": "string",
+          "minLength": 40,
+          "description": "Why this project added a control the documentation does not contain. Required for extensions so an addition can never masquerade as published guidance."
+        },
+
+        "measurability": {
+          "enum": ["system-table", "rest-api", "cloud-api", "attestation", "derived"],
+          "description": "How the evidence is obtained. Drives which collector resolves it and whether it needs an attestation."
+        },
+        "collector": {
+          "type": "string",
+          "description": "Signal id this control resolves from. One signal serves many controls."
+        },
+        "evaluator_status": { "enum": ["implemented", "planned", "unimplemented"] },
+        "severity": { "enum": ["critical", "high", "medium", "low", "informational"] },
+
+        "coverage_mode": {
+          "enum": ["complete", "sampled"],
+          "default": "complete",
+          "description": "Whether the evidence covers the whole estate or a declared subset. A sampled pass is never reported as estate-wide compliance."
+        },
+        "alias_group": {
+          "type": "string",
+          "description": "Controls sharing a group express the same requirement and are scored once, so overlap between sources cannot double-count."
+        },
+        "continues": {
+          "type": "string",
+          "pattern": "^(DG|IU|OE|SCP|REL|PE|CO)-[0-9]{2}-[0-9]{2}$",
+          "description": "The id of the requirement this one renumbers. Declared rather than inferred: the catalogue bump pairs the two so a renumbering keeps its history instead of reading as a removal beside an unrelated addition, and a rename guessed from similarity would merge two requirements' histories irreversibly. Only paired when the named id really left the catalogue in the same version."
+        },
+        "clouds": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "enum": ["aws", "azure", "gcp"] },
+          "default": ["aws", "azure", "gcp"]
+        },
+
+        "applicability": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "preconditions": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/precondition" }
+            }
+          }
+        },
+
+        "thresholds": {
+          "type": "object",
+          "description": "Numeric criteria the evaluator compares against, e.g. minimum partition size.",
+          "additionalProperties": true
+        },
+        "criteria": {
+          "type": "string",
+          "description": "Plain statement of what counts as a pass, so a finding can always be explained."
+        },
+        "remediation": { "$ref": "#/$defs/remediation" },
+        "attestation": { "$ref": "#/$defs/attestation" },
+        "dasf": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Databricks AI Security Framework control ids this maps to."
+        },
+        "references": {
+          "type": "array",
+          "items": { "type": "string", "format": "uri" }
+        }
+      },
+
+      "allOf": [
+        {
+          "comment": "Documented controls must cite where they came from and must not carry an authored rationale, because a rationale on a documented control blurs the line the provenance field exists to keep sharp.",
+          "if": { "properties": { "provenance": { "const": "waf-docs" } }, "required": ["provenance"] },
+          "then": {
+            "required": ["source_anchor"],
+            "not": { "required": ["rationale"] }
+          }
+        },
+        {
+          "comment": "Delegated security controls must cite both the upstream identifier and a document link, so they are traceable to the guide rather than asserted.",
+          "if": { "properties": { "provenance": { "const": "security-guide" } }, "required": ["provenance"] },
+          "then": {
+            "required": ["source_anchor", "source_ref"],
+            "not": { "required": ["rationale"] }
+          }
+        },
+        {
+          "comment": "Extensions must justify themselves and must not carry a source anchor, which would imply documentation that does not exist.",
+          "if": { "properties": { "provenance": { "const": "extension" } }, "required": ["provenance"] },
+          "then": {
+            "required": ["rationale"],
+            "not": { "anyOf": [{ "required": ["source_anchor"] }, { "required": ["source_ref"] }] }
+          }
+        },
+        {
+          "comment": "Anything claimed as automatically measured needs a collector to measure it, otherwise the catalogue promises coverage the app does not have.",
+          "if": {
+            "properties": { "measurability": { "enum": ["system-table", "rest-api", "cloud-api"] } },
+            "required": ["measurability"]
+          },
+          "then": { "required": ["collector"] }
+        },
+        {
+          "comment": "An attestation-backed control needs the question it asks, or there is nothing for the customer to answer.",
+          "if": { "properties": { "measurability": { "const": "attestation" } }, "required": ["measurability"] },
+          "then": { "required": ["attestation"] }
+        }
+      ]
+    },
+
+    "precondition": {
+      "type": "object",
+      "required": ["signal", "operator", "value", "outcome", "reason"],
+      "additionalProperties": false,
+      "properties": {
+        "signal": { "type": "string" },
+        "operator": { "enum": ["eq", "neq", "gt", "gte", "lt", "lte", "absent", "present"] },
+        "value": {},
+        "outcome": {
+          "enum": ["not-applicable", "satisfied-by-architecture"],
+          "description": "not-applicable removes the control from the denominator. satisfied-by-architecture counts it as a pass, for cases where the platform achieves the control's intent by design."
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 20,
+          "description": "Shown to the user verbatim. A smaller denominator has to read as explained fact, not score inflation."
+        },
+        "scope": {
+          "enum": ["estate", "segment"],
+          "default": "segment",
+          "description": "Whether the precondition is evaluated across the whole estate or per segment of it. Per segment is the default because a mixed estate must still raise findings against the part the control applies to."
+        }
+      }
+    },
+
+    "remediation": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "summary": { "type": "string" },
+        "sql": { "type": "string" },
+        "cli": { "type": "string" },
+        "terraform": { "type": "string" },
+        "by_hand": {
+          "type": "string",
+          "minLength": 80,
+          "description": "What a person does where no command exists, for the fixes that are a judgement, an account-console action or a change to somebody's code. Required to be substantive: scripts/check-remediation.mjs rejects a restatement of the title and insists on a doc_url or deep_link beside it, because a fix nobody can run needs somewhere to go."
+        },
+        "deep_link": { "type": "string" },
+        "doc_url": { "type": "string", "format": "uri" },
+        "caveat": {
+          "type": "string",
+          "description": "Where following the remediation trades something away, e.g. shortening Delta history reclaims storage but reduces the time-travel window."
+        }
+      }
+    },
+
+    "attestation": {
+      "type": "object",
+      "required": ["question", "asked_because"],
+      "additionalProperties": false,
+      "properties": {
+        "question": { "type": "string", "minLength": 10 },
+        "evidence_guidance": { "type": "string" },
+        "cadence_days": { "type": "integer", "minimum": 1, "maximum": 730 },
+        "proxy_signal": {
+          "type": "string",
+          "description": "A partial automated signal that informs but does not settle the answer."
+        },
+        "asked_because": { "$ref": "#/$defs/asked_because" }
+      }
+    },
+
+    "asked_because": {
+      "comment": "Required on every question, because a questionnaire is the most expensive answer this tool can give — it costs a person's attention and buys an answer no better than their word — so reaching for one has to be a claim somebody reviewed rather than a default nobody revisits.",
+      "type": "object",
+      "required": ["verdict", "why"],
+      "additionalProperties": false,
+      "properties": {
+        "verdict": {
+          "enum": ["beyond-telemetry", "partial-telemetry", "owed-a-measure"],
+          "description": "beyond-telemetry: nothing the platform records bears on the answer, so a person is the only source. partial-telemetry: something is recorded and narrows the answer without settling it, and `signal` names it. owed-a-measure: the platform records enough to answer this and the app does not read it yet, so the question is a stopgap and the ledger counts it as one."
+        },
+        "why": {
+          "type": "string",
+          "minLength": 40,
+          "description": "What a machine would have to observe, and whether anything records it. Long enough to be disagreed with: a reader who thinks the verdict is wrong should be able to say why from this alone."
+        },
+        "signal": {
+          "type": "string",
+          "description": "The table, column or endpoint that bears on the answer, where one does. Required in practice for the two verdicts that claim something is recorded, since a claim that evidence exists is checkable only if it is named."
+        }
+      }
+    }
+  }
+}

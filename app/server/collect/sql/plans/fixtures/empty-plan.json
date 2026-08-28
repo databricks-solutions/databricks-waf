@@ -1,0 +1,44 @@
+{
+  "_capture": {
+    "capturedAt": "2026-08-11T16:34:04.326Z",
+    "profile": "labs",
+    "script": "scripts/capture-plan-fixtures.mjs",
+    "note": "A cache hit on a local warehouse. 33k measured these as 200 with plans_state EMPTY: a plan record reporting no plan, which is what licenses the app to say a plan was absent.",
+    "request": "?include_plans=true",
+    "status": 200,
+    "responseBytes": 1177,
+    "trimmed": false
+  },
+  "body": {
+    "query_id": "01f19578-514e-1442-b2c2-b6497ed82ebb",
+    "status": "FINISHED",
+    "query_text": "-- This is a system generated query from catalog explorer\nselect * from `workshop_demo`.`automotive_mobility`.`customers` limit 100;",
+    "query_start_time_ms": 1786447941797,
+    "execution_end_time_ms": 1786447942279,
+    "query_end_time_ms": 1786447942239,
+    "user_id": "000000000000000",
+    "user_name": "redacted@example.invalid",
+    "user_display_name": "Redacted User",
+    "endpoint_id": "0123456789abcdef",
+    "rows_produced": 100,
+    "lookup_key": "redacted",
+    "executed_as_user_id": "000000000000000",
+    "executed_as_user_name": "redacted@example.invalid",
+    "executed_as_user_display_name": "Redacted User",
+    "session_id": "00000000-0000-0000-0000-000000000000",
+    "is_final": true,
+    "channel_used": {
+      "name": "CHANNEL_NAME_CURRENT",
+      "dbsql_version": "2026.20"
+    },
+    "plans_state": "EMPTY",
+    "statement_type": "SELECT",
+    "warehouse_id": "0123456789abcdef",
+    "duration": 442,
+    "canSubscribeToLiveQuery": true,
+    "client_application": "Databricks Catalog Explorer",
+    "query_source": {},
+    "is_cancelable": false,
+    "cache_query_id": "01f19577-bd09-1585-8001-3e9fd0e4385c"
+  }
+}

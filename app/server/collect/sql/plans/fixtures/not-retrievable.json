@@ -1,0 +1,23 @@
+{
+  "_capture": {
+    "capturedAt": "2026-08-11T16:34:04.633Z",
+    "profile": "labs",
+    "script": "scripts/capture-plan-fixtures.mjs",
+    "note": "A statement from another workspace sharing the metastore. 33k measured this as the dominant cause of a 404: no plan record for this workspace, and whether a plan exists is not in the response. Distinct from empty-plan, and the app may not report it the same way.",
+    "request": "?include_plans=true",
+    "status": 404,
+    "responseBytes": 236,
+    "trimmed": false
+  },
+  "body": {
+    "error_code": "NOT_FOUND",
+    "message": "statement ID 01f19528-0004-1e3d-b49c-397bde46d7cc not found.",
+    "details": [
+      {
+        "@type": "type.googleapis.com/google.rpc.RequestInfo",
+        "request_id": "0272f9ba-4924-4df5-9c3d-ab67ac544c1f",
+        "serving_data": ""
+      }
+    ]
+  }
+}

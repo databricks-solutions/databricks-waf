@@ -1,0 +1,124 @@
+.wa-acceptance {
+  min-height: 100vh;
+  padding: 24px;
+  background: var(--wa-canvas);
+  color: var(--wa-text);
+  font-family: var(--font-sans);
+}
+
+.wa-acceptance-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  max-width: 960px;
+  margin: 0 auto 20px;
+}
+
+.wa-acceptance-header p,
+.wa-acceptance-header h1,
+.wa-acceptance-header span,
+.wa-acceptance-result h2,
+.wa-acceptance-result p {
+  margin: 0;
+}
+
+.wa-acceptance-header p {
+  color: var(--wa-text-muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.wa-acceptance-header h1 {
+  margin-top: 4px;
+  font-size: 28px;
+  line-height: 1.15;
+}
+
+.wa-acceptance-header span {
+  display: block;
+  margin-top: 5px;
+  color: var(--wa-text-secondary);
+  font-size: 14px;
+}
+
+.wa-acceptance-actions button {
+  min-height: 40px;
+  padding: 8px 14px;
+  border: 1px solid var(--wa-border-action);
+  border-radius: var(--wa-radius-md);
+  background: var(--wa-action);
+  color: var(--wa-on-action);
+  font-weight: 700;
+}
+
+.wa-acceptance-current,
+.wa-acceptance-result {
+  display: grid;
+  gap: 12px;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 auto;
+}
+
+.wa-acceptance-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  color: var(--wa-text-secondary);
+  font-size: 14px;
+}
+
+.wa-acceptance-meta strong {
+  color: var(--wa-text);
+  text-transform: capitalize;
+}
+
+.wa-acceptance-stage {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--wa-border-strong);
+  border-radius: var(--wa-radius-lg);
+  background: var(--wa-surface);
+  box-shadow: var(--wa-shadow-raised);
+}
+
+.wa-acceptance-stage iframe {
+  position: absolute;
+  inset: 0 auto auto 0;
+  border: 0;
+  transform-origin: top left;
+}
+
+.wa-acceptance-result {
+  width: min(760px, 100%);
+  padding: 24px;
+  border: 1px solid var(--wa-border-success);
+  border-radius: var(--wa-radius-lg);
+  background: var(--wa-success-soft);
+}
+
+.wa-acceptance-result[data-result='fail'] {
+  border-color: var(--wa-border-danger);
+  background: var(--wa-danger-soft);
+}
+
+.wa-acceptance-result ol {
+  display: grid;
+  gap: 8px;
+  margin: 4px 0 0;
+  padding-left: 24px;
+}
+
+@media (max-width: 600px) {
+  .wa-acceptance {
+    padding: 16px;
+  }
+
+  .wa-acceptance-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

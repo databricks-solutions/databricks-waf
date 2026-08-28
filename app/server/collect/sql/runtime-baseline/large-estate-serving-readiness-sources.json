@@ -1,0 +1,682 @@
+{
+  "runFinishedAt": "2026-08-15T15:17:56.940Z",
+  "profile": "large-estate",
+  "host": "https://example.cloud.databricks.com",
+  "warehouse": "fedcba9876543210",
+  "lookbackDays": 30,
+  "denominators": {
+    "everyRelation": 495558,
+    "storedTables": 187974,
+    "readTables": 15826,
+    "described": {
+      "everyRelation": 67072,
+      "storedTables": 50769,
+      "readTables": 5404
+    },
+    "lineageNames": 25596,
+    "readButNotCatalogued": 9770,
+    "byType": {
+      "views": 53029,
+      "metricViews": 4703,
+      "foreign": 232617,
+      "pipelineOutputs": 16961
+    }
+  },
+  "sources": {
+    "tableTags": {
+      "verdict": "written",
+      "ms": 6648,
+      "rows": 16109,
+      "tagged_tables": 9556,
+      "distinct_keys": 2046
+    },
+    "columnTags": {
+      "verdict": "written",
+      "ms": 6486,
+      "rows": 190101,
+      "tagged_tables": 16850,
+      "distinct_keys": 1732
+    },
+    "schemaTags": {
+      "verdict": "written",
+      "ms": 3716,
+      "rows": 2587,
+      "tagged_schemas": 1784,
+      "distinct_keys": 285
+    },
+    "catalogTags": {
+      "verdict": "written",
+      "ms": 1333,
+      "rows": 3396,
+      "tagged_catalogs": 2849,
+      "distinct_keys": 195
+    },
+    "columnMasks": {
+      "verdict": "written",
+      "ms": 1219,
+      "rows": 1410,
+      "masked_tables": 666
+    },
+    "rowFilters": {
+      "verdict": "written",
+      "ms": 2577,
+      "rows": 591,
+      "filtered_tables": 591
+    },
+    "abacPolicies": {
+      "verdict": "written",
+      "ms": 997720,
+      "rows": 720,
+      "policy_types": 2,
+      "securable_types": 3,
+      "with_match_columns": 690,
+      "with_a_condition": 111
+    },
+    "classification": {
+      "verdict": "written",
+      "ms": 10912,
+      "rows": 1151202,
+      "classified_tables": 83872,
+      "distinct_classes": 42
+    },
+    "qualityMonitoring": {
+      "verdict": "written",
+      "ms": 9170,
+      "rows": 58382,
+      "tables": 12617,
+      "statuses": 4,
+      "with_a_freshness_status": 58382
+    },
+    "assistantEvents": {
+      "verdict": "written",
+      "ms": 4667,
+      "rows": 99418,
+      "workspaces": 3,
+      "initiators": 1054,
+      "user_agents": 5
+    }
+  },
+  "semanticAssets": {
+    "metricViews": 4703,
+    "genieSpaces": {
+      "walked": 4181,
+      "complete": true,
+      "pages": [
+        {
+          "page": 0,
+          "ms": 619,
+          "status": 200,
+          "spaces": 100,
+          "keys": [
+            "create_time",
+            "description",
+            "space_id",
+            "title",
+            "update_time",
+            "warehouse_id"
+          ]
+        },
+        {
+          "page": 1,
+          "ms": 652,
+          "status": 200,
+          "spaces": 100
+        },
+        {
+          "page": 2,
+          "ms": 601,
+          "status": 200,
+          "spaces": 100
+        },
+        {
+          "page": 3,
+          "ms": 424,
+          "status": 200,
+          "spaces": 100
+        },
+        {
+          "page": 4,
+          "ms": 607,
+          "status": 200,
+          "spaces": 100
+        },
+        {
+          "page": 5,
+          "ms": 444,
+          "status": 200,
+          "spaces": 100
+        },
+        {
+          "page": 6,
+          "ms": 420,
+          "status": 200,
+          "spaces": 100
+        },
+        {
+          "page": 7,
+          "ms": 414,
+          "status": 200,
+          "spaces": 100
+        },
+        {
+          "page": 8,
+          "ms": 401,
+          "status": 200,
+          "spaces": 100
+        },
+        {
+          "page": 9,
+          "ms": 622,
+          "status": 200,
+          "spaces": 100
+        },
+        {
+          "page": 10,
+          "ms": 603,
+          "status": 200,
+          "spaces": 100
+        },
+        {
+          "page": 11,
+          "ms": 622,
+          "status": 200,
+          "spaces": 100
+        },
+        {
+          "page": 12,
+          "ms": 401,
+          "status": 200,
+          "spaces": 100
+        },
+        {
+          "page": 13,
+          "ms": 423,
+          "status": 200,
+          "spaces": 100
+        },
+        {
+          "page": 14,
+          "ms": 405,
+          "status": 200,
+          "spaces": 100
+        },
+        {
+          "page": 15,
+          "ms": 401,
+          "status": 200,
+          "spaces": 100
+        },
+        {
+          "page": 16,
+          "ms": 451,
+          "status": 200,
+          "spaces": 100
+        },
+        {
+          "page": 17,
+          "ms": 405,
+          "status": 200,
+          "spaces": 100
+        },
+        {
+          "page": 18,
+          "ms": 405,
+          "status": 200,
+          "spaces": 100
+        },
+        {
+          "page": 19,
+          "ms": 409,
+          "status": 200,
+          "spaces": 100
+        },
+        {
+          "page": 20,
+          "ms": 406,
+          "status": 200,
+          "spaces": 100
+        },
+        {
+          "page": 21,
+          "ms": 403,
+          "status": 200,
+          "spaces": 100
+        },
+        {
+          "page": 22,
+          "ms": 593,
+          "status": 200,
+          "spaces": 100
+        },
+        {
+          "page": 23,
+          "ms": 452,
+          "status": 200,
+          "spaces": 100
+        },
+        {
+          "page": 24,
+          "ms": 610,
+          "status": 200,
+          "spaces": 100
+        },
+        {
+          "page": 25,
+          "ms": 406,
+          "status": 200,
+          "spaces": 100
+        },
+        {
+          "page": 26,
+          "ms": 401,
+          "status": 200,
+          "spaces": 100
+        },
+        {
+          "page": 27,
+          "ms": 422,
+          "status": 200,
+          "spaces": 100
+        },
+        {
+          "page": 28,
+          "ms": 645,
+          "status": 200,
+          "spaces": 100
+        },
+        {
+          "page": 29,
+          "ms": 589,
+          "status": 200,
+          "spaces": 100
+        },
+        {
+          "page": 30,
+          "ms": 604,
+          "status": 200,
+          "spaces": 100
+        },
+        {
+          "page": 31,
+          "ms": 610,
+          "status": 200,
+          "spaces": 100
+        },
+        {
+          "page": 32,
+          "ms": 428,
+          "status": 200,
+          "spaces": 100
+        },
+        {
+          "page": 33,
+          "ms": 615,
+          "status": 200,
+          "spaces": 100
+        },
+        {
+          "page": 34,
+          "ms": 606,
+          "status": 200,
+          "spaces": 100
+        },
+        {
+          "page": 35,
+          "ms": 515,
+          "status": 200,
+          "spaces": 100
+        },
+        {
+          "page": 36,
+          "ms": 410,
+          "status": 200,
+          "spaces": 100
+        },
+        {
+          "page": 37,
+          "ms": 407,
+          "status": 200,
+          "spaces": 100
+        },
+        {
+          "page": 38,
+          "ms": 416,
+          "status": 200,
+          "spaces": 100
+        },
+        {
+          "page": 39,
+          "ms": 570,
+          "status": 200,
+          "spaces": 100
+        },
+        {
+          "page": 40,
+          "ms": 375,
+          "status": 200,
+          "spaces": 100
+        },
+        {
+          "page": 41,
+          "ms": 371,
+          "status": 200,
+          "spaces": 81
+        }
+      ],
+      "fields": [
+        "create_time",
+        "description",
+        "space_id",
+        "title",
+        "update_time",
+        "warehouse_id"
+      ],
+      "namesItsAssets": false,
+      "lookedFor": [
+        "table_identifiers",
+        "tables",
+        "datasets",
+        "curated_tables",
+        "data_assets"
+      ]
+    }
+  },
+  "genieAttribution": {
+    "columns": [
+      "account_id",
+      "workspace_id",
+      "event_id",
+      "event_time",
+      "event_date",
+      "user_agent",
+      "initiated_by"
+    ],
+    "namesASpace": false,
+    "namesAnAsset": false,
+    "carriesFeedback": false,
+    "lookedFor": {
+      "space": [
+        "space_id",
+        "room_id",
+        "data_room_id",
+        "conversation_id"
+      ],
+      "asset": [
+        "table_full_name",
+        "table_name",
+        "catalog_name",
+        "schema_name",
+        "asset_id"
+      ],
+      "feedback": [
+        "feedback",
+        "rating",
+        "thumbs_up",
+        "vote"
+      ]
+    }
+  },
+  "cost": {
+    "uc_asset_census, as shipped": 84313,
+    "uc_lineage_coverage, as shipped": 14632,
+    "uc_discovery_metadata, as shipped": 4023076,
+    "the catalogue, by table type": 28622,
+    "what lineage names as a source": 47116,
+    "table tags": 6648,
+    "column tags": 6486,
+    "schema tags": 3716,
+    "catalog tags": 1333,
+    "column masks": 1219,
+    "row filters": 2577,
+    "ABAC policy definitions": 997720,
+    "data classification results": 10912,
+    "data quality monitoring": 9170,
+    "assistant events": 4667,
+    "what an assistant event carries": 1764
+  },
+  "probes": [
+    {
+      "label": "uc_asset_census, as shipped",
+      "ok": true,
+      "ms": 84313,
+      "rows": [
+        {
+          "table_count": "495558",
+          "catalog_count": "2922",
+          "schema_count": "30952",
+          "managed_tables": "187086",
+          "external_tables": "888",
+          "views": "53028",
+          "delta_tables": "254713",
+          "iceberg_tables": "1227",
+          "optimized_format_tables": "255940",
+          "described_tables": "67072",
+          "distinct_owners": "3509",
+          "databricks_owned_tables": "7645",
+          "databricks_owned_catalogs": "__databricks_internal, samples, system"
+        }
+      ]
+    },
+    {
+      "label": "uc_lineage_coverage, as shipped",
+      "ok": true,
+      "ms": 14632,
+      "rows": [
+        {
+          "table_count": "187974",
+          "tables_with_lineage": "37049",
+          "tables_written_with_lineage": "29517",
+          "tables_read_with_lineage": "25590",
+          "lineage_events": "3751076",
+          "last_event": "2026-08-15T13:40:24.357Z"
+        }
+      ]
+    },
+    {
+      "label": "uc_discovery_metadata, as shipped",
+      "ok": true,
+      "ms": 4023076,
+      "rows": [
+        {
+          "estate_tables": "495558",
+          "estate_tables_described": "67072",
+          "read_tables": "15826",
+          "read_tables_described": "5404",
+          "read_tables_tagged": "827",
+          "read_tables_owned": "15826",
+          "read_table_columns": "275781",
+          "read_table_columns_described": "54153",
+          "read_events": "1403369"
+        }
+      ]
+    },
+    {
+      "label": "the catalogue, by table type",
+      "ok": true,
+      "ms": 28622,
+      "rows": [
+        {
+          "rows": "495558",
+          "stored_tables": "187974",
+          "views": "53029",
+          "metric_views": "4703",
+          "foreign_tables": "232617",
+          "pipeline_outputs": "16961",
+          "described": "67071",
+          "stored_and_described": "50769"
+        }
+      ]
+    },
+    {
+      "label": "what lineage names as a source",
+      "ok": true,
+      "ms": 47116,
+      "rows": [
+        {
+          "rows": "25596",
+          "stored_tables": "11155",
+          "not_in_the_catalogue": "9770",
+          "other_types": "4671",
+          "described": "5404"
+        }
+      ]
+    },
+    {
+      "label": "table tags",
+      "ok": true,
+      "ms": 6648,
+      "rows": [
+        {
+          "rows": "16109",
+          "tagged_tables": "9556",
+          "distinct_keys": "2046"
+        }
+      ]
+    },
+    {
+      "label": "column tags",
+      "ok": true,
+      "ms": 6486,
+      "rows": [
+        {
+          "rows": "190101",
+          "tagged_tables": "16850",
+          "distinct_keys": "1732"
+        }
+      ]
+    },
+    {
+      "label": "schema tags",
+      "ok": true,
+      "ms": 3716,
+      "rows": [
+        {
+          "rows": "2587",
+          "tagged_schemas": "1784",
+          "distinct_keys": "285"
+        }
+      ]
+    },
+    {
+      "label": "catalog tags",
+      "ok": true,
+      "ms": 1333,
+      "rows": [
+        {
+          "rows": "3396",
+          "tagged_catalogs": "2849",
+          "distinct_keys": "195"
+        }
+      ]
+    },
+    {
+      "label": "column masks",
+      "ok": true,
+      "ms": 1219,
+      "rows": [
+        {
+          "rows": "1410",
+          "masked_tables": "666"
+        }
+      ]
+    },
+    {
+      "label": "row filters",
+      "ok": true,
+      "ms": 2577,
+      "rows": [
+        {
+          "rows": "591",
+          "filtered_tables": "591"
+        }
+      ]
+    },
+    {
+      "label": "ABAC policy definitions",
+      "ok": true,
+      "ms": 997720,
+      "rows": [
+        {
+          "rows": "720",
+          "policy_types": "2",
+          "securable_types": "3",
+          "with_match_columns": "690",
+          "with_a_condition": "111"
+        }
+      ]
+    },
+    {
+      "label": "data classification results",
+      "ok": true,
+      "ms": 10912,
+      "rows": [
+        {
+          "rows": "1151202",
+          "classified_tables": "83872",
+          "distinct_classes": "42"
+        }
+      ]
+    },
+    {
+      "label": "data quality monitoring",
+      "ok": true,
+      "ms": 9170,
+      "rows": [
+        {
+          "rows": "58382",
+          "tables": "12617",
+          "statuses": "4",
+          "with_a_freshness_status": "58382"
+        }
+      ]
+    },
+    {
+      "label": "assistant events",
+      "ok": true,
+      "ms": 4667,
+      "rows": [
+        {
+          "rows": "99418",
+          "workspaces": "3",
+          "initiators": "1054",
+          "user_agents": "5"
+        }
+      ]
+    },
+    {
+      "label": "what an assistant event carries",
+      "ok": true,
+      "ms": 1764,
+      "rows": [
+        {
+          "column_name": "account_id",
+          "data_type": "STRING"
+        },
+        {
+          "column_name": "workspace_id",
+          "data_type": "STRING"
+        },
+        {
+          "column_name": "event_id",
+          "data_type": "STRING"
+        },
+        {
+          "column_name": "event_time",
+          "data_type": "TIMESTAMP"
+        },
+        {
+          "column_name": "event_date",
+          "data_type": "DATE"
+        },
+        {
+          "column_name": "user_agent",
+          "data_type": "STRING"
+        },
+        {
+          "column_name": "initiated_by",
+          "data_type": "STRING"
+        }
+      ]
+    }
+  ]
+}

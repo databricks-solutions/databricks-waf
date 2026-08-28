@@ -1,0 +1,78 @@
+name: Bug report
+description: Report reproducible behavior that differs from the documented product.
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for helping improve the WAF assessment. Do not include tokens, customer evidence, workspace identifiers, user emails or unredacted logs.
+  - type: input
+    id: version
+    attributes:
+      label: Release or commit
+      description: Tag or full commit SHA where the problem occurs.
+      placeholder: v1.0.0 or abc123…
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Install or upgrade
+        - Assessment collection
+        - Review or human evidence
+        - Dashboard or report
+        - Investigation or estate
+        - Improvement planning
+        - Scheduled assessment
+        - Backup, restore or uninstall
+        - Other page or workflow
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction steps
+      description: Include the selected page and a sanitized description of the scope.
+      placeholder: |
+        1. Open …
+        2. Select …
+        3. Observe …
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: observed
+    attributes:
+      label: Observed behavior
+    validations:
+      required: true
+  - type: input
+    id: chrome
+    attributes:
+      label: Chrome version
+      description: Required for visual or interaction issues; otherwise write Not applicable.
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Sanitized diagnostics
+      description: App/deployment state and the minimum redacted log excerpt that identifies the failure.
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety check
+      options:
+        - label: I removed credentials, customer data, workspace identifiers and personal information.
+          required: true
+        - label: I searched open and closed issues for this behavior.
+          required: true
+

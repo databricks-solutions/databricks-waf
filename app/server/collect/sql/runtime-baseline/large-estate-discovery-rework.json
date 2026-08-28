@@ -1,0 +1,95 @@
+{
+  "runFinishedAt": "2026-08-16T09:53:03.336000Z",
+  "profile": "large-estate",
+  "host": "https://example.cloud.databricks.com",
+  "warehouse": "fedcba9876543210",
+  "lookbackDays": 30,
+  "statement": "uc_discovery_metadata",
+  "provenance": {
+    "assembledPostHoc": true,
+    "writtenBy": "assembled from the platform query history and the statements API, not by measure-discovery-rework.mjs",
+    "why": "the run was started 2026-08-16T06:30:40Z and its client killed at 09:35:08Z, 48 minutes into the third form, so the script never reached its write. The warehouse finished all three regardless.",
+    "durationsFrom": "GET /api/2.0/sql/history/queries with include_metrics, warehouse fedcba9876543210",
+    "rowsFrom": "GET /api/2.0/sql/statements/{id} while results were still retrievable"
+  },
+  "forms": [
+    {
+      "name": "as shipped",
+      "queryId": "01f1994e-ff04-1457-a15b-38df2e198785",
+      "startedAt": "2026-08-16T08:46:39.020000Z",
+      "ms": 3984316,
+      "compilationMs": 3979324,
+      "executionMs": 4909,
+      "readBytes": 17031235,
+      "taskTotalTimeMs": 6682,
+      "row": {
+        "estate_tables": "495135",
+        "estate_tables_described": "66852",
+        "read_tables": "15009",
+        "read_tables_described": "5138",
+        "read_tables_tagged": "779",
+        "read_tables_owned": "15009",
+        "read_table_columns": "267601",
+        "read_table_columns_described": "53177",
+        "read_events": "1367461"
+      },
+      "rowProvenance": "parsed from the saved API response; statement 01f1994e-ff04-1457-a15b-38df2e198785"
+    },
+    {
+      "name": "both restricted",
+      "queryId": "01f1993c-0178-1bc7-8e8f-254de8ff71f3",
+      "startedAt": "2026-08-16T06:30:42.703000Z",
+      "ms": 4098522,
+      "compilationMs": 4088506,
+      "executionMs": 9981,
+      "readBytes": 49168722,
+      "taskTotalTimeMs": 15545,
+      "row": null,
+      "rowProvenance": "lost: the statement was CLOSED before any read, so no row exists for this form"
+    },
+    {
+      "name": "columns only",
+      "queryId": "01f19945-8cc3-1a32-a8e6-6a4956fede8a",
+      "startedAt": "2026-08-16T07:39:01.865000Z",
+      "ms": 4056678,
+      "compilationMs": 4048127,
+      "executionMs": 8492,
+      "readBytes": 36039511,
+      "taskTotalTimeMs": 9848,
+      "row": {
+        "estate_tables": "495244",
+        "estate_tables_described": "66930",
+        "read_tables": "15009",
+        "read_tables_described": "5138",
+        "read_tables_tagged": "779",
+        "read_tables_owned": "15009",
+        "read_table_columns": "267601",
+        "read_table_columns_described": "53177",
+        "read_events": "1366268"
+      },
+      "rowProvenance": "transcribed from an API read at 2026-08-16T09:39:24Z; the raw response was not retained and the statement has since CLOSED"
+    }
+  ],
+  "equivalence": {
+    "baseline": "as shipped",
+    "note": "the two runs are three hours apart on a live shared workspace, so fields fed by unrestricted CTEs drift. Only fields fed by a restricted CTE test the rework.",
+    "columns only": [
+      {
+        "field": "estate_tables",
+        "before": "495135",
+        "after": "495244"
+      },
+      {
+        "field": "estate_tables_described",
+        "before": "66852",
+        "after": "66930"
+      },
+      {
+        "field": "read_events",
+        "before": "1367461",
+        "after": "1366268"
+      }
+    ],
+    "both restricted": null
+  }
+}

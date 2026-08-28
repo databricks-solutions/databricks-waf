@@ -1,0 +1,3386 @@
+{
+  "version": 18,
+  "fingerprint": "sha256:755d42025cf0f621c064089147c00748165277afd338986f2392edbb9cd36193",
+  "scored_units": 165,
+  "controls": {
+    "CO-01-01": {
+      "pillar": "CO",
+      "principle": "CO-01",
+      "title": "Use performance optimized data formats",
+      "provenance": "waf-docs",
+      "severity": "high",
+      "measurability": "system-table",
+      "coverage_mode": "complete",
+      "alias_group": "open-table-formats",
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": {
+        "pass_share": 0.95,
+        "partial_share": 0.7
+      },
+      "preconditions": []
+    },
+    "CO-01-02": {
+      "pillar": "CO",
+      "principle": "CO-01",
+      "title": "Use job compute",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "system-table",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": {
+        "pass_share": 0.98,
+        "partial_share": 0.85
+      },
+      "preconditions": []
+    },
+    "CO-01-03": {
+      "pillar": "CO",
+      "principle": "CO-01",
+      "title": "Use SQL warehouse for SQL workloads",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "system-table",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": {
+        "pass_share": 0.9,
+        "partial_share": 0.6
+      },
+      "preconditions": []
+    },
+    "CO-01-04": {
+      "pillar": "CO",
+      "principle": "CO-01",
+      "title": "Use up-to-date runtimes for your workloads",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "system-table",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": {
+        "pass_share": 0.9,
+        "partial_share": 0.6,
+        "min_runtime_major": 14
+      },
+      "preconditions": [
+        {
+          "signal": "sql:estate.compute_profile",
+          "operator": "eq",
+          "value": 0,
+          "outcome": "not-applicable",
+          "scope": "estate"
+        }
+      ]
+    },
+    "CO-01-05": {
+      "pillar": "CO",
+      "principle": "CO-01",
+      "title": "Only use GPUs for the right workloads",
+      "provenance": "waf-docs",
+      "severity": "low",
+      "measurability": "system-table",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": [
+        {
+          "signal": "sql:estate.compute_profile",
+          "operator": "eq",
+          "value": 0,
+          "outcome": "not-applicable",
+          "scope": "estate"
+        }
+      ]
+    },
+    "CO-01-06": {
+      "pillar": "CO",
+      "principle": "CO-01",
+      "title": "Use serverless services for your workloads",
+      "provenance": "waf-docs",
+      "severity": "high",
+      "measurability": "system-table",
+      "coverage_mode": "complete",
+      "alias_group": "serverless-adoption",
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": {
+        "pass_share": 0.8,
+        "partial_share": 0.3
+      },
+      "preconditions": []
+    },
+    "CO-01-07": {
+      "pillar": "CO",
+      "principle": "CO-01",
+      "title": "Use the right instance type",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "attestation",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "CO-01-08": {
+      "pillar": "CO",
+      "principle": "CO-01",
+      "title": "Choose the most efficient compute size",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "system-table",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "CO-01-09": {
+      "pillar": "CO",
+      "principle": "CO-01",
+      "title": "Right-size compute resources at deployment",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "attestation",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "CO-01-10": {
+      "pillar": "CO",
+      "principle": "CO-01",
+      "title": "Evaluate performance-optimized query engines",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "system-table",
+      "coverage_mode": "complete",
+      "alias_group": "photon",
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": {
+        "pass_share": 0.7,
+        "partial_share": 0.3,
+        "serverless_credit_share": 0.95
+      },
+      "preconditions": []
+    },
+    "CO-02-01": {
+      "pillar": "CO",
+      "principle": "CO-02",
+      "title": "Use auto-scaling compute",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "system-table",
+      "coverage_mode": "complete",
+      "alias_group": "compute-autoscaling",
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": {
+        "pass_share": 0.8,
+        "partial_share": 0.4
+      },
+      "preconditions": [
+        {
+          "signal": "sql:estate.compute_profile",
+          "operator": "eq",
+          "value": 0,
+          "outcome": "not-applicable",
+          "scope": "estate"
+        }
+      ]
+    },
+    "CO-02-02": {
+      "pillar": "CO",
+      "principle": "CO-02",
+      "title": "Use auto termination",
+      "provenance": "waf-docs",
+      "severity": "high",
+      "measurability": "system-table",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": {
+        "pass_share": 1,
+        "partial_share": 0.7
+      },
+      "preconditions": [
+        {
+          "signal": "sql:estate.compute_profile",
+          "operator": "eq",
+          "value": 0,
+          "outcome": "not-applicable",
+          "scope": "estate"
+        }
+      ]
+    },
+    "CO-02-03": {
+      "pillar": "CO",
+      "principle": "CO-02",
+      "title": "Use compute policies to control costs",
+      "provenance": "waf-docs",
+      "severity": "high",
+      "measurability": "system-table",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": {
+        "pass_share": 0.9,
+        "partial_share": 0.5
+      },
+      "preconditions": [
+        {
+          "signal": "sql:estate.compute_profile",
+          "operator": "eq",
+          "value": 0,
+          "outcome": "not-applicable",
+          "scope": "estate"
+        }
+      ]
+    },
+    "CO-03-01": {
+      "pillar": "CO",
+      "principle": "CO-03",
+      "title": "Setup tagging for cost attribution",
+      "provenance": "waf-docs",
+      "severity": "high",
+      "measurability": "system-table",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": {
+        "pass_share": 0.8,
+        "partial_share": 0.3
+      },
+      "preconditions": []
+    },
+    "CO-03-02": {
+      "pillar": "CO",
+      "principle": "CO-03",
+      "title": "Set up budgets and alerts to enable monitoring of account spending",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "attestation",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "CO-03-03": {
+      "pillar": "CO",
+      "principle": "CO-03",
+      "title": "Monitor costs to align spending with expectations",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "attestation",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "CO-03-04": {
+      "pillar": "CO",
+      "principle": "CO-03",
+      "title": "Manage costs to align usage with organizational needs",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "attestation",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "CO-03-05": {
+      "pillar": "CO",
+      "principle": "CO-03",
+      "title": "Monitor storage volume, cost and growth",
+      "provenance": "extension",
+      "severity": "medium",
+      "measurability": "system-table",
+      "coverage_mode": "sampled",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "CO-03-06": {
+      "pillar": "CO",
+      "principle": "CO-03",
+      "title": "Run VACUUM to reclaim storage from stale files",
+      "provenance": "extension",
+      "severity": "medium",
+      "measurability": "system-table",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": {
+        "max_days_since_vacuum": 30
+      },
+      "preconditions": [
+        {
+          "signal": "describe:predictive_optimization.coverage",
+          "operator": "eq",
+          "value": "enabled",
+          "outcome": "satisfied-by-architecture",
+          "scope": "segment"
+        }
+      ]
+    },
+    "CO-03-07": {
+      "pillar": "CO",
+      "principle": "CO-03",
+      "title": "Manage Delta history and time-travel retention",
+      "provenance": "extension",
+      "severity": "medium",
+      "measurability": "system-table",
+      "coverage_mode": "sampled",
+      "alias_group": "delta-history-retention",
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": {
+        "min_reachable_days": 7
+      },
+      "preconditions": []
+    },
+    "CO-04-01": {
+      "pillar": "CO",
+      "principle": "CO-04",
+      "title": "Balance always-on and triggered streaming",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "system-table",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": {
+        "max_continuous_share": 0.25
+      },
+      "preconditions": []
+    },
+    "CO-04-02": {
+      "pillar": "CO",
+      "principle": "CO-04",
+      "title": "Balance between on-demand and capacity excess instances",
+      "provenance": "waf-docs",
+      "severity": "low",
+      "measurability": "system-table",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": {
+        "pass_share": 0.5,
+        "partial_share": 0.2
+      },
+      "preconditions": [
+        {
+          "signal": "sql:estate.compute_profile",
+          "operator": "eq",
+          "value": 0,
+          "outcome": "not-applicable",
+          "scope": "estate"
+        }
+      ]
+    },
+    "DG-01-01": {
+      "pillar": "DG",
+      "principle": "DG-01",
+      "title": "Establish a data and AI governance process",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "attestation",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "DG-01-02": {
+      "pillar": "DG",
+      "principle": "DG-01",
+      "title": "Design Unity Catalog for your organization",
+      "provenance": "waf-docs",
+      "severity": "critical",
+      "measurability": "system-table",
+      "coverage_mode": "complete",
+      "alias_group": "unity-catalog-governed",
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "DG-01-03": {
+      "pillar": "DG",
+      "principle": "DG-01",
+      "title": "Manage metadata for all data and AI assets in one place",
+      "provenance": "waf-docs",
+      "severity": "critical",
+      "measurability": "system-table",
+      "coverage_mode": "complete",
+      "alias_group": "unity-catalog-governed",
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "DG-01-04": {
+      "pillar": "DG",
+      "principle": "DG-01",
+      "title": "Track data and AI lineage to drive visibility of the data",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "system-table",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": {
+        "pass_share": 0.5,
+        "partial_share": 0.15
+      },
+      "preconditions": []
+    },
+    "DG-01-05": {
+      "pillar": "DG",
+      "principle": "DG-01",
+      "title": "Add consistent descriptions to your metadata",
+      "provenance": "waf-docs",
+      "severity": "low",
+      "measurability": "system-table",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": {
+        "pass_share": 0.8,
+        "partial_share": 0.4
+      },
+      "preconditions": []
+    },
+    "DG-01-06": {
+      "pillar": "DG",
+      "principle": "DG-01",
+      "title": "Allow easy data discovery for data consumers",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "system-table",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": {
+        "pass_share": 0.8,
+        "partial_share": 0.4
+      },
+      "preconditions": []
+    },
+    "DG-01-07": {
+      "pillar": "DG",
+      "principle": "DG-01",
+      "title": "Govern AI assets together with data",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "system-table",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "DG-02-01": {
+      "pillar": "DG",
+      "principle": "DG-02",
+      "title": "Centralize access control for all data and AI assets",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "attestation",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "DG-02-02": {
+      "pillar": "DG",
+      "principle": "DG-02",
+      "title": "Configure audit logging",
+      "provenance": "waf-docs",
+      "severity": "high",
+      "measurability": "system-table",
+      "coverage_mode": "complete",
+      "alias_group": "audit-logging",
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": {
+        "max_days_since_event": 2
+      },
+      "preconditions": []
+    },
+    "DG-02-03": {
+      "pillar": "DG",
+      "principle": "DG-02",
+      "title": "Audit data platform events",
+      "provenance": "waf-docs",
+      "severity": "high",
+      "measurability": "system-table",
+      "coverage_mode": "complete",
+      "alias_group": "audit-logging",
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": {
+        "max_days_since_event": 2
+      },
+      "preconditions": []
+    },
+    "DG-03-01": {
+      "pillar": "DG",
+      "principle": "DG-03",
+      "title": "Define clear data quality standards",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "attestation",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "DG-03-02": {
+      "pillar": "DG",
+      "principle": "DG-03",
+      "title": "Use data quality tools for profiling, cleansing, validating, and monitoring data",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "system-table",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "DG-03-03": {
+      "pillar": "DG",
+      "principle": "DG-03",
+      "title": "Implement and enforce standardized data formats and definitions",
+      "provenance": "waf-docs",
+      "severity": "high",
+      "measurability": "system-table",
+      "coverage_mode": "complete",
+      "alias_group": "open-table-formats",
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": {
+        "pass_share": 0.95,
+        "partial_share": 0.7
+      },
+      "preconditions": []
+    },
+    "IU-01-01": {
+      "pillar": "IU",
+      "principle": "IU-01",
+      "title": "Use standard and reusable integration patterns for external integration",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "attestation",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "IU-01-02": {
+      "pillar": "IU",
+      "principle": "IU-01",
+      "title": "Use optimized connectors to ingest data sources into Databricks",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "system-table",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "IU-01-03": {
+      "pillar": "IU",
+      "principle": "IU-01",
+      "title": "Use certified partner tools",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "attestation",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "IU-01-04": {
+      "pillar": "IU",
+      "principle": "IU-01",
+      "title": "Reduce complexity of data engineering pipelines",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "attestation",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "IU-01-05": {
+      "pillar": "IU",
+      "principle": "IU-01",
+      "title": "Use infrastructure as code (IaC) for deployments and maintenance",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "system-table",
+      "coverage_mode": "complete",
+      "alias_group": "infrastructure-as-code",
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "IU-02-01": {
+      "pillar": "IU",
+      "principle": "IU-02",
+      "title": "Use open data formats",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "system-table",
+      "coverage_mode": "complete",
+      "alias_group": "open-table-formats",
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": {
+        "pass_share": 0.95,
+        "partial_share": 0.7
+      },
+      "preconditions": []
+    },
+    "IU-02-02": {
+      "pillar": "IU",
+      "principle": "IU-02",
+      "title": "Enable secure data and AI sharing for all data assets",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "system-table",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "IU-02-03": {
+      "pillar": "IU",
+      "principle": "IU-02",
+      "title": "Use open standards for developing agents, LLMs, and ML models",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "attestation",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "IU-03-01": {
+      "pillar": "IU",
+      "principle": "IU-03",
+      "title": "Provide a self-service experience across the platform",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "attestation",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "IU-03-02": {
+      "pillar": "IU",
+      "principle": "IU-03",
+      "title": "Use serverless compute",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "system-table",
+      "coverage_mode": "complete",
+      "alias_group": "serverless-adoption",
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": {
+        "pass_share": 0.8,
+        "partial_share": 0.3
+      },
+      "preconditions": []
+    },
+    "IU-03-03": {
+      "pillar": "IU",
+      "principle": "IU-03",
+      "title": "Use predefined compute templates",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "system-table",
+      "coverage_mode": "complete",
+      "alias_group": "compute-templates",
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": {
+        "pass_share": 0.9,
+        "partial_share": 0.5
+      },
+      "preconditions": [
+        {
+          "signal": "sql:estate.compute_profile",
+          "operator": "eq",
+          "value": 0,
+          "outcome": "not-applicable",
+          "scope": "estate"
+        }
+      ]
+    },
+    "IU-03-04": {
+      "pillar": "IU",
+      "principle": "IU-03",
+      "title": "Use AI capabilities to increase productivity",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "rest-api",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "IU-04-01": {
+      "pillar": "IU",
+      "principle": "IU-04",
+      "title": "Offer reusable data-as-products that the business can trust",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "system-table",
+      "coverage_mode": "complete",
+      "alias_group": "data-products",
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "IU-04-02": {
+      "pillar": "IU",
+      "principle": "IU-04",
+      "title": "Publish data products semantically consistent across the enterprise",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "system-table",
+      "coverage_mode": "complete",
+      "alias_group": "data-products",
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "IU-04-03": {
+      "pillar": "IU",
+      "principle": "IU-04",
+      "title": "Provide a central catalog for discovery and lineage",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "system-table",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": {
+        "pass_share": 0.7,
+        "partial_share": 0.3
+      },
+      "preconditions": []
+    },
+    "OE-01-01": {
+      "pillar": "OE",
+      "principle": "OE-01",
+      "title": "Create a dedicated Databricks operations team",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "attestation",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "OE-01-02": {
+      "pillar": "OE",
+      "principle": "OE-01",
+      "title": "Use Enterprise source code management (SCM)",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "system-table",
+      "coverage_mode": "complete",
+      "alias_group": "infrastructure-as-code",
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "OE-01-03": {
+      "pillar": "OE",
+      "principle": "OE-01",
+      "title": "Standardize DevOps processes (CI/CD)",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "attestation",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "OE-01-04": {
+      "pillar": "OE",
+      "principle": "OE-01",
+      "title": "Standardize MLOps processes",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "attestation",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "OE-01-05": {
+      "pillar": "OE",
+      "principle": "OE-01",
+      "title": "Define environment isolation strategy",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "attestation",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "OE-01-06": {
+      "pillar": "OE",
+      "principle": "OE-01",
+      "title": "Define catalog strategy for your enterprise",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "system-table",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "OE-02-01": {
+      "pillar": "OE",
+      "principle": "OE-02",
+      "title": "Use infrastructure as code (IaC) for deployments and maintenance",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "system-table",
+      "coverage_mode": "complete",
+      "alias_group": "infrastructure-as-code",
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "OE-02-02": {
+      "pillar": "OE",
+      "principle": "OE-02",
+      "title": "Standardize compute configurations",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "system-table",
+      "coverage_mode": "complete",
+      "alias_group": "compute-templates",
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": {
+        "pass_share": 0.9,
+        "partial_share": 0.5
+      },
+      "preconditions": [
+        {
+          "signal": "sql:estate.compute_profile",
+          "operator": "eq",
+          "value": 0,
+          "outcome": "not-applicable",
+          "scope": "estate"
+        }
+      ]
+    },
+    "OE-02-03": {
+      "pillar": "OE",
+      "principle": "OE-02",
+      "title": "Use Unity Catalog managed tables",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "system-table",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": {
+        "pass_share": 0.8,
+        "partial_share": 0.4
+      },
+      "preconditions": []
+    },
+    "OE-02-04": {
+      "pillar": "OE",
+      "principle": "OE-02",
+      "title": "Use automated workflows for jobs",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "system-table",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": {
+        "pass_share": 0.9,
+        "partial_share": 0.6
+      },
+      "preconditions": []
+    },
+    "OE-02-05": {
+      "pillar": "OE",
+      "principle": "OE-02",
+      "title": "Use automated and event-driven file ingestion",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "system-table",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "OE-02-06": {
+      "pillar": "OE",
+      "principle": "OE-02",
+      "title": "Use ETL frameworks for data pipelines",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "system-table",
+      "coverage_mode": "complete",
+      "alias_group": "declarative-pipelines",
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": {
+        "pass_share": 0.5,
+        "partial_share": 0.15
+      },
+      "preconditions": []
+    },
+    "OE-02-07": {
+      "pillar": "OE",
+      "principle": "OE-02",
+      "title": "Follow the deploy-code approach for ML workloads",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "attestation",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "OE-02-08": {
+      "pillar": "OE",
+      "principle": "OE-02",
+      "title": "Use a model registry to decouple code and model lifecycle",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "system-table",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "OE-02-09": {
+      "pillar": "OE",
+      "principle": "OE-02",
+      "title": "Automate ML experiment tracking",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "system-table",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "OE-02-10": {
+      "pillar": "OE",
+      "principle": "OE-02",
+      "title": "Reuse the same infrastructure to manage ML pipelines",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "attestation",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "OE-02-11": {
+      "pillar": "OE",
+      "principle": "OE-02",
+      "title": "Utilize declarative management for complex data and ML projects",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "system-table",
+      "coverage_mode": "complete",
+      "alias_group": "declarative-pipelines",
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": {
+        "pass_share": 0.5,
+        "partial_share": 0.15
+      },
+      "preconditions": []
+    },
+    "OE-03-01": {
+      "pillar": "OE",
+      "principle": "OE-03",
+      "title": "Manage service limits and quotas",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "attestation",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "OE-03-02": {
+      "pillar": "OE",
+      "principle": "OE-03",
+      "title": "Invest in capacity planning",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "attestation",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "OE-04-01": {
+      "pillar": "OE",
+      "principle": "OE-04",
+      "title": "Establish monitoring processes",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "system-table",
+      "coverage_mode": "complete",
+      "alias_group": "job-monitoring",
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": {
+        "pass_share": 0.8,
+        "partial_share": 0.3
+      },
+      "preconditions": []
+    },
+    "OE-04-02": {
+      "pillar": "OE",
+      "principle": "OE-04",
+      "title": "Use native and external tools for platform monitoring",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "system-table",
+      "coverage_mode": "complete",
+      "alias_group": "job-monitoring",
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": {
+        "pass_share": 0.8,
+        "partial_share": 0.3
+      },
+      "preconditions": []
+    },
+    "PE-02-01": {
+      "pillar": "PE",
+      "principle": "PE-02",
+      "title": "Use serverless compute",
+      "provenance": "waf-docs",
+      "severity": "high",
+      "measurability": "system-table",
+      "coverage_mode": "complete",
+      "alias_group": "serverless-adoption",
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": {
+        "pass_share": 0.8,
+        "partial_share": 0.3
+      },
+      "preconditions": []
+    },
+    "PE-02-02": {
+      "pillar": "PE",
+      "principle": "PE-02",
+      "title": "Use an enterprise grade model serving service",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "system-table",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "PE-03-01": {
+      "pillar": "PE",
+      "principle": "PE-03",
+      "title": "Understand your data ingestion and access patterns",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "attestation",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "PE-03-02": {
+      "pillar": "PE",
+      "principle": "PE-03",
+      "title": "Use parallel computation where it is beneficial",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "attestation",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "PE-03-03": {
+      "pillar": "PE",
+      "principle": "PE-03",
+      "title": "Analyze the whole chain of execution",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "attestation",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "PE-03-04": {
+      "pillar": "PE",
+      "principle": "PE-03",
+      "title": "Prefer larger clusters",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "attestation",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "PE-03-05": {
+      "pillar": "PE",
+      "principle": "PE-03",
+      "title": "Use predictive optimization",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "system-table",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": {
+        "pass_share": 1,
+        "partial_share": 0.5
+      },
+      "preconditions": []
+    },
+    "PE-03-06": {
+      "pillar": "PE",
+      "principle": "PE-03",
+      "title": "Use Unity Catalog managed tables",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "system-table",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": {
+        "pass_share": 0.8,
+        "partial_share": 0.4
+      },
+      "preconditions": []
+    },
+    "PE-03-07": {
+      "pillar": "PE",
+      "principle": "PE-03",
+      "title": "Use native Spark operations",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "attestation",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "PE-03-08": {
+      "pillar": "PE",
+      "principle": "PE-03",
+      "title": "Use native platform engines",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "system-table",
+      "coverage_mode": "complete",
+      "alias_group": "photon",
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": {
+        "pass_share": 0.7,
+        "partial_share": 0.3,
+        "serverless_credit_share": 0.95
+      },
+      "preconditions": []
+    },
+    "PE-03-09": {
+      "pillar": "PE",
+      "principle": "PE-03",
+      "title": "Understand your hardware and workload type",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "attestation",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "PE-03-10": {
+      "pillar": "PE",
+      "principle": "PE-03",
+      "title": "Use caching",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "system-table",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": {
+        "pass_share": 0.5,
+        "partial_share": 0.2
+      },
+      "preconditions": []
+    },
+    "PE-03-11": {
+      "pillar": "PE",
+      "principle": "PE-03",
+      "title": "Use compaction",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "system-table",
+      "coverage_mode": "sampled",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": {
+        "min_average_file_bytes": 16777216
+      },
+      "preconditions": []
+    },
+    "PE-03-12": {
+      "pillar": "PE",
+      "principle": "PE-03",
+      "title": "Use data skipping",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "system-table",
+      "coverage_mode": "sampled",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": {
+        "min_bytes_for_skipping": 1073741824,
+        "min_files_for_skipping": 10,
+        "pass_share": 0.8,
+        "partial_share": 0.4
+      },
+      "preconditions": []
+    },
+    "PE-03-13": {
+      "pillar": "PE",
+      "principle": "PE-03",
+      "title": "Avoid over-partitioning",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "system-table",
+      "coverage_mode": "sampled",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": {
+        "min_bytes_before_partitioning": 1099511627776
+      },
+      "preconditions": []
+    },
+    "PE-03-14": {
+      "pillar": "PE",
+      "principle": "PE-03",
+      "title": "Optimize join performance",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "attestation",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "PE-03-15": {
+      "pillar": "PE",
+      "principle": "PE-03",
+      "title": "Run analyze table to collect table statistics",
+      "provenance": "waf-docs",
+      "severity": "low",
+      "measurability": "system-table",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "PE-03-16": {
+      "pillar": "PE",
+      "principle": "PE-03",
+      "title": "Enable deletion vectors to avoid rewriting files on delete and update",
+      "provenance": "extension",
+      "severity": "medium",
+      "measurability": "system-table",
+      "coverage_mode": "sampled",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": {
+        "pass_share": 0.8,
+        "partial_share": 0.4
+      },
+      "preconditions": []
+    },
+    "PE-04-01": {
+      "pillar": "PE",
+      "principle": "PE-04",
+      "title": "Test on data representative of production data",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "attestation",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "PE-04-02": {
+      "pillar": "PE",
+      "principle": "PE-04",
+      "title": "Consider prewarming resources",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "attestation",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "PE-04-03": {
+      "pillar": "PE",
+      "principle": "PE-04",
+      "title": "Identify bottlenecks",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "attestation",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "PE-05-01": {
+      "pillar": "PE",
+      "principle": "PE-05",
+      "title": "Configure performance monitoring at deployment",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "attestation",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "PE-05-02": {
+      "pillar": "PE",
+      "principle": "PE-05",
+      "title": "Monitor query performance",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "attestation",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "PE-05-03": {
+      "pillar": "PE",
+      "principle": "PE-05",
+      "title": "Monitor streaming workloads",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "system-table",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": {
+        "pass_share": 0.8,
+        "partial_share": 0.3
+      },
+      "preconditions": []
+    },
+    "PE-05-04": {
+      "pillar": "PE",
+      "principle": "PE-05",
+      "title": "Monitor job performance",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "system-table",
+      "coverage_mode": "complete",
+      "alias_group": "job-monitoring",
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": {
+        "pass_share": 0.8,
+        "partial_share": 0.3
+      },
+      "preconditions": []
+    },
+    "REL-01-01": {
+      "pillar": "REL",
+      "principle": "REL-01",
+      "title": "Use a data format that supports ACID transactions",
+      "provenance": "waf-docs",
+      "severity": "high",
+      "measurability": "system-table",
+      "coverage_mode": "complete",
+      "alias_group": "open-table-formats",
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": {
+        "pass_share": 0.95,
+        "partial_share": 0.7
+      },
+      "preconditions": []
+    },
+    "REL-01-02": {
+      "pillar": "REL",
+      "principle": "REL-01",
+      "title": "Use a resilient distributed data engine for all workloads",
+      "provenance": "waf-docs",
+      "severity": "high",
+      "measurability": "system-table",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": {
+        "pass_share": 1,
+        "partial_share": 0.9
+      },
+      "preconditions": [
+        {
+          "signal": "sql:estate.compute_profile",
+          "operator": "eq",
+          "value": 0,
+          "outcome": "not-applicable",
+          "scope": "estate"
+        }
+      ]
+    },
+    "REL-01-03": {
+      "pillar": "REL",
+      "principle": "REL-01",
+      "title": "Automatically rescue invalid or nonconforming data",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "attestation",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "REL-01-04": {
+      "pillar": "REL",
+      "principle": "REL-01",
+      "title": "Configure jobs for automatic retries and termination",
+      "provenance": "waf-docs",
+      "severity": "high",
+      "measurability": "system-table",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": {
+        "pass_share": 0.8,
+        "partial_share": 0.4
+      },
+      "preconditions": []
+    },
+    "REL-01-05": {
+      "pillar": "REL",
+      "principle": "REL-01",
+      "title": "Use scalable and production-grade model serving infrastructure",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "attestation",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "REL-01-06": {
+      "pillar": "REL",
+      "principle": "REL-01",
+      "title": "Use managed services where possible",
+      "provenance": "waf-docs",
+      "severity": "high",
+      "measurability": "system-table",
+      "coverage_mode": "complete",
+      "alias_group": "serverless-adoption",
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": {
+        "pass_share": 0.8,
+        "partial_share": 0.3
+      },
+      "preconditions": []
+    },
+    "REL-02-01": {
+      "pillar": "REL",
+      "principle": "REL-02",
+      "title": "Use a layered storage architecture",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "attestation",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "REL-02-02": {
+      "pillar": "REL",
+      "principle": "REL-02",
+      "title": "Improve data integrity by reducing data redundancy",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "attestation",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "REL-02-03": {
+      "pillar": "REL",
+      "principle": "REL-02",
+      "title": "Actively manage schemas",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "attestation",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "REL-02-04": {
+      "pillar": "REL",
+      "principle": "REL-02",
+      "title": "Use constraints and data expectations",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "system-table",
+      "coverage_mode": "sampled",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": {
+        "pass_share": 0.8
+      },
+      "preconditions": []
+    },
+    "REL-02-05": {
+      "pillar": "REL",
+      "principle": "REL-02",
+      "title": "Take a data-centric approach to machine learning",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "attestation",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "REL-03-01": {
+      "pillar": "REL",
+      "principle": "REL-03",
+      "title": "Enable autoscaling for ETL workloads",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "system-table",
+      "coverage_mode": "complete",
+      "alias_group": "compute-autoscaling",
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": {
+        "pass_share": 0.8,
+        "partial_share": 0.4
+      },
+      "preconditions": [
+        {
+          "signal": "sql:estate.compute_profile",
+          "operator": "eq",
+          "value": 0,
+          "outcome": "not-applicable",
+          "scope": "estate"
+        }
+      ]
+    },
+    "REL-03-02": {
+      "pillar": "REL",
+      "principle": "REL-03",
+      "title": "Enable autoscaling for SQL warehouse",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "system-table",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": {
+        "pass_share": 0.8,
+        "partial_share": 0.4
+      },
+      "preconditions": []
+    },
+    "REL-04-01": {
+      "pillar": "REL",
+      "principle": "REL-04",
+      "title": "Recover from Structured Streaming query failures",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "attestation",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "REL-04-02": {
+      "pillar": "REL",
+      "principle": "REL-04",
+      "title": "Recover ETL jobs using data time travel capabilities",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "attestation",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "REL-04-03": {
+      "pillar": "REL",
+      "principle": "REL-04",
+      "title": "Leverage a job automation framework with built-in recovery",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "attestation",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "REL-04-04": {
+      "pillar": "REL",
+      "principle": "REL-04",
+      "title": "Configure high availability and disaster recovery",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "attestation",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "REL-04-05": {
+      "pillar": "REL",
+      "principle": "REL-04",
+      "title": "Manage Delta history and time-travel retention",
+      "provenance": "extension",
+      "severity": "medium",
+      "measurability": "system-table",
+      "coverage_mode": "sampled",
+      "alias_group": "delta-history-retention",
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": {
+        "min_reachable_days": 7
+      },
+      "preconditions": []
+    },
+    "SCP-01-01": {
+      "pillar": "SCP",
+      "principle": "SCP-01",
+      "title": "Account setup and identity configuration",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "system-table",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "SCP-01-02": {
+      "pillar": "SCP",
+      "principle": "SCP-01",
+      "title": "Identity and access management best practices",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "attestation",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "SCP-01-03": {
+      "pillar": "SCP",
+      "principle": "SCP-01",
+      "title": "PAT tokens with no lifetime (expiration) limit",
+      "provenance": "security-guide",
+      "severity": "medium",
+      "measurability": "rest-api",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "SCP-01-04": {
+      "pillar": "SCP",
+      "principle": "SCP-01",
+      "title": "Maximum lifetime of new tokens to something other than unlimited",
+      "provenance": "security-guide",
+      "severity": "medium",
+      "measurability": "rest-api",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "SCP-01-05": {
+      "pillar": "SCP",
+      "principle": "SCP-01",
+      "title": "Tokens with a lifetime (expiration) that exceeds the workspace maximum lifetime for new tokens",
+      "provenance": "security-guide",
+      "severity": "medium",
+      "measurability": "rest-api",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "SCP-01-06": {
+      "pillar": "SCP",
+      "principle": "SCP-01",
+      "title": "PAT token creation restricted to admins",
+      "provenance": "security-guide",
+      "severity": "medium",
+      "measurability": "rest-api",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "SCP-01-07": {
+      "pillar": "SCP",
+      "principle": "SCP-01",
+      "title": "Service principal client secrets not stale",
+      "provenance": "security-guide",
+      "severity": "medium",
+      "measurability": "rest-api",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "SCP-02-01": {
+      "pillar": "SCP",
+      "principle": "SCP-02",
+      "title": "Secrets management",
+      "provenance": "security-guide",
+      "severity": "low",
+      "measurability": "rest-api",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "SCP-02-02": {
+      "pillar": "SCP",
+      "principle": "SCP-02",
+      "title": "Cluster instance disk encryption",
+      "provenance": "security-guide",
+      "severity": "low",
+      "measurability": "rest-api",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "SCP-02-03": {
+      "pillar": "SCP",
+      "principle": "SCP-02",
+      "title": "Customer-managed keys for managed services and workspace storage",
+      "provenance": "security-guide",
+      "severity": "low",
+      "measurability": "rest-api",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "SCP-02-04": {
+      "pillar": "SCP",
+      "principle": "SCP-02",
+      "title": "Downloading results is disabled",
+      "provenance": "security-guide",
+      "severity": "medium",
+      "measurability": "rest-api",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "SCP-02-05": {
+      "pillar": "SCP",
+      "principle": "SCP-02",
+      "title": "Notebook export",
+      "provenance": "security-guide",
+      "severity": "low",
+      "measurability": "rest-api",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "SCP-02-06": {
+      "pillar": "SCP",
+      "principle": "SCP-02",
+      "title": "Notebook table clipboard features",
+      "provenance": "security-guide",
+      "severity": "low",
+      "measurability": "rest-api",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "SCP-02-07": {
+      "pillar": "SCP",
+      "principle": "SCP-02",
+      "title": "Enable storing interactive notebook results only in the customer account",
+      "provenance": "security-guide",
+      "severity": "medium",
+      "measurability": "rest-api",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "SCP-02-08": {
+      "pillar": "SCP",
+      "principle": "SCP-02",
+      "title": "FileStore endpoint for HTTPS file serving",
+      "provenance": "security-guide",
+      "severity": "medium",
+      "measurability": "rest-api",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "SCP-02-09": {
+      "pillar": "SCP",
+      "principle": "SCP-02",
+      "title": "Store and retrieve embeddings securely",
+      "provenance": "security-guide",
+      "severity": "low",
+      "measurability": "rest-api",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "SCP-02-10": {
+      "pillar": "SCP",
+      "principle": "SCP-02",
+      "title": "Disable legacy DBFS root and mounts",
+      "provenance": "security-guide",
+      "severity": "medium",
+      "measurability": "rest-api",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "SCP-02-11": {
+      "pillar": "SCP",
+      "principle": "SCP-02",
+      "title": "SQL warehouse results download disabled",
+      "provenance": "security-guide",
+      "severity": "medium",
+      "measurability": "rest-api",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "SCP-02-12": {
+      "pillar": "SCP",
+      "principle": "SCP-02",
+      "title": "DBFS file browser disabled",
+      "provenance": "security-guide",
+      "severity": "medium",
+      "measurability": "rest-api",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "SCP-03-01": {
+      "pillar": "SCP",
+      "principle": "SCP-03",
+      "title": "Network deployment considerations for AWS",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "attestation",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "SCP-03-02": {
+      "pillar": "SCP",
+      "principle": "SCP-03",
+      "title": "Network security best practices",
+      "provenance": "waf-docs",
+      "severity": "medium",
+      "measurability": "attestation",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "SCP-03-03": {
+      "pillar": "SCP",
+      "principle": "SCP-03",
+      "title": "Front-end private connectivity",
+      "provenance": "security-guide",
+      "severity": "medium",
+      "measurability": "rest-api",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "SCP-03-04": {
+      "pillar": "SCP",
+      "principle": "SCP-03",
+      "title": "Workspace uses a customer-managed VPC (AWS, GCP) or enables VNet injection (Azure)",
+      "provenance": "security-guide",
+      "severity": "medium",
+      "measurability": "rest-api",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "SCP-03-05": {
+      "pillar": "SCP",
+      "principle": "SCP-03",
+      "title": "IP access lists for workspace access",
+      "provenance": "security-guide",
+      "severity": "medium",
+      "measurability": "rest-api",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "SCP-03-06": {
+      "pillar": "SCP",
+      "principle": "SCP-03",
+      "title": "Secure cluster connectivity (on Azure this is also called NoPublicIp)",
+      "provenance": "security-guide",
+      "severity": "medium",
+      "measurability": "rest-api",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "azure"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "SCP-03-07": {
+      "pillar": "SCP",
+      "principle": "SCP-03",
+      "title": "Secure model serving endpoints",
+      "provenance": "security-guide",
+      "severity": "high",
+      "measurability": "rest-api",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "SCP-03-08": {
+      "pillar": "SCP",
+      "principle": "SCP-03",
+      "title": "IP access lists for account console access",
+      "provenance": "security-guide",
+      "severity": "high",
+      "measurability": "rest-api",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "SCP-03-09": {
+      "pillar": "SCP",
+      "principle": "SCP-03",
+      "title": "Workspaces have proper network policy configuration",
+      "provenance": "security-guide",
+      "severity": "high",
+      "measurability": "rest-api",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "SCP-03-10": {
+      "pillar": "SCP",
+      "principle": "SCP-03",
+      "title": "Workspace IP access list enforcement enabled",
+      "provenance": "security-guide",
+      "severity": "high",
+      "measurability": "rest-api",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "SCP-03-11": {
+      "pillar": "SCP",
+      "principle": "SCP-03",
+      "title": "Context-Based Ingress (CBI) policy configured",
+      "provenance": "security-guide",
+      "severity": "high",
+      "measurability": "rest-api",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "SCP-03-12": {
+      "pillar": "SCP",
+      "principle": "SCP-03",
+      "title": "Account console IP access list enforcement enabled",
+      "provenance": "security-guide",
+      "severity": "high",
+      "measurability": "rest-api",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "SCP-03-13": {
+      "pillar": "SCP",
+      "principle": "SCP-03",
+      "title": "Egress control from compute — live connectivity test",
+      "provenance": "security-guide",
+      "severity": "medium",
+      "measurability": "attestation",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "SCP-04-01": {
+      "pillar": "SCP",
+      "principle": "SCP-04",
+      "title": "PAT tokens are about to expire",
+      "provenance": "security-guide",
+      "severity": "high",
+      "measurability": "rest-api",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "SCP-04-02": {
+      "pillar": "SCP",
+      "principle": "SCP-04",
+      "title": "Log delivery configurations",
+      "provenance": "security-guide",
+      "severity": "high",
+      "measurability": "rest-api",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "SCP-04-03": {
+      "pillar": "SCP",
+      "principle": "SCP-04",
+      "title": "Long-running clusters",
+      "provenance": "security-guide",
+      "severity": "medium",
+      "measurability": "rest-api",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "SCP-04-04": {
+      "pillar": "SCP",
+      "principle": "SCP-04",
+      "title": "Deprecated versions of Databricks runtimes",
+      "provenance": "security-guide",
+      "severity": "high",
+      "measurability": "system-table",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": {
+        "min_supported_runtime_major": 14,
+        "pass_share": 1,
+        "partial_share": 0.9
+      },
+      "preconditions": [
+        {
+          "signal": "sql:estate.compute_profile",
+          "operator": "eq",
+          "value": 0,
+          "outcome": "not-applicable",
+          "scope": "estate"
+        }
+      ]
+    },
+    "SCP-04-05": {
+      "pillar": "SCP",
+      "principle": "SCP-04",
+      "title": "Managed tables in DBFS root",
+      "provenance": "security-guide",
+      "severity": "low",
+      "measurability": "rest-api",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "SCP-04-06": {
+      "pillar": "SCP",
+      "principle": "SCP-04",
+      "title": "DBFS mounts",
+      "provenance": "security-guide",
+      "severity": "low",
+      "measurability": "attestation",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "SCP-04-07": {
+      "pillar": "SCP",
+      "principle": "SCP-04",
+      "title": "Unity Catalog enabled clusters",
+      "provenance": "security-guide",
+      "severity": "high",
+      "measurability": "system-table",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure"
+      ],
+      "thresholds": {
+        "pass_share": 1,
+        "partial_share": 0.8
+      },
+      "preconditions": [
+        {
+          "signal": "sql:estate.compute_profile",
+          "operator": "eq",
+          "value": 0,
+          "outcome": "not-applicable",
+          "scope": "estate"
+        }
+      ]
+    },
+    "SCP-04-08": {
+      "pillar": "SCP",
+      "principle": "SCP-04",
+      "title": "Enforce AWS Instance Metadata Service v2",
+      "provenance": "security-guide",
+      "severity": "low",
+      "measurability": "rest-api",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "SCP-04-09": {
+      "pillar": "SCP",
+      "principle": "SCP-04",
+      "title": "Enable verbose audit logs (on Azure, diagnostic logs)",
+      "provenance": "security-guide",
+      "severity": "medium",
+      "measurability": "rest-api",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "SCP-04-10": {
+      "pillar": "SCP",
+      "principle": "SCP-04",
+      "title": "Workspace Unity Catalog metastore assignment",
+      "provenance": "security-guide",
+      "severity": "medium",
+      "measurability": "derived",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "SCP-04-11": {
+      "pillar": "SCP",
+      "principle": "SCP-04",
+      "title": "Limit the lifetime (expiration) of metastore Delta Sharing recipient token",
+      "provenance": "security-guide",
+      "severity": "high",
+      "measurability": "rest-api",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "SCP-04-12": {
+      "pillar": "SCP",
+      "principle": "SCP-04",
+      "title": "Delta Sharing IP access lists",
+      "provenance": "security-guide",
+      "severity": "medium",
+      "measurability": "rest-api",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "SCP-04-13": {
+      "pillar": "SCP",
+      "principle": "SCP-04",
+      "title": "Delta Sharing token expiration",
+      "provenance": "security-guide",
+      "severity": "medium",
+      "measurability": "rest-api",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "SCP-04-14": {
+      "pillar": "SCP",
+      "principle": "SCP-04",
+      "title": "Existence of Unity Catalog metastores",
+      "provenance": "security-guide",
+      "severity": "low",
+      "measurability": "derived",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "SCP-04-15": {
+      "pillar": "SCP",
+      "principle": "SCP-04",
+      "title": "Delegation of the Unity Catalog metastore admin to a group",
+      "provenance": "security-guide",
+      "severity": "high",
+      "measurability": "rest-api",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "SCP-04-16": {
+      "pillar": "SCP",
+      "principle": "SCP-04",
+      "title": "Init scripts stored in DBFS",
+      "provenance": "security-guide",
+      "severity": "high",
+      "measurability": "system-table",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure"
+      ],
+      "thresholds": {
+        "pass_share": 1,
+        "partial_share": 0.95
+      },
+      "preconditions": [
+        {
+          "signal": "sql:estate.compute_profile",
+          "operator": "eq",
+          "value": 0,
+          "outcome": "not-applicable",
+          "scope": "estate"
+        }
+      ]
+    },
+    "SCP-04-17": {
+      "pillar": "SCP",
+      "principle": "SCP-04",
+      "title": "Govern model assets",
+      "provenance": "security-guide",
+      "severity": "medium",
+      "measurability": "rest-api",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "SCP-04-18": {
+      "pillar": "SCP",
+      "principle": "SCP-04",
+      "title": "Monitor audit logs with system tables (or see GOV-3)",
+      "provenance": "security-guide",
+      "severity": "high",
+      "measurability": "system-table",
+      "coverage_mode": "complete",
+      "alias_group": "audit-logging",
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": {
+        "max_days_since_event": 2
+      },
+      "preconditions": []
+    },
+    "SCP-04-19": {
+      "pillar": "SCP",
+      "principle": "SCP-04",
+      "title": "Restrict workspace admins",
+      "provenance": "security-guide",
+      "severity": "medium",
+      "measurability": "rest-api",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "SCP-04-20": {
+      "pillar": "SCP",
+      "principle": "SCP-04",
+      "title": "Automatic cluster update",
+      "provenance": "security-guide",
+      "severity": "medium",
+      "measurability": "rest-api",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "SCP-04-21": {
+      "pillar": "SCP",
+      "principle": "SCP-04",
+      "title": "Disable legacy features for new workspaces",
+      "provenance": "security-guide",
+      "severity": "high",
+      "measurability": "rest-api",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "SCP-04-22": {
+      "pillar": "SCP",
+      "principle": "SCP-04",
+      "title": "Jobs run as service principal",
+      "provenance": "security-guide",
+      "severity": "medium",
+      "measurability": "rest-api",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "SCP-04-23": {
+      "pillar": "SCP",
+      "principle": "SCP-04",
+      "title": "Jobs not granting CAN_MANAGE to non-admin principals",
+      "provenance": "security-guide",
+      "severity": "high",
+      "measurability": "rest-api",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "SCP-05-01": {
+      "pillar": "SCP",
+      "principle": "SCP-05",
+      "title": "Global libraries",
+      "provenance": "security-guide",
+      "severity": "informational",
+      "measurability": "rest-api",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "SCP-05-02": {
+      "pillar": "SCP",
+      "principle": "SCP-05",
+      "title": "Global init script",
+      "provenance": "security-guide",
+      "severity": "informational",
+      "measurability": "rest-api",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "SCP-05-03": {
+      "pillar": "SCP",
+      "principle": "SCP-05",
+      "title": "Number of admins",
+      "provenance": "security-guide",
+      "severity": "informational",
+      "measurability": "rest-api",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "SCP-05-04": {
+      "pillar": "SCP",
+      "principle": "SCP-05",
+      "title": "Job view ACLs are set consistently",
+      "provenance": "security-guide",
+      "severity": "informational",
+      "measurability": "rest-api",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "SCP-05-05": {
+      "pillar": "SCP",
+      "principle": "SCP-05",
+      "title": "Cluster view ACLs are set consistently",
+      "provenance": "security-guide",
+      "severity": "informational",
+      "measurability": "rest-api",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "SCP-05-06": {
+      "pillar": "SCP",
+      "principle": "SCP-05",
+      "title": "Workspace View ACLs are set consistently",
+      "provenance": "security-guide",
+      "severity": "informational",
+      "measurability": "rest-api",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "SCP-05-07": {
+      "pillar": "SCP",
+      "principle": "SCP-05",
+      "title": "Workspace for supporting Git repos",
+      "provenance": "security-guide",
+      "severity": "informational",
+      "measurability": "rest-api",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "SCP-05-08": {
+      "pillar": "SCP",
+      "principle": "SCP-05",
+      "title": "Direct use of Unity Catalog metastore storage credentials",
+      "provenance": "security-guide",
+      "severity": "informational",
+      "measurability": "rest-api",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "SCP-05-09": {
+      "pillar": "SCP",
+      "principle": "SCP-05",
+      "title": "Users with Delta Sharing permissions to create a recipient or create a share",
+      "provenance": "security-guide",
+      "severity": "informational",
+      "measurability": "rest-api",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "SCP-05-10": {
+      "pillar": "SCP",
+      "principle": "SCP-05",
+      "title": "Streamline the usage and management of various large language model(LLM) providers",
+      "provenance": "security-guide",
+      "severity": "informational",
+      "measurability": "rest-api",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "SCP-05-11": {
+      "pillar": "SCP",
+      "principle": "SCP-05",
+      "title": "Compliance security profile for new workspaces",
+      "provenance": "security-guide",
+      "severity": "informational",
+      "measurability": "rest-api",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "SCP-05-12": {
+      "pillar": "SCP",
+      "principle": "SCP-05",
+      "title": "Third-party library control",
+      "provenance": "security-guide",
+      "severity": "informational",
+      "measurability": "rest-api",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "SCP-05-13": {
+      "pillar": "SCP",
+      "principle": "SCP-05",
+      "title": "Compliance security profile for the workspace",
+      "provenance": "security-guide",
+      "severity": "informational",
+      "measurability": "rest-api",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "SCP-05-14": {
+      "pillar": "SCP",
+      "principle": "SCP-05",
+      "title": "Enhanced security monitoring for the workspace",
+      "provenance": "security-guide",
+      "severity": "informational",
+      "measurability": "rest-api",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    },
+    "SCP-05-15": {
+      "pillar": "SCP",
+      "principle": "SCP-05",
+      "title": "Git repository allowlist configured",
+      "provenance": "security-guide",
+      "severity": "informational",
+      "measurability": "rest-api",
+      "coverage_mode": "complete",
+      "alias_group": null,
+      "clouds": [
+        "aws",
+        "azure",
+        "gcp"
+      ],
+      "thresholds": null,
+      "preconditions": []
+    }
+  }
+}

@@ -1,5 +1,34 @@
-*conf*.json
+node_modules/
+*.log
+npm-debug.log*
 .DS_Store
-__pycache__
-.idea/
 .env
+.env.*
+!.env.example
+coverage/
+.nyc_output/
+*.tsbuildinfo
+.vite/
+
+# Python bytecode and generated local artefacts.
+__pycache__/
+*.pyc
+.cache/
+tmp/
+sbom.json
+sbom.spdx.json
+
+# Optional locally vendored Databricks skills.
+app/vendor/skills/
+
+# Local exploratory output.
+spikes/**/results/
+
+# Local probing helpers for a developer's own workspace.
+/scripts/
+
+# Screenshots and scratch files from local review passes.
+.tmp*
+
+# Local editor state.
+.isaac/

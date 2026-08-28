@@ -1,0 +1,55 @@
+name: Dependency advisories
+
+# The one security job that runs before a merge, and only on the diffs that can change its answer.
+#
+# `security.yml` deliberately keeps its three assessing jobs off pull requests — five billed Actions
+# minutes per push against a 2,000-minute allowance, its header has the arithmetic — and accepts that
+# `main` turns red when a finding lands. That trade cost a day: three high-severity advisories sat in
+# the production tree while every merge also produced an expected `Branch guard` failure, so the red
+# was indistinguishable from routine. ADR 0096 has the account, row `102` filed it.
+#
+# So this is the narrowest possible restoration of the pre-merge gate. Not the suite — one step, the
+# cheapest of the three jobs, gated at the workflow level on the two files that can change what
+# `npm audit` says. A pull request that touches neither does not start this workflow at all, which is
+# why the filter is here rather than an `if:` on the job: a job skipped by a condition still bills a
+# runner minute, and a workflow that never triggers bills nothing.
+#
+# Why the manifest as well as the lockfile: an `overrides` edit that npm has not yet resolved changes
+# the answer, and that is exactly the change this exists to catch.
+
+on:
+  pull_request:
+    paths:
+      - app/package.json
+      - app/package-lock.json
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dependency-advisories-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  production-advisories:
+    name: The production tree carries no high advisory
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - run: npm ci
+
+      # The same command `security.yml` gates on, so the two cannot disagree about what passes. The
+      # production tree is held at zero by the overrides block, and ADR 0096 records that a pinned
+      # override expires when an advisory's fixed line moves — which is the failure this catches.
+      - name: npm audit (production — blocking)
+        run: npm audit --omit=dev --audit-level=high

@@ -1,0 +1,274 @@
+{
+  "recordedAt": "2026-08-11T01:53:47.449Z",
+  "profile": "labs",
+  "lookbackDays": 30,
+  "statements": 11763,
+  "clients": [
+    {
+      "app": "unknown",
+      "statements": 8715,
+      "shapes": 46
+    },
+    {
+      "app": "@databricks",
+      "statements": 1635,
+      "shapes": 20
+    },
+    {
+      "app": "Databricks CLI",
+      "statements": 686,
+      "shapes": 321
+    },
+    {
+      "app": "node",
+      "statements": 317,
+      "shapes": 116
+    },
+    {
+      "app": "cli",
+      "statements": 286,
+      "shapes": 169
+    },
+    {
+      "app": "Databricks SQL Dashboard",
+      "statements": 48,
+      "shapes": 19
+    },
+    {
+      "app": "Databricks Jobs",
+      "statements": 24,
+      "shapes": 6
+    },
+    {
+      "app": "Databricks SQL Genie Space",
+      "statements": 16,
+      "shapes": 13
+    },
+    {
+      "app": "Databricks Catalog Explorer",
+      "statements": 15,
+      "shapes": 9
+    },
+    {
+      "app": "curl",
+      "statements": 12,
+      "shapes": 9
+    },
+    {
+      "app": "Python-urllib",
+      "statements": 9,
+      "shapes": 9
+    }
+  ],
+  "shapes": {
+    "shipped": 719,
+    "before36s": 748,
+    "standalone_digits": 731
+  },
+  "exercised": {
+    "standalone_digits": 421
+  },
+  "apostropheInALineComment": 22,
+  "splitByStandaloneDigits": [
+    {
+      "app": "unknown",
+      "narrowerShapes": 13,
+      "shippedShape": "create table main.lakeload._lakeload_permission_check_N using delta as select N as permission_ch"
+    }
+  ],
+  "fixtures": {
+    "normalised": {
+      "plain": "select a from t where x = N",
+      "plain-upper-and-spaced": "select a from t where x = N",
+      "plain-other-number": "select a from t where x = N",
+      "plain-wide-number": "select a from t where x = N",
+      "other-statement": "delete from t where x = N",
+      "table-one": "select a from tN",
+      "table-two": "select a from tN",
+      "literal-short": "select a from t where s = S",
+      "literal-long": "select a from t where s = S",
+      "literal-escaped-quote": "select a from t where s = S",
+      "commented": "select a from t where x = N",
+      "block-commented": "select a from t where x = N",
+      "apostrophe-comment-a": "select a from t where s = S",
+      "apostrophe-comment-b": "select zzz from qqq where s = S",
+      "typed-literal": "select a from t where d = S",
+      "untyped-literal": "select a from t where d = S",
+      "quoted-ident": "select a from t",
+      "bare-ident": "select a from t",
+      "in-list-two": "select a from t where x in (S)",
+      "in-list-three": "select a from t where x in (S)",
+      "in-list-strings-two": "select a from t where s in (S)",
+      "in-list-strings-five": "select a from t where s in (S)",
+      "literal-with-dashes": "select a from t where s = S",
+      "quoted-ident-dashes-b": "select a--b from t",
+      "quoted-ident-dashes-c": "select a--c from t",
+      "comment-hugging-a-token": "select a from t where x = N",
+      "comment-hugging-an-identifier": "select a from t--why",
+      "block-comment-multiline": "select a from t where x = N",
+      "comment-only-trailing": "select a from t where x = N"
+    },
+    "relations": [
+      {
+        "left": "plain",
+        "right": "plain-upper-and-spaced",
+        "want": "same",
+        "held": true,
+        "mode": "case and whitespace",
+        "is": "same"
+      },
+      {
+        "left": "plain",
+        "right": "plain-other-number",
+        "want": "same",
+        "held": true,
+        "mode": "standalone digits",
+        "is": "same"
+      },
+      {
+        "left": "plain",
+        "right": "plain-wide-number",
+        "want": "same",
+        "held": true,
+        "mode": "standalone digits, any width",
+        "is": "same"
+      },
+      {
+        "left": "literal-short",
+        "right": "literal-long",
+        "want": "same",
+        "held": true,
+        "mode": "string literals",
+        "is": "same"
+      },
+      {
+        "left": "table-one",
+        "right": "table-two",
+        "want": "same",
+        "held": true,
+        "mode": "digits inside identifiers",
+        "is": "same"
+      },
+      {
+        "left": "plain",
+        "right": "other-statement",
+        "want": "different",
+        "held": true,
+        "mode": "the control: different SQL",
+        "is": "different"
+      },
+      {
+        "left": "in-list-two",
+        "right": "in-list-three",
+        "want": "same",
+        "held": true,
+        "mode": "IN lists of varying length",
+        "is": "same"
+      },
+      {
+        "left": "in-list-strings-two",
+        "right": "in-list-strings-five",
+        "want": "same",
+        "held": true,
+        "mode": "IN lists of varying length, of literals",
+        "is": "same"
+      },
+      {
+        "left": "quoted-ident",
+        "right": "bare-ident",
+        "want": "same",
+        "held": true,
+        "mode": "quoted identifiers",
+        "is": "same"
+      },
+      {
+        "left": "plain",
+        "right": "commented",
+        "want": "same",
+        "held": true,
+        "mode": "line comments",
+        "is": "same"
+      },
+      {
+        "left": "plain",
+        "right": "block-commented",
+        "want": "same",
+        "held": true,
+        "mode": "block comments",
+        "is": "same"
+      },
+      {
+        "left": "typed-literal",
+        "right": "untyped-literal",
+        "want": "same",
+        "held": true,
+        "mode": "typed literals",
+        "is": "same"
+      },
+      {
+        "left": "literal-short",
+        "right": "literal-escaped-quote",
+        "want": "same",
+        "held": true,
+        "mode": "escaped quote inside a literal",
+        "is": "same"
+      },
+      {
+        "left": "apostrophe-comment-a",
+        "right": "apostrophe-comment-b",
+        "want": "different",
+        "held": true,
+        "mode": "an apostrophe in a comment swallows the statement",
+        "is": "different"
+      },
+      {
+        "left": "literal-with-dashes",
+        "right": "literal-short",
+        "want": "same",
+        "held": true,
+        "mode": "a literal containing --",
+        "is": "same"
+      },
+      {
+        "left": "quoted-ident-dashes-b",
+        "right": "quoted-ident-dashes-c",
+        "want": "different",
+        "held": true,
+        "mode": "two identifiers that differ only after a --",
+        "is": "different"
+      },
+      {
+        "left": "comment-hugging-a-token",
+        "right": "plain",
+        "want": "same",
+        "held": true,
+        "mode": "a comment hugging a literal or a number",
+        "is": "same"
+      },
+      {
+        "left": "comment-hugging-an-identifier",
+        "right": "bare-ident",
+        "want": "same",
+        "held": false,
+        "mode": "a comment hugging an identifier",
+        "is": "different"
+      },
+      {
+        "left": "block-comment-multiline",
+        "right": "plain",
+        "want": "same",
+        "held": true,
+        "mode": "a block comment spanning lines",
+        "is": "same"
+      },
+      {
+        "left": "comment-only-trailing",
+        "right": "plain",
+        "want": "same",
+        "held": true,
+        "mode": "a comment after the statement",
+        "is": "same"
+      }
+    ]
+  }
+}

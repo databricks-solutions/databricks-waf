@@ -1,0 +1,209 @@
+{
+  "what": "Run-to-run variation in plan reach on an unchanged estate, for 33o's threshold question.",
+  "profile": "labs",
+  "host": "https://dbc-example.cloud.databricks.com",
+  "warehouse": "0123456789abcdef",
+  "lookbackDays": 15,
+  "shapeLimit": 40,
+  "takenAt": "2026-08-16T12:09:46.038Z",
+  "runsAsked": 9,
+  "runsHeld": 9,
+  "gapMs": 600000,
+  "limit": "These runs are minutes apart and a scan is weekly, so this is a lower bound on what a weekly alert would see. It can show a threshold is unsafe and cannot show one is safe.",
+  "spread": {
+    "shapes": {
+      "low": 40,
+      "high": 40,
+      "mean": 40,
+      "spreadOfMean": 0
+    },
+    "available": {
+      "low": 34,
+      "high": 34,
+      "mean": 34,
+      "spreadOfMean": 0
+    },
+    "withoutPlan": {
+      "low": 0,
+      "high": 0,
+      "mean": 0,
+      "spreadOfMean": null
+    },
+    "failed": {
+      "low": 0,
+      "high": 0,
+      "mean": 0,
+      "spreadOfMean": null
+    },
+    "asked": {
+      "low": 34,
+      "high": 34,
+      "mean": 34,
+      "spreadOfMean": 0
+    }
+  },
+  "readings": [
+    {
+      "at": "2026-08-16T10:45:32.200Z",
+      "sincePreviousMs": null,
+      "shapes": 40,
+      "available": 34,
+      "withoutPlan": 0,
+      "failed": 0,
+      "abandoned": 0,
+      "notRun": 0,
+      "asked": 34,
+      "skipped": {
+        "warehouse-outside-workspace": 5,
+        "not-warehouse-compute": 1
+      },
+      "warehousesKnown": true,
+      "shapesEntering": null,
+      "shapesLeaving": null
+    },
+    {
+      "at": "2026-08-16T10:56:00.166Z",
+      "sincePreviousMs": 627966,
+      "shapes": 40,
+      "available": 34,
+      "withoutPlan": 0,
+      "failed": 0,
+      "abandoned": 0,
+      "notRun": 0,
+      "asked": 34,
+      "skipped": {
+        "warehouse-outside-workspace": 5,
+        "not-warehouse-compute": 1
+      },
+      "warehousesKnown": true,
+      "shapesEntering": 0,
+      "shapesLeaving": 0
+    },
+    {
+      "at": "2026-08-16T11:06:26.095Z",
+      "sincePreviousMs": 625929,
+      "shapes": 40,
+      "available": 34,
+      "withoutPlan": 0,
+      "failed": 0,
+      "abandoned": 0,
+      "notRun": 0,
+      "asked": 34,
+      "skipped": {
+        "warehouse-outside-workspace": 5,
+        "not-warehouse-compute": 1
+      },
+      "warehousesKnown": true,
+      "shapesEntering": 0,
+      "shapesLeaving": 0
+    },
+    {
+      "at": "2026-08-16T11:16:51.845Z",
+      "sincePreviousMs": 625750,
+      "shapes": 40,
+      "available": 34,
+      "withoutPlan": 0,
+      "failed": 0,
+      "abandoned": 0,
+      "notRun": 0,
+      "asked": 34,
+      "skipped": {
+        "warehouse-outside-workspace": 5,
+        "not-warehouse-compute": 1
+      },
+      "warehousesKnown": true,
+      "shapesEntering": 0,
+      "shapesLeaving": 0
+    },
+    {
+      "at": "2026-08-16T11:27:18.263Z",
+      "sincePreviousMs": 626418,
+      "shapes": 40,
+      "available": 34,
+      "withoutPlan": 0,
+      "failed": 0,
+      "abandoned": 0,
+      "notRun": 0,
+      "asked": 34,
+      "skipped": {
+        "warehouse-outside-workspace": 5,
+        "not-warehouse-compute": 1
+      },
+      "warehousesKnown": true,
+      "shapesEntering": 0,
+      "shapesLeaving": 0
+    },
+    {
+      "at": "2026-08-16T11:37:47.262Z",
+      "sincePreviousMs": 628999,
+      "shapes": 40,
+      "available": 34,
+      "withoutPlan": 0,
+      "failed": 0,
+      "abandoned": 0,
+      "notRun": 0,
+      "asked": 34,
+      "skipped": {
+        "warehouse-outside-workspace": 5,
+        "not-warehouse-compute": 1
+      },
+      "warehousesKnown": true,
+      "shapesEntering": 0,
+      "shapesLeaving": 0
+    },
+    {
+      "at": "2026-08-16T11:48:16.054Z",
+      "sincePreviousMs": 628792,
+      "shapes": 40,
+      "available": 34,
+      "withoutPlan": 0,
+      "failed": 0,
+      "abandoned": 0,
+      "notRun": 0,
+      "asked": 34,
+      "skipped": {
+        "warehouse-outside-workspace": 5,
+        "not-warehouse-compute": 1
+      },
+      "warehousesKnown": true,
+      "shapesEntering": 0,
+      "shapesLeaving": 0
+    },
+    {
+      "at": "2026-08-16T11:58:51.861Z",
+      "sincePreviousMs": 635807,
+      "shapes": 40,
+      "available": 34,
+      "withoutPlan": 0,
+      "failed": 0,
+      "abandoned": 0,
+      "notRun": 0,
+      "asked": 34,
+      "skipped": {
+        "warehouse-outside-workspace": 5,
+        "not-warehouse-compute": 1
+      },
+      "warehousesKnown": true,
+      "shapesEntering": 0,
+      "shapesLeaving": 0
+    },
+    {
+      "at": "2026-08-16T12:09:18.437Z",
+      "sincePreviousMs": 626576,
+      "shapes": 40,
+      "available": 34,
+      "withoutPlan": 0,
+      "failed": 0,
+      "abandoned": 0,
+      "notRun": 0,
+      "asked": 34,
+      "skipped": {
+        "warehouse-outside-workspace": 5,
+        "not-warehouse-compute": 1
+      },
+      "warehousesKnown": true,
+      "shapesEntering": 0,
+      "shapesLeaving": 0
+    }
+  ]
+}
