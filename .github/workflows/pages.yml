@@ -29,7 +29,7 @@ jobs:
       id-token: write
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/configure-pages@v5
+      - uses: actions/configure-pages@v6
         # The private staging repository's owner plan does not include Pages. Keep
         # validating the site there; enable publishing automatically in the public
         # databricks-solutions repository.
