@@ -25,6 +25,43 @@ Start with **Utilities → Diagnostics**. It distinguishes a warehouse reading, 
 
 Do not patch the App configuration by hand; the next DAB deployment would replace that untracked change.
 
+### `permission denied for schema waf` or `appkit`
+
+This is a Lakebase ownership error, not a SQL warehouse permission error. It means the bound database
+already contains a schema the current App service principal did not create and does not own. `waf` holds
+the durable application record; `appkit` holds AppKit's internal cache. A common cause is starting the
+server locally against the production database before the first DAB deployment, or reinstalling the App
+against a retained database without restoring its records through the recovery workflow.
+
+First inspect the schema without changing it:
+
+```bash
+databricks psql --project <project-id> --profile <profile> -- \
+  -d <postgres-database-name> \
+  -c "select nspname, pg_get_userbyid(nspowner) from pg_namespace where nspname in ('waf', 'appkit');"
+```
+
+If the records matter, stop and [back them up before recovery]({{ '/operations/#back-up-lakebase-records' | relative_url }}).
+Do not try to repair this with `CAN USE` on the warehouse or with DML grants: startup creates indexes, which
+requires ownership.
+
+For an intentionally empty installation only, the Lakebase project owner can remove the schema named in
+the error. Use only the applicable statement:
+
+```bash
+databricks psql --project <project-id> --profile <profile> -- \
+  -d <postgres-database-name> \
+  -c "DROP SCHEMA waf CASCADE;"       # when the error names waf
+
+databricks psql --project <project-id> --profile <profile> -- \
+  -d <postgres-database-name> \
+  -c "DROP SCHEMA appkit CASCADE;"    # when the error names appkit
+```
+
+This permanently deletes every WAF record in that database. The fallback page retries automatically; the
+current App service principal then recreates and owns the schema without a redeploy. For retained records,
+use the backup-and-restore workflow into a new database instead of dropping them.
+
 ## “The plans could not be read” or another page-level 502
 
 Open Diagnostics first. If Database is not answering, fix the Lakebase binding or deployment before retrying the page. If only one record family fails, capture the request time, selected assessment and page, then check App logs for the matching error. Include those details in a bug report, but remove customer data and credentials.

@@ -12,6 +12,7 @@ const INCOMPLETE_INSTALL = /ENOENT|no such file or directory|Cannot find (?:modu
 function explain(cause) {
 	const detail = cause instanceof Error ? cause.message : String(cause);
 	const lower = detail.toLowerCase();
+	const deniedSchema = /permission denied for schema ([a-z_][a-z0-9_]*)\b/i.exec(detail)?.[1];
 	if (INCOMPLETE_INSTALL.test(detail)) return {
 		kind: "app-incomplete",
 		summary: "This installation of the app is missing part of itself.",
@@ -22,6 +23,12 @@ function explain(cause) {
 		kind: "no-assessor-group",
 		summary: "This app does not know who is allowed to change an assessment.",
 		action: "Set `assessor_group` in databricks.yml to the name of a Databricks group in this workspace, then redeploy. Its members may start scans, answer the requirements only a person can answer, and accept or defer a risk; everyone else can still read everything. The group has to hold its members directly, because a group nested inside another is not reported as a membership. Unlike a missing resource, this one is not fixable from the workspace UI and the retry below will not clear it.",
+		detail
+	};
+	if (deniedSchema != null || /permission denied for (?:table|sequence)\b/i.test(detail) || /must be owner of (?:table|sequence)\b/i.test(detail)) return {
+		kind: "database-schema",
+		summary: "The App schema belongs to a different database identity.",
+		action: `The bound Lakebase database already contains the App schema, but this App service principal does not own it. If those records matter, stop and back them up before changing the schema. If this is intentionally an empty install, have the Lakebase project owner remove ${deniedSchema == null ? "the affected App schema" : `only the \`${deniedSchema}\` schema`}; this page will retry and the current App service principal will recreate it. Granting CAN USE on the SQL warehouse will not fix this database ownership error.`,
 		detail
 	};
 	if (lower.includes("lakebase") || lower.includes("postgres")) return {

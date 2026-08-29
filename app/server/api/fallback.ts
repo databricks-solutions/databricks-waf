@@ -34,6 +34,7 @@ export interface FallbackOptions {
 export type FailureKind =
   | 'no-warehouse'
   | 'no-database'
+  | 'database-schema'
   | 'no-assessor-group'
   | 'permission'
   | 'app-incomplete'
@@ -60,6 +61,7 @@ const INCOMPLETE_INSTALL =
 export function explain(cause: unknown): Explanation {
   const detail = cause instanceof Error ? cause.message : String(cause);
   const lower = detail.toLowerCase();
+  const deniedSchema = /permission denied for schema ([a-z_][a-z0-9_]*)\b/i.exec(detail)?.[1];
 
   if (INCOMPLETE_INSTALL.test(detail)) {
     return {
@@ -93,6 +95,35 @@ export function explain(cause: unknown): Explanation {
         'risk; everyone else can still read everything. The group has to hold its members directly, because a ' +
         'group nested inside another is not reported as a membership. Unlike a missing resource, this one is not ' +
         'fixable from the workspace UI and the retry below will not clear it.',
+      detail,
+    };
+  }
+
+  /*
+   * A bound database can still contain a schema or table owned by another identity. PostgreSQL's
+   * real error is only "permission denied for schema waf"; it does not contain "postgres" or
+   * "lakebase". Matching only those product names sent the reader to grant CAN USE on a warehouse
+   * that was already bound correctly, while the app kept failing on the database.
+   *
+   * Table and sequence forms are the same ownership fault one statement later. The app creates
+   * indexes during startup, so DML grants alone cannot repair them: its service principal must own
+   * the App schema and the objects inside it.
+   */
+  if (
+    deniedSchema != null ||
+    /permission denied for (?:table|sequence)\b/i.test(detail) ||
+    /must be owner of (?:table|sequence)\b/i.test(detail)
+  ) {
+    const object = deniedSchema == null ? 'the affected App schema' : `only the \`${deniedSchema}\` schema`;
+    return {
+      kind: 'database-schema',
+      summary: 'The App schema belongs to a different database identity.',
+      action:
+        'The bound Lakebase database already contains the App schema, but this App service principal does not own ' +
+        'it. If those records matter, stop and back them up before changing the schema. If this is intentionally ' +
+        `an empty install, have the Lakebase project owner remove ${object}; this page will retry and ` +
+        'the current App service principal will recreate it. Granting CAN USE on the SQL warehouse will not fix ' +
+        'this database ownership error.',
       detail,
     };
   }

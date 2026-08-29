@@ -58,6 +58,33 @@ databricks apps logs databricks-waf-assessment --profile &lt;profile&gt;
 </li>
 </ol>
 <p>Do not patch the App configuration by hand; the next DAB deployment would replace that untracked change.</p>
+<h3 id="permission-denied-for-schema-waf-or-appkit"><code>permission denied for schema waf</code> or <code>appkit</code></h3>
+<p>This is a Lakebase ownership error, not a SQL warehouse permission error. It means the bound database
+already contains a schema the current App service principal did not create and does not own. <code>waf</code> holds
+the durable application record; <code>appkit</code> holds AppKit&#39;s internal cache. A common cause is starting the
+server locally against the production database before the first DAB deployment, or reinstalling the App
+against a retained database without restoring its records through the recovery workflow.</p>
+<p>First inspect the schema without changing it:</p>
+<pre><code class="language-bash">databricks psql --project &lt;project-id&gt; --profile &lt;profile&gt; -- \
+  -d &lt;postgres-database-name&gt; \
+  -c &quot;select nspname, pg_get_userbyid(nspowner) from pg_namespace where nspname in (&#39;waf&#39;, &#39;appkit&#39;);&quot;
+</code></pre>
+<p>If the records matter, stop and <a href="/databricks-waf/operations/#back-up-lakebase-records">back them up before recovery</a>.
+Do not try to repair this with <code>CAN USE</code> on the warehouse or with DML grants: startup creates indexes, which
+requires ownership.</p>
+<p>For an intentionally empty installation only, the Lakebase project owner can remove the schema named in
+the error. Use only the applicable statement:</p>
+<pre><code class="language-bash">databricks psql --project &lt;project-id&gt; --profile &lt;profile&gt; -- \
+  -d &lt;postgres-database-name&gt; \
+  -c &quot;DROP SCHEMA waf CASCADE;&quot;       # when the error names waf
+
+databricks psql --project &lt;project-id&gt; --profile &lt;profile&gt; -- \
+  -d &lt;postgres-database-name&gt; \
+  -c &quot;DROP SCHEMA appkit CASCADE;&quot;    # when the error names appkit
+</code></pre>
+<p>This permanently deletes every WAF record in that database. The fallback page retries automatically; the
+current App service principal then recreates and owns the schema without a redeploy. For retained records,
+use the backup-and-restore workflow into a new database instead of dropping them.</p>
 <h2 id="the-plans-could-not-be-read-or-another-page-level-502">“The plans could not be read” or another page-level 502</h2>
 <p>Open Diagnostics first. If Database is not answering, fix the Lakebase binding or deployment before retrying the page. If only one record family fails, capture the request time, selected assessment and page, then check App logs for the matching error. Include those details in a bug report, but remove customer data and credentials.</p>
 <h2 id="a-collector-returned-nothing-or-was-refused">A collector returned nothing or was refused</h2>

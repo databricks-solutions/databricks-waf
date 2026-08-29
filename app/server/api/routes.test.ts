@@ -1581,14 +1581,33 @@ describe('when the app cannot start', () => {
   });
 
   it('reads a database permission failure as the database, not as the warehouse', () => {
-    // Both words are in this message, and the order of the branches is what decides which
-    // instruction an admin gets. Matching `permission` first would send somebody to grant CAN USE
-    // on a warehouse that is bound and working, and the app would still not start.
-    const { kind, action } = explain(new Error('permission denied for schema waf (postgres role lacks CREATE)'));
+    // This is the exact message PostgreSQL sends. It contains neither "postgres" nor "lakebase",
+    // which is why a fixture that appended those words let production fall through to the generic
+    // permission branch and sent somebody to a warehouse that was already bound and working.
+    const { kind, summary, action } = explain(new Error('permission denied for schema waf'));
 
-    expect(kind).toBe('no-database');
-    expect(action).toContain('creates its own schema');
-    expect(action).not.toContain('SQL warehouse resource');
+    expect(kind).toBe('database-schema');
+    expect(summary).toContain('schema belongs to a different');
+    expect(action).toContain('remove only the `waf` schema');
+    expect(action).toContain('back them up');
+    expect(action).toContain('will not fix');
+    expect(action).not.toContain('Grant the app service principal CAN USE');
+  });
+
+  it('keeps a table-ownership refusal on the same Lakebase recovery path', () => {
+    const { kind, action } = explain(new Error('must be owner of table scans'));
+
+    expect(kind).toBe('database-schema');
+    expect(action).toContain('Lakebase');
+    expect(action).toContain('the affected App schema');
+  });
+
+  it('names AppKit’s own schema when that is the object with the wrong owner', () => {
+    const { kind, action } = explain(new Error('permission denied for schema appkit'));
+
+    expect(kind).toBe('database-schema');
+    expect(action).toContain('only the `appkit` schema');
+    expect(action).not.toContain('`waf`');
   });
 
   it('separates a broken package from a misconfigured workspace, and does not send the admin to a form', () => {
