@@ -74,6 +74,13 @@ The same evidence, coverage, action, and verification model applies across all s
 
 ## Get started
 
+> **Two ways to deploy.** The Databricks Asset Bundle steps below are the supported route, run from a
+> laptop or a workspace web terminal. To stay inside the workspace instead, **deploy with Genie Code**:
+> give Genie Code the link to this repository (`https://github.com/databricks-solutions/databricks-waf`)
+> and ask it to deploy the app into your workspace, and it runs the deployment for you from a notebook by
+> following the [Deploy with Genie Code guide](https://databricks-solutions.github.io/databricks-waf/deploy-with-genie-code/).
+> That path needs a cluster with shell access and internet egress.
+
 ### 1. Check the prerequisites
 
 You need:
