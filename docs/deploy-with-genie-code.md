@@ -9,12 +9,15 @@ eyebrow: Get started
 
 This page is written for Genie Code as the agent doing the work. Point Genie Code at this repository
 and ask it to deploy the Well-Architected Framework assessment app into the workspace you are in. You
-work out the mechanics; this page gives you the objective, the few facts about this app you cannot
-infer, and a self-check so you can confirm you actually succeeded.
+work out the mechanics; this page gives you the objective, the facts specific to this app, and a
+self-check so you can confirm you actually succeeded.
+
+This in-workspace route is a convenience; the reviewed, supported path is
+[Install the App]({{ '/install/' | relative_url }}).
 
 A person kicks it off with something like:
 
-> Open a notebook attached to a cluster that allows `%sh`, then tell Genie Code:
+> Open a notebook attached to a cluster you can run shell commands on, then tell Genie Code:
 > *"Deploy the WAF assessment app into this workspace by following the Deploy with Genie Code guide.
 > Work out the steps, then run the guide's verification and tell me the verdict."*
 
@@ -24,31 +27,18 @@ Deploy the app as a Databricks App in this workspace and leave it running and co
 "Done" is not "the commands ran"; it is every check in [Verify your work](#verify-your-work) passing.
 Verify at the end and report the verdict.
 
-## What you can and cannot do from a notebook
-
-Genie Code runs code inside the workspace. The deploy itself uses Node and the Databricks CLI
-(`npm run lifecycle`), and the CLI does not run in an ordinary notebook cell, so run those parts from
-a shell you control: a `%sh` cell on a cluster that allows shell access, or a workspace web terminal.
-Discovery and verification, by contrast, run cleanly in a Python cell through the Databricks SDK.
-
-This in-workspace route is a convenience, not the documented supported path. The supported path runs
-from a laptop or a web terminal and is [Install the App]({{ '/install/' | relative_url }}). If the
-cluster blocks shell access or the internet, use that instead.
-
 ## Confirm before you start
 
 - **Databricks Apps enabled** in the workspace.
-- **A `%sh`-capable cluster with outbound internet** if you deploy from a notebook. `%sh` is not
-  available on serverless notebooks and runs unprivileged on shared clusters, so use a dedicated
-  (single-user) cluster. The shell needs to reach the npm registry and the Node and Databricks CLI
-  installers.
+- **A cluster you can run shell commands on, with outbound internet** if you deploy from a notebook.
+  A dedicated (single-user) cluster is the simplest choice. The shell needs to reach the npm registry
+  and the Node and Databricks CLI installers.
 - **The identity running the notebook can** create a Lakebase project, use a SQL warehouse, and
   deploy Apps and jobs. Every command acts as that identity.
 
 ## Work out the deployment
 
-You decide the exact commands. Reach the objective using these facts, which are specific to this app
-and which you cannot guess:
+You decide the exact commands. Reach the objective using these facts, which are specific to this app:
 
 - **Tooling.** The deploy needs Node.js 22+ and Databricks CLI 0.292.0+ in whatever shell you use.
   Install them if they are missing.
