@@ -1,6 +1,6 @@
 {
-  "version": 19,
-  "fingerprint": "sha256:6b6d0e6b5f854829539d19fbe2808bd0799ed07e594bc6024ad5b89827a466a0",
+  "version": 20,
+  "fingerprint": "sha256:d955c6bcfab3d41a28d4f9a74b991b59fc5f79efbb1a41c68617c198b5da1a10",
   "scored_units": 165,
   "controls": {
     "CO-01-01": {
@@ -2798,7 +2798,7 @@
       "title": "Managed tables in DBFS root",
       "provenance": "security-guide",
       "severity": "low",
-      "measurability": "rest-api",
+      "measurability": "system-table",
       "coverage_mode": "complete",
       "alias_group": null,
       "clouds": [
@@ -3106,7 +3106,7 @@
       "title": "Jobs run as service principal",
       "provenance": "security-guide",
       "severity": "medium",
-      "measurability": "rest-api",
+      "measurability": "system-table",
       "coverage_mode": "complete",
       "alias_group": null,
       "clouds": [
@@ -3114,7 +3114,10 @@
         "azure",
         "gcp"
       ],
-      "thresholds": null,
+      "thresholds": {
+        "pass_share": 1,
+        "partial_share": 0.8
+      },
       "preconditions": []
     },
     "SCP-04-23": {

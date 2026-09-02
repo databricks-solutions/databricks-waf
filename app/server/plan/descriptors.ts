@@ -199,6 +199,8 @@ const SQL_OBSERVES: Readonly<Record<string, string>> = {
     'Which workspaces are producing audit records, and how recently, since a workspace absent from the audit log is unmonitored rather than quiet.',
   'sql:security.auth_login_paths':
     'How people authenticated in the window: local username-and-password logins against SSO and OAuth, from the audit log.',
+  'sql:security.dbfs_tables':
+    'How many Unity Catalog managed tables in the metastore have their data stored on DBFS root rather than in a governed cloud location, where file-level access control does not apply.',
   'sql:uc.census': 'The metastore’s tables counted by format, ownership and whether they carry a description.',
   'sql:uc.schema_census':
     'The same census per schema, largest first, so a gap can be located rather than only counted.',

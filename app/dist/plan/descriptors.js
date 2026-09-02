@@ -74,6 +74,7 @@ const SQL_OBSERVES = {
 	"sql:jobs.inventory": "Every job, with the compute it runs on, its schedule and its retry settings.",
 	"sql:governance.audit_coverage": "Which workspaces are producing audit records, and how recently, since a workspace absent from the audit log is unmonitored rather than quiet.",
 	"sql:security.auth_login_paths": "How people authenticated in the window: local username-and-password logins against SSO and OAuth, from the audit log.",
+	"sql:security.dbfs_tables": "How many Unity Catalog managed tables in the metastore have their data stored on DBFS root rather than in a governed cloud location, where file-level access control does not apply.",
 	"sql:uc.census": "The metastore’s tables counted by format, ownership and whether they carry a description.",
 	"sql:uc.schema_census": "The same census per schema, largest first, so a gap can be located rather than only counted.",
 	"sql:uc.platform_census": "The rest of the metastore: what is shared and with whom, which external systems are federated in, and where masks, filters and tags are actually used.",

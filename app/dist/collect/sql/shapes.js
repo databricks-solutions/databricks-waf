@@ -778,6 +778,13 @@ const parse = {
 			waitingAtCapacity: count(row, "waiting_at_capacity"),
 			totalWaitMs: count(row, "total_wait_ms")
 		};
+	},
+	dbfsTableAudit: (rows) => {
+		const row = rows[0] ?? {};
+		return {
+			totalManagedTables: count(row, "total_managed_tables"),
+			dbfsRootTables: count(row, "dbfs_root_tables")
+		};
 	}
 };
 /**

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Collect the security evidence no Databricks App is allowed to read.
 
-Fifty-five security requirements in this catalogue name one of 33 control-plane endpoints that an
+Fifty-three security requirements in this catalogue name one of 33 control-plane endpoints that an
 app install cannot reach. Not through neglect: ADR 0016 probed all 56 scopes the workspace OAuth
 server publishes against the Apps scope registry, and the scopes these endpoints demand are
 either refused by name or belong to the account plane, which no workspace token reaches at all.
@@ -535,34 +535,6 @@ WORKSPACE_PROBES: tuple[Probe, ...] = (
         # How many admins, not who they are. The requirement is a count against a threshold, and
         # a list of names would be an export of the workspace's directory.
         fields=("Resources[].id", "Resources[].displayName", "Resources[].members:count"),
-    ),
-    Probe(
-        signals=("rest:workspace:jobs.list",),
-        tier="workspace",
-        label="jobs",
-        what="The workspace jobs",
-        path="/api/2.1/jobs/list",
-        query=(("limit", "100"), ("expand_tasks", "false")),
-        controls=("SCP-04-22",),
-        fields=(
-            "jobs[].job_id",
-            "jobs[].settings.name",
-            "jobs[].run_as_user_name",
-            "jobs[].settings.run_as.user_name",
-            "jobs[].settings.run_as.service_principal_name",
-        ),
-    ),
-    Probe(
-        signals=("rest:workspace:dbfs.list",),
-        tier="workspace",
-        label="hive-warehouse",
-        what="The DBFS root managed table directory",
-        path="/api/2.0/dbfs/list",
-        query=(("path", "/user/hive/warehouse"),),
-        controls=("SCP-04-05",),
-        # Directory names and sizes at one level. Never a file's contents: this script does not
-        # call `dbfs/read`.
-        fields=("files[].path", "files[].is_dir", "files[].file_size"),
     ),
     Probe(
         signals=("rest:workspace:unity-catalog.metastores",),

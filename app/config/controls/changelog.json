@@ -258,5 +258,30 @@
         ]
       }
     ]
+  },
+  {
+    "version": 20,
+    "fingerprint": "sha256:d955c6bcfab3d41a28d4f9a74b991b59fc5f79efbb1a41c68617c198b5da1a10",
+    "recordedAt": "2026-09-02",
+    "scored_units": 165,
+    "describes": true,
+    "added": [],
+    "removed": [],
+    "renamed": [],
+    "changed": [
+      {
+        "id": "SCP-04-05",
+        "fields": [
+          "measurability"
+        ]
+      },
+      {
+        "id": "SCP-04-22",
+        "fields": [
+          "measurability",
+          "thresholds"
+        ]
+      }
+    ]
   }
 ]

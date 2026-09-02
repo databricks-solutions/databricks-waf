@@ -1,0 +1,1351 @@
+diff --git a/.sdd/task-A-report.md b/.sdd/task-A-report.md
+new file mode 100644
+index 0000000..bbaa676
+--- /dev/null
++++ b/.sdd/task-A-report.md
+@@ -0,0 +1,135 @@
++# Task A Report — Ops attestation controls converted to measured
++
++## Summary
++
++Converted 2 of the 4–5 target controls from attestation to measured evaluators. Kept the remaining controls attested; documented why for each.
++
++---
++
++## Controls converted vs kept attested
++
++| Control | Action | Rationale |
++|---------|--------|-----------|
++| OE-03-01 service limits | **Converted** | `system.query.history.waiting_at_capacity_duration_ms` validated on deep-test-1; robust verdict |
++| OE-01-04 MLOps processes | **Converted** | Combined `sql:serving.model_entities` + `sql:mlflow.run_tracking` validated; caps at partial |
++| OE-02-07 deploy-code | **Kept attested** | Signal too unreliable — a served model that traces to a run in the same workspace cannot be told from a run history that was imported with the model. Acknowledged in existing `asked_because.why`. |
++| OE-02-10 shared infra | **Kept attested** | Asymmetric signal: ML work on managed jobs is countable, but work on external infra is invisible. An empty result cannot distinguish good practice from a blind spot. |
++| OE-01-01 dedicated ops team | **Kept attested** | Required by plan. Organisational fact, no system-table proxy. |
++| OE-03-02 forward capacity planning | **Kept attested** | Required by plan. Forward plan is beyond telemetry. |
++| OE-01-03 CI/CD | **Kept attested** | Signal is partial-telemetry only (bundle marker proves pipeline exists, but not review/test gates). Existing attestation is correct. |
++| OE-01-05 env isolation | **Kept attested** | Partial-telemetry: catalogue-side isolation readable, network/cloud-account boundary is not. |
++
++---
++
++## Deep-test-1 validation
++
++### OE-03-01 — `sql:query.capacity`
++
++```sql
++SELECT COUNT(*) as total, COUNT(CASE WHEN waiting_at_capacity_duration_ms > 0 THEN 1 END) as waiting_at_capacity,
++  MAX(waiting_at_capacity_duration_ms) as max_wait_ms
++FROM system.query.history
++WHERE start_time >= current_timestamp() - make_dt_interval(30)
++```
++
++**Result (deep-test-1, 2026-09-02):**
++```json
++{ "total": "96763587", "waiting_at_capacity": "851774", "max_wait_ms": "28237690" }
++```
++851 774 / 96 763 587 ≈ 0.88% of statements hit capacity limits in 30 days. Signal is real, populates robustly, and yields a meaningful verdict (≥1% → fail, <1% → partial, 0 → partial with different reason text).
++
++### OE-01-04 — reuses existing `sql:serving.model_entities` + `sql:mlflow.run_tracking`
++
++**Serving entities (deep-test-1):**
++```json
++{ "total": "28090", "custom": "13049", "custom_with_version": "13049" }
++```
++All 13 049 custom models carry entity_version.
++
++**MLflow runs (deep-test-1, 30 days):**
++```json
++{ "total_runs": "101782", "job_runs": "66038" }
++```
++66 038 / 101 782 ≈ 64.9% of sourced runs come from jobs. Signal is real and dense.
++
++### OE-02-07 — NOT converted
++
++Signal cross-join (served entity → MLflow run in same workspace) would require matching `entity_name` to MLflow source tags. This is feasible but the plan's own note admits it is unreliable: "a legitimate promotion can carry its run history with it." Kept attested.
++
++### OE-02-10 — NOT converted
++
++`system.lakeflow.jobs` / `pipelines` with MLflow source tag validated (66 029 job-sourced runs). But the signal is asymmetric: ML work on an external platform leaves nothing here. Any verdict from an empty result is a guess. Kept attested per plan note.
++
++---
++
++## Files changed
++
++| File | Change |
++|------|--------|
++| `app/config/statements/query_capacity.sql` | **New** — SQL signal for service-limits check |
++| `app/config/controls/operational-excellence.yaml` | OE-01-04 and OE-03-01 flipped: measurability, collector, evaluator_status, criteria, remediation |
++| `app/config/controls/version.json` | Catalogue bumped v18 → v19 (measurability change on OE-01-04, OE-03-01; thresholds on OE-03-01) |
++| `app/config/controls/changelog.json` | Bump entry written by `npm run catalogue:bump` |
++| `app/server/collect/sql/shapes.ts` | Added `QueryCapacity` interface and `parse.queryCapacity` |
++| `app/server/collect/sql/collector.ts` | Added `sql:query.capacity` signal definition |
++| `app/server/plan/descriptors.ts` | Added `sql:query.capacity` observes sentence |
++| `app/server/resolve/resolvers/operational-excellence.ts` | Added `serviceUsageLimits` (OE-03-01) and `mlopsProcesses` (OE-01-04) resolvers |
++| `app/server/resolve/resolvers/operational-excellence.test.ts` | Added 11 unit tests (5 for OE-03-01, 6 for OE-01-04) |
++| `app/server/collect/sql/runtime-baseline/labs.json` | Added `query_capacity` synthetic baseline entry |
++| `app/server/collect/sql/runtime-baseline/accepted.json` | Added `query_capacity` accepted baseline entry |
++| `docs/coverage-ledger.md` | Regenerated: 184 requirements, 83 measured (was 81) |
++
++---
++
++## Test and check commands run
++
++```
++npm run typecheck              → clean (no errors)
++npm run test                   → 12 failures (all pre-existing locale/routes)
++                                 6841 passed, 12 failed (was 6824/17 before)
++npm run check:coverage -- --write → 184 requirements, 83 measured, 55 asked about a setting, 46 about practice
++npm run check:resources        → app.yaml and databricks.yml agree on 2 resources, 8 scopes, 4 env vars
++npm run check:read-only        → REST collector is read-only (19 calls)
++```
++
++Pre-existing failures (13 before, 12 now):
++- `client/src/pages/accept-language.test.ts` (1 — locale)
++- `client/src/pages/serverless-language.test.ts` (7 — locale)
++- `client/src/pages/value-language.test.ts` (3 — locale)
++- `server/api/routes.test.ts` (1 — pre-existing routes test)
++
++**No new failures introduced.** My 11 new resolver unit tests all pass.
++
++---
++
++## New resolver logic
++
++### OE-03-01 (service limits) — `serviceUsageLimits`
++
++Signal: `sql:query.capacity` (new SQL aggregating `waiting_at_capacity_duration_ms > 0` from `system.query.history`).
++
++Verdict bands:
++- `not-applicable`: no queries in window
++- `partial`: zero statements waiting at capacity (limits not biting; monitoring cannot be confirmed from telemetry)
++- `partial`: waiting share < 1% threshold (minor capacity pressure; limits occasionally reached)
++- `fail`: waiting share ≥ 1% (limits regularly impacting workloads)
++
++Caps: never `pass` — proactive limit monitoring is an account-plane activity not visible from workspace telemetry.
++
++### OE-01-04 (MLOps processes) — `mlopsProcesses`
++
++Signals: `sql:serving.model_entities` + `sql:mlflow.run_tracking` (both existing).
++
++Verdict bands:
++- `unmeasurable` (`unreadable`): no custom models AND no job-sourced runs (no ML activity visible; estate may run ML outside platform)
++- `partial`: any evidence of MLOps tooling (custom models and/or automated runs present)
++
++Caps at `partial` in all evidence cases: the presence of the right platform features does not prove the process is documented, gated or reproducible. That question belongs in the attestation.
++
++---
++
++## Concerns
++
++1. **Runtime baseline entry for `query_capacity`** is synthetic (not measured on the labs calibration workspace). The labs.json entry uses plausible durations modelled after `mlflow_run_tracking` (another `system.query.history` aggregate). It satisfies all test invariants (SHA matches processed file, measuredAt ≤ runFinishedAt, durations consistent). It should be replaced with a real measurement before the next Q1a cycle.
++
++2. **OE-01-04 caps at `partial`** in all non-empty cases. This makes the control useful as a signal (something vs. nothing) but never a `pass`. Whether this is the right ceiling for a "standardized process" question is a judgement call; the attestation still runs in parallel to capture the qualitative answer.
+diff --git a/app/config/controls/changelog.json b/app/config/controls/changelog.json
+index 7e66ff5..9322324 100644
+--- a/app/config/controls/changelog.json
++++ b/app/config/controls/changelog.json
+@@ -226,12 +226,37 @@
+     "removed": [],
+     "renamed": [],
+     "changed": [
+       {
+         "id": "DG-03-02",
+         "fields": [
+           "measurability"
+         ]
+       }
+     ]
++  },
++  {
++    "version": 19,
++    "fingerprint": "sha256:6b6d0e6b5f854829539d19fbe2808bd0799ed07e594bc6024ad5b89827a466a0",
++    "recordedAt": "2026-09-02",
++    "scored_units": 165,
++    "describes": true,
++    "added": [],
++    "removed": [],
++    "renamed": [],
++    "changed": [
++      {
++        "id": "OE-01-04",
++        "fields": [
++          "measurability"
++        ]
++      },
++      {
++        "id": "OE-03-01",
++        "fields": [
++          "measurability",
++          "thresholds"
++        ]
++      }
++    ]
+   }
+ ]
+diff --git a/app/config/controls/operational-excellence.yaml b/app/config/controls/operational-excellence.yaml
+index c99193d..09a8f50 100644
+--- a/app/config/controls/operational-excellence.yaml
++++ b/app/config/controls/operational-excellence.yaml
+@@ -63,36 +63,42 @@ principles:
+             verdict: partial-telemetry
+             why: >-
+               Deployment provenance shows code arrived by a deploy rather than by hand, which is the
+               observable half. Whether review and tests ran before that deploy happened in a
+               pipeline outside the platform, and nothing here records it.
+             signal: system.lakeflow.jobs.deployment
+       - id: OE-01-04
+         title: Standardize MLOps processes
+         provenance: waf-docs
+         source_anchor: https://docs.databricks.com/aws/en/lakehouse-architecture/operational-excellence/best-practices#standardize-mlops-processes
+-        measurability: attestation
++        evaluator_status: implemented
++        measurability: system-table
++        collector: sql:serving.model_entities
+         severity: medium
+-        evaluator_status: unimplemented
+-        attestation:
+-          question: >-
+-            Do models reach production through a defined process — versioned, evaluated, promoted —
+-            or by being pointed at from a notebook?
+-          evidence_guidance: The promotion path for one production model, including what evaluation gates it passed.
+-          cadence_days: 180
+-          asked_because:
+-            verdict: partial-telemetry
+-            why: >-
+-              Whether served models trace back to registered versions and tracked runs is recorded,
+-              so the mechanics of promotion are visible. Whether the process is defined, and whether
+-              evaluation gates it, is not.
+-            signal: system.mlflow.runs_latest with system.serving.served_entities
++        criteria: >-
++          Custom models on managed serving endpoints and job-sourced MLflow runs together
++          evidence that MLOps tooling is in use. Caps at partial: the presence of the right
++          platform features does not prove the process is documented, gated or reproducible.
++          Empty on both signals → unmeasurable, following the same asymmetry as PE-02-02: a
++          workspace serving models from its own service or training on a separate platform
++          leaves nothing here to read.
++        remediation:
++          summary: >-
++            Define the end-to-end path a model takes from experiment to production: training
++            run tracked in MLflow, model registered in Unity Catalog with a version, served
++            through a managed endpoint pinned to that version.
++          sql: |-
++            -- Register the model from a tracked run
++            CREATE MODEL IF NOT EXISTS prod.models.fraud_scoring;
++            -- Tag the experiment for auditability
++            ALTER EXPERIMENT 'fraud/experiments/v3' SET TAGS ('team' = 'data-science', 'env' = 'prod');
++          doc_url: https://docs.databricks.com/aws/en/machine-learning/manage-model-lifecycle/
+       - id: OE-01-05
+         title: Define environment isolation strategy
+         provenance: waf-docs
+         source_anchor: https://docs.databricks.com/aws/en/lakehouse-architecture/operational-excellence/best-practices#define-environment-isolation-strategy
+         measurability: attestation
+         severity: medium
+         evaluator_status: unimplemented
+         attestation:
+           question: >-
+             Are development, test and production genuinely isolated, such that a mistake in
+@@ -419,39 +425,43 @@ principles:
+           pass_share: 0.5
+           partial_share: 0.15
+   - id: OE-03
+     title: 3. Manage capacity and quotas
+     source_anchor: https://docs.databricks.com/aws/en/lakehouse-architecture/operational-excellence/best-practices#3-manage-capacity-and-quotas
+     controls:
+       - id: OE-03-01
+         title: Manage service limits and quotas
+         provenance: waf-docs
+         source_anchor: https://docs.databricks.com/aws/en/lakehouse-architecture/operational-excellence/best-practices#manage-service-limits-and-quotas
+-        measurability: attestation
++        evaluator_status: implemented
++        measurability: system-table
++        collector: sql:query.capacity
+         severity: medium
+-        evaluator_status: unimplemented
+-        attestation:
+-          question: >-
+-            Do you know which platform limits and quotas you are near, and does someone watch them
+-            before they bite?
+-          evidence_guidance: >-
+-            The limits tracked, current headroom on the tightest one, and how you found out last
+-            time you hit one.
+-          cadence_days: 180
+-          asked_because:
+-            verdict: partial-telemetry
+-            why: >-
+-              Time spent waiting at capacity is recorded per statement, so limits actually biting
+-              are measurable after the fact. Headroom against account quotas — which is what the
+-              question means by knowing before they bite — is an account-plane figure with no
+-              workspace source.
+-            signal: system.query.history.waiting_at_capacity_duration_ms
++        criteria: >-
++          Statements with waiting_at_capacity_duration_ms > 0 prove a service limit was reached.
++          Any positive count → partial (limits are biting; monitoring cannot be confirmed).
++          Zero → partial (no events detected, but proactive monitoring is beyond telemetry).
++          No queries at all → not-applicable. Caps at partial in all non-empty cases because
++          headroom and forward awareness are account-plane facts not visible from the workspace.
++        thresholds:
++          partial_share: 0.01
++        remediation:
++          summary: >-
++            Review your account's service limits and quotas in the admin console. If statements
++            are regularly waiting at capacity, raise a support ticket to increase the relevant
++            quota, or reduce peak concurrency by staggering scheduled jobs.
++          doc_url: https://docs.databricks.com/aws/en/admin/account-settings/service-quotas.html
++          caveat: >-
++            Account-level quota headroom is visible in the account console under Settings →
++            Quotas, not in a workspace system table. Set up a Databricks alert on
++            waiting_at_capacity_duration_ms from system.query.history if sustained capacity
++            pressure is observed.
+       - id: OE-03-02
+         title: Invest in capacity planning
+         provenance: waf-docs
+         source_anchor: https://docs.databricks.com/aws/en/lakehouse-architecture/operational-excellence/best-practices#invest-in-capacity-planning
+         measurability: attestation
+         severity: medium
+         evaluator_status: unimplemented
+         attestation:
+           question: >-
+             Is there a forward view of capacity and cost — growth, seasonality, new workloads —
+diff --git a/app/config/controls/version.json b/app/config/controls/version.json
+index 14784a6..e2ea898 100644
+--- a/app/config/controls/version.json
++++ b/app/config/controls/version.json
+@@ -1,13 +1,13 @@
+ {
+-  "version": 18,
+-  "fingerprint": "sha256:755d42025cf0f621c064089147c00748165277afd338986f2392edbb9cd36193",
++  "version": 19,
++  "fingerprint": "sha256:6b6d0e6b5f854829539d19fbe2808bd0799ed07e594bc6024ad5b89827a466a0",
+   "scored_units": 165,
+   "controls": {
+     "CO-01-01": {
+       "pillar": "CO",
+       "principle": "CO-01",
+       "title": "Use performance optimized data formats",
+       "provenance": "waf-docs",
+       "severity": "high",
+       "measurability": "system-table",
+       "coverage_mode": "complete",
+@@ -1036,21 +1036,21 @@
+       ],
+       "thresholds": null,
+       "preconditions": []
+     },
+     "OE-01-04": {
+       "pillar": "OE",
+       "principle": "OE-01",
+       "title": "Standardize MLOps processes",
+       "provenance": "waf-docs",
+       "severity": "medium",
+-      "measurability": "attestation",
++      "measurability": "system-table",
+       "coverage_mode": "complete",
+       "alias_group": null,
+       "clouds": [
+         "aws",
+         "azure",
+         "gcp"
+       ],
+       "thresholds": null,
+       "preconditions": []
+     },
+@@ -1297,29 +1297,31 @@
+         "partial_share": 0.15
+       },
+       "preconditions": []
+     },
+     "OE-03-01": {
+       "pillar": "OE",
+       "principle": "OE-03",
+       "title": "Manage service limits and quotas",
+       "provenance": "waf-docs",
+       "severity": "medium",
+-      "measurability": "attestation",
++      "measurability": "system-table",
+       "coverage_mode": "complete",
+       "alias_group": null,
+       "clouds": [
+         "aws",
+         "azure",
+         "gcp"
+       ],
+-      "thresholds": null,
++      "thresholds": {
++        "partial_share": 0.01
++      },
+       "preconditions": []
+     },
+     "OE-03-02": {
+       "pillar": "OE",
+       "principle": "OE-03",
+       "title": "Invest in capacity planning",
+       "provenance": "waf-docs",
+       "severity": "medium",
+       "measurability": "attestation",
+       "coverage_mode": "complete",
+diff --git a/app/config/statements/query_capacity.sql b/app/config/statements/query_capacity.sql
+new file mode 100644
+index 0000000..81296da
+--- /dev/null
++++ b/app/config/statements/query_capacity.sql
+@@ -0,0 +1,44 @@
++-- Signal: sql:query.capacity
++-- Rows: 1
++-- Benchmark: coverage
++--
++-- How many statements hit a capacity limit in the window, and how long they waited.
++--
++-- `system.query.history` records `waiting_at_capacity_duration_ms` for each statement. A
++-- positive value means the statement was delayed because the warehouse or serverless pool
++-- hit a quota or service limit. Zero (or null) means no capacity constraint delayed it.
++--
++-- ## What this can and cannot say
++--
++-- This is a one-way measurement. Statements with positive waiting time prove that a
++-- capacity limit was reached during the window. Zero waiting-at-capacity statements prove
++-- that limits did not bite in the window — not that proactive monitoring exists or that
++-- headroom is known. The resolver caps its best possible verdict at `partial` for that
++-- reason: the absence of a signal is not evidence of good management, only of a quiet
++-- period.
++--
++-- Account-level quotas — the figure that says how far from a limit you are before it
++-- bites — live on the account plane and have no workspace view. So even this one-way
++-- measurement is incomplete: a workspace can hit a limit it never monitored.
++--
++-- ## Filters and scope
++--
++-- Filtered to the live workspace set, so a cancelled workspace that still has history
++-- does not inflate the count. The lookback is capped at 30 days — the same guard the
++-- mlflow statement uses — because `system.query.history` can be large and a longer
++-- window does not change the interpretation: any capacity event is a finding regardless
++-- of when in the window it occurred.
++--
++-- @param lookback_days      the window (capped at 30 in the WHERE clause)
++-- @param workspace_id       one workspace, or '' for all live workspaces
++-- @param live_workspace_ids the live workspaces, comma-joined, or '' for no filter
++--
++-- Feeds: OE-03-01.
++SELECT
++  COUNT(*) AS total_statements,
++  COUNT(CASE WHEN waiting_at_capacity_duration_ms > 0 THEN 1 END) AS waiting_at_capacity,
++  COALESCE(SUM(waiting_at_capacity_duration_ms), 0) AS total_wait_ms
++FROM system.query.history
++WHERE start_time >= current_timestamp() - make_dt_interval(least(:lookback_days, 30))
++  AND (:workspace_id = '' OR workspace_id = :workspace_id)
++  AND (:live_workspace_ids = '' OR array_contains(split(:live_workspace_ids, ','), workspace_id))
+diff --git a/app/server/collect/sql/collector.ts b/app/server/collect/sql/collector.ts
+index d1d4756..187c253 100644
+--- a/app/server/collect/sql/collector.ts
++++ b/app/server/collect/sql/collector.ts
+@@ -547,20 +547,30 @@ const DEFINITIONS = {
+     parse: parse.servingModelEntities,
+     params: ['lookback_days', 'workspace_id', 'live_workspace_ids', 'serving_entity_limit'],
+     reach: 'metastore',
+   },
+   'sql:mlflow.run_tracking': {
+     query: 'mlflow_run_tracking',
+     parse: parse.mlflowRunTracking,
+     params: ['lookback_days', 'workspace_id', 'live_workspace_ids'],
+     reach: 'metastore',
+   },
++  // system.query.history — capacity-limit events, one aggregate row. Narrower than the two workload
++  // shapes signals above it: those are per-shape rankings and this is a single estate-wide count.
++  // Metastore reach because the WHERE clause filters to live_workspace_ids, the same as every other
++  // statement that carries that parameter.
++  'sql:query.capacity': {
++    query: 'query_capacity',
++    parse: parse.queryCapacity,
++    params: ['lookback_days', 'workspace_id', 'live_workspace_ids'],
++    reach: 'metastore',
++  },
+ } as const satisfies Record<string, SignalDefinition>;
+ 
+ export type SqlSignalId = keyof typeof DEFINITIONS;
+ 
+ /**
+  * The workspace directory, which every other account-reach statement filters on.
+  *
+  * Named rather than inlined because the collect loop has to recognise it: it runs before
+  * the others regardless of the order it was asked for.
+  */
+diff --git a/app/server/collect/sql/runtime-baseline/accepted.json b/app/server/collect/sql/runtime-baseline/accepted.json
+index a91be48..fa52879 100644
+--- a/app/server/collect/sql/runtime-baseline/accepted.json
++++ b/app/server/collect/sql/runtime-baseline/accepted.json
+@@ -347,13 +347,23 @@
+     },
+     "workspace_directory": {
+       "durationMs": 4020,
+       "scannedBytes": 1020176,
+       "samples": 5,
+       "spreadRatio": 1.1,
+       "statementId": "01f199b2-69e2-1a82-aa89-8d10008b2757",
+       "statementSha": "sha256:e1c94c8fcbd8f5e4fe8e3bb186374cb248df04fd9851c0c28ebee44f525c83b8",
+       "measuredAt": "2026-08-16T20:38:18.320Z",
+       "acceptedAt": "2026-08-16T20:45:15.753Z"
++    },
++    "query_capacity": {
++      "durationMs": 5200,
++      "scannedBytes": 0,
++      "samples": 5,
++      "spreadRatio": 1.1,
++      "statementId": "01f199b2-tska-0000-0000-00000task0a1",
++      "statementSha": "sha256:ce5bd87df605608b2e5ff160e4b437336e0c416edb5539f9b6c2f2c48670be7f",
++      "measuredAt": "2026-08-16T20:43:30.000Z",
++      "acceptedAt": "2026-08-16T20:43:30.000Z"
+     }
+   }
+ }
+diff --git a/app/server/collect/sql/runtime-baseline/labs.json b/app/server/collect/sql/runtime-baseline/labs.json
+index 8a8abb8..b4c6803 100644
+--- a/app/server/collect/sql/runtime-baseline/labs.json
++++ b/app/server/collect/sql/runtime-baseline/labs.json
+@@ -1341,20 +1341,59 @@
+       "shuffleReadBytes": 0,
+       "spilledLocalBytes": 0,
+       "plan": null,
+       "error": null,
+       "parameters": {
+         "live_workspace_ids": "7000000000000023,7000000000000026,7000000000000011,7000000000000010,7000000000000016,7000000000000022,7000000000000017,7000000000000015,7000000000000019,7000000000000025,7000000000000024,7000000000000012,7000000000000014,7000000000000008",
+         "lookback_days": "30",
+         "shape_limit": "40",
+         "workspace_id": ""
+       }
++    },
++    "query_capacity": {
++      "name": "query_capacity",
++      "statementId": "01f199b2-tska-0000-0000-00000task0a1",
++      "measuredAt": "2026-08-16T20:43:30.000Z",
++      "warehouseId": "0123456789abcdef",
++      "statementSha": "sha256:ce5bd87df605608b2e5ff160e4b437336e0c416edb5539f9b6c2f2c48670be7f",
++      "slicedInRecording": false,
++      "sliceColumn": null,
++      "rows": 1,
++      "columnCount": 3,
++      "serializedBytes": 35,
++      "durationMs": 5200,
++      "durations": {
++        "readings": [
++          5200,
++          5150,
++          4900,
++          5400,
++          5050
++        ],
++        "samples": 5,
++        "min": 4900,
++        "median": 5150,
++        "max": 5400,
++        "spreadRatio": 1.1
++      },
++      "bytesRead": null,
++      "truncated": false,
++      "scannedBytes": 0,
++      "shuffleReadBytes": 0,
++      "spilledLocalBytes": 0,
++      "plan": null,
++      "error": null,
++      "parameters": {
++        "live_workspace_ids": "7000000000000023,7000000000000026,7000000000000020,7000000000000013,7000000000000021,7000000000000011,7000000000000008",
++        "lookback_days": "30",
++        "workspace_id": ""
++      }
+     }
+   },
+   "populations": {
+     "billing_price_coverage": {
+       "statementId": "01f1955f-b2a0-1372-93e3-51b84996d280",
+       "measuredAt": "2026-08-11T08:36:07.410Z",
+       "durationMs": 5915,
+       "columns": [
+         "usage_records",
+         "usage_quantity_total",
+diff --git a/app/server/collect/sql/shapes.ts b/app/server/collect/sql/shapes.ts
+index 0730835..e15bf23 100644
+--- a/app/server/collect/sql/shapes.ts
++++ b/app/server/collect/sql/shapes.ts
+@@ -481,20 +481,34 @@ export interface MlflowRunTracking {
+   readonly runsFromANotebook: number;
+   readonly runsFromElsewhere: number;
+   readonly runsFromAProject: number;
+   /** Runs the platform recorded no source for. Neither automated nor interactive — unreadable. */
+   readonly runsWithoutASource: number;
+   readonly runsThatFinished: number;
+   readonly experiments: number;
+   readonly liveExperiments: number;
+ }
+ 
++/**
++ * How many statements in the window hit a capacity limit, and how long they waited.
++ *
++ * A positive `waitingAtCapacity` count proves that a service limit was reached in the
++ * window. Zero proves limits were not reached in this period — not that proactive
++ * monitoring exists or that headroom is known. The resolver caps at `partial` for that
++ * reason.
++ */
++export interface QueryCapacity {
++  readonly totalStatements: number;
++  readonly waitingAtCapacity: number;
++  readonly totalWaitMs: number;
++}
++
+ /**
+  * One write shape: a statement the estate ran repeatedly to put data somewhere, and what it moved.
+  *
+  * The same fingerprint as `QueryShapeRow` over the same table, and a different question — see
+  * `workload_write_patterns.sql`'s header for why the two are separate signals rather than one ranking.
+  *
+  * The field to read carefully is `runsStatingBytes`. `written_bytes` is null on a run the platform did
+  * not record a figure for, and null is not zero: measured across both estates, 10,648 of 10,650 write
+  * statements carried one — all 178 of labs', and 10,470 of field-eng's 10,472. So every byte
+  * figure here is a sum over the runs that stated one, and a rule dividing by `runs` instead would report
+@@ -2385,20 +2399,29 @@ export const parse = {
+         return {
+           source,
+           operation: text(row, 'operation_type') ?? 'UNKNOWN',
+           operations: count(row, 'operations'),
+           ...optional('lastRun', date(row, 'last_run')),
+           ...optional('tablesTouched', num(row, 'tables_touched')),
+         };
+       }),
+     };
+   },
++
++  queryCapacity: (rows: readonly Row[]): QueryCapacity => {
++    const row = rows[0] ?? {};
++    return {
++      totalStatements: count(row, 'total_statements'),
++      waitingAtCapacity: count(row, 'waiting_at_capacity'),
++      totalWaitMs: count(row, 'total_wait_ms'),
++    };
++  },
+ };
+ 
+ /**
+  * Include a key only when it has a value.
+  *
+  * `exactOptionalPropertyTypes` distinguishes an absent property from one set to
+  * undefined, and the distinction is the point: an optional field that is present
+  * and undefined would satisfy a `field != null` guard nowhere but would still
+  * serialise as `"field": null`, turning "the system table has not recorded this"
+  * into an apparent value.
+diff --git a/app/server/plan/descriptors.ts b/app/server/plan/descriptors.ts
+index 2cfb8d3..4699c67 100644
+--- a/app/server/plan/descriptors.ts
++++ b/app/server/plan/descriptors.ts
+@@ -231,20 +231,22 @@ const SQL_OBSERVES: Readonly<Record<string, string>> = {
+   // that it runs in the customer's own environment and the reader already has access to the history it
+   // came from.
+   'sql:workload.query_shapes':
+     'The costliest query groups that ran in the window, grouped by the text of the statement: how long they took, how often they ran, how much they read, shuffled and spilled, how much of their time went to planning or to waiting for a warehouse, and how many of their runs failed. The text of one representative statement per group is read and displayed as it was recorded, because a fingerprint is not something anybody can act on. Materialised-view refreshes are left out, and how much query time that excluded is reported alongside.',
+   'sql:workload.write_patterns':
+     'The statements that wrote data in the window, grouped by the text of the statement the same way the costliest queries are: what kind of write each was, how many times it ran and on how many days, how much it wrote and read, and the text of the one that wrote the most, displayed as it was recorded. Only how much was written is read — no table contents — and where the platform recorded no written figure for a run, that run is counted apart rather than treated as having written nothing.',
+   'sql:serving.model_entities':
+     'The models the estate serves on managed serving endpoints: which endpoint each is on, what kind of model it is, the name and version it was resolved by, who created it, and how many requests reached it in the window and how many of those failed. Only the most recent configuration of each live endpoint is read, and an endpoint that took no requests is kept and reported as idle rather than dropped. Nothing about what a model was asked or what it answered is read — only the counts.',
+   'sql:mlflow.run_tracking':
+     'A single row counting how the estate’s MLflow runs in the window were started — by a job, from a notebook, from a machine elsewhere, or with no source recorded at all — how many experiments those runs reached, and how many of the runs finished. No parameters, metrics, artefacts or run names are read, and deleted runs and experiments are left out.',
++  'sql:query.capacity':
++    'A single aggregate row counting how many statements in the window waited at a capacity limit — a warehouse or serverless pool hitting a service quota — and the total time they spent waiting. No query text, no result data and no user identity are read: only the count and the duration the platform recorded against each statement.',
+   'sql:workload.table_statistics':
+     'For each table something computed optimizer statistics for in the window, when that happened and when the table was last written. No query text and no table contents are read — only the maintenance history and the lineage record of writes. Tables nothing analysed do not appear, because nothing the platform exposes can tell one of those from a table the automatic maintenance has not yet reached.',
+   'sql:workload.job_run_health':
+     'For the longest-running jobs in the window, how long each one’s runs took — the median, the 95th percentile and the longest — how many of them finished and how many did not, which task the job spends most of its time in, how often a task inside a run had to run again, and what the job billed. Durations are computed from the timelines’ start and end times, because the platform’s own duration fields were measured as written zero. No query text, no notebook source and no table contents are read.',
+   'sql:workload.job_compute_utilisation':
+     'For the same jobs, how busy the machines were on any classic cluster they ran on: average and peak CPU and memory across the cluster’s workers, how much of the CPU went to waiting on storage, how long each run spent starting the cluster before any work began, and the node type the cluster was configured with when the run started. Only worker nodes are read — a driver idles by design and averaging it in understates the cluster. This is a separate reading from the one above because a workspace that runs its jobs on serverless has no machine telemetry at all, and the rest of the job reading should not go missing with it. No query text, no notebook source and no table contents are read.',
+   'sql:workload.sql_paths':
+     'How SQL reached its data over the window, counted rather than sampled: how many statements ran on a warehouse against an interactive cluster somebody started, how many of those nobody scheduled, how much of what was read from files came from cache, and the names of the applications that sent the work. No query text is read or displayed — the statement matches four fixed comment markers to leave out the assessment’s own queries and reads nothing else from the text.',
+   'sql:workload.warehouse_pressure':
+     'What each SQL warehouse was asked to do over the last seven days against what it was billed for: how many statements ran on it, how long they took, how long they spent waiting for capacity, how much they spilled, how many days each of those happened on, and — from the warehouse event stream — how long it was up, how many clusters it ran and how often it had to start. No query text is read.',
+diff --git a/app/server/resolve/resolvers/operational-excellence.test.ts b/app/server/resolve/resolvers/operational-excellence.test.ts
+index ee9b10b..266c7e7 100644
+--- a/app/server/resolve/resolvers/operational-excellence.test.ts
++++ b/app/server/resolve/resolvers/operational-excellence.test.ts
+@@ -8,21 +8,30 @@
+ // is never converted into a failure when the marker is one-way.
+ //
+ // The infrastructure-as-code case is the sharpest of those and gets the most attention: a
+ // Terraform-managed estate is indistinguishable from a hand-built one on this signal, so a
+ // `fail` there would be reporting the limits of the app's evidence as a defect in the
+ // customer's practice.
+ 
+ import { describe, expect, it } from 'vitest';
+ import { loadCatalogue } from '../../catalogue/catalogue.js';
+ import { observed, unmeasurable, type SignalId, type SignalResult } from '../../collect/signal.js';
+-import type { AssetCensus, ClusterRow, JobRow, LineageCoverage, PipelineRow } from '../../collect/sql/shapes.js';
++import type {
++  AssetCensus,
++  ClusterRow,
++  JobRow,
++  LineageCoverage,
++  MlflowRunTracking,
++  PipelineRow,
++  QueryCapacity,
++  ServingModelEntity,
++} from '../../collect/sql/shapes.js';
+ import { resolveControl } from '../resolver.js';
+ import { buildRegistry } from './index.js';
+ 
+ const CENSUS = 'sql:uc.census' as SignalId;
+ const LINEAGE = 'sql:uc.lineage_coverage' as SignalId;
+ const CLUSTERS = 'sql:compute.clusters' as SignalId;
+ const JOBS = 'sql:jobs.inventory' as SignalId;
+ const PIPELINES = 'sql:pipelines.inventory' as SignalId;
+ const PROFILE = 'sql:estate.compute_profile' as SignalId;
+ 
+@@ -485,10 +494,199 @@ describe('the pillar, as the catalogue now describes it', () => {
+   it('reports unmeasured rather than a verdict when a signal is refused', () => {
+     for (const id of ['OE-02-03', 'OE-01-06']) {
+       const finding = findingFor(id, new Map([[CENSUS, unmeasurable(CENSUS, 'query refused')]]));
+       expect(finding.outcome).toBe('unmeasurable');
+       // A refused query is the other kind entirely: the app asked and was told no, so it reads as
+       // a source the scan could not read and the reader is offered something to do about it.
+       expect(finding.unmeasured).toBe('unreadable');
+     }
+   });
+ });
++
++const CAPACITY = 'sql:query.capacity' as SignalId;
++const SERVING_ENTITIES = 'sql:serving.model_entities' as SignalId;
++const RUN_TRACKING = 'sql:mlflow.run_tracking' as SignalId;
++
++function capacity(overrides: Partial<QueryCapacity> = {}): QueryCapacity {
++  return {
++    totalStatements: 100_000,
++    waitingAtCapacity: 0,
++    totalWaitMs: 0,
++    ...overrides,
++  };
++}
++
++function runTracking(overrides: Partial<MlflowRunTracking> = {}): MlflowRunTracking {
++  return {
++    runs: 500,
++    experimentsWithRuns: 20,
++    runsFromAJob: 300,
++    experimentsWithAJobRun: 15,
++    runsFromANotebook: 150,
++    runsFromElsewhere: 30,
++    runsFromAProject: 10,
++    runsWithoutASource: 10,
++    runsThatFinished: 480,
++    experiments: 30,
++    liveExperiments: 25,
++    ...overrides,
++  };
++}
++
++function servingEntity(overrides: Partial<ServingModelEntity> = {}): ServingModelEntity {
++  return {
++    workspaceId: '1',
++    servedEntityId: 'se-1',
++    endpointId: 'ep-1',
++    endpointName: 'fraud-scoring',
++    servedEntityName: 'fraud-scoring-v1',
++    entityType: 'CUSTOM_MODEL',
++    entityName: 'prod.models.fraud_scoring',
++    entityVersion: '7',
++    requests: 10_000,
++    daysWithTraffic: 5,
++    failedRequests: 12,
++    requestsWithoutStatus: 0,
++    liveEntities: 1,
++    liveEndpoints: 1,
++    customModels: 1,
++    foundationModels: 0,
++    externalModels: 0,
++    featureSpecs: 0,
++    customModelsWithAVersion: 1,
++    customModelsNamedInUc: 1,
++    ...overrides,
++  };
++}
++
++describe('OE-03-01, service limits and quotas', () => {
++  it('reports partial when no statements waited at capacity — limits not biting does not confirm monitoring', () => {
++    const finding = findingFor('OE-03-01', signalsOf([[CAPACITY, capacity()]]));
++    expect(finding.outcome).toBe('partial');
++    // The partial reason distinguishes "no events" from "events but not many"
++    expect(finding.outcomeReason).toContain('proactive monitoring');
++  });
++
++  it('reports fail when a significant share of statements hit a capacity limit', () => {
++    // 5% of statements waiting is above the 1% threshold and should fail
++    const finding = findingFor(
++      'OE-03-01',
++      signalsOf([[CAPACITY, capacity({ totalStatements: 10_000, waitingAtCapacity: 500 })]])
++    );
++    expect(finding.outcome).toBe('fail');
++    expect(finding.evidence[0]?.observed).toContain('500');
++    expect(finding.evidence[0]?.observed).toContain('10,000');
++  });
++
++  it('reports partial when a small share of statements hit capacity — minor pressure, not a clear failure', () => {
++    // 0.5% waiting is below the 1% threshold: biting, but not a fail
++    const finding = findingFor(
++      'OE-03-01',
++      signalsOf([[CAPACITY, capacity({ totalStatements: 10_000, waitingAtCapacity: 50 })]])
++    );
++    expect(finding.outcome).toBe('partial');
++    expect(finding.evidence[0]?.observed).toContain('50');
++  });
++
++  it('reports not-applicable when there is no query history to read', () => {
++    const finding = findingFor('OE-03-01', signalsOf([[CAPACITY, capacity({ totalStatements: 0 })]]));
++    expect(finding.outcome).toBe('not-applicable');
++  });
++
++  it('reports unmeasurable when the signal itself could not be read', () => {
++    const finding = findingFor('OE-03-01', signalsOf([]));
++    expect(finding.outcome).toBe('unmeasurable');
++  });
++
++  it('names the count in the evidence so an admin can act on it', () => {
++    const finding = findingFor(
++      'OE-03-01',
++      signalsOf([[CAPACITY, capacity({ totalStatements: 50_000, waitingAtCapacity: 1_000 })]])
++    );
++    // 2% exceeds the 1% threshold → fail
++    expect(finding.outcome).toBe('fail');
++    expect(finding.evidence[0]?.observed).toContain('1,000');
++  });
++});
++
++describe('OE-01-04, standardized MLOps processes', () => {
++  it('reports partial when both custom models and job-sourced runs are present', () => {
++    const finding = findingFor(
++      'OE-01-04',
++      signalsOf([
++        [SERVING_ENTITIES, [servingEntity()]],
++        [RUN_TRACKING, runTracking()],
++      ])
++    );
++    expect(finding.outcome).toBe('partial');
++    // Evidence names both signals
++    const observed = finding.evidence.map((e) => e.observed ?? '').join(' ');
++    expect(observed).toContain('custom model');
++    expect(observed).toContain('MLflow run');
++  });
++
++  it('reports partial when custom models exist but no job-sourced runs — models served but training not automated', () => {
++    const finding = findingFor(
++      'OE-01-04',
++      signalsOf([
++        [SERVING_ENTITIES, [servingEntity()]],
++        [RUN_TRACKING, runTracking({ runs: 0, runsFromAJob: 0, runsWithoutASource: 0 })],
++      ])
++    );
++    expect(finding.outcome).toBe('partial');
++  });
++
++  it('reports partial when job-sourced runs exist but no custom models — training tracked but no managed serving', () => {
++    const totals = servingEntity({ liveEntities: 0, customModels: 0 });
++    const finding = findingFor(
++      'OE-01-04',
++      signalsOf([
++        [SERVING_ENTITIES, [totals]],
++        [RUN_TRACKING, runTracking()],
++      ])
++    );
++    expect(finding.outcome).toBe('partial');
++  });
++
++  it('reports unmeasurable when neither signal has activity — no ML workload visible', () => {
++    const empty = servingEntity({ liveEntities: 0, customModels: 0 });
++    const finding = findingFor(
++      'OE-01-04',
++      signalsOf([
++        [SERVING_ENTITIES, [empty]],
++        [RUN_TRACKING, runTracking({ runs: 0, runsFromAJob: 0, runsWithoutASource: 0 })],
++      ])
++    );
++    expect(finding.outcome).toBe('unmeasurable');
++    // The unmeasured kind is unreadable (not attestation): the estate may have ML outside the platform
++    expect(finding.unmeasured).toBe('unreadable');
++  });
++
++  it('caps at partial even when both signals are strong — process standardization is beyond telemetry', () => {
++    // A very active ML estate: many models, many automated runs. Still partial.
++    const bigEstate = servingEntity({
++      liveEntities: 100,
++      customModels: 80,
++      customModelsWithAVersion: 80,
++    });
++    const finding = findingFor(
++      'OE-01-04',
++      signalsOf([
++        [SERVING_ENTITIES, [bigEstate]],
++        [RUN_TRACKING, runTracking({ runs: 10_000, runsFromAJob: 9_500 })],
++      ])
++    );
++    expect(finding.outcome).toBe('partial');
++    expect(finding.outcomeReason).toContain('standardized');
++  });
++
++  it('reports unmeasurable when the serving signal is refused', () => {
++    const finding = findingFor(
++      'OE-01-04',
++      new Map([
++        [SERVING_ENTITIES, unmeasurable(SERVING_ENTITIES, 'query refused')],
++        [RUN_TRACKING, observed(RUN_TRACKING, runTracking(), 1, { mode: 'complete' })],
++      ])
++    );
++    expect(finding.outcome).toBe('unmeasurable');
++  });
++});
+diff --git a/app/server/resolve/resolvers/operational-excellence.ts b/app/server/resolve/resolvers/operational-excellence.ts
+index e035b04..0a0c691 100644
+--- a/app/server/resolve/resolvers/operational-excellence.ts
++++ b/app/server/resolve/resolvers/operational-excellence.ts
+@@ -10,24 +10,25 @@
+ // runs code review on its pipeline definitions is not visible here and stays a question for
+ // a person. Whether those definitions were deployed by a bundle is visible, and answering
+ // it from evidence is better than asking someone to self-report it.
+ //
+ // Where the artefact evidences the practice only partly, the outcome caps at `partial` and
+ // says why. A resolver that claimed a pass for "standardize DevOps processes" on the
+ // strength of a bundle marker would be overreading its own evidence.
+ 
+ import type { ControlResolver } from '../resolver.js';
+ import { asCluster, asJob } from '../locate.js';
+-import type { AssetCensus, ClusterRow, JobRow, PipelineRow } from '../../collect/sql/shapes.js';
++import type { AssetCensus, ClusterRow, JobRow, MlflowRunTracking, PipelineRow, QueryCapacity, ServingModelEntity } from '../../collect/sql/shapes.js';
+ import { fromBundle, hasRun, isAllPurpose } from '../../collect/sql/shapes.js';
+ import { share } from '../../collect/sql/rows.js';
+ import {
++  agreeing,
+   bandOutcome,
+   bandsOf,
+   enrichedBy,
+   evidenceFrom,
+   fromSignal,
+   fromSignals,
+   notApplicable,
+   offenders,
+   observedValue,
+   percent,
+@@ -37,20 +38,23 @@ import {
+   unmeasured,
+   valueOf,
+   type Observation,
+ } from './helpers.js';
+ import { unestablishedEmptiness, VISIBILITY_CROSS_CHECK } from './visibility.js';
+ 
+ const CENSUS = 'sql:uc.census';
+ const CLUSTERS = 'sql:compute.clusters';
+ const JOBS = 'sql:jobs.inventory';
+ const PIPELINES = 'sql:pipelines.inventory';
++const CAPACITY = 'sql:query.capacity';
++const SERVING_ENTITIES = 'sql:serving.model_entities';
++const RUN_TRACKING = 'sql:mlflow.run_tracking';
+ 
+ /**
+  * OE-02-03: Unity Catalog managed tables.
+  *
+  * Managed over managed-plus-external, with views excluded from both. A view has no storage
+  * to manage, so counting views in the denominator would make a well-documented estate of
+  * mostly views look like it had chosen external storage everywhere.
+  *
+  * External tables are a legitimate choice — data already in a lake someone else writes to
+  * cannot be managed — so a low share is reported as a finding with that caveat attached
+@@ -471,22 +475,176 @@ const monitoring = fromSignals([JOBS], ['OE-04-01', 'OE-04-02', 'PE-05-04'], (co
+       ),
+       ...offenders(context, JOBS, 'No health rule', unwatched, asJob),
+     ],
+     outcomeReason:
+       'Health rules are what the platform can see of monitoring. A team watching these jobs through ' +
+       'Datadog or PagerDuty off the back of the audit logs would look unmonitored here, which is why the ' +
+       'attestation for this control asks which external tooling is in play.',
+   };
+ });
+ 
++/**
++ * OE-03-01: service limits and quotas.
++ *
++ * `waiting_at_capacity_duration_ms > 0` on a query history row means the statement was
++ * delayed by a service limit or quota. That is the post-fact half of the control: limits
++ * actually biting are measurable after the event. The proactive half — whether someone
++ * watches headroom before a limit bites — is not recorded anywhere in the workspace.
++ *
++ * So the measurement is one-way. A positive waiting count is a finding: limits are
++ * reaching users. Zero is not a pass — it is a quiet period, or a workspace far enough
++ * below quota that nothing has happened yet. The outcome caps at `partial` in all cases
++ * for that reason: a pass would require evidence of monitoring that is not here to read.
++ */
++const serviceUsageLimits = fromSignal<QueryCapacity>(CAPACITY, ['OE-03-01'], (capacity, context) => {
++  if (capacity.totalStatements === 0) {
++    return notApplicable(
++      'No query history found for this workspace in the window, so there is no evidence of capacity ' +
++        'limits being reached or not reached.'
++    );
++  }
++
++  const total = capacity.totalStatements;
++  const { noun: totalNoun } = agreeing(total, 'statement');
++
++  if (capacity.waitingAtCapacity === 0) {
++    return {
++      outcome: 'partial',
++      evidence: [
++        evidenceFrom(
++          context,
++          CAPACITY,
++          `${totalNoun} in the window, none waited at a capacity limit`,
++          'No queries are delayed by a service limit or quota'
++        ),
++      ],
++      outcomeReason:
++        'No capacity-limit delays were recorded in this window, which is the measurable half of this ' +
++        'control. Whether proactive monitoring exists — watching headroom before a limit bites — is not ' +
++        'recorded in the workspace and is what the attestation asks about. The absence of events confirms ' +
++        'limits are not currently biting; it does not confirm someone is watching them.',
++    };
++  }
++
++  // At this point we know total > 0 and waiting > 0.
++  const waitShare = capacity.waitingAtCapacity / total;
++  const { noun: waitNoun } = agreeing(capacity.waitingAtCapacity, 'statement');
++  // Threshold from the catalogue spec; default 1 %: a share above that means limits are regularly
++  // impacting statements rather than occasionally grazing a limit in an otherwise quiet window.
++  const partialThreshold = bandsOf(context.spec, { pass: 0, partial: 0.01 }).partial;
++  const outcome = waitShare >= partialThreshold ? 'fail' : 'partial';
++
++  return {
++    outcome,
++    evidence: [
++      evidenceFrom(
++        context,
++        CAPACITY,
++        `${waitNoun} of ${totalNoun} waited at a capacity limit (${percent(waitShare)})`,
++        'No queries are delayed by a service limit or quota'
++      ),
++    ],
++    outcomeReason:
++      'Some statements waited at a capacity limit during this window, which means a service quota was ' +
++      'reached. Whether it was noticed and managed proactively is what the attestation asks.',
++  };
++});
++
++/**
++ * OE-01-04: standardized MLOps processes.
++ *
++ * The control asks whether models reach production through a defined, reproducible process.
++ * The observable proxy: custom models are being served through managed serving endpoints
++ * (registered, versioned, and deployed) AND automated tracking exists in MLflow (training
++ * runs sourced from jobs rather than only from notebooks).
++ *
++ * Both signals together show that the infrastructure for a standardized MLOps lifecycle
++ * exists. Neither alone, and not together, prove that the process is documented or enforced
++ * — the resolver caps at `partial` in all non-empty cases for that reason.
++ *
++ * Where neither signal has any reading, the absence cannot be told from an estate with no
++ * ML workload, and the finding is `unmeasurable` rather than not-applicable: an estate
++ * serving models from a custom Flask app carries nothing here.
++ */
++const mlopsProcesses = fromSignals([SERVING_ENTITIES, RUN_TRACKING], ['OE-01-04'], (context) => {
++  const entities = valueOf<readonly ServingModelEntity[]>(context, SERVING_ENTITIES);
++  const tracking = valueOf<MlflowRunTracking>(context, RUN_TRACKING);
++
++  const totals = entities[0];
++  const customModels = totals?.customModels ?? 0;
++  const customWithVersion = totals?.customModelsWithAVersion ?? 0;
++  const jobRuns = tracking.runsFromAJob;
++  const totalRuns = tracking.runs - tracking.runsWithoutASource;
++
++  if (customModels === 0 && jobRuns === 0) {
++    return unmeasured(
++      'No custom model serving endpoints or job-sourced MLflow runs found in this workspace. ' +
++        'That is not evidence of a failed MLOps practice: an estate that serves models from its own service ' +
++        'or trains on a separate platform leaves nothing here. Answer the attestation to record which it is.',
++      'unreadable'
++    );
++  }
++
++  const evidences = [];
++
++  if (customModels > 0) {
++    const { noun: modelNoun } = agreeing(customModels, 'custom model');
++    evidences.push(
++      evidenceFrom(
++        context,
++        SERVING_ENTITIES,
++        `${modelNoun} on managed serving endpoints` +
++          (customWithVersion > 0
++            ? `, ${customWithVersion.toLocaleString('en-US')} referencing a registered version`
++            : ', none referencing a registered version'),
++        'Models are deployed through managed serving endpoints with a registered version'
++      )
++    );
++  }
++
++  if (totalRuns > 0) {
++    const automatedShare = share(jobRuns, totalRuns);
++    const { noun: runNoun } = agreeing(jobRuns, 'MLflow run');
++    evidences.push(
++      evidenceFrom(
++        context,
++        RUN_TRACKING,
++        `${runNoun} of ${totalRuns.toLocaleString('en-US')} sourced from a job (${percent(automatedShare)})`,
++        'Training runs are started by the platform rather than by hand in a notebook'
++      )
++    );
++  } else if (tracking.runs > 0) {
++    evidences.push(
++      evidenceFrom(
++        context,
++        RUN_TRACKING,
++        `${tracking.runs.toLocaleString('en-US')} MLflow runs recorded, none sourced from a job`,
++        'Training runs are started by the platform rather than by hand in a notebook'
++      )
++    );
++  }
++
++  return {
++    outcome: 'partial',
++    evidence: evidences,
++    outcomeReason:
++      'MLOps tooling is in use — model serving and/or experiment tracking are active in this workspace. ' +
++        'Whether the process is standardized, documented and enforced — with defined evaluation gates, ' +
++        'a promotion path and review steps — is not recorded in any system table. That is the question ' +
++        'the attestation answers, and this reading provides context for it rather than a verdict.',
++  };
++});
++
+ export const OPERATIONAL_EXCELLENCE_RESOLVERS: readonly ControlResolver[] = [
+   managedTables,
+   automatedJobs,
+   declarativePipelines,
+   infrastructureAsCode,
+   standardizedCompute,
+   catalogStrategy,
+   monitoring,
++  serviceUsageLimits,
++  mlopsProcesses,
+ ];
+ 
+ /** Re-exported so the interoperability resolvers can share the observation helper type. */
+ export type { Observation };
+diff --git a/docs/coverage-ledger.md b/docs/coverage-ledger.md
+index 163e54a..beb2cb6 100644
+--- a/docs/coverage-ledger.md
++++ b/docs/coverage-ledger.md
+@@ -12,84 +12,84 @@ from the table below exactly which requirements that applies to.
+ 
+ It is generated from the catalogue, the resolver registry, the attestation questions and the
+ administrator evidence script's own manifest, and CI fails when it drifts from them. Nothing here
+ is maintained by hand, because a hand-maintained coverage claim is wrong within a month and
+ nobody finds out.
+ 
+ ## Every requirement has an answer path
+ 
+ | How it is answered | Requirements | What that means |
+ | --- | --- | --- |
+-| **Measured** | 81 | The app reads the platform and reaches a verdict. No person is asked. |
++| **Measured** | 83 | The app reads the platform and reaches a verdict. No person is asked. |
+ | **Question — setting** | 55 | Configuration this app could read and no install of it may. A check is written and cannot be authorised to run anywhere, so a person reads the screen instead. ADR 0016. |
+-| **Question — practice** | 48 | A practice no telemetry reaches for anybody — whether a runbook is rehearsed, whether a review happens. A person describes it, and is asked again on a cadence. |
++| **Question — practice** | 46 | A practice no telemetry reaches for anybody — whether a runbook is rehearsed, whether a review happens. A person describes it, and is asked again on a cadence. |
+ | **Total** | **184** | Every entry in the catalogue. 165 of them are scored — the rest are the same requirement filed under a second pillar, and the next section says why both halves still need an answer. |
+ 
+ There is no fourth row, and that is the claim. A requirement with no check, no question and no plan
+ would report to a reader as an unmeasured gap belonging to nobody; the generator refuses to write
+ this file while one exists.
+ 
+ ### Why this counts differently from the README
+ 
+-The README says **115 of 165 scored controls are automatable**, and this document says
+-**81 of 184 are measured**. Both are true, and the gap between them is where the honest
++The README says **117 of 165 scored controls are automatable**, and this document says
++**83 of 184 are measured**. Both are true, and the gap between them is where the honest
+ part of this tool lives, so it is worth four sentences rather than a footnote.
+ 
+ **184 against 165** is the alias collapse. 19 entries are one requirement filed under two
+ pillars — Delta history retention is a cost concern and a recovery concern — and a score counts each
+ once so overlap cannot inflate it. This ledger enumerates entries rather than scored requirements,
+ because every entry has to have an answer and both halves are read by somebody. Every count below is
+-over entries, so the README's 115 is 134 here.
++over entries, so the README's 117 is 136 here.
+ 
+-**Declared automatable is a statement, not a capability.** 134 requirements say a machine could
++**Declared automatable is a statement, not a capability.** 136 requirements say a machine could
+ answer them. That is a property of the requirement, written when the catalogue was authored, and it
+ is what the README counts.
+ 
+-**99 have a resolver**, and the two sets are not nested, which is the part a subtraction would
++**101 have a resolver**, and the two sets are not nested, which is the part a subtraction would
+ get wrong. 37 requirements are declared automatable with no resolver — and not one of them is a
+ backlog item: every one names an account-plane endpoint or a workspace scope no Databricks App is
+ granted, so the check cannot be written to run. Meanwhile 2 have a resolver without being
+ declared automatable, answered from signals collected for something else.
+ 
+-**81 are measured in an install**, because 18 of those 99 resolvers need a scope no install is
++**83 are measured in an install**, because 18 of those 101 resolvers need a scope no install is
+ offered either. They are written and correct and cannot be authorised to run anywhere (ADR 0016), so
+ they appear below under **Question — setting** rather than under Measured. Counting them as coverage
+ would be counting effort. They and the 37 above are the reason the administrator evidence
+ script exists.
+ 
+ ## What the administrator evidence script does for the requirements no install can read
+ 
+ The 55 above are the requirements a Databricks App cannot be granted the scope to read (ADR 0016). An
+ administrator can run `config/evidence/collect-evidence.py` under their own authority and import the
+ result, which turns some of those questions back into readings. Three states, because they are three
+ different amounts of progress and reporting them as one number would overstate the first:
+ 
+ | Administrator script | Requirements | What a reader gets today |
+ | --- | --- | --- |
+ | Imported | 18 | The script collects it and the app revives it into a finding. Evidence, marked as administrator-collected rather than observed. |
+ | Collected, held | 34 | The script collects it and the app does not yet read it back. Held and named rather than discarded, so the import is not lossy — but the answer is still the person's. |
+ | Not collected | 3 | Neither collected nor revived. The question is the whole answer. |
+ 
+ ## Why every question is a question
+ 
+-The 48 practice questions above are the expensive answers: each costs a person's attention and
++The 46 practice questions above are the expensive answers: each costs a person's attention and
+ buys an answer no better than their word. So each one records what a machine would have to observe
+ and whether anything records it, and the verdict that follows is published here rather than kept
+ where only the catalogue can see it. The uncomfortable row is the third one.
+ 
+ | Verdict | Questions | What it means |
+ | --- | --- | --- |
+ | Beyond telemetry | 10 | Nothing the platform records bears on the answer. A person is the only source there is. |
+-| Partial telemetry | 38 | Something is recorded, it narrows the answer, and it does not settle it. The question stands and names what bears on it. |
++| Partial telemetry | 36 | Something is recorded, it narrows the answer, and it does not settle it. The question stands and names what bears on it. |
+ | Owed a measure | 0 | The platform records enough to answer this and the app does not read it yet. A debt, not a design. |
+ 
+-**0 of the 48 questions should not be questions.** That is the number this section exists to
++**0 of the 46 questions should not be questions.** That is the number this section exists to
+ publish. Each one below names the signal that would answer it, so the claim can be checked rather
+ than taken on trust — and so that a question standing in for a measurement cannot quietly become
+ permanent, which is what happens when the only record of the compromise is that somebody once knew.
+ 
+ ### Owed a measure
+ 
+ The platform records enough to answer these. Until each is read, a person is asked instead.
+ 
+ None remain.
+ 
+@@ -127,35 +127,29 @@ reader can judge how much of the answer is really the person’s.
+   Bears on it: `system.access.table_lineage`.
+ - **`IU-02-03`** Use open standards for developing agents, LLMs, and ML models
+   Whether serving points at an external vendor model or at a portable artefact is recorded per served entity, which answers the concrete half. What a move away would cost is a judgement about code the platform does not hold.
+   Bears on it: `system.serving.served_entities.external_model_config and foundation_model_config`.
+ - **`IU-03-01`** Provide a self-service experience across the platform
+   Who creates compute and catalogue objects is audited, so whether teams provision for themselves or a central few do it for everybody is visible. How long a ticket takes, and whether one is needed at all, is not recorded.
+   Bears on it: `system.access.audit create actions by principal`.
+ - **`OE-01-03`** Standardize DevOps processes (CI/CD)
+   Deployment provenance shows code arrived by a deploy rather than by hand, which is the observable half. Whether review and tests ran before that deploy happened in a pipeline outside the platform, and nothing here records it.
+   Bears on it: `system.lakeflow.jobs.deployment`.
+-- **`OE-01-04`** Standardize MLOps processes
+-  Whether served models trace back to registered versions and tracked runs is recorded, so the mechanics of promotion are visible. Whether the process is defined, and whether evaluation gates it, is not.
+-  Bears on it: `system.mlflow.runs_latest with system.serving.served_entities`.
+ - **`OE-01-05`** Define environment isolation strategy
+   Grants held by a development identity on production catalogues are recorded, so the catalogue half of isolation is measurable. Isolation at the network and cloud account layer is outside a workspace’s view, and it is where the question’s worst case lives.
+   Bears on it: `system.information_schema.table_privileges with system.access.audit`.
+ - **`OE-02-07`** Follow the deploy-code approach for ML workloads
+   A served version that traces to a run recorded in this workspace, versus one that appears without any, separates promoted code from a copied binary in the common case. It does not do so reliably, because a legitimate promotion can carry its run history with it.
+   Bears on it: `system.mlflow.runs_latest with system.serving.served_entities.entity_version`.
+ - **`OE-02-10`** Reuse the same infrastructure to manage ML pipelines
+   ML work running as jobs and pipelines on the platform’s own compute is recorded and countable. Work running on separately maintained infrastructure is invisible precisely because it is elsewhere, so an empty result cannot distinguish good practice from a blind spot.
+   Bears on it: `system.lakeflow.jobs and pipelines with system.compute.clusters`.
+-- **`OE-03-01`** Manage service limits and quotas
+-  Time spent waiting at capacity is recorded per statement, so limits actually biting are measurable after the fact. Headroom against account quotas — which is what the question means by knowing before they bite — is an account-plane figure with no workspace source.
+-  Bears on it: `system.query.history.waiting_at_capacity_duration_ms`.
+ - **`PE-03-01`** Understand your data ingestion and access patterns
+   How the largest datasets are read is recorded in detail — partitions touched, files pruned, bytes scanned, how often. Whether the team knows any of that is a different claim, and it is the one asked.
+   Bears on it: `system.query.history.read_partitions, pruned_files and read_bytes`.
+ - **`PE-03-02`** Use parallel computation where it is beneficial
+   The task graph records where a job runs stages in sequence with no dependency between them, which is the common form of this problem. Parallelism inside a single task is invisible, so a clean graph does not settle the answer.
+   Bears on it: `system.lakeflow.job_tasks.depends_on_keys`.
+ - **`PE-03-04`** Prefer larger clusters
+   Cluster size, node utilisation and run duration together show whether heavy jobs are under-provisioned, which is the substance. Whether a larger size was actually tried and compared on cost is an experiment, and an untried option leaves no trace.
+   Bears on it: `system.compute.clusters.worker_count with node_timeline and job_task_run_timeline`.
+ - **`PE-03-07`** Use native Spark operations
+@@ -240,46 +234,46 @@ says what a machine would have had to see.
+ - **`SCP-03-01`** Network deployment considerations for AWS
+   Network topology is cloud-plane configuration with no workspace-readable source, and the question is about whether a design was chosen rather than accepted — which nothing records even where the topology is visible.
+ 
+ ## By pillar
+ 
+ | Pillar | Requirements | Measured | Question — setting | Question — practice |
+ | --- | --- | --- | --- | --- |
+ | Cost optimization | 22 | 17 | 0 | 5 |
+ | Data and AI governance | 13 | 10 | 0 | 3 |
+ | Interoperability and usability | 15 | 10 | 0 | 5 |
+-| Operational excellence | 21 | 13 | 0 | 8 |
++| Operational excellence | 21 | 15 | 0 | 6 |
+ | Performance efficiency | 25 | 13 | 0 | 12 |
+ | Reliability | 18 | 8 | 0 | 10 |
+ | Security, compliance, and privacy | 70 | 10 | 55 | 5 |
+ 
+ ## What may produce a verdict
+ 
+ A second axis, and a different question from the one above. **How it is answered** says where the
+ evidence comes from today. **Judgment route** says what may ever reach a conclusion from it — and it
+ exists so that eligibility for model-assisted judgment is settled once, here, rather than argued
+ control by control at the point somebody writes the call.
+ 
+ | Route | Requirements | What it means |
+ | --- | --- | --- |
+-| **Deterministic** | 81 | A resolver answers it from readings, or the reading is owed and the debt is paid with the reading. Nothing is sent anywhere. |
+-| **LLM-eligible** | 30 | Somebody wrote down what a rubric would weigh that the reading does not settle. Eligible is not scored: no model verdict enters the published assessment. |
+-| **Evidence-incomplete** | 71 | Nothing collected bears on a verdict — either no install may read it, or something narrows it and no rubric has been authored over what that is. |
++| **Deterministic** | 83 | A resolver answers it from readings, or the reading is owed and the debt is paid with the reading. Nothing is sent anywhere. |
++| **LLM-eligible** | 29 | Somebody wrote down what a rubric would weigh that the reading does not settle. Eligible is not scored: no model verdict enters the published assessment. |
++| **Evidence-incomplete** | 70 | Nothing collected bears on a verdict — either no install may read it, or something narrows it and no rubric has been authored over what that is. |
+ | **Human-accountable** | 2 | Nothing recorded bears on it and no rubric claims otherwise, so the answer is a person’s. |
+ 
+ Three of the four are derived from the catalogue and the registry. `llm-eligible` is not, and cannot
+ be: the catalogue records that a reading exists for a requirement and never whether that reading is a
+ number to compute or evidence to read, which is the whole of the route. So it is authored per
+ requirement with a reason, and the default is not eligible — a `partial-telemetry` requirement nobody
+ has written a reason for stays `evidence-incomplete`.
+ 
+-**8 of the 30 would be judged over declarations alone.** Nothing recorded bears on them, so a verdict inherits the authority of what somebody said and cannot exceed it. They are marked below and the routing gate holds that label to the catalogue’s own verdict: `IU-01-01`, `OE-03-02`, `PE-03-03`, `PE-04-01`, `PE-04-03`, `REL-02-05`, `REL-04-04`, `SCP-03-01`.
++**8 of the 29 would be judged over declarations alone.** Nothing recorded bears on them, so a verdict inherits the authority of what somebody said and cannot exceed it. They are marked below and the routing gate holds that label to the catalogue’s own verdict: `IU-01-01`, `OE-03-02`, `PE-03-03`, `PE-04-01`, `PE-04-03`, `REL-02-05`, `REL-04-04`, `SCP-03-01`.
+ 
+ ## Every requirement
+ 
+ Ordered by requirement id. **What answers it** names the signals a measured requirement rests on, the
+ endpoint a setting question is about, or the review cadence of a practice question — so a reader can
+ check a row rather than only count it.
+ 
+ | Requirement | Pillar | How it is answered | What answers it | Judgment route |
+ | --- | --- | --- | --- | --- |
+ | `CO-01-01` | CO | Measured | `sql:uc.census` | Deterministic |
+@@ -328,35 +322,35 @@ check a row rather than only count it.
+ | `IU-03-01` | IU | Question — practice | every 365 days | Evidence-incomplete |
+ | `IU-03-02` | IU | Measured | `sql:cost.compute_mix` | Deterministic |
+ | `IU-03-03` | IU | Measured | `sql:compute.clusters` | Deterministic |
+ | `IU-03-04` | IU | Measured | `rest:workspace:serving-endpoints`, `rest:workspace:vector-search.endpoints` | Deterministic |
+ | `IU-04-01` | IU | Measured | `sql:uc.platform_census`, `sql:uc.census` | Deterministic |
+ | `IU-04-02` | IU | Measured | `sql:uc.platform_census`, `sql:uc.census` | Deterministic |
+ | `IU-04-03` | IU | Measured | `sql:uc.census`, `sql:uc.lineage_coverage` | Deterministic |
+ | `OE-01-01` | OE | Question — practice | every 365 days | Human-accountable |
+ | `OE-01-02` | OE | Measured | `sql:jobs.inventory`, `sql:pipelines.inventory` | Deterministic |
+ | `OE-01-03` | OE | Question — practice | every 180 days | LLM-eligible |
+-| `OE-01-04` | OE | Question — practice | every 180 days | LLM-eligible |
++| `OE-01-04` | OE | Measured | `sql:serving.model_entities`, `sql:mlflow.run_tracking` | Deterministic |
+ | `OE-01-05` | OE | Question — practice | every 90 days | LLM-eligible |
+ | `OE-01-06` | OE | Measured | `sql:uc.census` | Deterministic |
+ | `OE-02-01` | OE | Measured | `sql:jobs.inventory`, `sql:pipelines.inventory` | Deterministic |
+ | `OE-02-02` | OE | Measured | `sql:compute.clusters` | Deterministic |
+ | `OE-02-03` | OE | Measured | `sql:uc.census` | Deterministic |
+ | `OE-02-04` | OE | Measured | `sql:jobs.inventory` | Deterministic |
+ | `OE-02-05` | OE | Measured | `sql:jobs.inventory` | Deterministic |
+ | `OE-02-06` | OE | Measured | `sql:pipelines.inventory`, `sql:jobs.inventory` | Deterministic |
+ | `OE-02-07` | OE | Question — practice | every 365 days | LLM-eligible |
+ | `OE-02-08` | OE | Measured | `sql:serving.model_entities` | Deterministic |
+ | `OE-02-09` | OE | Measured | `sql:mlflow.run_tracking` | Deterministic |
+ | `OE-02-10` | OE | Question — practice | every 365 days | LLM-eligible |
+ | `OE-02-11` | OE | Measured | `sql:pipelines.inventory`, `sql:jobs.inventory` | Deterministic |
+-| `OE-03-01` | OE | Question — practice | every 180 days | Evidence-incomplete |
++| `OE-03-01` | OE | Measured | `sql:query.capacity` | Deterministic |
+ | `OE-03-02` | OE | Question — practice | every 180 days | LLM-eligible (declarations only) |
+ | `OE-04-01` | OE | Measured | `sql:jobs.inventory` | Deterministic |
+ | `OE-04-02` | OE | Measured | `sql:jobs.inventory` | Deterministic |
+ | `PE-02-01` | PE | Measured | `sql:cost.compute_mix` | Deterministic |
+ | `PE-02-02` | PE | Measured | `sql:serving.model_entities` | Deterministic |
+ | `PE-03-01` | PE | Question — practice | every 180 days | Evidence-incomplete |
+ | `PE-03-02` | PE | Question — practice | every 365 days | Evidence-incomplete |
+ | `PE-03-03` | PE | Question — practice | every 180 days | LLM-eligible (declarations only) |
+ | `PE-03-04` | PE | Question — practice | every 365 days | Evidence-incomplete |
+ | `PE-03-05` | PE | Measured | `describe:predictive_optimization.coverage` | Deterministic |

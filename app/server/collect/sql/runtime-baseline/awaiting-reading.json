@@ -100,6 +100,20 @@
           "workspace_id": ""
         }
       }
+    },
+    "security_dbfs_tables": {
+      "since": "2026-09-02",
+      "why": "new statement for SCP-04-05 (system.information_schema.tables DBFS-root managed table count). Validated on deep-test-1 with expanded customer_catalog predicate: 374 managed tables, 0 on DBFS root (all on S3 UC storage). Labs baseline owed before Q1-complete.",
+      "owedBy": "task-B",
+      "submitted": {
+        "at": "2026-09-02T00:00:00.000Z",
+        "profile": "deep-test-1",
+        "warehouseId": "0123456789abcdef",
+        "statementSha": "sha256:34ff4f68507c00692547e195c0de4f5676de172a1bc18c6dd47b00275998b840",
+        "sqlState": "00000",
+        "error": null,
+        "parameters": {}
+      }
     }
   }
 }

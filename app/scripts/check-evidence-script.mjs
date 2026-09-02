@@ -312,6 +312,7 @@ for (const entry of manifest.deferred) {
 const WORDS = new Map([
   [33, 'thirty-three'],
   [47, 'forty-seven'],
+  [53, 'fifty-three'],
   [55, 'fifty-five'],
   [63, 'sixty-three'],
 ]);

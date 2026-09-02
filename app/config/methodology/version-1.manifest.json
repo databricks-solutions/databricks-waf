@@ -35,19 +35,19 @@
     ]
   },
   "technical_provenance": {
-    "catalogue_revision": "19",
-    "catalogue_fingerprint": "sha256:6b6d0e6b5f854829539d19fbe2808bd0799ed07e594bc6024ad5b89827a466a0"
+    "catalogue_revision": "20",
+    "catalogue_fingerprint": "sha256:d955c6bcfab3d41a28d4f9a74b991b59fc5f79efbb1a41c68617c198b5da1a10"
   },
   "counts": {
     "pillars": 7,
     "catalogue_entries": 184,
     "scored_units": 165,
     "alias_groups": 12,
-    "measured": 83,
-    "question_setting": 55,
+    "measured": 85,
+    "question_setting": 53,
     "question_practice": 46,
-    "question_contracts": 120,
-    "administrator_probes": 29
+    "question_contracts": 118,
+    "administrator_probes": 27
   },
   "scoring": {
     "digest": "sha256:6d9ff9d9c99a9b24e643d50a9a11c62c81d8da67ba414cecf49ae430e34e1879",
@@ -96,7 +96,7 @@
     },
     "administrator_evidence": {
       "path": "app/config/evidence/collect-evidence.py",
-      "digest": "sha256:523f76fa6d832d44cda07f6dbd8ed355d7b79baa9796ec1f7e7e75a45448bd42",
+      "digest": "sha256:06cc67f189477663760337b5529837643a4d10a9a1172e86750ff812a3219668",
       "deferred": [
         {
           "reason": "One call per account service principal, so the same fan-out as job permissions and the same reason. The list of service principals is itself an account-plane call this script does not make yet.",
@@ -8944,25 +8944,18 @@
         "preconditions": []
       },
       "evidence": {
-        "answer_path": "question-setting",
-        "declared_class": "rest-api",
-        "evaluator_status": "planned",
-        "collector": "rest:workspace:dbfs.list",
-        "required_signals": [],
-        "enrichment_signals": [],
-        "administrator_probes": [
-          {
-            "label": "hive-warehouse",
-            "signals": [
-              "rest:workspace:dbfs.list"
-            ],
-            "tier": "workspace",
-            "shape": "projected"
-          }
+        "answer_path": "measured",
+        "declared_class": "system-table",
+        "evaluator_status": "implemented",
+        "collector": "sql:security.dbfs_tables",
+        "required_signals": [
+          "sql:security.dbfs_tables"
         ],
+        "enrichment_signals": [],
+        "administrator_probes": [],
         "judgment": {
-          "route": "evidence-incomplete",
-          "why": "Every reading it needs wants a scope no install of this app is granted, so nothing it could be judged over is collected."
+          "route": "deterministic",
+          "why": "A resolver answers it from readings, so the reading is the verdict."
         }
       },
       "supported_clouds": [
@@ -8970,14 +8963,7 @@
         "azure",
         "gcp"
       ],
-      "questions": [
-        {
-          "trigger": "source-is-unreachable-to-an-app-installation",
-          "question": "Is data still being written to the DBFS root under /user/hive/warehouse?",
-          "evidence_guidance": "The DBFS root, /user/hive/warehouse. Tables there have no catalogue permissions and sit in a bucket every workspace user can read, which is what Unity Catalog managed storage replaces.",
-          "cadence_days": 90
-        }
-      ]
+      "questions": []
     },
     {
       "id": "SCP-04-06",
@@ -9963,29 +9949,25 @@
         "weight": 3,
         "coverage_mode": "complete",
         "alias_group": null,
-        "thresholds": null,
+        "thresholds": {
+          "pass_share": 1,
+          "partial_share": 0.8
+        },
         "preconditions": []
       },
       "evidence": {
-        "answer_path": "question-setting",
-        "declared_class": "rest-api",
-        "evaluator_status": "planned",
-        "collector": "rest:workspace:jobs.list",
-        "required_signals": [],
-        "enrichment_signals": [],
-        "administrator_probes": [
-          {
-            "label": "jobs",
-            "signals": [
-              "rest:workspace:jobs.list"
-            ],
-            "tier": "workspace",
-            "shape": "projected"
-          }
+        "answer_path": "measured",
+        "declared_class": "system-table",
+        "evaluator_status": "implemented",
+        "collector": "sql:jobs.inventory",
+        "required_signals": [
+          "sql:jobs.inventory"
         ],
+        "enrichment_signals": [],
+        "administrator_probes": [],
         "judgment": {
-          "route": "evidence-incomplete",
-          "why": "Every reading it needs wants a scope no install of this app is granted, so nothing it could be judged over is collected."
+          "route": "deterministic",
+          "why": "A resolver answers it from readings, so the reading is the verdict."
         }
       },
       "supported_clouds": [
@@ -9993,14 +9975,7 @@
         "azure",
         "gcp"
       ],
-      "questions": [
-        {
-          "trigger": "source-is-unreachable-to-an-app-installation",
-          "question": "Do production jobs run as a service principal rather than as a named person?",
-          "evidence_guidance": "Workflows, the \"run as\" identity on your production jobs. A job running as a person fails when they change team, and grants the job everything that person can reach.",
-          "cadence_days": 90
-        }
-      ]
+      "questions": []
     },
     {
       "id": "SCP-04-23",
@@ -10986,10 +10961,10 @@
   ],
   "digests": {
     "scoring": "sha256:6d9ff9d9c99a9b24e643d50a9a11c62c81d8da67ba414cecf49ae430e34e1879",
-    "evidence": "sha256:46086ca1a4d6dba24e469137503671344439f835d91f795e0f3e50806163cbfd",
-    "questions": "sha256:9870f5a84f41377663266ab399d9c0a9c42b1287a92ade97b5783137db0ab3c7",
-    "methodology_content": "sha256:8a65b109b9f89e256749d7505df77cae4a1df50380c422ed275e651c79d9a79b"
+    "evidence": "sha256:9fca418b4925b8ef8d33e708b30a0c55a1cd43a5e2cc0fa38b988886da7b1146",
+    "questions": "sha256:b5ec4c9bb371f653da1e12876af507884cf936b359bb81b1c6ada4d89ec36809",
+    "methodology_content": "sha256:39787369e29a627ec45e68f534d9f20225e1f9db148f90adb8915b8f8b6f1a5b"
   },
   "generated_by": "app/scripts/methodology-manifest.mts",
-  "manifest_digest": "sha256:79df6cf8bdf90ba3ce8bebccce3455a5a366335badae6519af6df11c96604b71"
+  "manifest_digest": "sha256:555dfc666d2ebb1dc7f3b45c2ffc5b07ad407bf56b1b3df1a5c0be989e14db2c"
 }

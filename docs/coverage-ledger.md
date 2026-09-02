@@ -19,8 +19,8 @@ nobody finds out.
 
 | How it is answered | Requirements | What that means |
 | --- | --- | --- |
-| **Measured** | 83 | The app reads the platform and reaches a verdict. No person is asked. |
-| **Question — setting** | 55 | Configuration this app could read and no install of it may. A check is written and cannot be authorised to run anywhere, so a person reads the screen instead. ADR 0016. |
+| **Measured** | 85 | The app reads the platform and reaches a verdict. No person is asked. |
+| **Question — setting** | 53 | Configuration this app could read and no install of it may. A check is written and cannot be authorised to run anywhere, so a person reads the screen instead. ADR 0016. |
 | **Question — practice** | 46 | A practice no telemetry reaches for anybody — whether a runbook is rehearsed, whether a review happens. A person describes it, and is asked again on a cadence. |
 | **Total** | **184** | Every entry in the catalogue. 165 of them are scored — the rest are the same requirement filed under a second pillar, and the next section says why both halves still need an answer. |
 
@@ -31,7 +31,7 @@ this file while one exists.
 ### Why this counts differently from the README
 
 The README says **117 of 165 scored controls are automatable**, and this document says
-**83 of 184 are measured**. Both are true, and the gap between them is where the honest
+**85 of 184 are measured**. Both are true, and the gap between them is where the honest
 part of this tool lives, so it is worth four sentences rather than a footnote.
 
 **184 against 165** is the alias collapse. 19 entries are one requirement filed under two
@@ -44,21 +44,21 @@ over entries, so the README's 117 is 136 here.
 answer them. That is a property of the requirement, written when the catalogue was authored, and it
 is what the README counts.
 
-**101 have a resolver**, and the two sets are not nested, which is the part a subtraction would
-get wrong. 37 requirements are declared automatable with no resolver — and not one of them is a
+**103 have a resolver**, and the two sets are not nested, which is the part a subtraction would
+get wrong. 35 requirements are declared automatable with no resolver — and not one of them is a
 backlog item: every one names an account-plane endpoint or a workspace scope no Databricks App is
 granted, so the check cannot be written to run. Meanwhile 2 have a resolver without being
 declared automatable, answered from signals collected for something else.
 
-**83 are measured in an install**, because 18 of those 101 resolvers need a scope no install is
+**85 are measured in an install**, because 18 of those 103 resolvers need a scope no install is
 offered either. They are written and correct and cannot be authorised to run anywhere (ADR 0016), so
 they appear below under **Question — setting** rather than under Measured. Counting them as coverage
-would be counting effort. They and the 37 above are the reason the administrator evidence
+would be counting effort. They and the 35 above are the reason the administrator evidence
 script exists.
 
 ## What the administrator evidence script does for the requirements no install can read
 
-The 55 above are the requirements a Databricks App cannot be granted the scope to read (ADR 0016). An
+The 53 above are the requirements a Databricks App cannot be granted the scope to read (ADR 0016). An
 administrator can run `config/evidence/collect-evidence.py` under their own authority and import the
 result, which turns some of those questions back into readings. Three states, because they are three
 different amounts of progress and reporting them as one number would overstate the first:
@@ -66,7 +66,7 @@ different amounts of progress and reporting them as one number would overstate t
 | Administrator script | Requirements | What a reader gets today |
 | --- | --- | --- |
 | Imported | 18 | The script collects it and the app revives it into a finding. Evidence, marked as administrator-collected rather than observed. |
-| Collected, held | 34 | The script collects it and the app does not yet read it back. Held and named rather than discarded, so the import is not lossy — but the answer is still the person's. |
+| Collected, held | 32 | The script collects it and the app does not yet read it back. Held and named rather than discarded, so the import is not lossy — but the answer is still the person's. |
 | Not collected | 3 | Neither collected nor revived. The question is the whole answer. |
 
 ## Why every question is a question
@@ -244,7 +244,7 @@ says what a machine would have had to see.
 | Operational excellence | 21 | 15 | 0 | 6 |
 | Performance efficiency | 25 | 13 | 0 | 12 |
 | Reliability | 18 | 8 | 0 | 10 |
-| Security, compliance, and privacy | 70 | 10 | 55 | 5 |
+| Security, compliance, and privacy | 70 | 12 | 53 | 5 |
 
 ## What may produce a verdict
 
@@ -255,9 +255,9 @@ control by control at the point somebody writes the call.
 
 | Route | Requirements | What it means |
 | --- | --- | --- |
-| **Deterministic** | 83 | A resolver answers it from readings, or the reading is owed and the debt is paid with the reading. Nothing is sent anywhere. |
+| **Deterministic** | 85 | A resolver answers it from readings, or the reading is owed and the debt is paid with the reading. Nothing is sent anywhere. |
 | **LLM-eligible** | 29 | Somebody wrote down what a rubric would weigh that the reading does not settle. Eligible is not scored: no model verdict enters the published assessment. |
-| **Evidence-incomplete** | 70 | Nothing collected bears on a verdict — either no install may read it, or something narrows it and no rubric has been authored over what that is. |
+| **Evidence-incomplete** | 68 | Nothing collected bears on a verdict — either no install may read it, or something narrows it and no rubric has been authored over what that is. |
 | **Human-accountable** | 2 | Nothing recorded bears on it and no rubric claims otherwise, so the answer is a person’s. |
 
 Three of the four are derived from the catalogue and the registry. `llm-eligible` is not, and cannot
@@ -426,7 +426,7 @@ check a row rather than only count it.
 | `SCP-04-02` | SCP | Question — setting (collected, held) | `rest:account:accounts.log-delivery` | Evidence-incomplete |
 | `SCP-04-03` | SCP | Question — setting (collected, held) | `rest:workspace:clusters.list` | Evidence-incomplete |
 | `SCP-04-04` | SCP | Measured | `sql:compute.clusters` | Deterministic |
-| `SCP-04-05` | SCP | Question — setting (collected, held) | `rest:workspace:dbfs.list` | Evidence-incomplete |
+| `SCP-04-05` | SCP | Measured | `sql:security.dbfs_tables` | Deterministic |
 | `SCP-04-06` | SCP | Question — practice | every 90 days | Evidence-incomplete |
 | `SCP-04-07` | SCP | Measured | `sql:compute.clusters` | Deterministic |
 | `SCP-04-08` | SCP | Question — setting (imported) | `rest:workspace:preview.workspace-conf` | Evidence-incomplete |
@@ -443,7 +443,7 @@ check a row rather than only count it.
 | `SCP-04-19` | SCP | Question — setting (collected, held) | `rest:workspace:settings.types.restrict_workspace_admins.names.default` | Evidence-incomplete |
 | `SCP-04-20` | SCP | Question — setting (collected, held) | `rest:workspace:settings.types.automatic_cluster_update.names.default` | Evidence-incomplete |
 | `SCP-04-21` | SCP | Question — setting (collected, held) | `rest:account:accounts.settings.types.disable_legacy_features.names.default` | Evidence-incomplete |
-| `SCP-04-22` | SCP | Question — setting (collected, held) | `rest:workspace:jobs.list` | Evidence-incomplete |
+| `SCP-04-22` | SCP | Measured | `sql:jobs.inventory` | Deterministic |
 | `SCP-04-23` | SCP | Question — setting (not collected) | `rest:workspace:permissions.jobs.{job_id}` | Evidence-incomplete |
 | `SCP-05-01` | SCP | Question — setting (collected, held) | `rest:workspace:libraries.all-cluster-statuses` | Evidence-incomplete |
 | `SCP-05-02` | SCP | Question — setting (collected, held) | `rest:workspace:global-init-scripts` | Evidence-incomplete |

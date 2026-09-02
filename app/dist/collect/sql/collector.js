@@ -206,6 +206,12 @@ const DEFINITIONS = {
 		],
 		reach: "metastore"
 	},
+	"sql:security.dbfs_tables": {
+		query: "security_dbfs_tables",
+		parse: parse.dbfsTableAudit,
+		params: [],
+		reach: "metastore"
+	},
 	"sql:uc.census": {
 		query: "uc_asset_census",
 		parse: parse.assetCensus,

@@ -864,19 +864,31 @@ principles:
         provenance: security-guide
         source_anchor: https://docs.databricks.com/data/databricks-file-system.html#configuration-and-usage-recommendations
         source_ref: GOV-10
-        measurability: rest-api
+        measurability: system-table
         severity: low
-        evaluator_status: planned
+        evaluator_status: implemented
         clouds:
           - aws
           - azure
           - gcp
-        collector: rest:workspace:dbfs.list
+        collector: sql:security.dbfs_tables
         criteria: >-
-          Check the /user/hive/warehouse/ folder for any data folders stored more than the
-          configured value
+          Unity Catalog managed tables whose storage_path begins with dbfs:/ or /dbfs/ are stored on
+          workspace DBFS root, which carries no file-level access control. Every table stored there
+          is readable by any cluster that can mount the DBFS root, bypassing Unity Catalog grants. A
+          count of zero is a pass: it confirms that this metastore's managed tables use governed
+          cloud storage rather than DBFS root. Hive Metastore tables are outside the scope of this
+          signal and require migration to Unity Catalog before this control can evaluate them.
         remediation:
-          summary: The DBFS root is not intended for production customer data
+          summary: >-
+            Move managed tables off DBFS root onto Unity Catalog external locations or managed
+            storage.
+          by_hand: >-
+            For each table stored on DBFS root (storage_path starting with dbfs:/), either migrate
+            the table to a Unity Catalog managed table with a proper external storage location
+            (CREATE TABLE ... LOCATION 's3://...'), or use DEEP CLONE to copy it to a new managed
+            table whose storage the metastore governs. After migration, drop the DBFS-backed table.
+            See the Unity Catalog migration guide for step-by-step instructions.
           doc_url: https://docs.databricks.com/data/databricks-file-system.html#configuration-and-usage-recommendations
       - id: SCP-04-06
         title: DBFS mounts
@@ -1300,21 +1312,33 @@ principles:
         provenance: security-guide
         source_anchor: https://docs.databricks.com/aws/en/admin/users-groups/service-principals#common-use-cases
         source_ref: GOV-42
-        measurability: rest-api
+        measurability: system-table
         severity: medium
-        evaluator_status: planned
+        evaluator_status: implemented
         clouds:
           - aws
           - azure
           - gcp
-        collector: rest:workspace:jobs.list
+        collector: sql:jobs.inventory
         criteria: >-
-          Flag jobs where run_as_user_name matches an email pattern (indicating a user account
-          rather than a service principal)
+          Jobs where the run_as field contains an email address are running as a user account rather
+          than a service principal. A job running as a user account uses that person's permissions,
+          outlives their employment, and produces audit entries attributed to an individual rather
+          than a workload. The share of jobs running as service principals over the total with a
+          recorded run_as identity is the metric; jobs with no recorded run_as are counted
+          separately and reported but excluded from the share because the field is absent on rows
+          written before the column existed.
+        thresholds:
+          pass_share: 1
+          partial_share: 0.8
         remediation:
           summary: >-
-            Configure production jobs to run as a service principal to enforce least privilege and
-            improve audit clarity
+            Configure each job to run as a service principal rather than a user account. A service
+            principal has only the grants its owner gives it, survives staff changes, and produces
+            audit entries attributable to the workload rather than to a person.
+          cli: >-
+            databricks jobs update --job-id <job-id> --json '{"run_as": {"service_principal_name":
+            "<sp-application-id>"}}'
           doc_url: https://docs.databricks.com/aws/en/admin/users-groups/service-principals#common-use-cases
       - id: SCP-04-23
         title: Jobs not granting CAN_MANAGE to non-admin principals

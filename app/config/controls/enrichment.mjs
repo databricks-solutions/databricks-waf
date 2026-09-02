@@ -1624,4 +1624,10 @@ export const IMPLEMENTED_DELEGATED = [
   'SCP-03-07',
   // Vector search, the second and last grantable control-plane scope in this pillar.
   'SCP-02-09',
+  // System-table re-targets (Task B): these carried their own criteria and remediation from the
+  // security guide; only the evaluator_status flip is managed here. Measurability and collector
+  // are updated directly in the YAML because the enrichment table would otherwise overwrite the
+  // delegated criteria with a paraphrase of the same text.
+  'SCP-04-05',
+  'SCP-04-22',
 ];

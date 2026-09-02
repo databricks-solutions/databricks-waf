@@ -22,6 +22,7 @@ import { OPERATIONAL_EXCELLENCE_RESOLVERS } from './operational-excellence.js';
 import { PLATFORM_RESOLVERS } from './platform.js';
 import { QUALITY_MONITORING_RESOLVERS } from './quality-monitoring.js';
 import { RETENTION_RESOLVERS } from './retention.js';
+import { SECURITY_JOBS_RESOLVERS } from './security-jobs.js';
 import { SECURITY_SETTINGS_RESOLVERS } from './security-settings.js';
 import { STORAGE_RESOLVERS } from './storage.js';
 
@@ -42,6 +43,7 @@ const ALL = [
   ...PLATFORM_RESOLVERS,
   ...QUALITY_MONITORING_RESOLVERS,
   ...RETENTION_RESOLVERS,
+  ...SECURITY_JOBS_RESOLVERS,
   ...SECURITY_SETTINGS_RESOLVERS,
   ...STORAGE_RESOLVERS,
 ];
@@ -73,6 +75,7 @@ export {
   PLATFORM_RESOLVERS,
   QUALITY_MONITORING_RESOLVERS,
   RETENTION_RESOLVERS,
+  SECURITY_JOBS_RESOLVERS,
   SECURITY_SETTINGS_RESOLVERS,
   STORAGE_RESOLVERS,
 };
