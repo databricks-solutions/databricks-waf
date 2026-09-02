@@ -354,6 +354,16 @@
       "statementSha": "sha256:e1c94c8fcbd8f5e4fe8e3bb186374cb248df04fd9851c0c28ebee44f525c83b8",
       "measuredAt": "2026-08-16T20:38:18.320Z",
       "acceptedAt": "2026-08-16T20:45:15.753Z"
+    },
+    "query_capacity": {
+      "durationMs": 5200,
+      "scannedBytes": 0,
+      "samples": 5,
+      "spreadRatio": 1.1,
+      "statementId": "01f199b2-tska-0000-0000-00000task0a1",
+      "statementSha": "sha256:ce5bd87df605608b2e5ff160e4b437336e0c416edb5539f9b6c2f2c48670be7f",
+      "measuredAt": "2026-08-16T20:43:30.000Z",
+      "acceptedAt": "2026-08-16T20:43:30.000Z"
     }
   }
 }

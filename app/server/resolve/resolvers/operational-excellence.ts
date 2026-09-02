@@ -17,10 +17,11 @@
 
 import type { ControlResolver } from '../resolver.js';
 import { asCluster, asJob } from '../locate.js';
-import type { AssetCensus, ClusterRow, JobRow, PipelineRow } from '../../collect/sql/shapes.js';
+import type { AssetCensus, ClusterRow, JobRow, MlflowRunTracking, PipelineRow, QueryCapacity, ServingModelEntity } from '../../collect/sql/shapes.js';
 import { fromBundle, hasRun, isAllPurpose } from '../../collect/sql/shapes.js';
 import { share } from '../../collect/sql/rows.js';
 import {
+  agreeing,
   bandOutcome,
   bandsOf,
   enrichedBy,
@@ -44,6 +45,9 @@ const CENSUS = 'sql:uc.census';
 const CLUSTERS = 'sql:compute.clusters';
 const JOBS = 'sql:jobs.inventory';
 const PIPELINES = 'sql:pipelines.inventory';
+const CAPACITY = 'sql:query.capacity';
+const SERVING_ENTITIES = 'sql:serving.model_entities';
+const RUN_TRACKING = 'sql:mlflow.run_tracking';
 
 /**
  * OE-02-03: Unity Catalog managed tables.
@@ -478,6 +482,158 @@ const monitoring = fromSignals([JOBS], ['OE-04-01', 'OE-04-02', 'PE-05-04'], (co
   };
 });
 
+/**
+ * OE-03-01: service limits and quotas.
+ *
+ * `waiting_at_capacity_duration_ms > 0` on a query history row means the statement was
+ * delayed by a service limit or quota. That is the post-fact half of the control: limits
+ * actually biting are measurable after the event. The proactive half — whether someone
+ * watches headroom before a limit bites — is not recorded anywhere in the workspace.
+ *
+ * So the measurement is one-way. A positive waiting count is a finding: limits are
+ * reaching users. Zero is not a pass — it is a quiet period, or a workspace far enough
+ * below quota that nothing has happened yet. The outcome caps at `partial` in all cases
+ * for that reason: a pass would require evidence of monitoring that is not here to read.
+ */
+const serviceUsageLimits = fromSignal<QueryCapacity>(CAPACITY, ['OE-03-01'], (capacity, context) => {
+  if (capacity.totalStatements === 0) {
+    return notApplicable(
+      'No query history found for this workspace in the window, so there is no evidence of capacity ' +
+        'limits being reached or not reached.'
+    );
+  }
+
+  const total = capacity.totalStatements;
+  const { noun: totalNoun } = agreeing(total, 'statement');
+
+  if (capacity.waitingAtCapacity === 0) {
+    return {
+      outcome: 'partial',
+      evidence: [
+        evidenceFrom(
+          context,
+          CAPACITY,
+          `${totalNoun} in the window, none waited at a capacity limit`,
+          'No queries are delayed by a service limit or quota'
+        ),
+      ],
+      outcomeReason:
+        'No capacity-limit delays were recorded in this window, which is the measurable half of this ' +
+        'control. Whether proactive monitoring exists — watching headroom before a limit bites — is not ' +
+        'recorded in the workspace and is what the attestation asks about. The absence of events confirms ' +
+        'limits are not currently biting; it does not confirm someone is watching them.',
+    };
+  }
+
+  // At this point we know total > 0 and waiting > 0.
+  const waitShare = capacity.waitingAtCapacity / total;
+  const { noun: waitNoun } = agreeing(capacity.waitingAtCapacity, 'statement');
+  // Threshold from the catalogue spec; default 1 %: a share above that means limits are regularly
+  // impacting statements rather than occasionally grazing a limit in an otherwise quiet window.
+  const partialThreshold = bandsOf(context.spec, { pass: 0, partial: 0.01 }).partial;
+  const outcome = waitShare >= partialThreshold ? 'fail' : 'partial';
+
+  return {
+    outcome,
+    evidence: [
+      evidenceFrom(
+        context,
+        CAPACITY,
+        `${waitNoun} of ${totalNoun} waited at a capacity limit (${percent(waitShare)})`,
+        'No queries are delayed by a service limit or quota'
+      ),
+    ],
+    outcomeReason:
+      'Some statements waited at a capacity limit during this window, which means a service quota was ' +
+      'reached. Whether it was noticed and managed proactively is what the attestation asks.',
+  };
+});
+
+/**
+ * OE-01-04: standardized MLOps processes.
+ *
+ * The control asks whether models reach production through a defined, reproducible process.
+ * The observable proxy: custom models are being served through managed serving endpoints
+ * (registered, versioned, and deployed) AND automated tracking exists in MLflow (training
+ * runs sourced from jobs rather than only from notebooks).
+ *
+ * Both signals together show that the infrastructure for a standardized MLOps lifecycle
+ * exists. Neither alone, and not together, prove that the process is documented or enforced
+ * — the resolver caps at `partial` in all non-empty cases for that reason.
+ *
+ * Where neither signal has any reading, the absence cannot be told from an estate with no
+ * ML workload, and the finding is `unmeasurable` rather than not-applicable: an estate
+ * serving models from a custom Flask app carries nothing here.
+ */
+const mlopsProcesses = fromSignals([SERVING_ENTITIES, RUN_TRACKING], ['OE-01-04'], (context) => {
+  const entities = valueOf<readonly ServingModelEntity[]>(context, SERVING_ENTITIES);
+  const tracking = valueOf<MlflowRunTracking>(context, RUN_TRACKING);
+
+  const totals = entities[0];
+  const customModels = totals?.customModels ?? 0;
+  const customWithVersion = totals?.customModelsWithAVersion ?? 0;
+  const jobRuns = tracking.runsFromAJob;
+  const totalRuns = tracking.runs - tracking.runsWithoutASource;
+
+  if (customModels === 0 && jobRuns === 0) {
+    return unmeasured(
+      'No custom model serving endpoints or job-sourced MLflow runs found in this workspace. ' +
+        'That is not evidence of a failed MLOps practice: an estate that serves models from its own service ' +
+        'or trains on a separate platform leaves nothing here. Answer the attestation to record which it is.',
+      'unreadable'
+    );
+  }
+
+  const evidences = [];
+
+  if (customModels > 0) {
+    const { noun: modelNoun } = agreeing(customModels, 'custom model');
+    evidences.push(
+      evidenceFrom(
+        context,
+        SERVING_ENTITIES,
+        `${modelNoun} on managed serving endpoints` +
+          (customWithVersion > 0
+            ? `, ${customWithVersion.toLocaleString('en-US')} referencing a registered version`
+            : ', none referencing a registered version'),
+        'Models are deployed through managed serving endpoints with a registered version'
+      )
+    );
+  }
+
+  if (totalRuns > 0) {
+    const automatedShare = share(jobRuns, totalRuns);
+    const { noun: runNoun } = agreeing(jobRuns, 'MLflow run');
+    evidences.push(
+      evidenceFrom(
+        context,
+        RUN_TRACKING,
+        `${runNoun} of ${totalRuns.toLocaleString('en-US')} sourced from a job (${percent(automatedShare)})`,
+        'Training runs are started by the platform rather than by hand in a notebook'
+      )
+    );
+  } else if (tracking.runs > 0) {
+    evidences.push(
+      evidenceFrom(
+        context,
+        RUN_TRACKING,
+        `${tracking.runs.toLocaleString('en-US')} MLflow runs recorded, none sourced from a job`,
+        'Training runs are started by the platform rather than by hand in a notebook'
+      )
+    );
+  }
+
+  return {
+    outcome: 'partial',
+    evidence: evidences,
+    outcomeReason:
+      'MLOps tooling is in use — model serving and/or experiment tracking are active in this workspace. ' +
+        'Whether the process is standardized, documented and enforced — with defined evaluation gates, ' +
+        'a promotion path and review steps — is not recorded in any system table. That is the question ' +
+        'the attestation answers, and this reading provides context for it rather than a verdict.',
+  };
+});
+
 export const OPERATIONAL_EXCELLENCE_RESOLVERS: readonly ControlResolver[] = [
   managedTables,
   automatedJobs,
@@ -486,6 +642,8 @@ export const OPERATIONAL_EXCELLENCE_RESOLVERS: readonly ControlResolver[] = [
   standardizedCompute,
   catalogStrategy,
   monitoring,
+  serviceUsageLimits,
+  mlopsProcesses,
 ];
 
 /** Re-exported so the interoperability resolvers can share the observation helper type. */

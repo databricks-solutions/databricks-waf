@@ -1,6 +1,6 @@
 {
-  "version": 18,
-  "fingerprint": "sha256:755d42025cf0f621c064089147c00748165277afd338986f2392edbb9cd36193",
+  "version": 19,
+  "fingerprint": "sha256:6b6d0e6b5f854829539d19fbe2808bd0799ed07e594bc6024ad5b89827a466a0",
   "scored_units": 165,
   "controls": {
     "CO-01-01": {
@@ -1043,7 +1043,7 @@
       "title": "Standardize MLOps processes",
       "provenance": "waf-docs",
       "severity": "medium",
-      "measurability": "attestation",
+      "measurability": "system-table",
       "coverage_mode": "complete",
       "alias_group": null,
       "clouds": [
@@ -1304,7 +1304,7 @@
       "title": "Manage service limits and quotas",
       "provenance": "waf-docs",
       "severity": "medium",
-      "measurability": "attestation",
+      "measurability": "system-table",
       "coverage_mode": "complete",
       "alias_group": null,
       "clouds": [
@@ -1312,7 +1312,9 @@
         "azure",
         "gcp"
       ],
-      "thresholds": null,
+      "thresholds": {
+        "partial_share": 0.01
+      },
       "preconditions": []
     },
     "OE-03-02": {

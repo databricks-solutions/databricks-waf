@@ -19,9 +19,9 @@ nobody finds out.
 
 | How it is answered | Requirements | What that means |
 | --- | --- | --- |
-| **Measured** | 81 | The app reads the platform and reaches a verdict. No person is asked. |
+| **Measured** | 83 | The app reads the platform and reaches a verdict. No person is asked. |
 | **Question — setting** | 55 | Configuration this app could read and no install of it may. A check is written and cannot be authorised to run anywhere, so a person reads the screen instead. ADR 0016. |
-| **Question — practice** | 48 | A practice no telemetry reaches for anybody — whether a runbook is rehearsed, whether a review happens. A person describes it, and is asked again on a cadence. |
+| **Question — practice** | 46 | A practice no telemetry reaches for anybody — whether a runbook is rehearsed, whether a review happens. A person describes it, and is asked again on a cadence. |
 | **Total** | **184** | Every entry in the catalogue. 165 of them are scored — the rest are the same requirement filed under a second pillar, and the next section says why both halves still need an answer. |
 
 There is no fourth row, and that is the claim. A requirement with no check, no question and no plan
@@ -30,27 +30,27 @@ this file while one exists.
 
 ### Why this counts differently from the README
 
-The README says **115 of 165 scored controls are automatable**, and this document says
-**81 of 184 are measured**. Both are true, and the gap between them is where the honest
+The README says **117 of 165 scored controls are automatable**, and this document says
+**83 of 184 are measured**. Both are true, and the gap between them is where the honest
 part of this tool lives, so it is worth four sentences rather than a footnote.
 
 **184 against 165** is the alias collapse. 19 entries are one requirement filed under two
 pillars — Delta history retention is a cost concern and a recovery concern — and a score counts each
 once so overlap cannot inflate it. This ledger enumerates entries rather than scored requirements,
 because every entry has to have an answer and both halves are read by somebody. Every count below is
-over entries, so the README's 115 is 134 here.
+over entries, so the README's 117 is 136 here.
 
-**Declared automatable is a statement, not a capability.** 134 requirements say a machine could
+**Declared automatable is a statement, not a capability.** 136 requirements say a machine could
 answer them. That is a property of the requirement, written when the catalogue was authored, and it
 is what the README counts.
 
-**99 have a resolver**, and the two sets are not nested, which is the part a subtraction would
+**101 have a resolver**, and the two sets are not nested, which is the part a subtraction would
 get wrong. 37 requirements are declared automatable with no resolver — and not one of them is a
 backlog item: every one names an account-plane endpoint or a workspace scope no Databricks App is
 granted, so the check cannot be written to run. Meanwhile 2 have a resolver without being
 declared automatable, answered from signals collected for something else.
 
-**81 are measured in an install**, because 18 of those 99 resolvers need a scope no install is
+**83 are measured in an install**, because 18 of those 101 resolvers need a scope no install is
 offered either. They are written and correct and cannot be authorised to run anywhere (ADR 0016), so
 they appear below under **Question — setting** rather than under Measured. Counting them as coverage
 would be counting effort. They and the 37 above are the reason the administrator evidence
@@ -71,7 +71,7 @@ different amounts of progress and reporting them as one number would overstate t
 
 ## Why every question is a question
 
-The 48 practice questions above are the expensive answers: each costs a person's attention and
+The 46 practice questions above are the expensive answers: each costs a person's attention and
 buys an answer no better than their word. So each one records what a machine would have to observe
 and whether anything records it, and the verdict that follows is published here rather than kept
 where only the catalogue can see it. The uncomfortable row is the third one.
@@ -79,10 +79,10 @@ where only the catalogue can see it. The uncomfortable row is the third one.
 | Verdict | Questions | What it means |
 | --- | --- | --- |
 | Beyond telemetry | 10 | Nothing the platform records bears on the answer. A person is the only source there is. |
-| Partial telemetry | 38 | Something is recorded, it narrows the answer, and it does not settle it. The question stands and names what bears on it. |
+| Partial telemetry | 36 | Something is recorded, it narrows the answer, and it does not settle it. The question stands and names what bears on it. |
 | Owed a measure | 0 | The platform records enough to answer this and the app does not read it yet. A debt, not a design. |
 
-**0 of the 48 questions should not be questions.** That is the number this section exists to
+**0 of the 46 questions should not be questions.** That is the number this section exists to
 publish. Each one below names the signal that would answer it, so the claim can be checked rather
 than taken on trust — and so that a question standing in for a measurement cannot quietly become
 permanent, which is what happens when the only record of the compromise is that somebody once knew.
@@ -134,9 +134,6 @@ reader can judge how much of the answer is really the person’s.
 - **`OE-01-03`** Standardize DevOps processes (CI/CD)
   Deployment provenance shows code arrived by a deploy rather than by hand, which is the observable half. Whether review and tests ran before that deploy happened in a pipeline outside the platform, and nothing here records it.
   Bears on it: `system.lakeflow.jobs.deployment`.
-- **`OE-01-04`** Standardize MLOps processes
-  Whether served models trace back to registered versions and tracked runs is recorded, so the mechanics of promotion are visible. Whether the process is defined, and whether evaluation gates it, is not.
-  Bears on it: `system.mlflow.runs_latest with system.serving.served_entities`.
 - **`OE-01-05`** Define environment isolation strategy
   Grants held by a development identity on production catalogues are recorded, so the catalogue half of isolation is measurable. Isolation at the network and cloud account layer is outside a workspace’s view, and it is where the question’s worst case lives.
   Bears on it: `system.information_schema.table_privileges with system.access.audit`.
@@ -146,9 +143,6 @@ reader can judge how much of the answer is really the person’s.
 - **`OE-02-10`** Reuse the same infrastructure to manage ML pipelines
   ML work running as jobs and pipelines on the platform’s own compute is recorded and countable. Work running on separately maintained infrastructure is invisible precisely because it is elsewhere, so an empty result cannot distinguish good practice from a blind spot.
   Bears on it: `system.lakeflow.jobs and pipelines with system.compute.clusters`.
-- **`OE-03-01`** Manage service limits and quotas
-  Time spent waiting at capacity is recorded per statement, so limits actually biting are measurable after the fact. Headroom against account quotas — which is what the question means by knowing before they bite — is an account-plane figure with no workspace source.
-  Bears on it: `system.query.history.waiting_at_capacity_duration_ms`.
 - **`PE-03-01`** Understand your data ingestion and access patterns
   How the largest datasets are read is recorded in detail — partitions touched, files pruned, bytes scanned, how often. Whether the team knows any of that is a different claim, and it is the one asked.
   Bears on it: `system.query.history.read_partitions, pruned_files and read_bytes`.
@@ -247,7 +241,7 @@ says what a machine would have had to see.
 | Cost optimization | 22 | 17 | 0 | 5 |
 | Data and AI governance | 13 | 10 | 0 | 3 |
 | Interoperability and usability | 15 | 10 | 0 | 5 |
-| Operational excellence | 21 | 13 | 0 | 8 |
+| Operational excellence | 21 | 15 | 0 | 6 |
 | Performance efficiency | 25 | 13 | 0 | 12 |
 | Reliability | 18 | 8 | 0 | 10 |
 | Security, compliance, and privacy | 70 | 10 | 55 | 5 |
@@ -261,9 +255,9 @@ control by control at the point somebody writes the call.
 
 | Route | Requirements | What it means |
 | --- | --- | --- |
-| **Deterministic** | 81 | A resolver answers it from readings, or the reading is owed and the debt is paid with the reading. Nothing is sent anywhere. |
-| **LLM-eligible** | 30 | Somebody wrote down what a rubric would weigh that the reading does not settle. Eligible is not scored: no model verdict enters the published assessment. |
-| **Evidence-incomplete** | 71 | Nothing collected bears on a verdict — either no install may read it, or something narrows it and no rubric has been authored over what that is. |
+| **Deterministic** | 83 | A resolver answers it from readings, or the reading is owed and the debt is paid with the reading. Nothing is sent anywhere. |
+| **LLM-eligible** | 29 | Somebody wrote down what a rubric would weigh that the reading does not settle. Eligible is not scored: no model verdict enters the published assessment. |
+| **Evidence-incomplete** | 70 | Nothing collected bears on a verdict — either no install may read it, or something narrows it and no rubric has been authored over what that is. |
 | **Human-accountable** | 2 | Nothing recorded bears on it and no rubric claims otherwise, so the answer is a person’s. |
 
 Three of the four are derived from the catalogue and the registry. `llm-eligible` is not, and cannot
@@ -272,7 +266,7 @@ number to compute or evidence to read, which is the whole of the route. So it is
 requirement with a reason, and the default is not eligible — a `partial-telemetry` requirement nobody
 has written a reason for stays `evidence-incomplete`.
 
-**8 of the 30 would be judged over declarations alone.** Nothing recorded bears on them, so a verdict inherits the authority of what somebody said and cannot exceed it. They are marked below and the routing gate holds that label to the catalogue’s own verdict: `IU-01-01`, `OE-03-02`, `PE-03-03`, `PE-04-01`, `PE-04-03`, `REL-02-05`, `REL-04-04`, `SCP-03-01`.
+**8 of the 29 would be judged over declarations alone.** Nothing recorded bears on them, so a verdict inherits the authority of what somebody said and cannot exceed it. They are marked below and the routing gate holds that label to the catalogue’s own verdict: `IU-01-01`, `OE-03-02`, `PE-03-03`, `PE-04-01`, `PE-04-03`, `REL-02-05`, `REL-04-04`, `SCP-03-01`.
 
 ## Every requirement
 
@@ -335,7 +329,7 @@ check a row rather than only count it.
 | `OE-01-01` | OE | Question — practice | every 365 days | Human-accountable |
 | `OE-01-02` | OE | Measured | `sql:jobs.inventory`, `sql:pipelines.inventory` | Deterministic |
 | `OE-01-03` | OE | Question — practice | every 180 days | LLM-eligible |
-| `OE-01-04` | OE | Question — practice | every 180 days | LLM-eligible |
+| `OE-01-04` | OE | Measured | `sql:serving.model_entities`, `sql:mlflow.run_tracking` | Deterministic |
 | `OE-01-05` | OE | Question — practice | every 90 days | LLM-eligible |
 | `OE-01-06` | OE | Measured | `sql:uc.census` | Deterministic |
 | `OE-02-01` | OE | Measured | `sql:jobs.inventory`, `sql:pipelines.inventory` | Deterministic |
@@ -349,7 +343,7 @@ check a row rather than only count it.
 | `OE-02-09` | OE | Measured | `sql:mlflow.run_tracking` | Deterministic |
 | `OE-02-10` | OE | Question — practice | every 365 days | LLM-eligible |
 | `OE-02-11` | OE | Measured | `sql:pipelines.inventory`, `sql:jobs.inventory` | Deterministic |
-| `OE-03-01` | OE | Question — practice | every 180 days | Evidence-incomplete |
+| `OE-03-01` | OE | Measured | `sql:query.capacity` | Deterministic |
 | `OE-03-02` | OE | Question — practice | every 180 days | LLM-eligible (declarations only) |
 | `OE-04-01` | OE | Measured | `sql:jobs.inventory` | Deterministic |
 | `OE-04-02` | OE | Measured | `sql:jobs.inventory` | Deterministic |

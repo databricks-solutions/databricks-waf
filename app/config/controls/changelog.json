@@ -233,5 +233,30 @@
         ]
       }
     ]
+  },
+  {
+    "version": 19,
+    "fingerprint": "sha256:6b6d0e6b5f854829539d19fbe2808bd0799ed07e594bc6024ad5b89827a466a0",
+    "recordedAt": "2026-09-02",
+    "scored_units": 165,
+    "describes": true,
+    "added": [],
+    "removed": [],
+    "renamed": [],
+    "changed": [
+      {
+        "id": "OE-01-04",
+        "fields": [
+          "measurability"
+        ]
+      },
+      {
+        "id": "OE-03-01",
+        "fields": [
+          "measurability",
+          "thresholds"
+        ]
+      }
+    ]
   }
 ]

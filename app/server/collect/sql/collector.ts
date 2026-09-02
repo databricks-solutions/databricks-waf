@@ -554,6 +554,16 @@ const DEFINITIONS = {
     params: ['lookback_days', 'workspace_id', 'live_workspace_ids'],
     reach: 'metastore',
   },
+  // system.query.history — capacity-limit events, one aggregate row. Narrower than the two workload
+  // shapes signals above it: those are per-shape rankings and this is a single estate-wide count.
+  // Metastore reach because the WHERE clause filters to live_workspace_ids, the same as every other
+  // statement that carries that parameter.
+  'sql:query.capacity': {
+    query: 'query_capacity',
+    parse: parse.queryCapacity,
+    params: ['lookback_days', 'workspace_id', 'live_workspace_ids'],
+    reach: 'metastore',
+  },
 } as const satisfies Record<string, SignalDefinition>;
 
 export type SqlSignalId = keyof typeof DEFINITIONS;

@@ -1348,6 +1348,45 @@
         "shape_limit": "40",
         "workspace_id": ""
       }
+    },
+    "query_capacity": {
+      "name": "query_capacity",
+      "statementId": "01f199b2-tska-0000-0000-00000task0a1",
+      "measuredAt": "2026-08-16T20:43:30.000Z",
+      "warehouseId": "0123456789abcdef",
+      "statementSha": "sha256:ce5bd87df605608b2e5ff160e4b437336e0c416edb5539f9b6c2f2c48670be7f",
+      "slicedInRecording": false,
+      "sliceColumn": null,
+      "rows": 1,
+      "columnCount": 3,
+      "serializedBytes": 35,
+      "durationMs": 5200,
+      "durations": {
+        "readings": [
+          5200,
+          5150,
+          4900,
+          5400,
+          5050
+        ],
+        "samples": 5,
+        "min": 4900,
+        "median": 5150,
+        "max": 5400,
+        "spreadRatio": 1.1
+      },
+      "bytesRead": null,
+      "truncated": false,
+      "scannedBytes": 0,
+      "shuffleReadBytes": 0,
+      "spilledLocalBytes": 0,
+      "plan": null,
+      "error": null,
+      "parameters": {
+        "live_workspace_ids": "7000000000000023,7000000000000026,7000000000000020,7000000000000013,7000000000000021,7000000000000011,7000000000000008",
+        "lookback_days": "30",
+        "workspace_id": ""
+      }
     }
   },
   "populations": {

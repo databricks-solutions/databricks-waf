@@ -238,6 +238,8 @@ const SQL_OBSERVES: Readonly<Record<string, string>> = {
     'The models the estate serves on managed serving endpoints: which endpoint each is on, what kind of model it is, the name and version it was resolved by, who created it, and how many requests reached it in the window and how many of those failed. Only the most recent configuration of each live endpoint is read, and an endpoint that took no requests is kept and reported as idle rather than dropped. Nothing about what a model was asked or what it answered is read — only the counts.',
   'sql:mlflow.run_tracking':
     'A single row counting how the estate’s MLflow runs in the window were started — by a job, from a notebook, from a machine elsewhere, or with no source recorded at all — how many experiments those runs reached, and how many of the runs finished. No parameters, metrics, artefacts or run names are read, and deleted runs and experiments are left out.',
+  'sql:query.capacity':
+    'A single aggregate row counting how many statements in the window waited at a capacity limit — a warehouse or serverless pool hitting a service quota — and the total time they spent waiting. No query text, no result data and no user identity are read: only the count and the duration the platform recorded against each statement.',
   'sql:workload.table_statistics':
     'For each table something computed optimizer statistics for in the window, when that happened and when the table was last written. No query text and no table contents are read — only the maintenance history and the lineage record of writes. Tables nothing analysed do not appear, because nothing the platform exposes can tell one of those from a table the automatic maintenance has not yet reached.',
   'sql:workload.job_run_health':
