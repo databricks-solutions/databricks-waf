@@ -349,6 +349,16 @@ const DEFINITIONS = {
 			"live_workspace_ids"
 		],
 		reach: "metastore"
+	},
+	"sql:query.capacity": {
+		query: "query_capacity",
+		parse: parse.queryCapacity,
+		params: [
+			"lookback_days",
+			"workspace_id",
+			"live_workspace_ids"
+		],
+		reach: "metastore"
 	}
 };
 /**

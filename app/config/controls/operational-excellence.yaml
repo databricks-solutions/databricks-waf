@@ -75,22 +75,25 @@ principles:
         collector: sql:serving.model_entities
         severity: medium
         criteria: >-
-          Custom models on managed serving endpoints and job-sourced MLflow runs together
-          evidence that MLOps tooling is in use. Caps at partial: the presence of the right
-          platform features does not prove the process is documented, gated or reproducible.
-          Empty on both signals → unmeasurable, following the same asymmetry as PE-02-02: a
-          workspace serving models from its own service or training on a separate platform
-          leaves nothing here to read.
+          Custom models on managed serving endpoints and job-sourced MLflow runs together evidence
+          that MLOps tooling is in use. Caps at partial: the presence of the right platform features
+          does not prove the process is documented, gated or reproducible. Empty on both signals →
+          unmeasurable, following the same asymmetry as PE-02-02: a workspace serving models from
+          its own service or training on a separate platform leaves nothing here to read.
         remediation:
           summary: >-
-            Define the end-to-end path a model takes from experiment to production: training
-            run tracked in MLflow, model registered in Unity Catalog with a version, served
-            through a managed endpoint pinned to that version.
-          sql: |-
+            Define the end-to-end path a model takes from experiment to production: training run
+            tracked in MLflow, model registered in Unity Catalog with a version, served through a
+            managed endpoint pinned to that version.
+          sql: >-
             -- Register the model from a tracked run
+
             CREATE MODEL IF NOT EXISTS prod.models.fraud_scoring;
+
             -- Tag the experiment for auditability
-            ALTER EXPERIMENT 'fraud/experiments/v3' SET TAGS ('team' = 'data-science', 'env' = 'prod');
+
+            ALTER EXPERIMENT 'fraud/experiments/v3' SET TAGS ('team' = 'data-science', 'env' =
+            'prod');
           doc_url: https://docs.databricks.com/aws/en/machine-learning/manage-model-lifecycle/
       - id: OE-01-05
         title: Define environment isolation strategy
@@ -437,24 +440,28 @@ principles:
         collector: sql:query.capacity
         severity: medium
         criteria: >-
-          Statements with waiting_at_capacity_duration_ms > 0 prove a service limit was reached.
-          Any positive count → partial (limits are biting; monitoring cannot be confirmed).
-          Zero → partial (no events detected, but proactive monitoring is beyond telemetry).
-          No queries at all → not-applicable. Caps at partial in all non-empty cases because
-          headroom and forward awareness are account-plane facts not visible from the workspace.
+          Statements with waiting_at_capacity_duration_ms > 0 prove a service limit was reached. Any
+          positive count → partial (limits are biting; monitoring cannot be confirmed). Zero →
+          partial (no events detected, but proactive monitoring is beyond telemetry). No queries at
+          all → not-applicable. Caps at partial in all non-empty cases because headroom and forward
+          awareness are account-plane facts not visible from the workspace.
         thresholds:
           partial_share: 0.01
         remediation:
           summary: >-
-            Review your account's service limits and quotas in the admin console. If statements
-            are regularly waiting at capacity, raise a support ticket to increase the relevant
-            quota, or reduce peak concurrency by staggering scheduled jobs.
+            Review your account service limits and quotas in the admin console. If statements are
+            regularly waiting at capacity, raise a support ticket to increase the relevant quota, or
+            reduce peak concurrency by staggering scheduled jobs.
+          cli: |-
+            # Query capacity events from the last 30 days
+            databricks statement-execution execute --warehouse-id <id> \
+              --statement "SELECT workspace_id, COUNT(*) as events, SUM(waiting_at_capacity_duration_ms) as total_wait_ms FROM system.query.history WHERE start_time >= current_timestamp() - make_dt_interval(30) AND waiting_at_capacity_duration_ms > 0 GROUP BY 1 ORDER BY 2 DESC"
           doc_url: https://docs.databricks.com/aws/en/admin/account-settings/service-quotas.html
           caveat: >-
-            Account-level quota headroom is visible in the account console under Settings →
-            Quotas, not in a workspace system table. Set up a Databricks alert on
-            waiting_at_capacity_duration_ms from system.query.history if sustained capacity
-            pressure is observed.
+            Account-level quota headroom is visible in the account console under Settings → Quotas,
+            not in a workspace system table. Set up a Databricks alert on
+            waiting_at_capacity_duration_ms from system.query.history if sustained capacity pressure
+            is observed.
       - id: OE-03-02
         title: Invest in capacity planning
         provenance: waf-docs

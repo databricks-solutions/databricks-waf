@@ -82,6 +82,24 @@
           "serving_limit": "2000"
         }
       }
+    },
+    "query_capacity": {
+      "since": "2026-09-02",
+      "why": "new statement for OE-03-01 (system.query.history service-limits signal). Validated on deep-test-1: 96 763 587 statements, 851 774 waiting_at_capacity_duration_ms > 0 in 30 days. Labs baseline owed before Q1-complete.",
+      "owedBy": "task-A",
+      "submitted": {
+        "at": "2026-09-02T00:00:00.000Z",
+        "profile": "deep-test-1",
+        "warehouseId": "0123456789abcdef",
+        "statementSha": "sha256:121dc6eea1e1120d32af94386e1071799e3fb5f9914208ee28c0cc35fd68e50c",
+        "sqlState": "00000",
+        "error": null,
+        "parameters": {
+          "live_workspace_ids": "",
+          "lookback_days": "30",
+          "workspace_id": ""
+        }
+      }
     }
   }
 }

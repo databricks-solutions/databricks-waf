@@ -770,6 +770,14 @@ const parse = {
 				...optional("tablesTouched", num(row, "tables_touched"))
 			};
 		}) };
+	},
+	queryCapacity: (rows) => {
+		const row = rows[0] ?? {};
+		return {
+			totalStatements: count(row, "total_statements"),
+			waitingAtCapacity: count(row, "waiting_at_capacity"),
+			totalWaitMs: count(row, "total_wait_ms")
+		};
 	}
 };
 /**

@@ -73,10 +73,6 @@ export const ELIGIBLE: Readonly<Record<string, Eligibility>> = {
     packet: 'evidence',
     why: 'Whether deployment provenance across the estate is consistent enough to evidence a pipeline, or is patchy in a way that suggests hand edits, is a pattern over jobs rather than a count of them.',
   },
-  'OE-01-04': {
-    packet: 'evidence',
-    why: 'Whether promotion is a defined process is read from how uniformly served models trace back to registered versions and tracked runs.',
-  },
   'OE-01-05': {
     packet: 'evidence',
     why: 'Which grants held across environments amount to a break in isolation needs the meaning of the catalogues they are on, not the count of them.',

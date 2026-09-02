@@ -140,7 +140,7 @@ permissions, upgrades, scheduling, backup, recovery, rollback, and uninstall.
 
 <!-- catalogue-counts:start -->
 
-**165 scored controls** across 7 pillars and 31 principles, of which 115 are automatable.
+**165 scored controls** across 7 pillars and 31 principles, of which 117 are automatable.
 
 Every control declares where it came from, so the app can answer "is this the actual
 Well-Architected Framework?" without hedging:
@@ -154,7 +154,7 @@ Well-Architected Framework?" without hedging:
 The table counts 184 catalogue entries against 165 scored controls. The difference is requirements that belong to more than one pillar — Delta history
  retention is both a cost concern and a recovery concern — which appear in each and are
  scored once, so overlap cannot inflate the total. The automatable figure above is counted
- the same way; over all 184 entries it is 134.
+ the same way; over all 184 entries it is 136.
 
 <!-- catalogue-counts:end -->
 

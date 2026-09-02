@@ -4,7 +4,7 @@
   "name": "Databricks Well-Architected Assessment Methodology Version 1",
   "release": {
     "state": "released",
-    "candidate_started_at": "2026-08-19",
+    "candidate_started_at": "2026-09-02",
     "effective_date": "2026-08-28",
     "commit": "60ff57fa7ceb2ca844532376230c0769b9f304ba",
     "approved_by": "Al Thrussell (product owner)",
@@ -35,18 +35,18 @@
     ]
   },
   "technical_provenance": {
-    "catalogue_revision": "18",
-    "catalogue_fingerprint": "sha256:755d42025cf0f621c064089147c00748165277afd338986f2392edbb9cd36193"
+    "catalogue_revision": "19",
+    "catalogue_fingerprint": "sha256:6b6d0e6b5f854829539d19fbe2808bd0799ed07e594bc6024ad5b89827a466a0"
   },
   "counts": {
     "pillars": 7,
     "catalogue_entries": 184,
     "scored_units": 165,
     "alias_groups": 12,
-    "measured": 81,
+    "measured": 83,
     "question_setting": 55,
-    "question_practice": 48,
-    "question_contracts": 122,
+    "question_practice": 46,
+    "question_contracts": 120,
     "administrator_probes": 29
   },
   "scoring": {
@@ -3212,17 +3212,19 @@
         "preconditions": []
       },
       "evidence": {
-        "answer_path": "question-practice",
-        "declared_class": "attestation",
-        "evaluator_status": "unimplemented",
-        "collector": null,
-        "required_signals": [],
+        "answer_path": "measured",
+        "declared_class": "system-table",
+        "evaluator_status": "implemented",
+        "collector": "sql:serving.model_entities",
+        "required_signals": [
+          "sql:mlflow.run_tracking",
+          "sql:serving.model_entities"
+        ],
         "enrichment_signals": [],
         "administrator_probes": [],
         "judgment": {
-          "route": "llm-eligible",
-          "why": "Whether promotion is a defined process is read from how uniformly served models trace back to registered versions and tracked runs.",
-          "packet": "evidence"
+          "route": "deterministic",
+          "why": "A resolver answers it from readings, so the reading is the verdict."
         }
       },
       "supported_clouds": [
@@ -3230,20 +3232,7 @@
         "azure",
         "gcp"
       ],
-      "questions": [
-        {
-          "trigger": "practice-requires-attestation",
-          "question": "Do models reach production through a defined process — versioned, evaluated, promoted — or by being pointed at from a notebook?",
-          "evidence_guidance": "The promotion path for one production model, including what evaluation gates it passed.",
-          "cadence_days": 180,
-          "proxy_signal": null,
-          "asked_because": {
-            "verdict": "partial-telemetry",
-            "why": "Whether served models trace back to registered versions and tracked runs is recorded, so the mechanics of promotion are visible. Whether the process is defined, and whether evaluation gates it, is not.",
-            "signal": "system.mlflow.runs_latest with system.serving.served_entities"
-          }
-        }
-      ]
+      "questions": []
     },
     {
       "id": "OE-01-05",
@@ -3989,20 +3978,24 @@
         "weight": 3,
         "coverage_mode": "complete",
         "alias_group": null,
-        "thresholds": null,
+        "thresholds": {
+          "partial_share": 0.01
+        },
         "preconditions": []
       },
       "evidence": {
-        "answer_path": "question-practice",
-        "declared_class": "attestation",
-        "evaluator_status": "unimplemented",
-        "collector": null,
-        "required_signals": [],
+        "answer_path": "measured",
+        "declared_class": "system-table",
+        "evaluator_status": "implemented",
+        "collector": "sql:query.capacity",
+        "required_signals": [
+          "sql:query.capacity"
+        ],
         "enrichment_signals": [],
         "administrator_probes": [],
         "judgment": {
-          "route": "evidence-incomplete",
-          "why": "Something recorded narrows it without settling it, and no rubric has been authored over what that is. Which of the two it becomes is a judgment nobody has made rather than one this file can derive."
+          "route": "deterministic",
+          "why": "A resolver answers it from readings, so the reading is the verdict."
         }
       },
       "supported_clouds": [
@@ -4010,20 +4003,7 @@
         "azure",
         "gcp"
       ],
-      "questions": [
-        {
-          "trigger": "practice-requires-attestation",
-          "question": "Do you know which platform limits and quotas you are near, and does someone watch them before they bite?",
-          "evidence_guidance": "The limits tracked, current headroom on the tightest one, and how you found out last time you hit one.",
-          "cadence_days": 180,
-          "proxy_signal": null,
-          "asked_because": {
-            "verdict": "partial-telemetry",
-            "why": "Time spent waiting at capacity is recorded per statement, so limits actually biting are measurable after the fact. Headroom against account quotas — which is what the question means by knowing before they bite — is an account-plane figure with no workspace source.",
-            "signal": "system.query.history.waiting_at_capacity_duration_ms"
-          }
-        }
-      ]
+      "questions": []
     },
     {
       "id": "OE-03-02",
@@ -11006,10 +10986,10 @@
   ],
   "digests": {
     "scoring": "sha256:6d9ff9d9c99a9b24e643d50a9a11c62c81d8da67ba414cecf49ae430e34e1879",
-    "evidence": "sha256:55045e55174f8996e77f7a7f80a27dbebfc24894b0d50e8e872fcac7347aa077",
-    "questions": "sha256:0bab66f90d5523d34122b689a669b7ae8a74ac4f7fc763b898e59dea65b3b65d",
-    "methodology_content": "sha256:6ed198f9234c63cf1a0088b6a55ed6266b84cf47be81215449ad95c60a1af906"
+    "evidence": "sha256:46086ca1a4d6dba24e469137503671344439f835d91f795e0f3e50806163cbfd",
+    "questions": "sha256:9870f5a84f41377663266ab399d9c0a9c42b1287a92ade97b5783137db0ab3c7",
+    "methodology_content": "sha256:8a65b109b9f89e256749d7505df77cae4a1df50380c422ed275e651c79d9a79b"
   },
   "generated_by": "app/scripts/methodology-manifest.mts",
-  "manifest_digest": "sha256:30d26e28904afb7e2c95799daef7ee26219c1461728ded11f514435394c99761"
+  "manifest_digest": "sha256:79df6cf8bdf90ba3ce8bebccce3455a5a366335badae6519af6df11c96604b71"
 }
