@@ -178,20 +178,3 @@ export interface TokenPermissionEntry {
 export interface TokenPermissions {
   readonly entries: readonly TokenPermissionEntry[];
 }
-
-/** A job as listed by the jobs API, reduced to its run-as identity. */
-export interface AdminJobRecord {
-  readonly jobId: string;
-  readonly name: string | undefined;
-  /**
-   * The user account the job runs as. An email pattern identifies a personal account
-   * rather than a service principal, which is the finding this control looks for.
-   */
-  readonly runAsUserName: string | undefined;
-  readonly runAsServicePrincipalName: string | undefined;
-}
-
-export interface AdminJobInventory {
-  readonly jobs: readonly AdminJobRecord[];
-  readonly truncated: boolean;
-}
