@@ -1,14 +1,15 @@
 // Resolver functions for admin-collected security signals.
 //
-// These are intentionally NOT registered in the resolver registry. The signals they read
+// These resolvers are registered in the resolver registry (index.ts). The signals they read
 // are only ever available through admin-imported evidence — no install of this app can be
-// authorised to collect them live — so registering them would change the coverage ledger's
-// "Question — setting" path to "Measured", which would misrepresent what an unimported
-// scan can tell. They are exported for tests that need to verify the full import → revive →
-// resolve pipeline without a live collection.
+// authorised to collect them live — so their coverage ledger classification is
+// "Question — setting (imported)": `pathOf` only reaches "measured" when `beyondAnyInstall`
+// is false, which requires a grantable scope, and every scope these controls require is
+// ungrantable. Registration keeps imported evidence from reaching a resolver that is never
+// called; unregistered resolvers leave imported signals unconsumed.
 //
 // The day the platform grants a scope that covers these signals, the probe, descriptor and
-// registration can be added in one commit, and these functions move to the appropriate
+// registration can be updated in one commit, and these functions move to the appropriate
 // pillar file unchanged.
 //
 // For reviewer: every resolver here follows the same invariants as the registered ones.
@@ -19,7 +20,6 @@
 import type { SignalId } from '../../collect/signal.js';
 import type {
   AdminClusterInventory,
-  AdminJobInventory,
   IpAccessListInventory,
   LogDeliveryInventory,
   SecretScopeInventory,
@@ -44,7 +44,6 @@ const DISABLE_LEGACY_FEATURES: SignalId =
   'rest:account:accounts.settings.types.disable_legacy_features.names.default';
 const SECRET_SCOPES: SignalId = 'rest:workspace:secrets.scopes.list';
 const CLUSTERS: SignalId = 'rest:workspace:clusters.list';
-const JOBS: SignalId = 'rest:workspace:jobs.list';
 const TOKEN_PERMISSIONS: SignalId = 'rest:workspace:permissions.authorization.tokens';
 const DISABLE_LEGACY_DBFS: SignalId = 'rest:workspace:settings.types.disable_legacy_dbfs.names.default';
 const SQL_RESULTS_DOWNLOAD: SignalId = 'rest:workspace:settings.types.sql_results_download.names.default';
@@ -510,64 +509,6 @@ export const longRunningClusters: ControlResolver = fromSignal<AdminClusterInven
 );
 
 /**
- * SCP-04-22: production jobs run as a service principal, not a named user.
- */
-export const jobsRunAs: ControlResolver = fromSignal<AdminJobInventory>(
-  JOBS,
-  ['SCP-04-22'],
-  (inventory, context) => {
-    if (inventory.jobs.length === 0) {
-      return notApplicable('No jobs are defined in this workspace, so there is nothing whose run-as identity could be assessed.');
-    }
-
-    // A service principal's run_as_user_name is a UUID or application id; it does not
-    // contain '@'. A user's name is their email address.
-    const runAsUser = inventory.jobs.filter((j) => {
-      const runAs = j.runAsUserName;
-      return runAs != null && runAs.includes('@');
-    });
-
-    const expected = 'Every job runs as a service principal rather than a named user account';
-
-    if (runAsUser.length === 0) {
-      return {
-        outcome: 'pass',
-        evidence: [
-          evidenceFrom(
-            context,
-            JOBS,
-            `All ${inventory.jobs.length}${inventory.truncated ? '+' : ''} jobs run as a service principal or have no user-account run-as identity`,
-            expected
-          ),
-        ],
-      };
-    }
-
-    const names = runAsUser
-      .slice(0, 5)
-      .map((j) => j.name ?? j.jobId)
-      .join(', ');
-    const tail = runAsUser.length > 5 ? `, and ${runAsUser.length - 5} more` : '';
-
-    return {
-      outcome: 'fail',
-      evidence: [
-        evidenceFrom(
-          context,
-          JOBS,
-          `${runAsUser.length} of ${inventory.jobs.length}${inventory.truncated ? '+' : ''} jobs run as a user account`,
-          expected
-        ),
-        detailFrom(context, JOBS, `Running as a user: ${names}${tail}`),
-      ],
-      outcomeReason:
-        'A job running under a personal account fails when that person changes team or leaves, and it holds ' +
-        'every permission that person has — including ones the job does not need.',
-    };
-  }
-);
-
-/**
  * SCP-01-06: PAT token creation restricted to admins.
  */
 export const tokenCreationRestricted: ControlResolver = fromSignal<TokenPermissions>(
@@ -589,6 +530,10 @@ export const tokenCreationRestricted: ControlResolver = fromSignal<TokenPermissi
             expected
           ),
         ],
+        outcomeReason:
+          'Token creation is restricted to admins or named groups — the workspace-wide "users" group does not ' +
+          'hold any token management permissions, so workspace members cannot create personal access tokens ' +
+          'without explicit permission from an admin.',
       };
     }
 
@@ -701,6 +646,27 @@ export const complianceSecurityProfileAc: ControlResolver = fromSignal<TypedSett
   ['SCP-05-11'],
   booleanTypedSetting(CSP_AC, 'csp_enablement_account', 'is_enforced', true, 'Compliance security profile is enforced at the account level')
 );
+
+// --------------------------------------------------------------------------- registry export
+
+export const SECURITY_ADMIN_RESOLVERS: readonly ControlResolver[] = [
+  logDelivery,
+  accountIpAccessLists,
+  accountIpAccessListEnforcement,
+  workspaceIpAccessLists,
+  disableLegacyFeatures,
+  secretScopes,
+  clusterDiskEncryption,
+  longRunningClusters,
+  tokenCreationRestricted,
+  disableLegacyDbfs,
+  sqlResultsDownload,
+  restrictWorkspaceAdmins,
+  automaticClusterUpdate,
+  complianceSecurityProfileWs,
+  enhancedSecurityMonitoringWs,
+  complianceSecurityProfileAc,
+];
 
 // --------------------------------------------------------------------------- helpers
 

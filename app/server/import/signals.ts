@@ -36,8 +36,6 @@ import { SURFACES, type Surface } from '../scan/surfaces.js';
 import type {
   AdminClusterInventory,
   AdminClusterRecord,
-  AdminJobInventory,
-  AdminJobRecord,
   IpAccessListInventory,
   IpAccessListRecord,
   LogDeliveryConfigRecord,
@@ -294,36 +292,6 @@ const tokenPermissions: Reviver = (probe): TokenPermissions => {
 };
 
 /**
- * Jobs as the workspace jobs-list endpoint reports them.
- *
- * The script captures only the job's run-as identity, which is the entire subject of
- * SCP-04-22. Two fields carry the same information depending on API version: the older
- * `run_as_user_name` at the top level, and the newer `settings.run_as.user_name` nested
- * inside settings. Both are revived so the resolver reads whichever the API returned.
- *
- * `job_id` is recorded as a number in the API but treated as an opaque identifier here,
- * the same coercion `asId` applies to tokens.
- */
-const adminJobs: Reviver = (probe): AdminJobInventory => {
-  const answered = asObject(probe.value);
-  const raw = Array.isArray(answered.jobs) ? answered.jobs : [];
-
-  const jobs: AdminJobRecord[] = raw.map((entry): AdminJobRecord => {
-    const job = asObject(entry);
-    const settings = asObject(job.settings);
-    const runAs = asObject(settings.run_as);
-    return {
-      jobId: asId(job.job_id),
-      name: asText(settings.name),
-      runAsUserName: asText(job.run_as_user_name) ?? asText(runAs.user_name),
-      runAsServicePrincipalName: asText(runAs.service_principal_name),
-    };
-  });
-
-  return { jobs, truncated: probe.truncated === true };
-};
-
-/**
  * The revivers, by signal.
  *
  * Deliberately a small map rather than a generic decoder. A generic one would accept every signal in
@@ -347,7 +315,6 @@ const REVIVERS: ReadonlyMap<SignalId, Reviver> = new Map<SignalId, Reviver>([
 
   // Additional clean mappings.
   ['rest:workspace:ip-access-lists', ipAccessLists],
-  ['rest:workspace:jobs.list', adminJobs],
   ['rest:workspace:permissions.authorization.tokens', tokenPermissions],
 
   // Typed workspace settings — all use the same shallow reviver.

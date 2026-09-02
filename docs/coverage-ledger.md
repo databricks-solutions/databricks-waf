@@ -44,16 +44,16 @@ over entries, so the README's 117 is 136 here.
 answer them. That is a property of the requirement, written when the catalogue was authored, and it
 is what the README counts.
 
-**103 have a resolver**, and the two sets are not nested, which is the part a subtraction would
-get wrong. 35 requirements are declared automatable with no resolver — and not one of them is a
+**119 have a resolver**, and the two sets are not nested, which is the part a subtraction would
+get wrong. 19 requirements are declared automatable with no resolver — and not one of them is a
 backlog item: every one names an account-plane endpoint or a workspace scope no Databricks App is
 granted, so the check cannot be written to run. Meanwhile 2 have a resolver without being
 declared automatable, answered from signals collected for something else.
 
-**85 are measured in an install**, because 18 of those 103 resolvers need a scope no install is
+**85 are measured in an install**, because 34 of those 119 resolvers need a scope no install is
 offered either. They are written and correct and cannot be authorised to run anywhere (ADR 0016), so
 they appear below under **Question — setting** rather than under Measured. Counting them as coverage
-would be counting effort. They and the 35 above are the reason the administrator evidence
+would be counting effort. They and the 19 above are the reason the administrator evidence
 script exists.
 
 ## What the administrator evidence script does for the requirements no install can read

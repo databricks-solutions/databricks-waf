@@ -1630,4 +1630,24 @@ export const IMPLEMENTED_DELEGATED = [
   // delegated criteria with a paraphrase of the same text.
   'SCP-04-05',
   'SCP-04-22',
+  // Admin-evidence controls (Task C): registered resolvers read imported admin signals.
+  // All carry their criteria, severity and collector from the security guide; only the
+  // evaluator_status flip is managed here. Remediation by_hand is written directly in the
+  // YAML because the enrichment table would replace the delegated remediation fields.
+  'SCP-01-06',
+  'SCP-02-01',
+  'SCP-02-02',
+  'SCP-02-10',
+  'SCP-02-11',
+  'SCP-03-05',
+  'SCP-03-08',
+  'SCP-03-12',
+  'SCP-04-02',
+  'SCP-04-03',
+  'SCP-04-19',
+  'SCP-04-20',
+  'SCP-04-21',
+  'SCP-05-11',
+  'SCP-05-13',
+  'SCP-05-14',
 ];

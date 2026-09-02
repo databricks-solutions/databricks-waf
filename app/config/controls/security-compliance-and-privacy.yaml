@@ -152,7 +152,7 @@ principles:
         source_ref: IA-8
         measurability: rest-api
         severity: medium
-        evaluator_status: planned
+        evaluator_status: implemented
         clouds:
           - aws
           - azure
@@ -166,6 +166,10 @@ principles:
             Databricks recommends you use OAuth access tokens instead of PATs for greater security
             and convenience
           doc_url: https://docs.databricks.com/aws/en/admin/access-control/tokens
+          by_hand: >-
+            In the Admin Console, open Settings then Personal Access Tokens. Use the permission
+            control to remove the CREATE permission from the all-users group, and grant it only to
+            admins or a named group. Changes take effect immediately for new token requests.
       - id: SCP-01-07
         title: Service principal client secrets not stale
         provenance: security-guide
@@ -197,7 +201,7 @@ principles:
         source_ref: DP-1
         measurability: rest-api
         severity: low
-        evaluator_status: planned
+        evaluator_status: implemented
         clouds:
           - aws
           - azure
@@ -209,6 +213,12 @@ principles:
         remediation:
           summary: Store and use secrets securely
           doc_url: https://docs.databricks.com/security/secrets/index.html
+          by_hand: >-
+            In the workspace, navigate to the Secrets section (accessible at
+            <workspace-url>#secrets/createScope) to create a new secret scope. Store each credential
+            there, then reference it in notebooks and jobs with dbutils.secrets.get("scope", "key").
+            Move any hard-coded credentials out of notebook cells and environment variables after
+            the scope is in place.
       - id: SCP-02-02
         title: Cluster instance disk encryption
         provenance: security-guide
@@ -216,7 +226,7 @@ principles:
         source_ref: DP-2
         measurability: rest-api
         severity: low
-        evaluator_status: planned
+        evaluator_status: implemented
         clouds:
           - aws
           - azure
@@ -225,6 +235,11 @@ principles:
         remediation:
           summary: All clusters should enable local disk encryption
           doc_url: https://docs.databricks.com/clusters/configure.html#local-disk-encryption
+          by_hand: >-
+            For each named cluster, open its edit page in the Compute section and expand Advanced
+            Options. Check the Security tab and enable Local disk encryption. Editing a running
+            cluster restarts it, so schedule this change in a maintenance window when the work on
+            that cluster can be briefly interrupted.
       - id: SCP-02-03
         title: Customer-managed keys for managed services and workspace storage
         provenance: security-guide
@@ -377,7 +392,7 @@ principles:
         source_ref: DP-10
         measurability: rest-api
         severity: medium
-        evaluator_status: planned
+        evaluator_status: implemented
         clouds:
           - aws
           - azure
@@ -389,6 +404,12 @@ principles:
             Enable the disable_legacy_dbfs workspace setting to prevent the workspace from accessing
             DBFS root and mounts and enforce Unity Catalog as the data access layer
           doc_url: https://docs.databricks.com/aws/en/dbfs/disable-dbfs-root-mounts
+          by_hand: >-
+            In the Admin Console, open Settings and find the Advanced tab. Enable the Disable legacy
+            DBFS root and mounts option. After enabling, workspace users can no longer read or write
+            to the DBFS root path, and mounts created with dbutils.fs.mount are blocked. Test that
+            workloads referencing dbfs:/ paths have been migrated to Unity Catalog external
+            locations before enabling this in production.
       - id: SCP-02-11
         title: SQL warehouse results download disabled
         provenance: security-guide
@@ -396,7 +417,7 @@ principles:
         source_ref: DP-11
         measurability: rest-api
         severity: medium
-        evaluator_status: planned
+        evaluator_status: implemented
         clouds:
           - aws
           - azure
@@ -406,6 +427,12 @@ principles:
         remediation:
           summary: Disable SQL results download to prevent data exfiltration via SQL Editor and Dashboards
           doc_url: https://docs.databricks.com/aws/en/admin/workspace-settings/notebooks#enable-users-to-download-sql-query-results
+          by_hand: >-
+            In the Admin Console, open Workspace Settings and find the SQL results download toggle.
+            Switch it off. Once disabled, users running queries in the SQL Editor and Databricks
+            dashboards will no longer be able to export results as CSV or Excel files to their local
+            machine. Confirm with your data teams that scheduled export processes do not rely on
+            this feature before disabling it.
       - id: SCP-02-12
         title: DBFS file browser disabled
         provenance: security-guide
@@ -527,7 +554,7 @@ principles:
         source_ref: NS-5
         measurability: rest-api
         severity: medium
-        evaluator_status: planned
+        evaluator_status: implemented
         clouds:
           - aws
           - azure
@@ -540,6 +567,12 @@ principles:
             restrict the IP addresses that can authenticate to help protect against data
             exfiltration and account takeover
           doc_url: https://docs.databricks.com/security/network/ip-access-list.html#add-an-ip-access-list
+          by_hand: >-
+            In the Admin Console, open Settings then IP access lists. Add an ALLOW-type list and
+            enter the CIDR ranges that should reach this workspace (your office ranges, VPN egress
+            addresses, and any automation that calls the workspace API). Enable each list after
+            saving. Test from an allowed address and from an excluded one before deploying to users,
+            to confirm the list does not block the access it is meant to permit.
       - id: SCP-03-06
         title: Secure cluster connectivity (on Azure this is also called NoPublicIp)
         provenance: security-guide
@@ -592,7 +625,7 @@ principles:
         source_ref: NS-8
         measurability: rest-api
         severity: high
-        evaluator_status: planned
+        evaluator_status: implemented
         clouds:
           - aws
           - azure
@@ -605,6 +638,12 @@ principles:
             account console UI and account-level REST APIs only through a set of approved IP
             addresses to reduce the risk of account takeover
           doc_url: https://docs.databricks.com/security/network/ip-access-list.html#add-an-ip-access-list
+          by_hand: >-
+            In the Account Console, open Settings then IP access lists. Add at least one ALLOW-type
+            list covering the CIDR ranges of your corporate network, VPN, and any automation that
+            reaches the account plane. Enable the list. The account console manages workspace
+            creation, deletion and configuration, so this restricts the most privileged surface in
+            the deployment to known addresses only.
       - id: SCP-03-09
         title: Workspaces have proper network policy configuration
         provenance: security-guide
@@ -684,7 +723,7 @@ principles:
         source_ref: NS-13
         measurability: rest-api
         severity: high
-        evaluator_status: planned
+        evaluator_status: implemented
         clouds:
           - aws
           - azure
@@ -699,6 +738,12 @@ principles:
             console access to known IP ranges — a BLOCK-only configuration does not prevent access
             from unknown IPs
           doc_url: https://docs.databricks.com/aws/en/security/network/front-end/ip-access-list-account
+          by_hand: >-
+            In the Account Console, confirm that at least one ALLOW-type IP access list is present
+            and enabled under Settings > IP access lists. If only BLOCK lists exist, add an ALLOW
+            list for your corporate address ranges. A BLOCK list without an ALLOW list permits
+            everything outside the blocked ranges; the ALLOW list is what limits access to named
+            addresses and nothing else.
       - id: SCP-03-13
         title: Egress control from compute — live connectivity test
         provenance: security-guide
@@ -779,7 +824,7 @@ principles:
         source_ref: GOV-3
         measurability: rest-api
         severity: high
-        evaluator_status: planned
+        evaluator_status: implemented
         clouds:
           - aws
           - azure
@@ -790,6 +835,12 @@ principles:
         remediation:
           summary: Configure Databricks audit log delivery (or see GOV-34)
           doc_url: https://docs.databricks.com/administration-guide/account-settings/audit-logs.html#configure-audit-log-delivery
+          by_hand: >-
+            In the Account Console, open Settings then Log delivery. Create a new configuration, set
+            Log type to AUDIT_LOGS, choose an output format (JSON recommended), and point it to an
+            S3 bucket or ADLS Gen2 container you own. Enable the configuration after saving it.
+            Verify that log files arrive in the target storage within an hour of the first user
+            activity following the save.
       - id: SCP-04-03
         title: Long-running clusters
         provenance: security-guide
@@ -797,7 +848,7 @@ principles:
         source_ref: GOV-4
         measurability: rest-api
         severity: medium
-        evaluator_status: planned
+        evaluator_status: implemented
         clouds:
           - aws
           - azure
@@ -811,6 +862,12 @@ principles:
             Restart clusters on a regular schedule to use the latest available base image and
             container image.
           doc_url: https://docs.databricks.com/clusters/clusters-manage.html#restart-a-cluster-to-update-it-with-the-latest-images
+          by_hand: >-
+            For each named cluster, open its page in the Compute section and click Restart.
+            Alternatively, terminate and recreate it. To prevent the finding recurring, create a
+            recurring job that restarts each long-lived cluster during a low-traffic window. The
+            restart picks up the latest base image, which is how security patches reach running
+            clusters.
       - id: SCP-04-04
         title: Deprecated versions of Databricks runtimes
         provenance: security-guide
@@ -1255,7 +1312,7 @@ principles:
         source_ref: GOV-35
         measurability: rest-api
         severity: medium
-        evaluator_status: planned
+        evaluator_status: implemented
         clouds:
           - aws
           - azure
@@ -1269,6 +1326,12 @@ principles:
             Restrict workspace admins to only change a job owner to themselves and the job run as
             setting to a service principal that they have the Service Principal User role on
           doc_url: https://docs.databricks.com/en/admin/workspace-settings/restrict-workspace-admins.html
+          by_hand: >-
+            In the Admin Console, open Settings and find Workspace Admin Restrictions. Change the
+            setting from ALLOW_ALL to RESTRICT_TOKENS or RESTRICT_TOKENS_AND_JOB_RUN_AS. This
+            prevents workspace admins from reassigning job ownership to arbitrary users or setting a
+            job to run as any identity — two common privilege-escalation paths. The change takes
+            effect immediately with no restart required.
       - id: SCP-04-20
         title: Automatic cluster update
         provenance: security-guide
@@ -1276,7 +1339,7 @@ principles:
         source_ref: GOV-36
         measurability: rest-api
         severity: medium
-        evaluator_status: planned
+        evaluator_status: implemented
         clouds:
           - aws
           - azure
@@ -1287,6 +1350,12 @@ principles:
             Ensure that all the clusters in a workspace are periodically updated to the latest host
             OS image and security updates
           doc_url: https://docs.databricks.com/en/admin/clusters/automatic-cluster-update.html
+          by_hand: >-
+            In the Admin Console, open Settings and find Automatic cluster update. Enable it. Once
+            enabled, Databricks applies OS-level security patches to running clusters during the
+            configured maintenance window. The clusters restart one at a time, so most interactive
+            clusters are not all affected simultaneously. Configure the maintenance window to a
+            low-traffic time of day for your team.
       - id: SCP-04-21
         title: Disable legacy features for new workspaces
         provenance: security-guide
@@ -1294,7 +1363,7 @@ principles:
         source_ref: GOV-37
         measurability: rest-api
         severity: high
-        evaluator_status: planned
+        evaluator_status: implemented
         clouds:
           - aws
           - azure
@@ -1307,6 +1376,12 @@ principles:
             accessing DBFS root, Hive Metastore, no-isolation shared clusters, and pre-13.3 LTS
             runtimes
           doc_url: https://docs.databricks.com/aws/en/admin/account-settings/legacy-features
+          by_hand: >-
+            In the Account Console, open Settings then Default workspace settings and enable Disable
+            legacy features. New workspaces created after this point will not have access to DBFS
+            root, the Hive Metastore, no-isolation shared clusters, or runtimes older than 13.3 LTS.
+            Existing workspaces are not changed by this setting; use the per-workspace
+            disable_legacy_dbfs setting for those.
       - id: SCP-04-22
         title: Jobs run as service principal
         provenance: security-guide
@@ -1590,7 +1665,7 @@ principles:
         source_ref: INFO-37
         measurability: rest-api
         severity: informational
-        evaluator_status: planned
+        evaluator_status: implemented
         clouds:
           - aws
         collector: rest:account:accounts.settings.types.shield_csp_enablement_ac.names.default
@@ -1600,6 +1675,11 @@ principles:
             Validate and deploy on a platform that has put in place controls to meet the unique
             compliance needs of highly regulated industries
           doc_url: https://docs.databricks.com/en/security/privacy/security-profile.html
+          by_hand: >-
+            In the Account Console, open Settings then Compliance and security and enable the
+            Compliance Security Profile at the account level. This requires that your account has
+            the CSP entitlement — contact your Databricks account team if it is not visible. Once
+            enabled, new workspaces in the account have the CSP applied by default.
       - id: SCP-05-12
         title: Third-party library control
         provenance: security-guide
@@ -1626,7 +1706,7 @@ principles:
         source_ref: INFO-39
         measurability: rest-api
         severity: informational
-        evaluator_status: planned
+        evaluator_status: implemented
         clouds:
           - aws
           - azure
@@ -1637,6 +1717,12 @@ principles:
             Validate and deploy on a platform that has put in place controls to meet the unique
             compliance needs of highly regulated industries
           doc_url: https://docs.databricks.com/en/security/privacy/security-profile.html
+          by_hand: >-
+            In the Admin Console, open Settings and find the Compliance Security Profile section.
+            Enable the profile for this workspace. This workspace must be part of an account that
+            has the Shield entitlement and the CSP must be enabled at the account level first. Once
+            enabled, the workspace enforces network controls and encryption settings required for
+            regulated workloads such as HIPAA or FedRAMP.
       - id: SCP-05-14
         title: Enhanced security monitoring for the workspace
         provenance: security-guide
@@ -1644,7 +1730,7 @@ principles:
         source_ref: INFO-40
         measurability: rest-api
         severity: informational
-        evaluator_status: planned
+        evaluator_status: implemented
         clouds:
           - aws
           - azure
@@ -1655,6 +1741,12 @@ principles:
             Validate and deploy on a platform that has put in place controls to meet the unique
             compliance needs of highly regulated industries
           doc_url: https://docs.databricks.com/en/security/privacy/enhanced-security-monitoring.html
+          by_hand: >-
+            In the Admin Console, open Settings > Advanced or the Security section and enable
+            Enhanced security monitoring. This activates continuous collection of security events —
+            login attempts, privilege changes, anomalous API calls — and forwards them to Databricks
+            security analytics. Requires the Shield entitlement. Contact your account team if the
+            toggle is not visible.
       - id: SCP-05-15
         title: Git repository allowlist configured
         provenance: security-guide

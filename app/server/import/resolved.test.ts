@@ -128,3 +128,83 @@ describe('a requirement decided by an imported reading', () => {
     expect(classOf(finding)).toBe('observed');
   });
 });
+
+// =============================================================================
+// Admin-evidence bridge, registry path.
+//
+// The test above proves the workspace-settings chain. This proves the same chain
+// for the newly registered admin-imported controls: that `REGISTRY.get(id)` now
+// returns a resolver for a representative admin signal (SCP-04-02, log delivery),
+// and that when an envelope carrying log delivery data is revived and merged, the
+// registry resolver produces an admin-collected finding rather than unmeasurable.
+//
+// This is the test that fails if the resolvers are removed from the registry again.
+// =============================================================================
+
+const LOG_DELIVERY: SignalId = 'rest:account:accounts.log-delivery';
+
+function logDeliveryImport(configs: unknown[]): ImportedEvidence {
+  const raw = envelope({
+    probes: [
+      probe({
+        signals: [LOG_DELIVERY],
+        tier: 'account',
+        label: 'account-log-delivery',
+        fields: [
+          'log_delivery_configurations[].config_id',
+          'log_delivery_configurations[].log_type',
+          'log_delivery_configurations[].status',
+        ],
+        value: { log_delivery_configurations: configs },
+      }),
+    ],
+  });
+  return {
+    digest: 'b'.repeat(64),
+    generatedAt: new Date('2026-08-01T09:00:00Z'),
+    importedAt: new Date('2026-08-02T09:00:00Z'),
+    importedBy: 'assessor@example.com',
+    envelope: envelopeFrom(raw),
+    cautions: [],
+  };
+}
+
+describe('an admin-imported control reaching the registry (SCP-04-02, log delivery)', () => {
+  it('registry has a resolver for SCP-04-02 now that admin resolvers are registered', () => {
+    expect(REGISTRY.get('SCP-04-02')).toBeDefined();
+  });
+
+  it('passes via registry when an enabled audit log config is imported', () => {
+    const imported = logDeliveryImport([{ config_id: 'c1', log_type: 'AUDIT_LOGS', status: 'ENABLED' }]);
+    const readings = readingsFrom(imported);
+    const signals = merged(new Map(), readings.signals);
+    const spec = { id: 'SCP-04-02', pillarId: 'security-compliance-and-privacy', principleId: 'SCP-04', title: 'Audit log delivery configured', severity: 'high' as const, collector: LOG_DELIVERY };
+
+    const finding = resolveControl(spec, signals, REGISTRY.get('SCP-04-02'));
+
+    expect(finding.outcome).toBe('pass');
+    expect(classOf(finding)).toBe('admin-collected');
+  });
+
+  it('fails via registry when no log delivery configurations exist', () => {
+    const imported = logDeliveryImport([]);
+    const readings = readingsFrom(imported);
+    const signals = merged(new Map(), readings.signals);
+    const spec = { id: 'SCP-04-02', pillarId: 'security-compliance-and-privacy', principleId: 'SCP-04', title: 'Audit log delivery configured', severity: 'high' as const, collector: LOG_DELIVERY };
+
+    const finding = resolveControl(spec, signals, REGISTRY.get('SCP-04-02'));
+
+    expect(finding.outcome).toBe('fail');
+    expect(classOf(finding)).toBe('admin-collected');
+  });
+
+  it('is unmeasurable before an import, because no live scope can read this signal', () => {
+    // Without an import, SCP-04-02 has no signal → unmeasurable. This is the gap the
+    // import closes. The resolver is registered, so it handles the empty-signals case.
+    const spec = { id: 'SCP-04-02', pillarId: 'security-compliance-and-privacy', principleId: 'SCP-04', title: 'Audit log delivery configured', severity: 'high' as const, collector: LOG_DELIVERY };
+
+    const finding = resolveControl(spec, new Map(), REGISTRY.get('SCP-04-02'));
+
+    expect(finding.outcome).toBe('unmeasurable');
+  });
+});

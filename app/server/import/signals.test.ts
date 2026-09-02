@@ -304,7 +304,7 @@ describe('what a caller can know without a file', () => {
     expect(revivable([SETTINGS, TOKENS, 'rest:account:network-policies'])).toEqual([SETTINGS, TOKENS]);
   });
 
-  it('now revives all fifteen newly added held signals', () => {
+  it('now revives all fourteen newly added held signals', () => {
     const held: readonly string[] = [
       'rest:account:accounts.log-delivery',
       'rest:account:accounts.{account_id}.ip-access-lists',
@@ -312,7 +312,6 @@ describe('what a caller can know without a file', () => {
       'rest:workspace:secrets.scopes.list',
       'rest:workspace:clusters.list',
       'rest:workspace:ip-access-lists',
-      'rest:workspace:jobs.list',
       'rest:workspace:permissions.authorization.tokens',
       'rest:workspace:settings.types.disable_legacy_dbfs.names.default',
       'rest:workspace:settings.types.sql_results_download.names.default',
@@ -342,7 +341,6 @@ import { resolveControl } from '../resolve/resolver.js';
 import { loadCatalogue } from '../catalogue/catalogue.js';
 import type {
   AdminClusterInventory,
-  AdminJobInventory,
   IpAccessListInventory,
   LogDeliveryInventory,
   SecretScopeInventory,
@@ -358,7 +356,6 @@ import {
   secretScopes,
   clusterDiskEncryption,
   longRunningClusters,
-  jobsRunAs,
   tokenCreationRestricted,
   disableLegacyDbfs,
   sqlResultsDownload,
@@ -744,68 +741,6 @@ describe('reviving clusters (disk encryption and long-running)', () => {
     const finding = resolveControl(spec('SCP-04-03'), new Map([[CLUSTERS, signal]]), longRunningClusters);
 
     expect(finding.outcome).toBe('fail');
-    expect(finding.evidence[0]?.evidenceClass).toBe('admin-collected');
-  });
-});
-
-// --------------------------------------------------------------------------- jobs
-
-describe('reviving jobs', () => {
-  const JOBS: SignalId = 'rest:workspace:jobs.list';
-
-  function jobsFrom(value: unknown): AdminJobInventory {
-    return one({ signals: [JOBS], tier: 'workspace', label: 'jobs', value })?.value as AdminJobInventory;
-  }
-
-  it('maps job fields to typed records', () => {
-    const revived = jobsFrom({
-      jobs: [
-        {
-          job_id: 471148922192497,
-          run_as_user_name: 'admin@example.com',
-          settings: { name: 'My Job' },
-        },
-      ],
-    });
-
-    expect(revived.jobs[0]?.runAsUserName).toBe('admin@example.com');
-    expect(revived.jobs[0]?.name).toBe('My Job');
-  });
-
-  it('reads settings.run_as.service_principal_name for service-principal run-as', () => {
-    const revived = jobsFrom({
-      jobs: [{ job_id: 1, settings: { name: 'SP Job', run_as: { service_principal_name: 'my-sp-uuid' } } }],
-    });
-
-    expect(revived.jobs[0]?.runAsServicePrincipalName).toBe('my-sp-uuid');
-    expect(revived.jobs[0]?.runAsUserName).toBeUndefined();
-  });
-
-  it('SCP-04-22 fails when a job runs as a user account and stamps evidence admin-collected', () => {
-    const signal = one({
-      signals: [JOBS],
-      tier: 'workspace',
-      label: 'jobs',
-      value: { jobs: [{ job_id: 1, run_as_user_name: 'person@example.com', settings: { name: 'job' } }] },
-    })!;
-    const finding = resolveControl(spec('SCP-04-22'), new Map([[JOBS, signal]]), jobsRunAs);
-
-    expect(finding.outcome).toBe('fail');
-    expect(finding.evidence[0]?.evidenceClass).toBe('admin-collected');
-  });
-
-  it('SCP-04-22 passes when jobs run as service principals', () => {
-    const signal = one({
-      signals: [JOBS],
-      tier: 'workspace',
-      label: 'jobs',
-      value: {
-        jobs: [{ job_id: 1, settings: { name: 'SP Job', run_as: { service_principal_name: 'uuid-1234' } } }],
-      },
-    })!;
-    const finding = resolveControl(spec('SCP-04-22'), new Map([[JOBS, signal]]), jobsRunAs);
-
-    expect(finding.outcome).toBe('pass');
     expect(finding.evidence[0]?.evidenceClass).toBe('admin-collected');
   });
 });

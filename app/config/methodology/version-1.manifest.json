@@ -7020,9 +7020,11 @@
       "evidence": {
         "answer_path": "question-setting",
         "declared_class": "rest-api",
-        "evaluator_status": "planned",
+        "evaluator_status": "implemented",
         "collector": "rest:workspace:permissions.authorization.tokens",
-        "required_signals": [],
+        "required_signals": [
+          "rest:workspace:permissions.authorization.tokens"
+        ],
         "enrichment_signals": [],
         "administrator_probes": [
           {
@@ -7136,9 +7138,11 @@
       "evidence": {
         "answer_path": "question-setting",
         "declared_class": "rest-api",
-        "evaluator_status": "planned",
+        "evaluator_status": "implemented",
         "collector": "rest:workspace:secrets.scopes.list",
-        "required_signals": [],
+        "required_signals": [
+          "rest:workspace:secrets.scopes.list"
+        ],
         "enrichment_signals": [],
         "administrator_probes": [
           {
@@ -7199,9 +7203,11 @@
       "evidence": {
         "answer_path": "question-setting",
         "declared_class": "rest-api",
-        "evaluator_status": "planned",
+        "evaluator_status": "implemented",
         "collector": "rest:workspace:clusters.list",
-        "required_signals": [],
+        "required_signals": [
+          "rest:workspace:clusters.list"
+        ],
         "enrichment_signals": [],
         "administrator_probes": [
           {
@@ -7696,9 +7702,11 @@
       "evidence": {
         "answer_path": "question-setting",
         "declared_class": "rest-api",
-        "evaluator_status": "planned",
+        "evaluator_status": "implemented",
         "collector": "rest:workspace:settings.types.disable_legacy_dbfs.names.default",
-        "required_signals": [],
+        "required_signals": [
+          "rest:workspace:settings.types.disable_legacy_dbfs.names.default"
+        ],
         "enrichment_signals": [],
         "administrator_probes": [
           {
@@ -7759,9 +7767,11 @@
       "evidence": {
         "answer_path": "question-setting",
         "declared_class": "rest-api",
-        "evaluator_status": "planned",
+        "evaluator_status": "implemented",
         "collector": "rest:workspace:settings.types.sql_results_download.names.default",
-        "required_signals": [],
+        "required_signals": [
+          "rest:workspace:settings.types.sql_results_download.names.default"
+        ],
         "enrichment_signals": [],
         "administrator_probes": [
           {
@@ -8136,9 +8146,11 @@
       "evidence": {
         "answer_path": "question-setting",
         "declared_class": "rest-api",
-        "evaluator_status": "planned",
+        "evaluator_status": "implemented",
         "collector": "rest:workspace:ip-access-lists",
-        "required_signals": [],
+        "required_signals": [
+          "rest:workspace:ip-access-lists"
+        ],
         "enrichment_signals": [],
         "administrator_probes": [
           {
@@ -8316,9 +8328,11 @@
       "evidence": {
         "answer_path": "question-setting",
         "declared_class": "rest-api",
-        "evaluator_status": "planned",
+        "evaluator_status": "implemented",
         "collector": "rest:account:accounts.{account_id}.ip-access-lists",
-        "required_signals": [],
+        "required_signals": [
+          "rest:account:accounts.{account_id}.ip-access-lists"
+        ],
         "enrichment_signals": [],
         "administrator_probes": [
           {
@@ -8570,9 +8584,11 @@
       "evidence": {
         "answer_path": "question-setting",
         "declared_class": "rest-api",
-        "evaluator_status": "planned",
+        "evaluator_status": "implemented",
         "collector": "rest:account:accounts.{account_id}.ip-access-lists",
-        "required_signals": [],
+        "required_signals": [
+          "rest:account:accounts.{account_id}.ip-access-lists"
+        ],
         "enrichment_signals": [],
         "administrator_probes": [
           {
@@ -8759,9 +8775,11 @@
       "evidence": {
         "answer_path": "question-setting",
         "declared_class": "rest-api",
-        "evaluator_status": "planned",
+        "evaluator_status": "implemented",
         "collector": "rest:account:accounts.log-delivery",
-        "required_signals": [],
+        "required_signals": [
+          "rest:account:accounts.log-delivery"
+        ],
         "enrichment_signals": [],
         "administrator_probes": [
           {
@@ -8821,9 +8839,11 @@
       "evidence": {
         "answer_path": "question-setting",
         "declared_class": "rest-api",
-        "evaluator_status": "planned",
+        "evaluator_status": "implemented",
         "collector": "rest:workspace:clusters.list",
-        "required_signals": [],
+        "required_signals": [
+          "rest:workspace:clusters.list"
+        ],
         "enrichment_signals": [],
         "administrator_probes": [
           {
@@ -9767,9 +9787,11 @@
       "evidence": {
         "answer_path": "question-setting",
         "declared_class": "rest-api",
-        "evaluator_status": "planned",
+        "evaluator_status": "implemented",
         "collector": "rest:workspace:settings.types.restrict_workspace_admins.names.default",
-        "required_signals": [],
+        "required_signals": [
+          "rest:workspace:settings.types.restrict_workspace_admins.names.default"
+        ],
         "enrichment_signals": [],
         "administrator_probes": [
           {
@@ -9830,9 +9852,11 @@
       "evidence": {
         "answer_path": "question-setting",
         "declared_class": "rest-api",
-        "evaluator_status": "planned",
+        "evaluator_status": "implemented",
         "collector": "rest:workspace:settings.types.automatic_cluster_update.names.default",
-        "required_signals": [],
+        "required_signals": [
+          "rest:workspace:settings.types.automatic_cluster_update.names.default"
+        ],
         "enrichment_signals": [],
         "administrator_probes": [
           {
@@ -9892,9 +9916,11 @@
       "evidence": {
         "answer_path": "question-setting",
         "declared_class": "rest-api",
-        "evaluator_status": "planned",
+        "evaluator_status": "implemented",
         "collector": "rest:account:accounts.settings.types.disable_legacy_features.names.default",
-        "required_signals": [],
+        "required_signals": [
+          "rest:account:accounts.settings.types.disable_legacy_features.names.default"
+        ],
         "enrichment_signals": [],
         "administrator_probes": [
           {
@@ -10675,9 +10701,11 @@
       "evidence": {
         "answer_path": "question-setting",
         "declared_class": "rest-api",
-        "evaluator_status": "planned",
+        "evaluator_status": "implemented",
         "collector": "rest:account:accounts.settings.types.shield_csp_enablement_ac.names.default",
-        "required_signals": [],
+        "required_signals": [
+          "rest:account:accounts.settings.types.shield_csp_enablement_ac.names.default"
+        ],
         "enrichment_signals": [],
         "administrator_probes": [
           {
@@ -10799,9 +10827,11 @@
       "evidence": {
         "answer_path": "question-setting",
         "declared_class": "rest-api",
-        "evaluator_status": "planned",
+        "evaluator_status": "implemented",
         "collector": "rest:workspace:settings.types.shield_csp_enablement_ws_db.names.default",
-        "required_signals": [],
+        "required_signals": [
+          "rest:workspace:settings.types.shield_csp_enablement_ws_db.names.default"
+        ],
         "enrichment_signals": [],
         "administrator_probes": [
           {
@@ -10861,9 +10891,11 @@
       "evidence": {
         "answer_path": "question-setting",
         "declared_class": "rest-api",
-        "evaluator_status": "planned",
+        "evaluator_status": "implemented",
         "collector": "rest:workspace:settings.types.shield_esm_enablement_ws_db.names.default",
-        "required_signals": [],
+        "required_signals": [
+          "rest:workspace:settings.types.shield_esm_enablement_ws_db.names.default"
+        ],
         "enrichment_signals": [],
         "administrator_probes": [
           {
@@ -10961,10 +10993,10 @@
   ],
   "digests": {
     "scoring": "sha256:6d9ff9d9c99a9b24e643d50a9a11c62c81d8da67ba414cecf49ae430e34e1879",
-    "evidence": "sha256:9fca418b4925b8ef8d33e708b30a0c55a1cd43a5e2cc0fa38b988886da7b1146",
+    "evidence": "sha256:d0877c1f61ac7d2f4bf0394053d17a84cd0214366b10a2ef0819401e7d2afcc2",
     "questions": "sha256:b5ec4c9bb371f653da1e12876af507884cf936b359bb81b1c6ada4d89ec36809",
-    "methodology_content": "sha256:39787369e29a627ec45e68f534d9f20225e1f9db148f90adb8915b8f8b6f1a5b"
+    "methodology_content": "sha256:8cb2a955a108f8678372f1d44b78c0adaf0f3c73b8af0cdc046941ec82403d76"
   },
   "generated_by": "app/scripts/methodology-manifest.mts",
-  "manifest_digest": "sha256:555dfc666d2ebb1dc7f3b45c2ffc5b07ad407bf56b1b3df1a5c0be989e14db2c"
+  "manifest_digest": "sha256:3ffb685e36d092c91f52a93a172c1db7e32a2ec5f88f3efdab361390eb0dd71f"
 }
