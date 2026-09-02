@@ -82,6 +82,38 @@
           "serving_limit": "2000"
         }
       }
+    },
+    "query_capacity": {
+      "since": "2026-09-02",
+      "why": "new statement for OE-03-01 (system.query.history service-limits signal). Validated on deep-test-1: 96 763 587 statements, 851 774 waiting_at_capacity_duration_ms > 0 in 30 days. Labs baseline owed before Q1-complete.",
+      "owedBy": "task-A",
+      "submitted": {
+        "at": "2026-09-02T00:00:00.000Z",
+        "profile": "deep-test-1",
+        "warehouseId": "0123456789abcdef",
+        "statementSha": "sha256:121dc6eea1e1120d32af94386e1071799e3fb5f9914208ee28c0cc35fd68e50c",
+        "sqlState": "00000",
+        "error": null,
+        "parameters": {
+          "live_workspace_ids": "",
+          "lookback_days": "30",
+          "workspace_id": ""
+        }
+      }
+    },
+    "security_dbfs_tables": {
+      "since": "2026-09-02",
+      "why": "new statement for SCP-04-05 (system.information_schema.tables DBFS-root managed table count). Validated on deep-test-1 with expanded customer_catalog predicate: 374 managed tables, 0 on DBFS root (all on S3 UC storage). Labs baseline owed before Q1-complete.",
+      "owedBy": "task-B",
+      "submitted": {
+        "at": "2026-09-02T00:00:00.000Z",
+        "profile": "deep-test-1",
+        "warehouseId": "0123456789abcdef",
+        "statementSha": "sha256:34ff4f68507c00692547e195c0de4f5676de172a1bc18c6dd47b00275998b840",
+        "sqlState": "00000",
+        "error": null,
+        "parameters": {}
+      }
     }
   }
 }

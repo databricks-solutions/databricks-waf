@@ -52,6 +52,145 @@ const tokenInventory = (probe) => {
 	};
 };
 /**
+* Log delivery configurations, as the account API reports them.
+*
+* The count field carries the script's `:count` projection. The field name in the projected
+* JSON is `workspace_ids_filter:count` (with the colon), which is how the script writes
+* projection-summary keys — the name is the path the field took, not a typo.
+*/
+const logDelivery = (probe) => {
+	const answered = asObject(probe.value);
+	return {
+		configs: (Array.isArray(answered.log_delivery_configurations) ? answered.log_delivery_configurations : []).map((entry) => {
+			const config = asObject(entry);
+			return {
+				configId: asId(config.config_id),
+				configName: asText(config.config_name),
+				logType: asText(config.log_type),
+				outputFormat: asText(config.output_format),
+				status: asText(config.status),
+				workspaceFilterCount: asCount(config["workspace_ids_filter:count"])
+			};
+		}),
+		truncated: probe.truncated === true
+	};
+};
+/**
+* IP access lists, as both the workspace and account endpoints report them.
+*
+* The same reviver handles both signal IDs because the projected shape is identical: both
+* endpoints return `ip_access_lists[]` with the same fields. The resolvers differ in what
+* they check against those lists, not in how they read them.
+*
+* `ip_addresses:count` is the script's count projection key, same convention as above.
+*/
+const ipAccessLists = (probe) => {
+	const answered = asObject(probe.value);
+	return {
+		lists: (Array.isArray(answered.ip_access_lists) ? answered.ip_access_lists : []).map((entry) => {
+			const item = asObject(entry);
+			return {
+				label: asText(item.label),
+				listType: asText(item.list_type),
+				enabled: asBoolean(item.enabled),
+				ipAddressCount: asCount(item["ip_addresses:count"])
+			};
+		}),
+		truncated: probe.truncated === true
+	};
+};
+/**
+* A typed settings endpoint, captured via the script's shallow projection.
+*
+* `shallow` keeps every scalar within two levels and stores the result as an object keyed
+* by the API's own names. The reviver hands it through without interpretation: it is not
+* possible to write a type-safe interpretation here because each typed setting uses a
+* different key name for its value, and the resolver for each control knows which one to
+* look for. What this guarantees is that the JSON object crossed correctly — same shallow
+* depth, same key names — so a resolver that calls `.data.automatic_cluster_update_workspace`
+* gets the same thing it would have gotten from a live collection.
+*/
+const typedSetting = (probe) => {
+	return { data: asObject(probe.value) };
+};
+/**
+* Secret scopes, as the workspace scopes-list endpoint reports them.
+*
+* The script never fetches secrets themselves, only scope names and backend types.
+* A scope-free workspace is a legitimate response — not every workspace stores secrets —
+* so an empty list revives as an observation of zero scopes, not as a gap.
+*/
+const secretScopes = (probe) => {
+	const answered = asObject(probe.value);
+	return {
+		scopes: (Array.isArray(answered.scopes) ? answered.scopes : []).map((entry) => {
+			const scope = asObject(entry);
+			return {
+				name: asId(scope.name),
+				backendType: asText(scope.backend_type)
+			};
+		}),
+		truncated: probe.truncated === true
+	};
+};
+/**
+* Clusters as the workspace clusters-list endpoint reports them.
+*
+* Two controls read this signal: SCP-02-02 (local disk encryption) and SCP-04-03
+* (long-running clusters without a restart). The same revived shape serves both.
+*
+* `spark_env_vars:keys` is a `:keys` projection — key names without values, for the
+* same reason the script never captures an environment variable value: it is a classic
+* place for hard-coded credentials. `init_scripts:count` is a `:count` projection.
+*
+* `start_time` and `last_restarted_time` are epoch milliseconds, converted to Dates so
+* a resolver can compare them with `Date.now()` rather than dividing away the epoch.
+*/
+const adminClusters = (probe) => {
+	const answered = asObject(probe.value);
+	return {
+		clusters: (Array.isArray(answered.clusters) ? answered.clusters : []).map((entry) => {
+			const cluster = asObject(entry);
+			return {
+				clusterId: asId(cluster.cluster_id),
+				clusterName: asText(cluster.cluster_name),
+				state: asText(cluster.state),
+				clusterSource: asText(cluster.cluster_source),
+				sparkVersion: asText(cluster.spark_version),
+				dataSecurityMode: asText(cluster.data_security_mode),
+				autoterminationMinutes: asCount(cluster.autotermination_minutes),
+				enableLocalDiskEncryption: asBoolean(cluster.enable_local_disk_encryption),
+				startTime: asDate(asEpoch(cluster.start_time)),
+				lastRestartedTime: asDate(asEpoch(cluster.last_restarted_time)),
+				sparkEnvVarKeys: asStringArray(cluster["spark_env_vars:keys"]),
+				initScriptCount: asCount(cluster["init_scripts:count"])
+			};
+		}),
+		truncated: probe.truncated === true
+	};
+};
+/**
+* The token-creation ACL, as the permissions API reports it.
+*
+* Only the permission level, the principal type and the principal name are captured — the
+* script never fetches the token values themselves. The violation SCP-01-06 looks for is
+* the `users` group appearing in the list with any permission level, which means every
+* workspace member can create PATs.
+*/
+const tokenPermissions = (probe) => {
+	const answered = asObject(probe.value);
+	return { entries: (Array.isArray(answered.access_control_list) ? answered.access_control_list : []).map((entry) => {
+		const item = asObject(entry);
+		const permissionLevels = (Array.isArray(item.all_permissions) ? item.all_permissions : []).map((p) => asText(asObject(p).permission_level)).filter((level) => level != null);
+		return {
+			userName: asText(item.user_name),
+			groupName: asText(item.group_name),
+			servicePrincipalName: asText(item.service_principal_name),
+			permissionLevels
+		};
+	}) };
+};
+/**
 * The revivers, by signal.
 *
 * Deliberately a small map rather than a generic decoder. A generic one would accept every signal in
@@ -59,7 +198,24 @@ const tokenInventory = (probe) => {
 * plain object where it expected a `Map` finds nothing and reports a compliant workspace as a broken
 * one. Adding a signal here is a deliberate act with a test beside it.
 */
-const REVIVERS = /* @__PURE__ */ new Map([["rest:workspace:preview.workspace-conf", workspaceSettings], ["rest:workspace:token.list", tokenInventory]]);
+const REVIVERS = /* @__PURE__ */ new Map([
+	["rest:workspace:preview.workspace-conf", workspaceSettings],
+	["rest:workspace:token.list", tokenInventory],
+	["rest:account:accounts.log-delivery", logDelivery],
+	["rest:account:accounts.{account_id}.ip-access-lists", ipAccessLists],
+	["rest:account:accounts.settings.types.disable_legacy_features.names.default", typedSetting],
+	["rest:workspace:secrets.scopes.list", secretScopes],
+	["rest:workspace:clusters.list", adminClusters],
+	["rest:workspace:ip-access-lists", ipAccessLists],
+	["rest:workspace:permissions.authorization.tokens", tokenPermissions],
+	["rest:workspace:settings.types.disable_legacy_dbfs.names.default", typedSetting],
+	["rest:workspace:settings.types.sql_results_download.names.default", typedSetting],
+	["rest:workspace:settings.types.restrict_workspace_admins.names.default", typedSetting],
+	["rest:workspace:settings.types.automatic_cluster_update.names.default", typedSetting],
+	["rest:workspace:settings.types.shield_csp_enablement_ws_db.names.default", typedSetting],
+	["rest:workspace:settings.types.shield_esm_enablement_ws_db.names.default", typedSetting],
+	["rest:account:accounts.settings.types.shield_csp_enablement_ac.names.default", typedSetting]
+]);
 /**
 * The readings an import offers a scan.
 *
@@ -212,6 +368,41 @@ function asText(value) {
 function asEpoch(value) {
 	if (typeof value === "number" && Number.isFinite(value)) return value;
 	if (typeof value === "string" && /^\d+$/.test(value)) return Number(value);
+}
+/**
+* A boolean from an untrusted file.
+*
+* Only a real boolean passes. The script's shallow projection preserves booleans as-is;
+* a projected string `"true"` is a setting value and is handled by `asSettingValue`, not
+* here. Confusing the two would turn `"true"` from a setting into `true` from a flag,
+* collapsing the distinction the workspace-conf reviver exists to preserve.
+*/
+function asBoolean(value) {
+	return typeof value === "boolean" ? value : void 0;
+}
+/**
+* A non-negative integer count from a `:count` projection field.
+*
+* The script writes these as `key:count` in the projected JSON, and they are always
+* non-negative integers. A float or a negative number is not a valid count, and is
+* treated as absent rather than rounded — rounding would invent a count nobody produced.
+*/
+function asCount(value) {
+	if (typeof value !== "number" || !Number.isFinite(value) || value < 0) return void 0;
+	const rounded = Math.floor(value);
+	return rounded === value ? rounded : void 0;
+}
+/**
+* An array of strings from a `:keys` projection field.
+*
+* The script writes these as `key:keys` in the projected JSON — an array of string key
+* names without values. Non-strings in the array are dropped rather than converted: a
+* key name that round-tripped as a number would be a malformed projection, and silently
+* stringifying it would invent a name the script never wrote.
+*/
+function asStringArray(value) {
+	if (!Array.isArray(value)) return void 0;
+	return value.filter((item) => typeof item === "string");
 }
 //#endregion
 export { merged, readingsFrom };

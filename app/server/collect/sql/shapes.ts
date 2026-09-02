@@ -489,6 +489,34 @@ export interface MlflowRunTracking {
 }
 
 /**
+ * How many statements in the window hit a capacity limit, and how long they waited.
+ *
+ * A positive `waitingAtCapacity` count proves that a service limit was reached in the
+ * window. Zero proves limits were not reached in this period — not that proactive
+ * monitoring exists or that headroom is known. The resolver caps at `partial` for that
+ * reason.
+ */
+export interface QueryCapacity {
+  readonly totalStatements: number;
+  readonly waitingAtCapacity: number;
+  readonly totalWaitMs: number;
+}
+
+/**
+ * Unity Catalog managed tables and how many of them are on DBFS root storage.
+ *
+ * One aggregate row from `system.information_schema.tables`. A non-zero `dbfsRootTables`
+ * count means Unity Catalog managed tables have their data on workspace DBFS root,
+ * which carries no access-control enforcement at the file level. The check reads only
+ * customer-owned catalogs; Databricks-owned catalogs (`system`, `samples`, internal
+ * tiles) are excluded because they are read-only and not something the customer can move.
+ */
+export interface DbfsTableAudit {
+  readonly totalManagedTables: number;
+  readonly dbfsRootTables: number;
+}
+
+/**
  * One write shape: a statement the estate ran repeatedly to put data somewhere, and what it moved.
  *
  * The same fingerprint as `QueryShapeRow` over the same table, and a different question — see
@@ -2390,6 +2418,23 @@ export const parse = {
           ...optional('tablesTouched', num(row, 'tables_touched')),
         };
       }),
+    };
+  },
+
+  queryCapacity: (rows: readonly Row[]): QueryCapacity => {
+    const row = rows[0] ?? {};
+    return {
+      totalStatements: count(row, 'total_statements'),
+      waitingAtCapacity: count(row, 'waiting_at_capacity'),
+      totalWaitMs: count(row, 'total_wait_ms'),
+    };
+  },
+
+  dbfsTableAudit: (rows: readonly Row[]): DbfsTableAudit => {
+    const row = rows[0] ?? {};
+    return {
+      totalManagedTables: count(row, 'total_managed_tables'),
+      dbfsRootTables: count(row, 'dbfs_root_tables'),
     };
   },
 };

@@ -1,7 +1,7 @@
 // The way to answer a requirement no install of this app can read.
 //
 // The checks page already tells a reader that a scope is "not grantable to any install of this app",
-// which is true, measured (ADR 0016), and — on its own — the same dead end as a spinner. Fifty-five
+// which is true, measured (ADR 0016), and — on its own — the same dead end as a spinner. Fifty-three
 // security requirements end there. The data exists and an admin can read it; what was missing was
 // any way for the reader to get from that sentence to the reading.
 //

@@ -1305,6 +1305,66 @@ export const ENRICHMENT = {
       'External monitoring built on the audit logs is invisible here, which is what the attestation asks about.',
     thresholds: bands(0.8, 0.3),
   },
+  // Converted from attestation: system.query.history records waiting_at_capacity_duration_ms per
+  // statement, so capacity limits actually biting are measurable after the fact. Whether monitoring is
+  // proactive — watching headroom before a limit bites — is an account-plane question with no workspace
+  // source, so the outcome caps at partial in all non-empty cases.
+  'OE-03-01': {
+    measurability: 'system-table',
+    collector: 'sql:query.capacity',
+    severity: 'medium',
+    criteria:
+      'Statements with waiting_at_capacity_duration_ms > 0 prove a service limit was reached. ' +
+      'Any positive count → partial (limits are biting; monitoring cannot be confirmed). ' +
+      'Zero → partial (no events detected, but proactive monitoring is beyond telemetry). ' +
+      'No queries at all → not-applicable. Caps at partial in all non-empty cases because headroom ' +
+      'and forward awareness are account-plane facts not visible from the workspace.',
+    thresholds: { partial_share: 0.01 },
+    remediation: {
+      summary:
+        'Review your account service limits and quotas in the admin console. If statements are regularly ' +
+        'waiting at capacity, raise a support ticket to increase the relevant quota, or reduce peak ' +
+        'concurrency by staggering scheduled jobs.',
+      cli:
+        '# Query capacity events from the last 30 days\n' +
+        'databricks statement-execution execute --warehouse-id <id> \\\n' +
+        '  --statement "SELECT workspace_id, COUNT(*) as events, SUM(waiting_at_capacity_duration_ms) ' +
+        'as total_wait_ms FROM system.query.history WHERE start_time >= current_timestamp() - ' +
+        'make_dt_interval(30) AND waiting_at_capacity_duration_ms > 0 GROUP BY 1 ORDER BY 2 DESC"',
+      doc_url: 'https://docs.databricks.com/aws/en/admin/account-settings/service-quotas.html',
+      caveat:
+        'Account-level quota headroom is visible in the account console under Settings → Quotas, not in ' +
+        'a workspace system table. Set up a Databricks alert on waiting_at_capacity_duration_ms from ' +
+        'system.query.history if sustained capacity pressure is observed.',
+    },
+  },
+  // Converted from attestation: custom models on managed serving endpoints and job-sourced MLflow runs
+  // together evidence that MLOps tooling is in use. Caps at partial — the presence of the right platform
+  // features does not prove the process is documented or enforced. Empty on both signals → unmeasurable,
+  // following the same asymmetry as PE-02-02.
+  'OE-01-04': {
+    measurability: 'system-table',
+    collector: 'sql:serving.model_entities',
+    severity: 'medium',
+    criteria:
+      'Custom models on managed serving endpoints and job-sourced MLflow runs together evidence that ' +
+      'MLOps tooling is in use. Caps at partial: the presence of the right platform features does not ' +
+      'prove the process is documented, gated or reproducible. Empty on both signals → unmeasurable, ' +
+      'following the same asymmetry as PE-02-02: a workspace serving models from its own service or ' +
+      'training on a separate platform leaves nothing here to read.',
+    remediation: {
+      summary:
+        'Define the end-to-end path a model takes from experiment to production: training run tracked in ' +
+        'MLflow, model registered in Unity Catalog with a version, served through a managed endpoint ' +
+        'pinned to that version.',
+      sql:
+        '-- Register the model from a tracked run\n' +
+        'CREATE MODEL IF NOT EXISTS prod.models.fraud_scoring;\n' +
+        '-- Tag the experiment for auditability\n' +
+        "ALTER EXPERIMENT 'fraud/experiments/v3' SET TAGS ('team' = 'data-science', 'env' = 'prod');",
+      doc_url: 'https://docs.databricks.com/aws/en/machine-learning/manage-model-lifecycle/',
+    },
+  },
   // Also a question until ADR 0071. "Is job duration tracked over time, so a job that has doubled is
   // visible" is what a `RUN_DURATION_SECONDS` health rule is for, and the group already counts them —
   // so this was asking a person to confirm a column the scan had already read. It joins rather than
@@ -1564,4 +1624,30 @@ export const IMPLEMENTED_DELEGATED = [
   'SCP-03-07',
   // Vector search, the second and last grantable control-plane scope in this pillar.
   'SCP-02-09',
+  // System-table re-targets (Task B): these carried their own criteria and remediation from the
+  // security guide; only the evaluator_status flip is managed here. Measurability and collector
+  // are updated directly in the YAML because the enrichment table would otherwise overwrite the
+  // delegated criteria with a paraphrase of the same text.
+  'SCP-04-05',
+  'SCP-04-22',
+  // Admin-evidence controls (Task C): registered resolvers read imported admin signals.
+  // All carry their criteria, severity and collector from the security guide; only the
+  // evaluator_status flip is managed here. Remediation by_hand is written directly in the
+  // YAML because the enrichment table would replace the delegated remediation fields.
+  'SCP-01-06',
+  'SCP-02-01',
+  'SCP-02-02',
+  'SCP-02-10',
+  'SCP-02-11',
+  'SCP-03-05',
+  'SCP-03-08',
+  'SCP-03-12',
+  'SCP-04-02',
+  'SCP-04-03',
+  'SCP-04-19',
+  'SCP-04-20',
+  'SCP-04-21',
+  'SCP-05-11',
+  'SCP-05-13',
+  'SCP-05-14',
 ];

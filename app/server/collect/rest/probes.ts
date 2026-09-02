@@ -201,7 +201,234 @@ const vectorSearchEndpoints: Probe = {
   },
 };
 
-export const PROBES: readonly Probe[] = [workspaceConf, tokens, servingEndpoints, vectorSearchEndpoints];
+// --------------------------------------------------------------------------- admin-only probes
+//
+// These signals are only ever available through admin-imported evidence: the scopes they
+// require are ungrantable by Apps, and three of them reach the account plane which a
+// workspace token cannot cross. Their `run()` throws immediately so the RestCollector
+// returns unmeasurable when it attempts them live, and an import can replace that result.
+//
+// They are in PROBES so that restDescriptors() generates entries for them (keeping the
+// requirements page complete) and so the tests that compare "signals descriptors exist for"
+// against "signals collectors produce" remain consistent.
+
+/** SCP-04-02: audit log delivery configurations. Account plane. */
+const logDelivery: Probe = {
+  id: 'rest:account:accounts.log-delivery',
+  label: 'account-log-delivery',
+  what: 'The account log delivery configurations',
+  endpoint: 'GET /api/2.0/accounts/{account_id}/log-delivery',
+  permission: 'account admin',
+  scope: 'account',
+  grantable: false,
+  run(): Promise<never> {
+    return Promise.reject(new Error('Account plane endpoint: not reachable with a workspace token. Import admin-collected evidence to populate this signal.'));
+  },
+};
+
+/** SCP-03-08, SCP-03-12: IP access lists for the account console. Account plane. */
+const accountIpAccessLists: Probe = {
+  id: 'rest:account:accounts.{account_id}.ip-access-lists',
+  label: 'account-ip-access-lists',
+  what: 'The account console IP access lists',
+  endpoint: 'GET /api/2.0/accounts/{account_id}/ip-access-lists',
+  permission: 'account admin',
+  scope: 'account',
+  grantable: false,
+  run(): Promise<never> {
+    return Promise.reject(new Error('Account plane endpoint: not reachable with a workspace token. Import admin-collected evidence to populate this signal.'));
+  },
+};
+
+/** SCP-03-05: IP access lists for workspace ingress. Scope not grantable. */
+const workspaceIpAccessLists: Probe = {
+  id: 'rest:workspace:ip-access-lists',
+  label: 'ip-access-lists',
+  what: 'The workspace IP access lists',
+  endpoint: 'GET /api/2.0/ip-access-lists',
+  permission: 'workspace admin',
+  scope: 'networking',
+  grantable: false,
+  run(): Promise<never> {
+    return Promise.reject(new Error('The "networking" scope is not grantable to apps. Import admin-collected evidence to populate this signal.'));
+  },
+};
+
+/** SCP-04-21: disable legacy features for new workspaces. Account plane. */
+const disableLegacyFeatures: Probe = {
+  id: 'rest:account:accounts.settings.types.disable_legacy_features.names.default',
+  label: 'account-setting-disable-legacy-features',
+  what: 'The account-level disable-legacy-features setting',
+  endpoint: 'GET /api/2.0/accounts/{account_id}/settings/types/disable_legacy_features/names/default',
+  permission: 'account admin',
+  scope: 'account',
+  grantable: false,
+  run(): Promise<never> {
+    return Promise.reject(new Error('Account plane endpoint: not reachable with a workspace token. Import admin-collected evidence to populate this signal.'));
+  },
+};
+
+/** SCP-02-01: credentials held in secret scopes. Scope not grantable. */
+const secretScopes: Probe = {
+  id: 'rest:workspace:secrets.scopes.list',
+  label: 'secret-scopes',
+  what: 'The workspace secret scopes',
+  endpoint: 'GET /api/2.0/secrets/scopes/list',
+  permission: 'workspace admin',
+  scope: 'secrets',
+  grantable: false,
+  run(): Promise<never> {
+    return Promise.reject(new Error('The "secrets" scope is not grantable to apps. Import admin-collected evidence to populate this signal.'));
+  },
+};
+
+/** SCP-02-02, SCP-04-03: cluster disk encryption and long-running clusters. Scope not grantable. */
+const adminClusters: Probe = {
+  id: 'rest:workspace:clusters.list',
+  label: 'clusters',
+  what: 'The workspace clusters',
+  endpoint: 'GET /api/2.0/clusters/list',
+  permission: 'workspace admin',
+  scope: 'clusters',
+  grantable: false,
+  run(): Promise<never> {
+    return Promise.reject(new Error('The "clusters" scope is not grantable to apps. Import admin-collected evidence to populate this signal.'));
+  },
+};
+
+/** SCP-01-06: PAT token creation restricted to admins. Scope not grantable. */
+const tokenPermissions: Probe = {
+  id: 'rest:workspace:permissions.authorization.tokens',
+  label: 'token-permissions',
+  what: 'The workspace token creation permissions',
+  endpoint: 'GET /api/2.0/permissions/authorization/tokens',
+  permission: 'workspace admin',
+  scope: 'all-apis',
+  grantable: false,
+  run(): Promise<never> {
+    return Promise.reject(new Error('The "all-apis" scope is not grantable to apps. Import admin-collected evidence to populate this signal.'));
+  },
+};
+
+/** SCP-02-10: legacy DBFS root access disabled. Scope not grantable. */
+const disableLegacyDbfs: Probe = {
+  id: 'rest:workspace:settings.types.disable_legacy_dbfs.names.default',
+  label: 'setting-disable-legacy-dbfs',
+  what: 'The workspace disable-legacy-DBFS setting',
+  endpoint: 'GET /api/2.0/settings/types/disable_legacy_dbfs/names/default',
+  permission: 'workspace admin',
+  scope: 'settings',
+  grantable: false,
+  run(): Promise<never> {
+    return Promise.reject(new Error('The "settings" scope is not grantable to apps. Import admin-collected evidence to populate this signal.'));
+  },
+};
+
+/** SCP-02-11: SQL warehouse results download disabled. Scope not grantable. */
+const sqlResultsDownload: Probe = {
+  id: 'rest:workspace:settings.types.sql_results_download.names.default',
+  label: 'setting-sql-results-download',
+  what: 'The workspace SQL-results-download setting',
+  endpoint: 'GET /api/2.0/settings/types/sql_results_download/names/default',
+  permission: 'workspace admin',
+  scope: 'settings',
+  grantable: false,
+  run(): Promise<never> {
+    return Promise.reject(new Error('The "settings" scope is not grantable to apps. Import admin-collected evidence to populate this signal.'));
+  },
+};
+
+/** SCP-04-19: workspace admin restrictions enabled. Scope not grantable. */
+const restrictWorkspaceAdmins: Probe = {
+  id: 'rest:workspace:settings.types.restrict_workspace_admins.names.default',
+  label: 'setting-restrict-workspace-admins',
+  what: 'The workspace restrict-workspace-admins setting',
+  endpoint: 'GET /api/2.0/settings/types/restrict_workspace_admins/names/default',
+  permission: 'workspace admin',
+  scope: 'settings',
+  grantable: false,
+  run(): Promise<never> {
+    return Promise.reject(new Error('The "settings" scope is not grantable to apps. Import admin-collected evidence to populate this signal.'));
+  },
+};
+
+/** SCP-04-20: automatic cluster update enabled. Scope not grantable. */
+const automaticClusterUpdate: Probe = {
+  id: 'rest:workspace:settings.types.automatic_cluster_update.names.default',
+  label: 'setting-automatic-cluster-update',
+  what: 'The workspace automatic-cluster-update setting',
+  endpoint: 'GET /api/2.0/settings/types/automatic_cluster_update/names/default',
+  permission: 'workspace admin',
+  scope: 'settings',
+  grantable: false,
+  run(): Promise<never> {
+    return Promise.reject(new Error('The "settings" scope is not grantable to apps. Import admin-collected evidence to populate this signal.'));
+  },
+};
+
+/** SCP-05-13: compliance security profile enabled on this workspace. Scope not grantable. */
+const complianceSecurityProfileWs: Probe = {
+  id: 'rest:workspace:settings.types.shield_csp_enablement_ws_db.names.default',
+  label: 'setting-compliance-security-profile',
+  what: 'The workspace compliance security profile setting',
+  endpoint: 'GET /api/2.0/settings/types/shield_csp_enablement_ws_db/names/default',
+  permission: 'workspace admin',
+  scope: 'settings',
+  grantable: false,
+  run(): Promise<never> {
+    return Promise.reject(new Error('The "settings" scope is not grantable to apps. Import admin-collected evidence to populate this signal.'));
+  },
+};
+
+/** SCP-05-14: enhanced security monitoring enabled. Scope not grantable. */
+const enhancedSecurityMonitoring: Probe = {
+  id: 'rest:workspace:settings.types.shield_esm_enablement_ws_db.names.default',
+  label: 'setting-enhanced-security-monitoring',
+  what: 'The workspace enhanced-security-monitoring setting',
+  endpoint: 'GET /api/2.0/settings/types/shield_esm_enablement_ws_db/names/default',
+  permission: 'workspace admin',
+  scope: 'settings',
+  grantable: false,
+  run(): Promise<never> {
+    return Promise.reject(new Error('The "settings" scope is not grantable to apps. Import admin-collected evidence to populate this signal.'));
+  },
+};
+
+/** SCP-05-11: compliance security profile enforced at account level. Account plane. */
+const complianceSecurityProfileAc: Probe = {
+  id: 'rest:account:accounts.settings.types.shield_csp_enablement_ac.names.default',
+  label: 'account-setting-compliance-security-profile',
+  what: 'The account compliance security profile setting',
+  endpoint: 'GET /api/2.0/accounts/{account_id}/settings/types/shield_csp_enablement_ac/names/default',
+  permission: 'account admin',
+  scope: 'account',
+  grantable: false,
+  run(): Promise<never> {
+    return Promise.reject(new Error('Account plane endpoint: not reachable with a workspace token. Import admin-collected evidence to populate this signal.'));
+  },
+};
+
+export const PROBES: readonly Probe[] = [
+  workspaceConf,
+  tokens,
+  servingEndpoints,
+  vectorSearchEndpoints,
+  // Admin-only: always unmeasurable live; import fills the gap.
+  logDelivery,
+  accountIpAccessLists,
+  workspaceIpAccessLists,
+  disableLegacyFeatures,
+  secretScopes,
+  adminClusters,
+  tokenPermissions,
+  disableLegacyDbfs,
+  sqlResultsDownload,
+  restrictWorkspaceAdmins,
+  automaticClusterUpdate,
+  complianceSecurityProfileWs,
+  enhancedSecurityMonitoring,
+  complianceSecurityProfileAc,
+];
 
 /**
  * A settings value as a string, or null for one the workspace has never set.

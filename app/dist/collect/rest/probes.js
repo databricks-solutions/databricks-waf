@@ -111,6 +111,174 @@ const PROBES = [
 				truncated
 			};
 		}
+	},
+	{
+		id: "rest:account:accounts.log-delivery",
+		label: "account-log-delivery",
+		what: "The account log delivery configurations",
+		endpoint: "GET /api/2.0/accounts/{account_id}/log-delivery",
+		permission: "account admin",
+		scope: "account",
+		grantable: false,
+		run() {
+			return Promise.reject(/* @__PURE__ */ new Error("Account plane endpoint: not reachable with a workspace token. Import admin-collected evidence to populate this signal."));
+		}
+	},
+	{
+		id: "rest:account:accounts.{account_id}.ip-access-lists",
+		label: "account-ip-access-lists",
+		what: "The account console IP access lists",
+		endpoint: "GET /api/2.0/accounts/{account_id}/ip-access-lists",
+		permission: "account admin",
+		scope: "account",
+		grantable: false,
+		run() {
+			return Promise.reject(/* @__PURE__ */ new Error("Account plane endpoint: not reachable with a workspace token. Import admin-collected evidence to populate this signal."));
+		}
+	},
+	{
+		id: "rest:workspace:ip-access-lists",
+		label: "ip-access-lists",
+		what: "The workspace IP access lists",
+		endpoint: "GET /api/2.0/ip-access-lists",
+		permission: "workspace admin",
+		scope: "networking",
+		grantable: false,
+		run() {
+			return Promise.reject(/* @__PURE__ */ new Error("The \"networking\" scope is not grantable to apps. Import admin-collected evidence to populate this signal."));
+		}
+	},
+	{
+		id: "rest:account:accounts.settings.types.disable_legacy_features.names.default",
+		label: "account-setting-disable-legacy-features",
+		what: "The account-level disable-legacy-features setting",
+		endpoint: "GET /api/2.0/accounts/{account_id}/settings/types/disable_legacy_features/names/default",
+		permission: "account admin",
+		scope: "account",
+		grantable: false,
+		run() {
+			return Promise.reject(/* @__PURE__ */ new Error("Account plane endpoint: not reachable with a workspace token. Import admin-collected evidence to populate this signal."));
+		}
+	},
+	{
+		id: "rest:workspace:secrets.scopes.list",
+		label: "secret-scopes",
+		what: "The workspace secret scopes",
+		endpoint: "GET /api/2.0/secrets/scopes/list",
+		permission: "workspace admin",
+		scope: "secrets",
+		grantable: false,
+		run() {
+			return Promise.reject(/* @__PURE__ */ new Error("The \"secrets\" scope is not grantable to apps. Import admin-collected evidence to populate this signal."));
+		}
+	},
+	{
+		id: "rest:workspace:clusters.list",
+		label: "clusters",
+		what: "The workspace clusters",
+		endpoint: "GET /api/2.0/clusters/list",
+		permission: "workspace admin",
+		scope: "clusters",
+		grantable: false,
+		run() {
+			return Promise.reject(/* @__PURE__ */ new Error("The \"clusters\" scope is not grantable to apps. Import admin-collected evidence to populate this signal."));
+		}
+	},
+	{
+		id: "rest:workspace:permissions.authorization.tokens",
+		label: "token-permissions",
+		what: "The workspace token creation permissions",
+		endpoint: "GET /api/2.0/permissions/authorization/tokens",
+		permission: "workspace admin",
+		scope: "all-apis",
+		grantable: false,
+		run() {
+			return Promise.reject(/* @__PURE__ */ new Error("The \"all-apis\" scope is not grantable to apps. Import admin-collected evidence to populate this signal."));
+		}
+	},
+	{
+		id: "rest:workspace:settings.types.disable_legacy_dbfs.names.default",
+		label: "setting-disable-legacy-dbfs",
+		what: "The workspace disable-legacy-DBFS setting",
+		endpoint: "GET /api/2.0/settings/types/disable_legacy_dbfs/names/default",
+		permission: "workspace admin",
+		scope: "settings",
+		grantable: false,
+		run() {
+			return Promise.reject(/* @__PURE__ */ new Error("The \"settings\" scope is not grantable to apps. Import admin-collected evidence to populate this signal."));
+		}
+	},
+	{
+		id: "rest:workspace:settings.types.sql_results_download.names.default",
+		label: "setting-sql-results-download",
+		what: "The workspace SQL-results-download setting",
+		endpoint: "GET /api/2.0/settings/types/sql_results_download/names/default",
+		permission: "workspace admin",
+		scope: "settings",
+		grantable: false,
+		run() {
+			return Promise.reject(/* @__PURE__ */ new Error("The \"settings\" scope is not grantable to apps. Import admin-collected evidence to populate this signal."));
+		}
+	},
+	{
+		id: "rest:workspace:settings.types.restrict_workspace_admins.names.default",
+		label: "setting-restrict-workspace-admins",
+		what: "The workspace restrict-workspace-admins setting",
+		endpoint: "GET /api/2.0/settings/types/restrict_workspace_admins/names/default",
+		permission: "workspace admin",
+		scope: "settings",
+		grantable: false,
+		run() {
+			return Promise.reject(/* @__PURE__ */ new Error("The \"settings\" scope is not grantable to apps. Import admin-collected evidence to populate this signal."));
+		}
+	},
+	{
+		id: "rest:workspace:settings.types.automatic_cluster_update.names.default",
+		label: "setting-automatic-cluster-update",
+		what: "The workspace automatic-cluster-update setting",
+		endpoint: "GET /api/2.0/settings/types/automatic_cluster_update/names/default",
+		permission: "workspace admin",
+		scope: "settings",
+		grantable: false,
+		run() {
+			return Promise.reject(/* @__PURE__ */ new Error("The \"settings\" scope is not grantable to apps. Import admin-collected evidence to populate this signal."));
+		}
+	},
+	{
+		id: "rest:workspace:settings.types.shield_csp_enablement_ws_db.names.default",
+		label: "setting-compliance-security-profile",
+		what: "The workspace compliance security profile setting",
+		endpoint: "GET /api/2.0/settings/types/shield_csp_enablement_ws_db/names/default",
+		permission: "workspace admin",
+		scope: "settings",
+		grantable: false,
+		run() {
+			return Promise.reject(/* @__PURE__ */ new Error("The \"settings\" scope is not grantable to apps. Import admin-collected evidence to populate this signal."));
+		}
+	},
+	{
+		id: "rest:workspace:settings.types.shield_esm_enablement_ws_db.names.default",
+		label: "setting-enhanced-security-monitoring",
+		what: "The workspace enhanced-security-monitoring setting",
+		endpoint: "GET /api/2.0/settings/types/shield_esm_enablement_ws_db/names/default",
+		permission: "workspace admin",
+		scope: "settings",
+		grantable: false,
+		run() {
+			return Promise.reject(/* @__PURE__ */ new Error("The \"settings\" scope is not grantable to apps. Import admin-collected evidence to populate this signal."));
+		}
+	},
+	{
+		id: "rest:account:accounts.settings.types.shield_csp_enablement_ac.names.default",
+		label: "account-setting-compliance-security-profile",
+		what: "The account compliance security profile setting",
+		endpoint: "GET /api/2.0/accounts/{account_id}/settings/types/shield_csp_enablement_ac/names/default",
+		permission: "account admin",
+		scope: "account",
+		grantable: false,
+		run() {
+			return Promise.reject(/* @__PURE__ */ new Error("Account plane endpoint: not reachable with a workspace token. Import admin-collected evidence to populate this signal."));
+		}
 	}
 ];
 /**

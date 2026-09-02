@@ -15,7 +15,16 @@
 import { describe, expect, it } from 'vitest';
 import { loadCatalogue } from '../../catalogue/catalogue.js';
 import { observed, unmeasurable, type SignalId, type SignalResult } from '../../collect/signal.js';
-import type { AssetCensus, ClusterRow, JobRow, LineageCoverage, PipelineRow } from '../../collect/sql/shapes.js';
+import type {
+  AssetCensus,
+  ClusterRow,
+  JobRow,
+  LineageCoverage,
+  MlflowRunTracking,
+  PipelineRow,
+  QueryCapacity,
+  ServingModelEntity,
+} from '../../collect/sql/shapes.js';
 import { resolveControl } from '../resolver.js';
 import { buildRegistry } from './index.js';
 
@@ -490,5 +499,194 @@ describe('the pillar, as the catalogue now describes it', () => {
       // a source the scan could not read and the reader is offered something to do about it.
       expect(finding.unmeasured).toBe('unreadable');
     }
+  });
+});
+
+const CAPACITY = 'sql:query.capacity' as SignalId;
+const SERVING_ENTITIES = 'sql:serving.model_entities' as SignalId;
+const RUN_TRACKING = 'sql:mlflow.run_tracking' as SignalId;
+
+function capacity(overrides: Partial<QueryCapacity> = {}): QueryCapacity {
+  return {
+    totalStatements: 100_000,
+    waitingAtCapacity: 0,
+    totalWaitMs: 0,
+    ...overrides,
+  };
+}
+
+function runTracking(overrides: Partial<MlflowRunTracking> = {}): MlflowRunTracking {
+  return {
+    runs: 500,
+    experimentsWithRuns: 20,
+    runsFromAJob: 300,
+    experimentsWithAJobRun: 15,
+    runsFromANotebook: 150,
+    runsFromElsewhere: 30,
+    runsFromAProject: 10,
+    runsWithoutASource: 10,
+    runsThatFinished: 480,
+    experiments: 30,
+    liveExperiments: 25,
+    ...overrides,
+  };
+}
+
+function servingEntity(overrides: Partial<ServingModelEntity> = {}): ServingModelEntity {
+  return {
+    workspaceId: '1',
+    servedEntityId: 'se-1',
+    endpointId: 'ep-1',
+    endpointName: 'fraud-scoring',
+    servedEntityName: 'fraud-scoring-v1',
+    entityType: 'CUSTOM_MODEL',
+    entityName: 'prod.models.fraud_scoring',
+    entityVersion: '7',
+    requests: 10_000,
+    daysWithTraffic: 5,
+    failedRequests: 12,
+    requestsWithoutStatus: 0,
+    liveEntities: 1,
+    liveEndpoints: 1,
+    customModels: 1,
+    foundationModels: 0,
+    externalModels: 0,
+    featureSpecs: 0,
+    customModelsWithAVersion: 1,
+    customModelsNamedInUc: 1,
+    ...overrides,
+  };
+}
+
+describe('OE-03-01, service limits and quotas', () => {
+  it('reports partial when no statements waited at capacity — limits not biting does not confirm monitoring', () => {
+    const finding = findingFor('OE-03-01', signalsOf([[CAPACITY, capacity()]]));
+    expect(finding.outcome).toBe('partial');
+    // The partial reason distinguishes "no events" from "events but not many"
+    expect(finding.outcomeReason).toContain('proactive monitoring');
+  });
+
+  it('reports fail when a significant share of statements hit a capacity limit', () => {
+    // 5% of statements waiting is above the 1% threshold and should fail
+    const finding = findingFor(
+      'OE-03-01',
+      signalsOf([[CAPACITY, capacity({ totalStatements: 10_000, waitingAtCapacity: 500 })]])
+    );
+    expect(finding.outcome).toBe('fail');
+    expect(finding.evidence[0]?.observed).toContain('500');
+    expect(finding.evidence[0]?.observed).toContain('10,000');
+  });
+
+  it('reports partial when a small share of statements hit capacity — minor pressure, not a clear failure', () => {
+    // 0.5% waiting is below the 1% threshold: biting, but not a fail
+    const finding = findingFor(
+      'OE-03-01',
+      signalsOf([[CAPACITY, capacity({ totalStatements: 10_000, waitingAtCapacity: 50 })]])
+    );
+    expect(finding.outcome).toBe('partial');
+    expect(finding.evidence[0]?.observed).toContain('50');
+  });
+
+  it('reports not-applicable when there is no query history to read', () => {
+    const finding = findingFor('OE-03-01', signalsOf([[CAPACITY, capacity({ totalStatements: 0 })]]));
+    expect(finding.outcome).toBe('not-applicable');
+  });
+
+  it('reports unmeasurable when the signal itself could not be read', () => {
+    const finding = findingFor('OE-03-01', signalsOf([]));
+    expect(finding.outcome).toBe('unmeasurable');
+  });
+
+  it('names the count in the evidence so an admin can act on it', () => {
+    const finding = findingFor(
+      'OE-03-01',
+      signalsOf([[CAPACITY, capacity({ totalStatements: 50_000, waitingAtCapacity: 1_000 })]])
+    );
+    // 2% exceeds the 1% threshold → fail
+    expect(finding.outcome).toBe('fail');
+    expect(finding.evidence[0]?.observed).toContain('1,000');
+  });
+});
+
+describe('OE-01-04, standardized MLOps processes', () => {
+  it('reports partial when both custom models and job-sourced runs are present', () => {
+    const finding = findingFor(
+      'OE-01-04',
+      signalsOf([
+        [SERVING_ENTITIES, [servingEntity()]],
+        [RUN_TRACKING, runTracking()],
+      ])
+    );
+    expect(finding.outcome).toBe('partial');
+    // Evidence names both signals
+    const observed = finding.evidence.map((e) => e.observed ?? '').join(' ');
+    expect(observed).toContain('custom model');
+    expect(observed).toContain('MLflow run');
+  });
+
+  it('reports partial when custom models exist but no job-sourced runs — models served but training not automated', () => {
+    const finding = findingFor(
+      'OE-01-04',
+      signalsOf([
+        [SERVING_ENTITIES, [servingEntity()]],
+        [RUN_TRACKING, runTracking({ runs: 0, runsFromAJob: 0, runsWithoutASource: 0 })],
+      ])
+    );
+    expect(finding.outcome).toBe('partial');
+  });
+
+  it('reports partial when job-sourced runs exist but no custom models — training tracked but no managed serving', () => {
+    const totals = servingEntity({ liveEntities: 0, customModels: 0 });
+    const finding = findingFor(
+      'OE-01-04',
+      signalsOf([
+        [SERVING_ENTITIES, [totals]],
+        [RUN_TRACKING, runTracking()],
+      ])
+    );
+    expect(finding.outcome).toBe('partial');
+  });
+
+  it('reports unmeasurable when neither signal has activity — no ML workload visible', () => {
+    const empty = servingEntity({ liveEntities: 0, customModels: 0 });
+    const finding = findingFor(
+      'OE-01-04',
+      signalsOf([
+        [SERVING_ENTITIES, [empty]],
+        [RUN_TRACKING, runTracking({ runs: 0, runsFromAJob: 0, runsWithoutASource: 0 })],
+      ])
+    );
+    expect(finding.outcome).toBe('unmeasurable');
+    // The unmeasured kind is unreadable (not attestation): the estate may have ML outside the platform
+    expect(finding.unmeasured).toBe('unreadable');
+  });
+
+  it('caps at partial even when both signals are strong — process standardization is beyond telemetry', () => {
+    // A very active ML estate: many models, many automated runs. Still partial.
+    const bigEstate = servingEntity({
+      liveEntities: 100,
+      customModels: 80,
+      customModelsWithAVersion: 80,
+    });
+    const finding = findingFor(
+      'OE-01-04',
+      signalsOf([
+        [SERVING_ENTITIES, [bigEstate]],
+        [RUN_TRACKING, runTracking({ runs: 10_000, runsFromAJob: 9_500 })],
+      ])
+    );
+    expect(finding.outcome).toBe('partial');
+    expect(finding.outcomeReason).toContain('standardized');
+  });
+
+  it('reports unmeasurable when the serving signal is refused', () => {
+    const finding = findingFor(
+      'OE-01-04',
+      new Map([
+        [SERVING_ENTITIES, unmeasurable(SERVING_ENTITIES, 'query refused')],
+        [RUN_TRACKING, observed(RUN_TRACKING, runTracking(), 1, { mode: 'complete' })],
+      ])
+    );
+    expect(finding.outcome).toBe('unmeasurable');
   });
 });

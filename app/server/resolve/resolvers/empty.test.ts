@@ -63,6 +63,27 @@ const ASSEMBLED: Readonly<Record<string, unknown>> = {
   'rest:workspace:token.list': { tokens: [], truncated: false },
   'rest:workspace:serving-endpoints': { endpoints: [], truncated: false },
   'rest:workspace:vector-search.endpoints': { endpoints: [], truncated: false },
+
+  // Admin-only signals: empty inventories / empty data objects. These produce scored outcomes
+  // from empty data (a zero-config account is a real observation, not a missing measurement),
+  // and they are added to CONFIGURED_ABSENCE below.
+  'rest:account:accounts.log-delivery': { configs: [], truncated: false },
+  'rest:account:accounts.{account_id}.ip-access-lists': { lists: [], truncated: false },
+  'rest:workspace:ip-access-lists': { lists: [], truncated: false },
+  'rest:workspace:secrets.scopes.list': { scopes: [], truncated: false },
+  'rest:workspace:clusters.list': { clusters: [], truncated: false },
+  'rest:workspace:permissions.authorization.tokens': { entries: [] },
+
+  // Typed settings: all return unmeasured from an empty data object (the key is absent),
+  // so they satisfy the "scores nothing" rule without an exemption.
+  'rest:account:accounts.settings.types.disable_legacy_features.names.default': { data: {} },
+  'rest:workspace:settings.types.disable_legacy_dbfs.names.default': { data: {} },
+  'rest:workspace:settings.types.sql_results_download.names.default': { data: {} },
+  'rest:workspace:settings.types.restrict_workspace_admins.names.default': { data: {} },
+  'rest:workspace:settings.types.automatic_cluster_update.names.default': { data: {} },
+  'rest:workspace:settings.types.shield_csp_enablement_ws_db.names.default': { data: {} },
+  'rest:workspace:settings.types.shield_esm_enablement_ws_db.names.default': { data: {} },
+  'rest:account:accounts.settings.types.shield_csp_enablement_ac.names.default': { data: {} },
 };
 
 /**
@@ -87,6 +108,23 @@ const CONFIGURED_ABSENCE = new Set<string>([
 ]);
 
 /**
+ * Admin-imported inventory controls that score from an empty inventory.
+ *
+ * A separate exemption from CONFIGURED_ABSENCE because the evidence text pattern differs:
+ * these produce fail/pass from a zero-item list (the admin verified and found none),
+ * which is a real measurement — not a "never been set" absence. The exemption is the same
+ * logic as CONFIGURED_ABSENCE; the test that validates the "other side" is below.
+ */
+const ADMIN_INVENTORY = new Set<string>([
+  'SCP-04-02', // log delivery: 0 configs → fail
+  'SCP-03-08', // account IP access lists: 0 lists → fail
+  'SCP-03-12', // account IP access list enforcement: 0 ALLOW lists → fail
+  'SCP-03-05', // workspace IP access lists: 0 lists → fail
+  'SCP-02-01', // secret scopes: 0 scopes → fail
+  'SCP-01-06', // token permissions: users group absent → pass
+]);
+
+/**
  * Controls whose evidence is that the query resolved, not what it returned.
  *
  * A second exemption with a different reason, kept separate so neither can be widened by
@@ -101,8 +139,8 @@ const CONFIGURED_ABSENCE = new Set<string>([
  */
 const PREMISE_OF_THE_QUERY = new Set<string>(['SCP-04-10', 'SCP-04-14']);
 
-/** Both exemptions, since the rule is one rule with two stated carve-outs. */
-const EXEMPT = new Set<string>([...CONFIGURED_ABSENCE, ...PREMISE_OF_THE_QUERY]);
+/** All exemptions: two stated carve-outs plus the admin-inventory set. */
+const EXEMPT = new Set<string>([...CONFIGURED_ABSENCE, ...PREMISE_OF_THE_QUERY, ...ADMIN_INVENTORY]);
 
 /**
  * What a collector would hand a resolver for this signal on an empty estate.
@@ -182,11 +220,24 @@ describe('an estate with nothing in it', () => {
   it('says why it declined, for every control', () => {
     // Unmeasurable with no reason is the worst of both: the control is absent from the
     // score and the user is told nothing about how to change that.
+    // Pass and not-applicable are excluded: a passing finding does not need to explain itself.
     const silent = resolved
       .map((control) => findingOnAnEmptyEstate(control.id))
+      .filter((finding) => finding.outcome !== 'pass' && finding.outcome !== 'not-applicable')
       .filter((finding) => (finding.outcomeReason ?? '').length < 40)
       .map((finding) => `${finding.controlId} (${finding.outcome})`);
     expect(silent, `declined without a usable reason: ${silent.join(', ')}`).toEqual([]);
+  });
+
+  it.each([...ADMIN_INVENTORY])('scores something from an empty inventory for %s', (controlId) => {
+    // The other side of the ADMIN_INVENTORY exemption. An empty inventory is a real measurement,
+    // and the resolver must reach a scored outcome — not leave the control unmeasured.
+    const finding = findingOnAnEmptyEstate(controlId);
+    expect(
+      SCORED.includes(finding.outcome),
+      `${controlId} did not score from an empty inventory: ${finding.outcome} — ${finding.outcomeReason ?? 'no reason'}`
+    ).toBe(true);
+    expect((finding.outcomeReason ?? '').length, `${controlId} has no outcome reason`).toBeGreaterThan(40);
   });
 });
 
