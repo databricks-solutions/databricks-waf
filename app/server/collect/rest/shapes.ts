@@ -61,3 +61,137 @@ export interface VectorSearchInventory {
   readonly endpoints: readonly VectorSearchEndpointRecord[];
   readonly truncated: boolean;
 }
+
+// --------------------------------------------------------------------------- admin-collected shapes
+//
+// The shapes below are not produced by the app's own REST probes — they are only ever
+// revived from admin-collected imports. They live here so that resolver tests import from
+// the same place as everything else, and so a future probe that reads one of these APIs
+// directly can reuse the shape without a second definition drifting from the first.
+
+/** One log delivery configuration as the account API reports it. */
+export interface LogDeliveryConfigRecord {
+  readonly configId: string;
+  readonly configName: string | undefined;
+  /** The log type: 'AUDIT_LOGS' or 'BILLABLE_USAGE'. */
+  readonly logType: string | undefined;
+  readonly outputFormat: string | undefined;
+  /** 'ENABLED' or 'DISABLED'. */
+  readonly status: string | undefined;
+  /**
+   * How many workspace IDs the filter covers. Zero means the configuration applies to
+   * every workspace in the account, which is what most installations want.
+   */
+  readonly workspaceFilterCount: number | undefined;
+}
+
+export interface LogDeliveryInventory {
+  readonly configs: readonly LogDeliveryConfigRecord[];
+  readonly truncated: boolean;
+}
+
+/** A single IP access list entry, from both workspace and account endpoints. */
+export interface IpAccessListRecord {
+  readonly label: string | undefined;
+  /** 'ALLOW' or 'BLOCK'. An absent ALLOW list means any IP may reach the endpoint. */
+  readonly listType: string | undefined;
+  readonly enabled: boolean | undefined;
+  /** The number of IP addresses or CIDR blocks in the list. */
+  readonly ipAddressCount: number | undefined;
+}
+
+export interface IpAccessListInventory {
+  readonly lists: readonly IpAccessListRecord[];
+  readonly truncated: boolean;
+}
+
+/**
+ * A typed settings endpoint response captured via the script's shallow projection.
+ *
+ * `shallow` keeps every scalar within two levels, keyed as the API spelled them and
+ * stored verbatim. Revivers hand this through without interpretation; each resolver
+ * knows which nested key its control turns on.
+ */
+export interface TypedSettingValue {
+  readonly data: Readonly<Record<string, unknown>>;
+}
+
+/** A secret scope, from the scopes-list endpoint. */
+export interface SecretScopeRecord {
+  readonly name: string;
+  /** 'DATABRICKS' or 'AZURE_KEYVAULT'. */
+  readonly backendType: string | undefined;
+}
+
+export interface SecretScopeInventory {
+  readonly scopes: readonly SecretScopeRecord[];
+  readonly truncated: boolean;
+}
+
+/** A cluster as reported by the REST clusters-list endpoint. */
+export interface AdminClusterRecord {
+  readonly clusterId: string;
+  readonly clusterName: string | undefined;
+  readonly state: string | undefined;
+  readonly clusterSource: string | undefined;
+  readonly sparkVersion: string | undefined;
+  readonly dataSecurityMode: string | undefined;
+  readonly autoterminationMinutes: number | undefined;
+  /**
+   * Whether local disk encryption is on. Absent means the cluster predates the field or
+   * did not return it; false is the actionable finding.
+   */
+  readonly enableLocalDiskEncryption: boolean | undefined;
+  /** When the cluster was started, as an epoch timestamp. */
+  readonly startTime: Date | undefined;
+  /**
+   * When the cluster was last restarted, used to detect long-running clusters.
+   *
+   * Absent either means the cluster has never been restarted since creation (use
+   * `startTime` instead) or that the field was not returned.
+   */
+  readonly lastRestartedTime: Date | undefined;
+  /** Key names of spark environment variables, without their values. */
+  readonly sparkEnvVarKeys: readonly string[] | undefined;
+  readonly initScriptCount: number | undefined;
+}
+
+export interface AdminClusterInventory {
+  readonly clusters: readonly AdminClusterRecord[];
+  readonly truncated: boolean;
+}
+
+/** One entry in the token-creation ACL from the permissions API. */
+export interface TokenPermissionEntry {
+  readonly userName: string | undefined;
+  readonly groupName: string | undefined;
+  readonly servicePrincipalName: string | undefined;
+  readonly permissionLevels: readonly string[];
+}
+
+/**
+ * Who may create personal access tokens.
+ *
+ * The violation the corresponding control looks for is the `users` group appearing with
+ * any permission level, which means every workspace member can create tokens.
+ */
+export interface TokenPermissions {
+  readonly entries: readonly TokenPermissionEntry[];
+}
+
+/** A job as listed by the jobs API, reduced to its run-as identity. */
+export interface AdminJobRecord {
+  readonly jobId: string;
+  readonly name: string | undefined;
+  /**
+   * The user account the job runs as. An email pattern identifies a personal account
+   * rather than a service principal, which is the finding this control looks for.
+   */
+  readonly runAsUserName: string | undefined;
+  readonly runAsServicePrincipalName: string | undefined;
+}
+
+export interface AdminJobInventory {
+  readonly jobs: readonly AdminJobRecord[];
+  readonly truncated: boolean;
+}
