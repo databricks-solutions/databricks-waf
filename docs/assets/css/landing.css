@@ -1,15 +1,12 @@
 :root {
-  color-scheme: dark;
-  --landing-bg: #080d18;
-  --landing-surface: #101827;
-  --landing-surface-raised: #172235;
-  --landing-ink: #f7f9fc;
-  --landing-muted: #aeb9ca;
-  --landing-line: #2a3950;
-  --landing-blue: #8eafff;
-  --landing-blue-strong: #5f87ef;
-  --landing-orange: #ff5f46;
-  --landing-green: #72d5b3;
+  color-scheme: light;
+  --landing-bg: #f7f7f8;
+  --landing-surface: #ffffff;
+  --landing-surface-muted: #f1f2f4;
+  --landing-ink: #111827;
+  --landing-muted: #565d6b;
+  --landing-line: #d9dce1;
+  --landing-accent: #ff3621;
   --landing-header-height: 4.25rem;
   font-family:
     Inter,
@@ -31,35 +28,24 @@ html {
 body {
   margin: 0;
   color: var(--landing-ink);
-  background:
-    radial-gradient(
-      circle at 85% 8%,
-      rgba(74, 113, 214, 0.2),
-      transparent 25rem
-    ),
-    radial-gradient(
-      circle at 8% 24%,
-      rgba(255, 95, 70, 0.1),
-      transparent 22rem
-    ),
-    var(--landing-bg);
+  background: var(--landing-bg);
   font-size: 1rem;
   line-height: 1.65;
 }
 
 a {
-  color: var(--landing-blue);
+  color: var(--landing-accent);
   text-decoration-thickness: 0.08em;
   text-underline-offset: 0.2em;
 }
 
 a:hover {
-  color: #c5d4ff;
+  color: var(--landing-ink);
 }
 
 a:focus-visible,
 button:focus-visible {
-  outline: 3px solid #f6c55c;
+  outline: 3px solid var(--landing-accent);
   outline-offset: 4px;
   border-radius: 3px;
 }
@@ -70,8 +56,8 @@ button:focus-visible {
   left: 1rem;
   z-index: 20;
   padding: 0.7rem 1rem;
-  color: #080d18;
-  background: #fff;
+  color: var(--landing-ink);
+  background: var(--landing-surface);
   font-weight: 800;
 }
 
@@ -89,9 +75,9 @@ button:focus-visible {
   justify-content: space-between;
   gap: 2rem;
   padding: 0.8rem clamp(1.25rem, 4vw, 4.5rem);
-  border-bottom: 1px solid rgba(142, 175, 255, 0.2);
-  background: rgba(8, 13, 24, 0.9);
-  backdrop-filter: blur(18px);
+  border-bottom: 1px solid var(--landing-line);
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(12px);
 }
 
 .landing-brand {
@@ -105,12 +91,11 @@ button:focus-visible {
   white-space: nowrap;
 }
 
-.landing-brand-mark {
-  width: 0.72rem;
-  height: 0.72rem;
-  border-radius: 2px;
-  background: var(--landing-orange);
-  box-shadow: 0 0 0 5px rgba(255, 95, 70, 0.12);
+.landing-brand-logo {
+  display: block;
+  width: 1.2rem;
+  height: auto;
+  flex: 0 0 auto;
 }
 
 .landing-nav {
@@ -123,12 +108,12 @@ button:focus-visible {
 }
 
 .landing-nav a {
-  color: #d9e1ee;
+  color: var(--landing-muted);
   text-decoration: none;
 }
 
 .landing-nav a:hover {
-  color: #fff;
+  color: var(--landing-ink);
 }
 
 .landing-main > * {
@@ -137,6 +122,7 @@ button:focus-visible {
   margin-left: auto;
 }
 
+.landing-main,
 .landing-main section,
 .landing-main [id] {
   scroll-margin-top: calc(var(--landing-header-height) + 1.5rem);
@@ -154,7 +140,7 @@ button:focus-visible {
 .landing-kicker,
 .section-kicker {
   margin: 0 0 0.9rem;
-  color: var(--landing-green);
+  color: var(--landing-accent);
   font-size: 0.75rem;
   font-weight: 850;
   letter-spacing: 0.16em;
@@ -162,11 +148,11 @@ button:focus-visible {
 }
 
 .landing-hero h1 {
-  max-width: 12ch;
+  max-width: 13ch;
   margin: 0;
-  font-size: clamp(3rem, 6.2vw, 6.2rem);
-  line-height: 0.96;
-  letter-spacing: -0.055em;
+  font-size: clamp(3rem, 5.4vw, 5.4rem);
+  line-height: 1;
+  letter-spacing: -0.05em;
 }
 
 .landing-hero-copy > p:not(.landing-kicker) {
@@ -199,14 +185,20 @@ button:focus-visible {
 }
 
 .landing-button-primary {
-  border-color: var(--landing-blue-strong);
-  background: var(--landing-blue-strong);
+  color: var(--landing-ink);
+  border-color: var(--landing-accent);
+  background: var(--landing-accent);
 }
 
 .landing-button:hover {
-  color: #fff;
-  border-color: var(--landing-blue);
-  transform: translateY(-2px);
+  color: var(--landing-ink);
+  border-color: var(--landing-ink);
+}
+
+.landing-button-primary:hover {
+  color: var(--landing-surface);
+  border-color: var(--landing-ink);
+  background: var(--landing-ink);
 }
 
 .landing-figure {
@@ -217,10 +209,16 @@ button:focus-visible {
   display: block;
   width: 100%;
   height: auto;
-  border: 1px solid #53647c;
-  border-radius: 12px;
-  background: #f7f8fb;
-  box-shadow: 0 28px 75px rgba(0, 0, 0, 0.42);
+  aspect-ratio: 16 / 9;
+  border: 1px solid var(--landing-line);
+  border-radius: 8px;
+  background: var(--landing-surface);
+  box-shadow: 0 1px 2px rgba(17, 24, 39, 0.08);
+}
+
+.landing-figure img[src$="dashboard.jpg"],
+.landing-figure img[src$="published-report.jpg"] {
+  aspect-ratio: 1270 / 714;
 }
 
 .landing-figure figcaption {
@@ -231,11 +229,88 @@ button:focus-visible {
 
 .example-data-note {
   padding: 0.85rem 1rem;
-  border: 1px solid rgba(114, 213, 179, 0.35);
+  border: 1px solid var(--landing-line);
   border-radius: 8px;
-  color: #c9d3e2;
-  background: rgba(114, 213, 179, 0.07);
+  color: var(--landing-muted);
+  background: var(--landing-surface);
   font-size: 0.88rem;
+}
+
+.landing-journey {
+  padding: 7rem 0;
+}
+
+.journey-intro {
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(18rem, 0.55fr);
+  gap: 1rem 4rem;
+  align-items: end;
+}
+
+.journey-intro .section-kicker {
+  grid-column: 1 / -1;
+}
+
+.journey-intro h2 {
+  margin: 0;
+  font-size: clamp(2rem, 4vw, 3.7rem);
+  line-height: 1.05;
+  letter-spacing: -0.04em;
+}
+
+.journey-intro > p:last-child {
+  margin: 0;
+  color: var(--landing-muted);
+}
+
+.journey-list {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0;
+  margin: 3rem 0 2rem;
+  padding: 0;
+  border-top: 1px solid var(--landing-line);
+  border-left: 1px solid var(--landing-line);
+  list-style: none;
+  counter-reset: journey;
+}
+
+.journey-list li {
+  min-height: 16rem;
+  padding: 1.35rem;
+  border-right: 1px solid var(--landing-line);
+  border-bottom: 1px solid var(--landing-line);
+  background: var(--landing-surface);
+  counter-increment: journey;
+}
+
+.journey-list li::before {
+  color: var(--landing-accent);
+  content: counter(journey, decimal-leading-zero);
+  font:
+    750 0.78rem ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+}
+
+.journey-list h3 {
+  margin: 1.5rem 0 0.75rem;
+  font-size: 1rem;
+}
+
+.journey-list p {
+  margin: 0.55rem 0 0;
+  color: var(--landing-muted);
+  font-size: 0.84rem;
+}
+
+.journey-list strong {
+  color: var(--landing-ink);
+}
+
+.journey-link {
+  font-weight: 750;
 }
 
 .landing-outcomes {
@@ -263,16 +338,12 @@ button:focus-visible {
   min-height: 13rem;
   padding: 1.4rem;
   border: 1px solid var(--landing-line);
-  border-radius: 10px;
-  background: linear-gradient(
-    145deg,
-    rgba(23, 34, 53, 0.9),
-    rgba(12, 20, 34, 0.95)
-  );
+  border-radius: 8px;
+  background: var(--landing-surface);
 }
 
 .outcome-card .outcome-number {
-  color: var(--landing-orange);
+  color: var(--landing-accent);
   font:
     750 0.78rem ui-monospace,
     SFMono-Regular,
@@ -301,11 +372,13 @@ button:focus-visible {
   border-top: 1px solid var(--landing-line);
 }
 
-.workflow-section:nth-of-type(even) .workflow-copy {
+#publish .workflow-copy,
+#improve .workflow-copy {
   order: 2;
 }
 
-.workflow-section:nth-of-type(even) .landing-figure {
+#publish .landing-figure,
+#improve .landing-figure {
   order: 1;
 }
 
@@ -325,7 +398,7 @@ button:focus-visible {
   position: relative;
   margin-top: 0.65rem;
   padding-left: 1.4rem;
-  color: #dce3ee;
+  color: var(--landing-ink);
 }
 
 .workflow-copy li::before {
@@ -335,7 +408,7 @@ button:focus-visible {
   width: 0.45rem;
   height: 0.45rem;
   border-radius: 50%;
-  background: var(--landing-orange);
+  background: var(--landing-accent);
   content: "";
 }
 
@@ -364,7 +437,7 @@ button:focus-visible {
 .pillar-list li {
   padding-top: 0.65rem;
   border-top: 1px solid var(--landing-line);
-  color: #dce3ee;
+  color: var(--landing-ink);
   font-size: 0.88rem;
 }
 
@@ -382,11 +455,9 @@ button:focus-visible {
 .landing-install {
   margin-bottom: 6rem;
   padding: clamp(2rem, 6vw, 5rem);
-  border: 1px solid rgba(142, 175, 255, 0.45);
-  border-radius: 14px;
-  background:
-    linear-gradient(130deg, rgba(95, 135, 239, 0.22), rgba(95, 135, 239, 0.04)),
-    var(--landing-surface);
+  border: 1px solid var(--landing-line);
+  border-radius: 10px;
+  background: var(--landing-surface);
 }
 
 .landing-install > p {
@@ -404,7 +475,7 @@ button:focus-visible {
 
 .install-step {
   padding: 1rem 0;
-  border-top: 2px solid var(--landing-blue-strong);
+  border-top: 2px solid var(--landing-accent);
 }
 
 .install-step strong {
@@ -462,6 +533,10 @@ button:focus-visible {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .journey-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .workflow-section {
     min-height: auto;
   }
@@ -490,10 +565,16 @@ button:focus-visible {
   }
 
   .outcome-grid,
+  .journey-intro,
+  .journey-list,
   .workflow-section,
   .landing-boundary,
   .install-steps {
     grid-template-columns: 1fr;
+  }
+
+  .journey-intro .section-kicker {
+    grid-column: auto;
   }
 
   .workflow-section {
@@ -501,8 +582,10 @@ button:focus-visible {
     padding: 4rem 0;
   }
 
-  .workflow-section:nth-of-type(even) .workflow-copy,
-  .workflow-section:nth-of-type(even) .landing-figure {
+  #publish .workflow-copy,
+  #publish .landing-figure,
+  #improve .workflow-copy,
+  #improve .landing-figure {
     order: initial;
   }
 

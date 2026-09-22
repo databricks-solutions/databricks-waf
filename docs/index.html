@@ -4,13 +4,18 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#0b1220" />
+    <meta name="theme-color" content="#ffffff" />
     <title>
       Turn architecture evidence into owned improvement work · Databricks WAF assessment
     </title>
     <meta
       name="description"
       content="Review Databricks architecture evidence, trace gaps to resources, and verify owned improvement work on a later assessment."
+    />
+    <link
+      rel="icon"
+      type="image/svg+xml"
+      href="/databricks-waf/assets/favicon.svg"
     />
     <link
       rel="stylesheet"
@@ -27,10 +32,18 @@
         href="/databricks-waf/"
         aria-label="Databricks WAF assessment home"
       >
-        <span class="landing-brand-mark" aria-hidden="true"></span>
+        <img
+          class="landing-brand-logo"
+          src="/databricks-waf/assets/databricks-logo.svg"
+          width="20"
+          height="21"
+          alt=""
+          aria-hidden="true"
+        />
         <span>Databricks WAF assessment</span>
       </a>
       <nav class="landing-nav" aria-label="Product tour">
+        <a href="#journey">Journey</a>
         <a href="#review">Review</a>
         <a href="#publish">Publish</a>
         <a href="#investigate">Investigate</a>
@@ -42,7 +55,8 @@
         >
       </nav>
     </header>
-    <main id="landing-content" class="landing-main"><section class="landing-hero">
+    <main id="landing-content" class="landing-main" tabindex="-1">
+      <section class="landing-hero">
   <div class="landing-hero-copy">
     <p class="landing-kicker">Databricks Well-Architected Framework assessment</p>
     <h1>Turn architecture evidence into owned improvement work</h1>
@@ -53,12 +67,63 @@
     </div>
   </div>
   <figure class="landing-figure">
-    <img src="/databricks-waf/assets/images/dashboard.jpg" width="1024" height="576" alt="WAF assessment Dashboard showing posture, evidence coverage, confidence, unmet requirements, and the first recommended action">
+    <img src="/databricks-waf/assets/images/dashboard.jpg" width="1270" height="714" alt="WAF assessment Dashboard showing posture, evidence coverage, confidence, unmet requirements, and the first recommended action">
     <figcaption>The Dashboard keeps posture, coverage, material change, and the next action in one view.</figcaption>
   </figure>
 </section>
 
 <p class="example-data-note"><strong>Preview data:</strong> All screenshots on this page, including the hero above, contain deterministic, anonymized example data. No customer workspace, user identity, or customer record appears.</p>
+
+<section id="journey" class="landing-journey" aria-labelledby="journey-title">
+  <div class="journey-intro">
+    <p class="section-kicker">Customer journey</p>
+    <h2 id="journey-title">Eight steps from scope to an operating cycle</h2>
+    <p>Use this sequence to see where people make decisions and where the App preserves evidence. The detailed screenshots below pick up the same journey from Review onwards.</p>
+  </div>
+  <ol class="journey-list">
+    <li>
+      <h3>Prepare</h3>
+      <p><strong>You:</strong> Choose the workspace scope, pillars, owners, lookback, and optional targets.</p>
+      <p><strong>App records:</strong> A reusable assessment definition or the deliberate scope for a one-off run.</p>
+    </li>
+    <li>
+      <h3>Collect</h3>
+      <p><strong>You:</strong> Confirm the scope and start automated collection.</p>
+      <p><strong>App records:</strong> Read-only evidence from permitted sources, visible gaps, and an indicative result.</p>
+    </li>
+    <li>
+      <h3>Review</h3>
+      <p><strong>You:</strong> Supply the remaining human evidence, then confirm or skip each selected pillar.</p>
+      <p><strong>App records:</strong> Accountable answers, rationale, owners, review dates, and explicit pillar decisions.</p>
+    </li>
+    <li>
+      <h3>Publish</h3>
+      <p><strong>You:</strong> Publish after every selected pillar has a decision.</p>
+      <p><strong>App records:</strong> An immutable report tied to scope, methodology, evidence, and reviewer decisions.</p>
+    </li>
+    <li>
+      <h3>Investigate</h3>
+      <p><strong>You:</strong> Trace an unmet requirement to its evidence and affected resources.</p>
+      <p><strong>App records:</strong> Append-only context alongside the requirement, action, owner, and verification condition.</p>
+    </li>
+    <li>
+      <h3>Improve</h3>
+      <p><strong>You:</strong> Assign actions, due dates, implementation steps, and expected outcomes.</p>
+      <p><strong>App records:</strong> Improvement plans and action status without changing the measured outcome.</p>
+    </li>
+    <li>
+      <h3>Verify</h3>
+      <p><strong>You:</strong> Run a later comparable assessment after the improvement work is complete.</p>
+      <p><strong>App records:</strong> Later evidence that verifies closure or contradicts the completed action.</p>
+    </li>
+    <li>
+      <h3>Operate</h3>
+      <p><strong>You:</strong> Work the recurring queue and inspect run, month, retention, audit, and diagnostic history.</p>
+      <p><strong>App records:</strong> The open reviews, overdue work, exceptions, contradictions, and settled history behind the cycle.</p>
+    </li>
+  </ol>
+  <a class="journey-link" href="/databricks-waf/user-guide/">Read the full customer journey guide</a>
+</section>
 
 <section class="landing-outcomes" aria-labelledby="outcomes-title">
   <p class="section-kicker">One accountable evidence chain</p>
@@ -100,7 +165,7 @@
     </ul>
   </div>
   <figure class="landing-figure">
-    <img src="/databricks-waf/assets/images/assessment-review.jpg" width="1024" height="576" loading="lazy" alt="Assessment Review page separating measured evidence, unanswered practices, and pillar decisions">
+    <img src="/databricks-waf/assets/images/assessment-review.jpg" width="1280" height="720" loading="lazy" alt="Assessment Review page separating measured evidence, unanswered practices, and pillar decisions">
     <figcaption>Review asks for the remaining evidence and records an explicit decision for each selected pillar.</figcaption>
   </figure>
 </section>
@@ -117,7 +182,7 @@
     </ul>
   </div>
   <figure class="landing-figure">
-    <img src="/databricks-waf/assets/images/published-report.jpg" width="1024" height="576" loading="lazy" alt="Published architecture report showing assessed scope, measured posture, open requirements, and improvement work">
+    <img src="/databricks-waf/assets/images/published-report.jpg" width="1270" height="714" loading="lazy" alt="Published architecture report showing assessed scope, measured posture, open requirements, and improvement work">
     <figcaption>The published report becomes the reviewed record for governance and comparison.</figcaption>
   </figure>
 </section>
@@ -134,7 +199,7 @@
     </ul>
   </div>
   <figure class="landing-figure">
-    <img src="/databricks-waf/assets/images/investigation-workbench.jpg" width="1024" height="576" loading="lazy" alt="Investigation workbench connecting an unmet requirement to its action, evidence, and three affected resources">
+    <img src="/databricks-waf/assets/images/investigation-workbench.jpg" width="1280" height="720" loading="lazy" alt="Investigation workbench connecting an unmet requirement to its action, evidence, and three affected resources">
     <figcaption>Investigation stays requirement-led and opens the wider estate only when architecture relationships help.</figcaption>
   </figure>
 </section>
@@ -151,7 +216,7 @@
     </ul>
   </div>
   <figure class="landing-figure">
-    <img src="/databricks-waf/assets/images/improvement-plan.jpg" width="1024" height="576" loading="lazy" alt="Improvement action showing the required outcome, platform engineering owner, current standing, and later-run verification condition">
+    <img src="/databricks-waf/assets/images/improvement-plan.jpg" width="1280" height="720" loading="lazy" alt="Improvement action showing the required outcome, platform engineering owner, current standing, and later-run verification condition">
     <figcaption>Marking an action done does not change a requirement's outcome. A later assessment verifies it, or shows a contradiction if the requirement is still unmet.</figcaption>
   </figure>
 </section>
@@ -168,7 +233,7 @@
     </ul>
   </div>
   <figure class="landing-figure">
-    <img src="/databricks-waf/assets/images/operate.jpg" width="1024" height="576" loading="lazy" alt="Operate page prioritising an unfinished review, contradicted action, overdue work, expiring exception, and the latest scheduled run">
+    <img src="/databricks-waf/assets/images/operate.jpg" width="1280" height="720" loading="lazy" alt="Operate page prioritising an unfinished review, contradicted action, overdue work, expiring exception, and the latest scheduled run">
     <figcaption>Operate keeps the recurring queue visible while preserving the reports and runs behind it.</figcaption>
   </figure>
 </section>
@@ -217,7 +282,8 @@
   </div>
   <a class="landing-button landing-button-primary" href="/databricks-waf/install/">Open the full installation guide</a>
 </section>
-</main>
+
+    </main>
     <footer class="landing-footer">
       <p>Databricks Well-Architected Framework assessment</p>
       <div>

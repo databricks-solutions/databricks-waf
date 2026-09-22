@@ -3,13 +3,18 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#0b1220" />
+    <meta name="theme-color" content="#ffffff" />
     <title>
       {% if page.title %}{{ page.title }} · {% endif %}{{ site.title }}
     </title>
     <meta
       name="description"
       content="{{ page.description | default: site.description | escape }}"
+    />
+    <link
+      rel="icon"
+      type="image/svg+xml"
+      href="{{ '/assets/favicon.svg' | relative_url }}"
     />
     <link
       rel="stylesheet"
@@ -26,10 +31,18 @@
         href="{{ '/' | relative_url }}"
         aria-label="Databricks WAF assessment home"
       >
-        <span class="landing-brand-mark" aria-hidden="true"></span>
+        <img
+          class="landing-brand-logo"
+          src="{{ '/assets/databricks-logo.svg' | relative_url }}"
+          width="20"
+          height="21"
+          alt=""
+          aria-hidden="true"
+        />
         <span>Databricks WAF assessment</span>
       </a>
       <nav class="landing-nav" aria-label="Product tour">
+        <a href="#journey">Journey</a>
         <a href="#review">Review</a>
         <a href="#publish">Publish</a>
         <a href="#investigate">Investigate</a>
@@ -41,7 +54,9 @@
         >
       </nav>
     </header>
-    <main id="landing-content" class="landing-main">{{ content }}</main>
+    <main id="landing-content" class="landing-main" tabindex="-1">
+      {{ content }}
+    </main>
     <footer class="landing-footer">
       <p>Databricks Well-Architected Framework assessment</p>
       <div>

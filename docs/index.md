@@ -16,12 +16,63 @@ permalink: /
     </div>
   </div>
   <figure class="landing-figure">
-    <img src="{{ '/assets/images/dashboard.jpg' | relative_url }}" width="1024" height="576" alt="WAF assessment Dashboard showing posture, evidence coverage, confidence, unmet requirements, and the first recommended action">
+    <img src="{{ '/assets/images/dashboard.jpg' | relative_url }}" width="1270" height="714" alt="WAF assessment Dashboard showing posture, evidence coverage, confidence, unmet requirements, and the first recommended action">
     <figcaption>The Dashboard keeps posture, coverage, material change, and the next action in one view.</figcaption>
   </figure>
 </section>
 
 <p class="example-data-note"><strong>Preview data:</strong> All screenshots on this page, including the hero above, contain deterministic, anonymized example data. No customer workspace, user identity, or customer record appears.</p>
+
+<section id="journey" class="landing-journey" aria-labelledby="journey-title">
+  <div class="journey-intro">
+    <p class="section-kicker">Customer journey</p>
+    <h2 id="journey-title">Eight steps from scope to an operating cycle</h2>
+    <p>Use this sequence to see where people make decisions and where the App preserves evidence. The detailed screenshots below pick up the same journey from Review onwards.</p>
+  </div>
+  <ol class="journey-list">
+    <li>
+      <h3>Prepare</h3>
+      <p><strong>You:</strong> Choose the workspace scope, pillars, owners, lookback, and optional targets.</p>
+      <p><strong>App records:</strong> A reusable assessment definition or the deliberate scope for a one-off run.</p>
+    </li>
+    <li>
+      <h3>Collect</h3>
+      <p><strong>You:</strong> Confirm the scope and start automated collection.</p>
+      <p><strong>App records:</strong> Read-only evidence from permitted sources, visible gaps, and an indicative result.</p>
+    </li>
+    <li>
+      <h3>Review</h3>
+      <p><strong>You:</strong> Supply the remaining human evidence, then confirm or skip each selected pillar.</p>
+      <p><strong>App records:</strong> Accountable answers, rationale, owners, review dates, and explicit pillar decisions.</p>
+    </li>
+    <li>
+      <h3>Publish</h3>
+      <p><strong>You:</strong> Publish after every selected pillar has a decision.</p>
+      <p><strong>App records:</strong> An immutable report tied to scope, methodology, evidence, and reviewer decisions.</p>
+    </li>
+    <li>
+      <h3>Investigate</h3>
+      <p><strong>You:</strong> Trace an unmet requirement to its evidence and affected resources.</p>
+      <p><strong>App records:</strong> Append-only context alongside the requirement, action, owner, and verification condition.</p>
+    </li>
+    <li>
+      <h3>Improve</h3>
+      <p><strong>You:</strong> Assign actions, due dates, implementation steps, and expected outcomes.</p>
+      <p><strong>App records:</strong> Improvement plans and action status without changing the measured outcome.</p>
+    </li>
+    <li>
+      <h3>Verify</h3>
+      <p><strong>You:</strong> Run a later comparable assessment after the improvement work is complete.</p>
+      <p><strong>App records:</strong> Later evidence that verifies closure or contradicts the completed action.</p>
+    </li>
+    <li>
+      <h3>Operate</h3>
+      <p><strong>You:</strong> Work the recurring queue and inspect run, month, retention, audit, and diagnostic history.</p>
+      <p><strong>App records:</strong> The open reviews, overdue work, exceptions, contradictions, and settled history behind the cycle.</p>
+    </li>
+  </ol>
+  <a class="journey-link" href="{{ '/user-guide/' | relative_url }}">Read the full customer journey guide</a>
+</section>
 
 <section class="landing-outcomes" aria-labelledby="outcomes-title">
   <p class="section-kicker">One accountable evidence chain</p>
@@ -63,7 +114,7 @@ permalink: /
     </ul>
   </div>
   <figure class="landing-figure">
-    <img src="{{ '/assets/images/assessment-review.jpg' | relative_url }}" width="1024" height="576" loading="lazy" alt="Assessment Review page separating measured evidence, unanswered practices, and pillar decisions">
+    <img src="{{ '/assets/images/assessment-review.jpg' | relative_url }}" width="1280" height="720" loading="lazy" alt="Assessment Review page separating measured evidence, unanswered practices, and pillar decisions">
     <figcaption>Review asks for the remaining evidence and records an explicit decision for each selected pillar.</figcaption>
   </figure>
 </section>
@@ -80,7 +131,7 @@ permalink: /
     </ul>
   </div>
   <figure class="landing-figure">
-    <img src="{{ '/assets/images/published-report.jpg' | relative_url }}" width="1024" height="576" loading="lazy" alt="Published architecture report showing assessed scope, measured posture, open requirements, and improvement work">
+    <img src="{{ '/assets/images/published-report.jpg' | relative_url }}" width="1270" height="714" loading="lazy" alt="Published architecture report showing assessed scope, measured posture, open requirements, and improvement work">
     <figcaption>The published report becomes the reviewed record for governance and comparison.</figcaption>
   </figure>
 </section>
@@ -97,7 +148,7 @@ permalink: /
     </ul>
   </div>
   <figure class="landing-figure">
-    <img src="{{ '/assets/images/investigation-workbench.jpg' | relative_url }}" width="1024" height="576" loading="lazy" alt="Investigation workbench connecting an unmet requirement to its action, evidence, and three affected resources">
+    <img src="{{ '/assets/images/investigation-workbench.jpg' | relative_url }}" width="1280" height="720" loading="lazy" alt="Investigation workbench connecting an unmet requirement to its action, evidence, and three affected resources">
     <figcaption>Investigation stays requirement-led and opens the wider estate only when architecture relationships help.</figcaption>
   </figure>
 </section>
@@ -114,7 +165,7 @@ permalink: /
     </ul>
   </div>
   <figure class="landing-figure">
-    <img src="{{ '/assets/images/improvement-plan.jpg' | relative_url }}" width="1024" height="576" loading="lazy" alt="Improvement action showing the required outcome, platform engineering owner, current standing, and later-run verification condition">
+    <img src="{{ '/assets/images/improvement-plan.jpg' | relative_url }}" width="1280" height="720" loading="lazy" alt="Improvement action showing the required outcome, platform engineering owner, current standing, and later-run verification condition">
     <figcaption>Marking an action done does not change a requirement's outcome. A later assessment verifies it, or shows a contradiction if the requirement is still unmet.</figcaption>
   </figure>
 </section>
@@ -131,7 +182,7 @@ permalink: /
     </ul>
   </div>
   <figure class="landing-figure">
-    <img src="{{ '/assets/images/operate.jpg' | relative_url }}" width="1024" height="576" loading="lazy" alt="Operate page prioritising an unfinished review, contradicted action, overdue work, expiring exception, and the latest scheduled run">
+    <img src="{{ '/assets/images/operate.jpg' | relative_url }}" width="1280" height="720" loading="lazy" alt="Operate page prioritising an unfinished review, contradicted action, overdue work, expiring exception, and the latest scheduled run">
     <figcaption>Operate keeps the recurring queue visible while preserving the reports and runs behind it.</figcaption>
   </figure>
 </section>
