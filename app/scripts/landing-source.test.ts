@@ -1,13 +1,28 @@
-import { existsSync, readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { execFileSync } from 'node:child_process';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { basename, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
+const root = resolve(import.meta.dirname, '../..');
 const docs = resolve(import.meta.dirname, '../../docs');
+const landingScreenshots = [
+  'dashboard.jpg',
+  'assessment-review.jpg',
+  'published-report.jpg',
+  'investigation-workbench.jpg',
+  'improvement-plan.jpg',
+  'operate.jpg',
+] as const;
+const repositoryImages = [...landingScreenshots, 'readme-evidence-to-action.jpg', 'readme-seven-pillars.jpg'].sort();
 
 function source(path: string): string {
   const file = resolve(docs, path);
   expect(existsSync(file), `${path} must exist`).toBe(true);
   return readFileSync(file, 'utf8');
+}
+
+function imageTags(page: string): string[] {
+  return [...page.matchAll(/<img\b[^>]*>/g)].map(([tag]) => tag);
 }
 
 describe('landing page source contract', () => {
@@ -61,18 +76,14 @@ describe('landing page source contract', () => {
       expect(page).toContain(`id="${id}"`);
     }
 
-    const images = [
-      ['dashboard.jpg', false],
-      ['assessment-review.jpg', true],
-      ['published-report.jpg', true],
-      ['investigation-workbench.jpg', true],
-      ['improvement-plan.jpg', true],
-      ['operate.jpg', true],
-    ] as const;
+    const images = landingScreenshots.map((name, index) => [name, index !== 0] as const);
+    const referencedScreenshots = imageTags(page).map((tag) => tag.match(/\/assets\/images\/([^'"]+)/)?.[1] ?? '');
+    expect(referencedScreenshots).toEqual([...landingScreenshots]);
+
     for (const [name, lazy] of images) {
       const image = page.match(new RegExp(`<img[^>]+${name.replace('.', '\\.')}[^>]*>`))?.[0] ?? '';
       expect(image, `${name} must use a raw HTML img element`).not.toBe('');
-      expect(image).toMatch(/\balt="[^"]+"/);
+      expect(image).toMatch(/\balt="[^"]*\S[^"]*"/);
       expect(image).toMatch(/\bwidth="\d+"/);
       expect(image).toMatch(/\bheight="\d+"/);
       if (lazy) expect(image).toContain('loading="lazy"');
@@ -88,8 +99,29 @@ describe('landing page source contract', () => {
 
     expect(page).toContain('deterministic, anonymized example data');
     // The anonymization statement must cover every screenshot, hero included, not only the ones below the hero.
-    expect(page).toMatch(/all screenshots[\s\S]*deterministic, anonymized example data/i);
+    expect(page).toMatch(
+      /all screenshots[\s\S]*including the hero[\s\S]*deterministic, anonymized example data[\s\S]*no customer workspace, user identity, or customer record appears/i
+    );
     expect(page).not.toMatch(/screenshots?\s+below[\s\S]*deterministic, anonymized example data/i);
+  });
+
+  it('keeps approved screenshots as tracked documentation assets', () => {
+    const imageInventory = readdirSync(resolve(docs, 'assets/images')).sort();
+    const trackedImages = execFileSync('git', ['ls-files', 'docs/assets/images/*'], {
+      cwd: root,
+      encoding: 'utf8',
+    })
+      .trim()
+      .split('\n')
+      .filter(Boolean)
+      .map((path) => basename(path))
+      .sort();
+
+    expect(imageInventory).toEqual(repositoryImages);
+    expect(trackedImages).toEqual(repositoryImages);
+    for (const screenshot of landingScreenshots) {
+      expect(existsSync(resolve(docs, 'assets/images', screenshot)), screenshot).toBe(true);
+    }
   });
 
   it('states the workspace and pillar scope the way the guide does', () => {

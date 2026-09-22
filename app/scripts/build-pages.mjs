@@ -98,7 +98,7 @@ function renderLayout(attributes, content, source) {
   const layout = readFileSync(join(DOCS, '_layouts', `${layoutName}.html`), 'utf8');
   const pageTitle = attributes.title == null ? '' : `${escapeHtml(attributes.title)} · `;
   const description = escapeHtml(attributes.description ?? config.description ?? '');
-  const eyebrow = attributes.eyebrow == null ? '' : `<p class="eyebrow">${escapeHtml(attributes.eyebrow)}</p>`;
+  const eyebrow = attributes.eyebrow == null ? '' : `<p class="eyebrow">${escapeHtml(attributes.eyebrow)}</p>\n       `;
   const rendered = relativeUrls(layout)
     .replace(/\{%\s*if page\.title\s*%\}\s*\{\{\s*page\.title\s*\}\}\s*·\s*\{%\s*endif\s*%\}/g, pageTitle)
     .replace('{{ site.title }}', escapeHtml(config.title))
