@@ -46,9 +46,10 @@ describe('landing page source contract', () => {
     expect(layout).toContain('{{ content }}');
     expect(layout).not.toContain('class="sidebar"');
 
-    for (const target of ['#review', '#publish', '#investigate', '#improve', '#operate']) {
-      expect(layout).toContain(`href="${target}"`);
+    for (const target of ['#journey', '#review', '#publish', '#investigate', '#improve', '#operate']) {
+      expect(layout).toContain(`href="{{ '/' | relative_url }}${target}"`);
     }
+    expect(layout).toContain("{{ '/pillars/' | relative_url }}");
     expect(layout).toContain("{{ '/install/' | relative_url }}");
     expect(layout).toContain('https://github.com/databricks-solutions/databricks-waf');
   });
@@ -110,7 +111,7 @@ describe('landing page source contract', () => {
     const page = source('index.md');
     const journey = page.match(/<section id="journey"[\s\S]*?<\/section>/)?.[0] ?? '';
 
-    expect(layout).toContain('href="#journey">Journey</a>');
+    expect(layout).toContain('href="{{ \'/\' | relative_url }}#journey">Journey</a>');
     expect(journey).not.toBe('');
     expect(journey).toContain('<ol class="journey-list">');
     expect([...journey.matchAll(/<h3>([^<]+)<\/h3>/g)].map(([, heading]) => heading)).toEqual([
@@ -195,12 +196,11 @@ describe('landing page source contract', () => {
       expect(caption.length, 'each figcaption must carry descriptive text').toBeGreaterThan(10);
     }
 
-    expect(page).toContain('deterministic, anonymized example data');
-    // The anonymization statement must cover every screenshot, hero included, not only the ones below the hero.
-    expect(page).toMatch(
+    expect(page).not.toContain('deterministic, anonymized example data');
+    expect(page).not.toContain('Preview data:');
+    expect(page).not.toMatch(
       /all screenshots[\s\S]*including the hero[\s\S]*deterministic, anonymized example data[\s\S]*no customer workspace, user identity, or customer record appears/i
     );
-    expect(page).not.toMatch(/screenshots?\s+below[\s\S]*deterministic, anonymized example data/i);
   });
 
   it('keeps approved screenshots as tracked documentation assets', () => {

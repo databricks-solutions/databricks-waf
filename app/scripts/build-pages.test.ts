@@ -83,7 +83,8 @@ describe('static Pages layouts', () => {
     for (const id of ['journey', 'review', 'publish', 'investigate', 'improve', 'operate']) {
       expect(homepage).toContain(`id="${id}"`);
     }
-    expect(homepage).toContain('href="#journey">Journey</a>');
+    expect(homepage).toContain('href="/databricks-waf/#journey">Journey</a>');
+    expect(homepage).toContain('href="/databricks-waf/pillars/">Pillars</a>');
     expect(homepage).toContain('href="https://github.com/databricks-solutions/databricks-waf">View on GitHub</a>');
     expect(homepage).toContain('href="/databricks-waf/install/">Read the installation guide</a>');
     expect(homepage).toContain('href="/databricks-waf/user-guide/">Read the full customer journey guide</a>');
@@ -116,10 +117,12 @@ describe('static Pages layouts', () => {
     }
   });
 
-  it('keeps the generated example-data disclosure inclusive of the hero', () => {
+  it('keeps the generated homepage free of the preview-data disclosure', () => {
     const homepage = generated('index.html');
 
-    expect(homepage).toMatch(
+    expect(homepage).not.toContain('deterministic, anonymized example data');
+    expect(homepage).not.toContain('Preview data:');
+    expect(homepage).not.toMatch(
       /all screenshots[\s\S]*including the hero[\s\S]*deterministic, anonymized example data[\s\S]*no customer workspace, user identity, or customer record appears/i
     );
   });

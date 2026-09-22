@@ -290,6 +290,47 @@ Both pages had clean consoles. Homepage network requests returned HTTP 200. Pill
 - Confirmed temporary-tree generation still passes through `--docs-dir`.
 - Confirmed no `.cursor/plans` file changed.
 
+## Follow-up: stale preview-data tests
+
+Isolated `npm run verify` on `238dd07` failed because `app/scripts/landing-source.test.ts` still required the removed preview-data paragraph. The same stale regex also lived in `app/scripts/build-pages.test.ts`. Two nearby landing-source and generated-layout assertions still expected hash-only nav links instead of the root-qualified `/databricks-waf/#journey` style.
+
+### Test correction RED
+
+Command:
+
+```text
+cd /Users/deep.basu/Desktop/Dev/WAF/app
+npm test -- landing-source.test.ts landing-pillar-snapshots.test.ts build-pages.test.ts
+```
+
+Result before the fix: exit 1. `landing-source.test.ts` required `deterministic, anonymized example data` and the inclusive hero regex. After that assertion was inverted, the same run still showed 2 landing-source failures and 1 generated-layout failure for hash-only Journey/Review links.
+
+### Test correction GREEN
+
+Command:
+
+```text
+cd /Users/deep.basu/Desktop/Dev/WAF/app
+npx prettier --write scripts/landing-source.test.ts scripts/build-pages.test.ts
+npm test -- landing-source.test.ts landing-pillar-snapshots.test.ts build-pages.test.ts
+npm run docs:build
+npm run check:docs-build
+npm run check:doc-links
+npx prettier --check scripts/landing-source.test.ts scripts/build-pages.test.ts
+npx eslint scripts/landing-source.test.ts scripts/build-pages.test.ts
+git diff --check
+```
+
+Results:
+
+- Focused Vitest: exit 0, 3 test files passed, 29 tests passed.
+- `npm run docs:build`: exit 0, 12 pre-rendered Pages documents generated.
+- `npm run check:docs-build`: exit 0.
+- `npm run check:doc-links`: exit 0, 16 relative links in 30 documents resolve, anchors included.
+- Prettier, ESLint, and `git diff --check`: exit 0.
+
+The landing-source block now asserts the preview-data paragraph remains absent. The generated-layout sibling does the same. No catalogue YAML, generated HTML, or uncommitted client work was changed.
+
 ## Concerns
 
 None. Security remains a long disclosure with 70 controls, but it now lives on the dedicated catalogue page and the exclusive native accordion keeps one pillar open at a time.
