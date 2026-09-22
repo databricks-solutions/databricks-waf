@@ -399,9 +399,7 @@ summary:focus-visible {
 }
 
 .landing-boundary {
-  display: grid;
-  grid-template-columns: minmax(0, 1.6fr) minmax(18rem, 0.7fr);
-  gap: clamp(2rem, 6vw, 6rem);
+  display: block;
   padding: 7rem 0;
   border-top: 1px solid var(--landing-line);
 }
@@ -564,6 +562,7 @@ summary:focus-visible {
 }
 
 .boundary-card {
+  margin-top: clamp(2rem, 4vw, 3rem);
   padding: clamp(1.5rem, 4vw, 2.5rem);
   border: 1px solid var(--landing-line);
   border-radius: 12px;
@@ -690,7 +689,6 @@ summary:focus-visible {
   .journey-intro,
   .journey-list,
   .workflow-section,
-  .landing-boundary,
   .install-steps {
     grid-template-columns: 1fr;
   }

@@ -6,7 +6,7 @@ Implemented on `feat/ui-ux-redesign`.
 
 The landing page now renders 7 native `<details>` disclosures from the YAML control catalogue. Each summary shows the pillar code, title, total requirement count, and non-zero route counts. Open disclosures group controls by catalogue principle and show the control ID, exact title, source link where available, and the derived route label.
 
-The preview-data paragraph has been removed. The trust-boundary card remains beside the snapshots on desktop and below them on mobile.
+The preview-data paragraph has been removed. The trust-boundary card appears below the full-width snapshots.
 
 ## TDD evidence
 
@@ -138,6 +138,75 @@ The first local browser attempt mounted `docs` at `/`, which produced expected 4
 - Confirmed the generator only reads catalogue data when a page contains the placeholder.
 - Confirmed the temporary `--docs-dir` workflow and all 11 existing generated routes still pass.
 - Confirmed no plan, publish, push, deploy, or merge action was performed.
+
+## Follow-up: full-width exclusive accordion
+
+Browser review found that expanded pillar lists still occupied the left side of the former two-column trust-boundary grid. This follow-up moves the trust-boundary card below a full-width snapshot catalogue, adds native exclusive accordion grouping, and restricts generated source links to HTTPS anchors.
+
+### Follow-up RED
+
+Command:
+
+```text
+cd /Users/deep.basu/Desktop/Dev/WAF/app
+npm test -- landing-pillar-snapshots.test.ts
+```
+
+Result: exit 1. Vitest reported 3 failed and 4 passed tests. The failures showed:
+
+- none of the 7 `<details>` elements had `name="pillar-snapshot"`;
+- `.landing-boundary` still used a permanent two-column grid;
+- the generator did not export or apply the HTTPS-only source-title helper.
+
+The source-link helper test uses synthetic HTTPS, HTTP, `javascript:`, and invalid anchors. It does not alter any catalogue YAML.
+
+### Follow-up GREEN and verification
+
+Command:
+
+```text
+cd /Users/deep.basu/Desktop/Dev/WAF/app
+npx prettier --write scripts/build-pages.mjs tests/landing-pillar-snapshots.test.ts ../docs/assets/css/landing.css
+npm run docs:build
+npm test -- landing-pillar-snapshots.test.ts
+npm run check:docs-build
+npm run check:doc-links
+npx prettier --check scripts/build-pages.mjs tests/landing-pillar-snapshots.test.ts ../docs/index.md ../docs/assets/css/landing.css
+npx eslint scripts/build-pages.mjs tests/landing-pillar-snapshots.test.ts
+git diff --check
+```
+
+Results:
+
+- `npm run docs:build`: exit 0, 11 pre-rendered Pages documents generated.
+- Focused Vitest: exit 0, 1 test file passed, 7 tests passed.
+- `npm run check:docs-build`: exit 0, all 11 generated documents match their sources.
+- `npm run check:doc-links`: exit 0, 16 relative links in 29 documents resolve, anchors included.
+- Prettier check: exit 0.
+- ESLint: exit 0.
+- `git diff --check`: exit 0.
+
+### Follow-up browser evidence
+
+The regenerated page was inspected at a 1440 by 1000 desktop viewport and under the mobile media query.
+
+- Opened OE, then opened SCP.
+- Native details grouping left only `SCP` open.
+- All 7 details shared `name="pillar-snapshot"`.
+- The boundary and snapshot widths both measured 1180 pixels, with a 0-pixel difference.
+- The trust-boundary card began below the snapshot list.
+- Mobile used a single summary column with no horizontal overflow.
+- Console: no errors, warnings, or browser issues.
+- Network: 10 requests, all HTTP 200, with no JavaScript request.
+
+### Follow-up self-review
+
+- Preserved all 184 controls, established pillar order, principle grouping, counts, and route labels.
+- Preserved the removed preview-data paragraph state.
+- Confirmed the generated page contains exactly 7 pillar details.
+- Confirmed `renderSourceTitle` escapes titles and emits an anchor only when URL parsing reports the `https:` protocol.
+- Confirmed the page uses native details grouping and no product JavaScript.
+- Confirmed no `.cursor/plans` file changed.
 
 ## Concerns
 

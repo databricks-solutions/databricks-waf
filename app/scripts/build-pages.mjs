@@ -41,7 +41,6 @@ const LAYOUTS = new Set(['default', 'landing']);
 
 const config = loadYaml(readFileSync(join(DOCS, '_config.yml'), 'utf8'));
 const base = config.baseurl ?? '';
-const failures = [];
 
 function escapeHtml(value) {
   return String(value)
@@ -50,6 +49,19 @@ function escapeHtml(value) {
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#39;');
+}
+
+export function renderSourceTitle(title, sourceAnchor) {
+  const escapedTitle = escapeHtml(title);
+  if (typeof sourceAnchor !== 'string') return escapedTitle;
+
+  try {
+    if (new URL(sourceAnchor).protocol !== 'https:') return escapedTitle;
+  } catch {
+    return escapedTitle;
+  }
+
+  return `<a href="${escapeHtml(sourceAnchor)}">${escapedTitle}</a>`;
 }
 
 function controlRoute(control) {
@@ -93,9 +105,7 @@ function renderPillarSnapshots() {
           const controlMarkup = principleControls
             .map((control) => {
               const route = controlRoute(control);
-              const title = escapeHtml(control.title);
-              const linkedTitle =
-                control.source_anchor == null ? title : `<a href="${escapeHtml(control.source_anchor)}">${title}</a>`;
+              const linkedTitle = renderSourceTitle(control.title, control.source_anchor);
               return `          <li class="pillar-control" data-control-id="${escapeHtml(control.id)}">
             <span class="control-id">${escapeHtml(control.id)}</span>
             <span class="control-title">${linkedTitle}</span>
@@ -112,7 +122,7 @@ ${controlMarkup}
         })
         .join('\n');
 
-      return `  <details class="pillar-snapshot" data-pillar-code="${escapeHtml(pillar.code)}" data-total="${controls.length}" data-automated="${counts.automated}" data-human="${counts.human}" data-planned="${counts.planned}">
+      return `  <details class="pillar-snapshot" name="pillar-snapshot" data-pillar-code="${escapeHtml(pillar.code)}" data-total="${controls.length}" data-automated="${counts.automated}" data-human="${counts.human}" data-planned="${counts.planned}">
     <summary class="pillar-snapshot-summary">
       <span class="pillar-identity">
         <span class="pillar-code">${escapeHtml(pillar.code)}</span>
@@ -214,30 +224,38 @@ function renderLayout(attributes, content, source) {
     .replace(/\n+$/, '\n');
 }
 
-for (const [sourceName, targetName] of PAGES) {
-  const source = readFileSync(join(DOCS, sourceName), 'utf8');
-  const { attributes, body } = frontMatter(source, sourceName);
-  const hasPillarSnapshots = body.includes('{{ pillar_snapshots }}');
-  const pageBody = hasPillarSnapshots ? body.replaceAll('{{ pillar_snapshots }}', PILLAR_SNAPSHOT_TOKEN) : body;
-  const renderedBody = renderMarkdown(pageBody);
-  const content = hasPillarSnapshots
-    ? renderedBody.replaceAll(PILLAR_SNAPSHOT_TOKEN, renderPillarSnapshots())
-    : renderedBody;
-  const expected = renderLayout(attributes, content, sourceName);
-  const target = join(DOCS, targetName);
-  if (WRITE) {
-    mkdirSync(dirname(target), { recursive: true });
-    writeFileSync(target, expected);
-  } else if (!existsSync(target) || readFileSync(target, 'utf8') !== expected) {
-    failures.push(targetName);
+export function buildPages() {
+  const failures = [];
+
+  for (const [sourceName, targetName] of PAGES) {
+    const source = readFileSync(join(DOCS, sourceName), 'utf8');
+    const { attributes, body } = frontMatter(source, sourceName);
+    const hasPillarSnapshots = body.includes('{{ pillar_snapshots }}');
+    const pageBody = hasPillarSnapshots ? body.replaceAll('{{ pillar_snapshots }}', PILLAR_SNAPSHOT_TOKEN) : body;
+    const renderedBody = renderMarkdown(pageBody);
+    const content = hasPillarSnapshots
+      ? renderedBody.replaceAll(PILLAR_SNAPSHOT_TOKEN, renderPillarSnapshots())
+      : renderedBody;
+    const expected = renderLayout(attributes, content, sourceName);
+    const target = join(DOCS, targetName);
+    if (WRITE) {
+      mkdirSync(dirname(target), { recursive: true });
+      writeFileSync(target, expected);
+    } else if (!existsSync(target) || readFileSync(target, 'utf8') !== expected) {
+      failures.push(targetName);
+    }
   }
+
+  if (!existsSync(join(DOCS, '.nojekyll'))) failures.push('.nojekyll');
+
+  if (failures.length > 0) {
+    console.error(`The branch-published Pages site is stale: ${failures.join(', ')}. Run npm run docs:build.`);
+    process.exit(1);
+  }
+
+  console.log(`${PAGES.length} pre-rendered Pages documents match their Markdown sources.`);
 }
 
-if (!existsSync(join(DOCS, '.nojekyll'))) failures.push('.nojekyll');
-
-if (failures.length > 0) {
-  console.error(`The branch-published Pages site is stale: ${failures.join(', ')}. Run npm run docs:build.`);
-  process.exit(1);
+if (process.argv[1] != null && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  buildPages();
 }
-
-console.log(`${PAGES.length} pre-rendered Pages documents match their Markdown sources.`);

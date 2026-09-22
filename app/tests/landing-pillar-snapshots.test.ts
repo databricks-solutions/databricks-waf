@@ -53,6 +53,11 @@ function attribute(tag: string, name: string) {
   return tag.match(new RegExp(`\\b${name}="([^"]*)"`))?.[1];
 }
 
+function cssRule(css: string, selector: string) {
+  const escapedSelector = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return css.match(new RegExp(`${escapedSelector}\\s*\\{([^}]*)\\}`))?.[1] ?? '';
+}
+
 describe('landing-page pillar snapshots', () => {
   let temporaryDocs: string;
   let source: string;
@@ -91,8 +96,18 @@ describe('landing-page pillar snapshots', () => {
     expect(details.map((tag) => attribute(tag, 'data-pillar-code'))).toEqual(
       catalogues.map(({ pillar }) => pillar.code)
     );
+    expect(details.map((tag) => attribute(tag, 'name'))).toEqual(Array(7).fill('pillar-snapshot'));
     expect(html.match(/<summary class="pillar-snapshot-summary">/g)).toHaveLength(7);
     expect(html).not.toMatch(/pillar-snapshot[^]*?<script/i);
+  });
+
+  it('uses the full landing width and places the trust boundary below the snapshots', () => {
+    const boundaryRule = cssRule(css, '.landing-boundary');
+    const cardRule = cssRule(css, '.boundary-card');
+
+    expect(boundaryRule).toContain('display: block');
+    expect(boundaryRule).not.toContain('grid-template-columns');
+    expect(cardRule).toMatch(/margin-top:\s*clamp\(/);
   });
 
   it('renders every catalogue control once under its pillar and no unexpected control', () => {
@@ -142,15 +157,26 @@ describe('landing-page pillar snapshots', () => {
     });
   });
 
-  it('preserves source links and provides responsive, accessible structure without JavaScript', () => {
+  it('preserves HTTPS source links and provides responsive, accessible structure without JavaScript', () => {
     const linkedControls = catalogues
       .flatMap(({ principles }) => principles.flatMap(({ controls }) => controls))
-      .filter((control) => control.source_anchor != null);
+      .filter((control) => control.source_anchor?.startsWith('https:'));
 
     for (const control of linkedControls) {
       expect(html).toContain(`<a href="${escapeHtml(control.source_anchor!)}">${escapeHtml(control.title)}</a>`);
     }
     expect(html).toContain('same versioned control catalogue used by the App');
     expect(css).toMatch(/@media \(max-width: 700px\)[^]*\.pillar-snapshot-summary/s);
+  });
+
+  it('renders non-HTTPS source anchors as escaped plain text', async () => {
+    const { renderSourceTitle } = await import('../scripts/build-pages.mjs');
+
+    expect(renderSourceTitle('Official <guide>', 'https://docs.databricks.com/guide?a=1&b=2')).toBe(
+      '<a href="https://docs.databricks.com/guide?a=1&amp;b=2">Official &lt;guide&gt;</a>'
+    );
+    expect(renderSourceTitle('Unsafe <title>', 'http://example.com/control')).toBe('Unsafe &lt;title&gt;');
+    expect(renderSourceTitle('Unsafe <title>', 'javascript:alert(1)')).toBe('Unsafe &lt;title&gt;');
+    expect(renderSourceTitle('Unsafe <title>', 'not a URL')).toBe('Unsafe &lt;title&gt;');
   });
 });
