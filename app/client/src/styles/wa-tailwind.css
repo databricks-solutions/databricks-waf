@@ -2407,6 +2407,78 @@
   .wa-table tbody tr[data-selected='true'] {
     background: var(--wa-selection);
   }
+
+  /*
+   * Foundation Wave 1 motion. Quiet and purposeful, GPU-only (opacity and transform), driven by the
+   * --wa-duration-* and --wa-ease-* tokens in wa-theme.css. Every animation here is switched off by
+   * the global prefers-reduced-motion rule below this layer, which lands each one on its final frame.
+   */
+
+  /* A block fading and gently rising into place on mount — the enter primitives and opt-in reveals. */
+  @keyframes wa-reveal-in {
+    from {
+      opacity: 0;
+      transform: translateY(var(--wa-reveal-rise, 8px));
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  .wa-reveal {
+    animation: wa-reveal-in var(--wa-duration-slow, 320ms) var(--wa-ease-out, ease-out) both;
+    animation-delay: var(--wa-reveal-delay, 0ms);
+  }
+
+  /*
+   * The whole document arriving. Opacity only — no transform — so a page enter never moves a bounding
+   * box, which keeps it clear of the deep-link reveal that scrolls a pane into view and of the layout
+   * the viewport check measures. Applied to .wa-customer-page in customer-system.css.
+   */
+  @keyframes wa-page-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  .wa-page-transition {
+    display: block;
+  }
+
+  /*
+   * A loading placeholder that holds a block's shape. The sheen sweeps a soft highlight across it —
+   * the one loop this design keeps, because a loading affordance is the case the motion rules exempt.
+   * The gradient lives here as a named theme class (its sanctioned home) and stops under reduced motion.
+   */
+  .wa-skeleton {
+    position: relative;
+    display: block;
+    overflow: hidden;
+    background: var(--wa-surface-strong);
+    border-radius: var(--wa-radius-sm);
+  }
+
+  .wa-skeleton-sheen::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(90deg, transparent, var(--wa-surface-raised), transparent);
+    animation: wa-skeleton-sheen 1.4s var(--wa-ease-standard, ease) infinite;
+  }
+
+  @keyframes wa-skeleton-sheen {
+    from {
+      transform: translateX(-100%);
+    }
+    to {
+      transform: translateX(100%);
+    }
+  }
 }
 
 /*
