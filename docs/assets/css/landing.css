@@ -2,14 +2,13 @@
   color-scheme: light;
   --landing-bg: #f7f7f8;
   --landing-surface: #ffffff;
-  --landing-surface-muted: #f1f2f4;
   --landing-ink: #111827;
   --landing-muted: #565d6b;
   --landing-line: #d9dce1;
   --landing-accent: #ff3621;
+  --landing-accent-text: #b32616;
   --landing-header-height: 4.25rem;
   font-family:
-    Inter,
     ui-sans-serif,
     -apple-system,
     BlinkMacSystemFont,
@@ -34,7 +33,7 @@ body {
 }
 
 a {
-  color: var(--landing-accent);
+  color: var(--landing-accent-text);
   text-decoration-thickness: 0.08em;
   text-underline-offset: 0.2em;
 }
@@ -140,7 +139,7 @@ button:focus-visible {
 .landing-kicker,
 .section-kicker {
   margin: 0 0 0.9rem;
-  color: var(--landing-accent);
+  color: var(--landing-accent-text);
   font-size: 0.75rem;
   font-weight: 850;
   letter-spacing: 0.16em;
@@ -271,8 +270,7 @@ button:focus-visible {
   padding: 0;
   border-top: 1px solid var(--landing-line);
   border-left: 1px solid var(--landing-line);
-  list-style: none;
-  counter-reset: journey;
+  list-style: decimal-leading-zero inside;
 }
 
 .journey-list li {
@@ -281,17 +279,13 @@ button:focus-visible {
   border-right: 1px solid var(--landing-line);
   border-bottom: 1px solid var(--landing-line);
   background: var(--landing-surface);
-  counter-increment: journey;
 }
 
-.journey-list li::before {
-  color: var(--landing-accent);
-  content: counter(journey, decimal-leading-zero);
-  font:
-    750 0.78rem ui-monospace,
-    SFMono-Regular,
-    Menlo,
-    monospace;
+.journey-list li::marker {
+  color: var(--landing-accent-text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.78rem;
+  font-weight: 750;
 }
 
 .journey-list h3 {
@@ -343,7 +337,7 @@ button:focus-visible {
 }
 
 .outcome-card .outcome-number {
-  color: var(--landing-accent);
+  color: var(--landing-accent-text);
   font:
     750 0.78rem ui-monospace,
     SFMono-Regular,

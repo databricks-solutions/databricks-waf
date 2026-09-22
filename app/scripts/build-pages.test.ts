@@ -1,10 +1,12 @@
 import { execFileSync } from 'node:child_process';
-import { readFileSync, writeFileSync } from 'node:fs';
-import { basename, resolve } from 'node:path';
-import { beforeAll, describe, expect, it } from 'vitest';
+import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { basename, join, resolve } from 'node:path';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 const app = resolve(import.meta.dirname, '..');
-const docs = resolve(app, '..', 'docs');
+const committedDocs = resolve(app, '..', 'docs');
+let docs: string;
 const landingScreenshots = [
   'dashboard.jpg',
   'assessment-review.jpg',
@@ -32,10 +34,18 @@ function imageTags(page: string): string[] {
 
 describe('static Pages layouts', () => {
   beforeAll(() => {
-    execFileSync(process.execPath, ['scripts/build-pages.mjs', '--write'], {
+    docs = mkdtempSync(join(tmpdir(), 'waf-generated-docs-'));
+    cpSync(committedDocs, docs, { recursive: true });
+    rmSync(resolve(docs, 'index.html'));
+    rmSync(resolve(docs, 'user-guide/index.html'));
+    execFileSync(process.execPath, ['scripts/build-pages.mjs', '--docs-dir', docs, '--write'], {
       cwd: app,
       stdio: 'pipe',
     });
+  });
+
+  afterAll(() => {
+    rmSync(docs, { recursive: true, force: true });
   });
 
   it('renders the landing homepage and keeps guide pages on the guide layout', () => {
@@ -117,7 +127,30 @@ describe('static Pages layouts', () => {
   it('puts the generated guide eyebrow and H1 on separate lines', () => {
     const guide = generated('user-guide/index.html');
 
-    expect(guide).toMatch(/<p class="eyebrow">Use the app<\/p>\s*\n\s*<h1\b/);
+    expect(guide).toMatch(
+      /<p class="eyebrow">Use the app<\/p>\n\s*<!-- Page content starts on the next line\. -->\n\s*<h1\b/
+    );
+  });
+
+  it('checks an explicit copied docs tree without touching committed output', () => {
+    const fixture = mkdtempSync(join(tmpdir(), 'waf-docs-'));
+    const committedHomepage = readFileSync(resolve(committedDocs, 'index.html'), 'utf8');
+
+    try {
+      cpSync(docs, fixture, { recursive: true });
+      writeFileSync(resolve(fixture, 'index.html'), '<p>stale fixture</p>\n');
+
+      expect(() =>
+        execFileSync(process.execPath, ['scripts/build-pages.mjs', '--docs-dir', fixture], {
+          cwd: app,
+          encoding: 'utf8',
+          stdio: 'pipe',
+        })
+      ).toThrow(/stale: index\.html/);
+      expect(readFileSync(resolve(committedDocs, 'index.html'), 'utf8')).toBe(committedHomepage);
+    } finally {
+      rmSync(fixture, { recursive: true, force: true });
+    }
   });
 
   it('rejects unsupported front-matter layouts with a clear error', () => {
@@ -129,7 +162,7 @@ describe('static Pages layouts', () => {
     try {
       writeFileSync(sourcePath, unsupported);
       expect(() =>
-        execFileSync(process.execPath, ['scripts/build-pages.mjs'], {
+        execFileSync(process.execPath, ['scripts/build-pages.mjs', '--docs-dir', docs], {
           cwd: app,
           encoding: 'utf8',
           stdio: 'pipe',

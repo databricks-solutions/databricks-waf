@@ -7,7 +7,11 @@ import { Marked } from 'marked';
 import { load as loadYaml } from 'js-yaml';
 
 const APP = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const DOCS = resolve(APP, '..', 'docs');
+const docsOption = process.argv.indexOf('--docs-dir');
+if (docsOption !== -1 && process.argv[docsOption + 1] == null) {
+  throw new Error('--docs-dir requires a path.');
+}
+const DOCS = docsOption === -1 ? resolve(APP, '..', 'docs') : resolve(process.cwd(), process.argv[docsOption + 1]);
 const WRITE = process.argv.includes('--write');
 const PAGES = [
   ['index.md', 'index.html'],
@@ -98,7 +102,7 @@ function renderLayout(attributes, content, source) {
   const layout = readFileSync(join(DOCS, '_layouts', `${layoutName}.html`), 'utf8');
   const pageTitle = attributes.title == null ? '' : `${escapeHtml(attributes.title)} · `;
   const description = escapeHtml(attributes.description ?? config.description ?? '');
-  const eyebrow = attributes.eyebrow == null ? '' : `<p class="eyebrow">${escapeHtml(attributes.eyebrow)}</p>\n       `;
+  const eyebrow = attributes.eyebrow == null ? '' : `<p class="eyebrow">${escapeHtml(attributes.eyebrow)}</p>`;
   const rendered = relativeUrls(layout)
     .replace(/\{%\s*if page\.title\s*%\}\s*\{\{\s*page\.title\s*\}\}\s*·\s*\{%\s*endif\s*%\}/g, pageTitle)
     .replace('{{ site.title }}', escapeHtml(config.title))

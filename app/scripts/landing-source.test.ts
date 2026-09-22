@@ -1,4 +1,5 @@
 import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { basename, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -55,8 +56,12 @@ describe('landing page source contract', () => {
   it('uses the local official Databricks logo only in the landing brand', () => {
     const landingLayout = source('_layouts/landing.html');
     const guideLayout = source('_layouts/default.html');
+    const logo = source('assets/databricks-logo.svg');
 
-    expect(source('assets/databricks-logo.svg')).toContain('<svg');
+    expect(logo).toContain('<svg');
+    expect(createHash('sha256').update(logo).digest('hex')).toBe(
+      'ea61c55b8e8177f88af635b92a906f7042499511d0885cd418bf850c11663d4a'
+    );
     expect(landingLayout).toContain('class="landing-brand-logo"');
     expect(landingLayout).toContain('src="{{ \'/assets/databricks-logo.svg\' | relative_url }}"');
     expect(landingLayout).toContain('alt=""');
@@ -89,6 +94,11 @@ describe('landing page source contract', () => {
     expect(css).toContain('--landing-surface: #ffffff;');
     expect(css).toContain('--landing-ink: #111827;');
     expect(css).toContain('--landing-accent: #ff3621;');
+    expect(css).toContain('--landing-accent-text: #b32616;');
+    expect(css).toMatch(/a\s*\{[^}]*color:\s*var\(--landing-accent-text\)/s);
+    expect(css).toMatch(/\.landing-kicker,[\s\S]*?\.section-kicker\s*\{[^}]*color:\s*var\(--landing-accent-text\)/);
+    expect(css).not.toContain('--landing-surface-muted:');
+    expect(css).not.toMatch(/\bInter,/);
     expect(css).not.toMatch(/--landing-(?:blue|green|orange)/);
     expect(css).not.toContain('radial-gradient');
     expect(css).not.toContain('linear-gradient');
@@ -117,6 +127,14 @@ describe('landing page source contract', () => {
     expect(journey.match(/<strong>App records:<\/strong>/g)).toHaveLength(8);
     expect(journey).toContain("{{ '/user-guide/' | relative_url }}");
     expect(journey).toContain('Read the full customer journey guide');
+
+    const css = source('assets/css/landing.css');
+    expect(css).toMatch(/\.journey-list\s*\{[^}]*list-style:\s*decimal-leading-zero/s);
+    expect(css).toContain('.journey-list li::marker');
+    expect(css).not.toMatch(/\.journey-list\s*\{[^}]*list-style:\s*none/s);
+    expect(css).not.toContain('counter-reset: journey');
+    expect(css).not.toContain('counter-increment: journey');
+    expect(css).not.toContain('content: counter(journey');
   });
 
   it('declares intrinsic screenshot dimensions and a local base-path favicon', () => {
