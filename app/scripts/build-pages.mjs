@@ -26,6 +26,7 @@ const PILLAR_FILES = [
 ];
 const PAGES = [
   ['index.md', 'index.html'],
+  ['pillars.md', 'pillars/index.html'],
   ['install.md', 'install/index.html'],
   ['configuration.md', 'configuration/index.html'],
   ['user-guide.md', 'user-guide/index.html'],

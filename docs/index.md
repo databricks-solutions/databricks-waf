@@ -188,9 +188,18 @@ permalink: /
 <section class="landing-boundary" aria-labelledby="coverage-title">
   <div>
     <p class="section-kicker">Coverage</p>
-    <h2 id="coverage-title">Explore what each pillar assesses</h2>
-    <p>Open a pillar to see every requirement, grouped by catalogue principle. This snapshot is generated from the same versioned control catalogue used by the App.</p>
-    {{ pillar_snapshots }}
+    <h2 id="coverage-title">Seven pillars, one evidence model</h2>
+    <p>The App applies the same coverage, evidence, action, and verification model across the official Databricks Well-Architected Framework pillars.</p>
+    <ul class="pillar-list">
+      <li>Operational excellence</li>
+      <li>Security, compliance, and privacy</li>
+      <li>Reliability</li>
+      <li>Performance efficiency</li>
+      <li>Cost optimization</li>
+      <li>Data and AI governance</li>
+      <li>Interoperability and usability</li>
+    </ul>
+    <a class="landing-button pillar-catalogue-link" href="{{ '/pillars/' | relative_url }}">Explore every assessed requirement</a>
   </div>
   <aside class="boundary-card">
     <h3>Data and trust boundary</h3>

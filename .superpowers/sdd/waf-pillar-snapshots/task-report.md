@@ -4,9 +4,9 @@
 
 Implemented on `feat/ui-ux-redesign`.
 
-The landing page now renders 7 native `<details>` disclosures from the YAML control catalogue. Each summary shows the pillar code, title, total requirement count, and non-zero route counts. Open disclosures group controls by catalogue principle and show the control ID, exact title, source link where available, and the derived route label.
+The homepage now shows a compact seven-pillar summary and links to a dedicated `/pillars/` landing-layout page. The dedicated page renders 7 native `<details>` disclosures from the YAML control catalogue. Each summary shows the pillar code, title, total requirement count, and non-zero route counts. Open disclosures group controls by catalogue principle and show the control ID, exact title, source link where available, and the derived route label.
 
-The preview-data paragraph has been removed. The trust-boundary card appears below the full-width snapshots.
+The preview-data paragraph has been removed. The trust-boundary card remains on the homepage below its compact pillar summary.
 
 ## TDD evidence
 
@@ -208,6 +208,88 @@ The regenerated page was inspected at a 1440 by 1000 desktop viewport and under 
 - Confirmed the page uses native details grouping and no product JavaScript.
 - Confirmed no `.cursor/plans` file changed.
 
+## Final state: dedicated Pillars page
+
+The final product review moved the detailed catalogue off the homepage. The homepage now contains only the 7 pillar names, a short shared-evidence-model statement, a link to `/pillars/`, and the trust-boundary card. The generated `/pillars/` route owns the full interactive catalogue.
+
+### Dedicated-page RED
+
+Command:
+
+```text
+cd /Users/deep.basu/Desktop/Dev/WAF/app
+npm test -- landing-pillar-snapshots.test.ts
+```
+
+Result: exit 1. Vitest reported 7 failed and 2 passed tests. The failures confirmed:
+
+- the homepage still contained the snapshot placeholder and disclosures;
+- `docs/pillars.md` and `docs/pillars/index.html` did not exist;
+- the dedicated output had no catalogue controls or counts;
+- the landing header had no Pillars tab;
+- journey and workflow links were still page-relative.
+
+### Dedicated-page GREEN and verification
+
+Command:
+
+```text
+cd /Users/deep.basu/Desktop/Dev/WAF/app
+npx prettier --write scripts/build-pages.mjs tests/landing-pillar-snapshots.test.ts ../docs/_layouts/landing.html ../docs/index.md ../docs/pillars.md ../docs/assets/css/landing.css
+npm run docs:build
+npm test -- landing-pillar-snapshots.test.ts
+npm run check:docs-build
+npm run check:doc-links
+npx prettier --check scripts/build-pages.mjs tests/landing-pillar-snapshots.test.ts ../docs/_layouts/landing.html ../docs/index.md ../docs/pillars.md ../docs/assets/css/landing.css
+npx eslint scripts/build-pages.mjs tests/landing-pillar-snapshots.test.ts
+git diff --check
+```
+
+Results:
+
+- `npm run docs:build`: exit 0, 12 pre-rendered Pages documents generated.
+- Focused Vitest: exit 0, 1 test file passed, 9 tests passed.
+- `npm run check:docs-build`: exit 0, all 12 generated documents match their sources.
+- `npm run check:doc-links`: exit 0, 16 relative links in 29 documents resolve, anchors included.
+- Prettier check: exit 0.
+- ESLint: exit 0.
+- `git diff --check`: exit 0.
+
+### Dedicated-page browser evidence
+
+Both `/` and `/pillars/` were inspected at 1440 by 1000 and under the mobile breakpoint.
+
+Homepage:
+
+- Contains 0 pillar disclosures.
+- Shows all 7 pillar names and 2 links to `/pillars/` (header and section action).
+- Keeps the trust-boundary card below the compact summary.
+- Uses root-qualified links such as `/databricks-waf/#journey`.
+- Has no horizontal overflow on desktop or mobile.
+
+Pillars page:
+
+- Contains 7 native details and all 184 control rows.
+- Uses the full 1180-pixel content width on desktop.
+- Opened OE, then SCP; only SCP remained open.
+- All details retain `name="pillar-snapshot"`.
+- Journey and workflow navigation resolves back to root-qualified homepage anchors.
+- Uses a single summary column under the mobile breakpoint with no horizontal overflow.
+- Contains 0 script elements.
+
+Both pages had clean consoles. Homepage network requests returned HTTP 200. Pillars page requests returned HTTP 200 or the expected cached HTTP 304 for the shared stylesheet. Neither page requested JavaScript.
+
+### Dedicated-page self-review
+
+- Confirmed the homepage source and output contain no snapshot placeholder or details.
+- Confirmed `pillars.md` uses the landing layout and owns the only snapshot placeholder.
+- Confirmed the builder explicitly maps `pillars.md` to `pillars/index.html`.
+- Confirmed all 184 controls, counts, groups, route labels, HTTPS-only links, and exclusive accordion behaviour remain intact.
+- Confirmed the preview paragraph remains removed.
+- Confirmed the landing header includes Pillars and every journey/workflow anchor is root-qualified.
+- Confirmed temporary-tree generation still passes through `--docs-dir`.
+- Confirmed no `.cursor/plans` file changed.
+
 ## Concerns
 
-None. The snapshot is intentionally large when a pillar is open, especially Security with 70 controls, but native disclosure keeps the closed landing-page view compact and avoids a JavaScript dependency.
+None. Security remains a long disclosure with 70 controls, but it now lives on the dedicated catalogue page and the exclusive native accordion keeps one pillar open at a time.

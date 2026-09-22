@@ -1,4 +1,4 @@
-import { cpSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -60,13 +60,19 @@ function cssRule(css: string, selector: string) {
 
 describe('landing-page pillar snapshots', () => {
   let temporaryDocs: string;
-  let source: string;
-  let html: string;
+  let homeSource: string;
+  let pillarsSource: string;
+  let homeHtml: string;
+  let pillarsHtml: string;
+  let landingLayout: string;
   let css: string;
   let catalogues: Catalogue[];
 
   beforeAll(() => {
-    source = readFileSync(join(DOCS, 'index.md'), 'utf8');
+    homeSource = readFileSync(join(DOCS, 'index.md'), 'utf8');
+    const pillarsSourcePath = join(DOCS, 'pillars.md');
+    pillarsSource = existsSync(pillarsSourcePath) ? readFileSync(pillarsSourcePath, 'utf8') : '';
+    landingLayout = readFileSync(join(DOCS, '_layouts', 'landing.html'), 'utf8');
     css = readFileSync(join(DOCS, 'assets', 'css', 'landing.css'), 'utf8');
     catalogues = PILLAR_FILES.map((file) => loadYaml(readFileSync(join(CONTROLS, file), 'utf8')) as Catalogue);
 
@@ -78,30 +84,47 @@ describe('landing-page pillar snapshots', () => {
       { cwd: ROOT, encoding: 'utf8' }
     );
     expect(build.status, build.stderr).toBe(0);
-    html = readFileSync(join(temporaryDocs, 'index.html'), 'utf8');
+    homeHtml = readFileSync(join(temporaryDocs, 'index.html'), 'utf8');
+    const pillarsHtmlPath = join(temporaryDocs, 'pillars', 'index.html');
+    pillarsHtml = existsSync(pillarsHtmlPath) ? readFileSync(pillarsHtmlPath, 'utf8') : '';
   });
 
   afterAll(() => {
     rmSync(temporaryDocs, { recursive: true, force: true });
   });
 
-  it('removes the preview-data paragraph and keeps a generated placeholder', () => {
-    expect(source).not.toContain(PREVIEW_DATA);
-    expect(source).toContain('{{ pillar_snapshots }}');
+  it('keeps the homepage compact and links to the dedicated pillars page', () => {
+    expect(homeSource).not.toContain(PREVIEW_DATA);
+    expect(homeSource).not.toContain('{{ pillar_snapshots }}');
+    expect(homeSource).toContain("{{ '/pillars/' | relative_url }}");
+    expect(homeSource).toContain('class="pillar-list"');
+    expect(homeHtml).not.toContain('<details class="pillar-snapshot"');
+    expect(homeHtml).toContain('href="/databricks-waf/pillars/"');
+    for (const { pillar } of catalogues) {
+      expect(homeSource).toContain(pillar.title);
+    }
+  });
+
+  it('generates a dedicated landing-layout pillar page from the placeholder', () => {
+    expect(pillarsSource).toContain('layout: landing');
+    expect(pillarsSource).toContain('permalink: /pillars/');
+    expect(pillarsSource).toContain('{{ pillar_snapshots }}');
+    expect(pillarsSource).toContain('Explore what each pillar assesses');
+    expect(pillarsHtml).toContain('Explore what each pillar assesses');
   });
 
   it('renders exactly seven native disclosures in established pillar order', () => {
-    const details = [...html.matchAll(/<details class="pillar-snapshot"[^>]*>/g)].map(([tag]) => tag);
+    const details = [...pillarsHtml.matchAll(/<details class="pillar-snapshot"[^>]*>/g)].map(([tag]) => tag);
     expect(details).toHaveLength(7);
     expect(details.map((tag) => attribute(tag, 'data-pillar-code'))).toEqual(
       catalogues.map(({ pillar }) => pillar.code)
     );
     expect(details.map((tag) => attribute(tag, 'name'))).toEqual(Array(7).fill('pillar-snapshot'));
-    expect(html.match(/<summary class="pillar-snapshot-summary">/g)).toHaveLength(7);
-    expect(html).not.toMatch(/pillar-snapshot[^]*?<script/i);
+    expect(pillarsHtml.match(/<summary class="pillar-snapshot-summary">/g)).toHaveLength(7);
+    expect(pillarsHtml).not.toMatch(/pillar-snapshot[^]*?<script/i);
   });
 
-  it('uses the full landing width and places the trust boundary below the snapshots', () => {
+  it('uses the full landing width and keeps the homepage trust boundary below its compact summary', () => {
     const boundaryRule = cssRule(css, '.landing-boundary');
     const cardRule = cssRule(css, '.boundary-card');
 
@@ -114,13 +137,15 @@ describe('landing-page pillar snapshots', () => {
     const expectedIds = catalogues.flatMap(({ principles }) =>
       principles.flatMap(({ controls }) => controls.map(({ id }) => id))
     );
-    const renderedIds = [...html.matchAll(/<li class="pillar-control" data-control-id="([^"]+)"/g)].map(([, id]) => id);
+    const renderedIds = [...pillarsHtml.matchAll(/<li class="pillar-control" data-control-id="([^"]+)"/g)].map(
+      ([, id]) => id
+    );
     expect(renderedIds).toEqual(expectedIds);
 
     for (const catalogue of catalogues) {
-      const start = html.indexOf(`data-pillar-code="${catalogue.pillar.code}"`);
-      const end = html.indexOf('</details>', start);
-      const pillarHtml = html.slice(start, end);
+      const start = pillarsHtml.indexOf(`data-pillar-code="${catalogue.pillar.code}"`);
+      const end = pillarsHtml.indexOf('</details>', start);
+      const pillarHtml = pillarsHtml.slice(start, end);
       for (const principle of catalogue.principles) {
         if (principle.controls.length > 0) {
           expect(pillarHtml).toContain(escapeHtml(principle.title));
@@ -134,7 +159,7 @@ describe('landing-page pillar snapshots', () => {
   });
 
   it('publishes catalogue totals and derived route counts and labels', () => {
-    const detailTags = [...html.matchAll(/<details class="pillar-snapshot"[^>]*>/g)].map(([tag]) => tag);
+    const detailTags = [...pillarsHtml.matchAll(/<details class="pillar-snapshot"[^>]*>/g)].map(([tag]) => tag);
 
     catalogues.forEach((catalogue, index) => {
       const controls = catalogue.principles.flatMap(({ controls }) => controls);
@@ -148,11 +173,11 @@ describe('landing-page pillar snapshots', () => {
         expect(Number(attribute(detailTags[index], name))).toBe(count);
       }
 
-      const start = html.indexOf(detailTags[index]);
-      const end = html.indexOf('</details>', start);
-      const labels = [...html.slice(start, end).matchAll(/<span class="control-route[^"]*">([^<]+)<\/span>/g)].map(
-        ([, label]) => label
-      );
+      const start = pillarsHtml.indexOf(detailTags[index]);
+      const end = pillarsHtml.indexOf('</details>', start);
+      const labels = [
+        ...pillarsHtml.slice(start, end).matchAll(/<span class="control-route[^"]*">([^<]+)<\/span>/g),
+      ].map(([, label]) => label);
       expect(labels).toEqual(controls.map(route));
     });
   });
@@ -163,10 +188,19 @@ describe('landing-page pillar snapshots', () => {
       .filter((control) => control.source_anchor?.startsWith('https:'));
 
     for (const control of linkedControls) {
-      expect(html).toContain(`<a href="${escapeHtml(control.source_anchor!)}">${escapeHtml(control.title)}</a>`);
+      expect(pillarsHtml).toContain(`<a href="${escapeHtml(control.source_anchor!)}">${escapeHtml(control.title)}</a>`);
     }
-    expect(html).toContain('same versioned control catalogue used by the App');
+    expect(pillarsHtml).toContain('same versioned control catalogue used by the App');
     expect(css).toMatch(/@media \(max-width: 700px\)[^]*\.pillar-snapshot-summary/s);
+  });
+
+  it('adds the Pillars tab and root-qualifies homepage navigation from both landing pages', () => {
+    expect(landingLayout).toContain("{{ '/pillars/' | relative_url }}");
+    for (const anchor of ['journey', 'review', 'publish', 'investigate', 'improve', 'operate']) {
+      expect(landingLayout).toContain(`{{ '/' | relative_url }}#${anchor}`);
+      expect(homeHtml).toContain(`href="/databricks-waf/#${anchor}"`);
+      expect(pillarsHtml).toContain(`href="/databricks-waf/#${anchor}"`);
+    }
   });
 
   it('renders non-HTTPS source anchors as escaped plain text', async () => {

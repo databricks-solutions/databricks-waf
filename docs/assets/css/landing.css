@@ -409,6 +409,45 @@ summary:focus-visible {
   color: var(--landing-muted);
 }
 
+.pillar-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem 1.2rem;
+  margin: 2rem 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pillar-list li {
+  padding-top: 0.65rem;
+  border-top: 1px solid var(--landing-line);
+  color: var(--landing-ink);
+  font-size: 0.88rem;
+}
+
+.pillar-catalogue-link {
+  margin-top: 0.5rem;
+}
+
+.pillars-page {
+  padding: clamp(4rem, 8vw, 7rem) 0 7rem;
+}
+
+.pillars-page h1 {
+  max-width: 15ch;
+  margin: 0;
+  font-size: clamp(2.8rem, 5vw, 4.8rem);
+  line-height: 1;
+  letter-spacing: -0.05em;
+}
+
+.pillars-lede {
+  max-width: 48rem;
+  margin: 1.5rem 0 0;
+  color: var(--landing-muted);
+  font-size: 1.08rem;
+}
+
 .pillar-snapshots {
   margin-top: 2rem;
   border-top: 1px solid var(--landing-line);
@@ -710,6 +749,10 @@ summary:focus-visible {
   }
 
   .pillar-snapshot-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .pillar-list {
     grid-template-columns: 1fr;
   }
 
