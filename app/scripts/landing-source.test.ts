@@ -37,6 +37,9 @@ describe('landing page source contract', () => {
     expect(css).toContain('scroll-margin-top');
     expect(css).toContain('prefers-reduced-motion: reduce');
     expect(css.match(/@media \(max-width:/g)).toHaveLength(2);
+
+    // CSS Overflow-3 treats a mixed visible/non-visible pair as clipping both axes, which crops focus rings.
+    expect(css).not.toMatch(/\.landing-main\s*\{[^}]*\boverflow(?:-x|-y)?\s*:/);
   });
 
   it('tells the verified product story with accessible deterministic screenshots', () => {

@@ -131,12 +131,6 @@ button:focus-visible {
   color: #fff;
 }
 
-.landing-main {
-  /* No overflow clipping here: it would crop keyboard focus rings on section edges. */
-  overflow-x: clip;
-  overflow-y: visible;
-}
-
 .landing-main > * {
   width: min(calc(100% - 3rem), 1180px);
   margin-right: auto;
