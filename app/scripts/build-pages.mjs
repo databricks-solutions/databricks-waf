@@ -13,6 +13,17 @@ if (docsOption !== -1 && process.argv[docsOption + 1] == null) {
 }
 const DOCS = docsOption === -1 ? resolve(APP, '..', 'docs') : resolve(process.cwd(), process.argv[docsOption + 1]);
 const WRITE = process.argv.includes('--write');
+const CONTROLS = join(APP, 'config', 'controls');
+const PILLAR_SNAPSHOT_TOKEN = '<!-- generated-pillar-snapshots -->';
+const PILLAR_FILES = [
+  'operational-excellence.yaml',
+  'security-compliance-and-privacy.yaml',
+  'reliability.yaml',
+  'performance-efficiency.yaml',
+  'cost-optimization.yaml',
+  'data-and-ai-governance.yaml',
+  'interoperability-and-usability.yaml',
+];
 const PAGES = [
   ['index.md', 'index.html'],
   ['install.md', 'install/index.html'],
@@ -39,6 +50,88 @@ function escapeHtml(value) {
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#39;');
+}
+
+function controlRoute(control) {
+  if (control.measurability === 'attestation') {
+    return { label: 'Human review', className: 'human' };
+  }
+  if (control.evaluator_status === 'implemented') {
+    return { label: 'Automated evidence', className: 'automated' };
+  }
+  return { label: 'Planned measurement', className: 'planned' };
+}
+
+function renderPillarSnapshots() {
+  const catalogues = PILLAR_FILES.map((file) => loadYaml(readFileSync(join(CONTROLS, file), 'utf8')));
+
+  const details = catalogues
+    .map(({ pillar, principles }) => {
+      const controls = principles.flatMap((principle) => principle.controls);
+      const counts = controls.reduce(
+        (result, control) => {
+          result[controlRoute(control).className] += 1;
+          return result;
+        },
+        { automated: 0, human: 0, planned: 0 }
+      );
+      const countLabels = [
+        `<span class="pillar-total">${controls.length} requirements</span>`,
+        counts.automated > 0
+          ? `<span class="pillar-route-count automated">${counts.automated} automated evidence</span>`
+          : '',
+        counts.human > 0 ? `<span class="pillar-route-count human">${counts.human} human review</span>` : '',
+        counts.planned > 0
+          ? `<span class="pillar-route-count planned">${counts.planned} planned measurement</span>`
+          : '',
+      ]
+        .filter(Boolean)
+        .join('\n        ');
+      const principleMarkup = principles
+        .filter(({ controls: principleControls }) => principleControls.length > 0)
+        .map(({ title, controls: principleControls }) => {
+          const controlMarkup = principleControls
+            .map((control) => {
+              const route = controlRoute(control);
+              const title = escapeHtml(control.title);
+              const linkedTitle =
+                control.source_anchor == null ? title : `<a href="${escapeHtml(control.source_anchor)}">${title}</a>`;
+              return `          <li class="pillar-control" data-control-id="${escapeHtml(control.id)}">
+            <span class="control-id">${escapeHtml(control.id)}</span>
+            <span class="control-title">${linkedTitle}</span>
+            <span class="control-route ${route.className}">${route.label}</span>
+          </li>`;
+            })
+            .join('\n');
+          return `      <section class="pillar-principle">
+        <h3>${escapeHtml(title)}</h3>
+        <ul class="pillar-controls">
+${controlMarkup}
+        </ul>
+      </section>`;
+        })
+        .join('\n');
+
+      return `  <details class="pillar-snapshot" data-pillar-code="${escapeHtml(pillar.code)}" data-total="${controls.length}" data-automated="${counts.automated}" data-human="${counts.human}" data-planned="${counts.planned}">
+    <summary class="pillar-snapshot-summary">
+      <span class="pillar-identity">
+        <span class="pillar-code">${escapeHtml(pillar.code)}</span>
+        <span class="pillar-title">${escapeHtml(pillar.title)}</span>
+      </span>
+      <span class="pillar-counts">
+        ${countLabels}
+      </span>
+    </summary>
+    <div class="pillar-snapshot-body">
+${principleMarkup}
+    </div>
+  </details>`;
+    })
+    .join('\n');
+
+  return `<div class="pillar-snapshots">
+${details}
+</div>`;
 }
 
 function frontMatter(document, source) {
@@ -124,7 +217,13 @@ function renderLayout(attributes, content, source) {
 for (const [sourceName, targetName] of PAGES) {
   const source = readFileSync(join(DOCS, sourceName), 'utf8');
   const { attributes, body } = frontMatter(source, sourceName);
-  const expected = renderLayout(attributes, renderMarkdown(body), sourceName);
+  const hasPillarSnapshots = body.includes('{{ pillar_snapshots }}');
+  const pageBody = hasPillarSnapshots ? body.replaceAll('{{ pillar_snapshots }}', PILLAR_SNAPSHOT_TOKEN) : body;
+  const renderedBody = renderMarkdown(pageBody);
+  const content = hasPillarSnapshots
+    ? renderedBody.replaceAll(PILLAR_SNAPSHOT_TOKEN, renderPillarSnapshots())
+    : renderedBody;
+  const expected = renderLayout(attributes, content, sourceName);
   const target = join(DOCS, targetName);
   if (WRITE) {
     mkdirSync(dirname(target), { recursive: true });
