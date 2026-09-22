@@ -5,4 +5,4 @@ description: The requested Databricks WAF assessment guide page could not be fou
 
 # Page not found
 
-The guide has moved or the address is incomplete. Return to the [user guide home]({{ '/' | relative_url }}).
+The page has moved or the address is incomplete. Return to the [product overview]({{ '/' | relative_url }}).
