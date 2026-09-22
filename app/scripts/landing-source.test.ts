@@ -76,8 +76,33 @@ describe('landing page source contract', () => {
       else expect(image).not.toContain('loading="lazy"');
     }
     expect(page.match(/<figure\b/g)).toHaveLength(6);
-    expect(page.match(/<figcaption>/g)).toHaveLength(6);
+
+    const captions = [...page.matchAll(/<figcaption>([\s\S]*?)<\/figcaption>/g)].map(([, body]) => body.trim());
+    expect(captions).toHaveLength(6);
+    for (const caption of captions) {
+      expect(caption.length, 'each figcaption must carry descriptive text').toBeGreaterThan(10);
+    }
+
     expect(page).toContain('deterministic, anonymized example data');
+    // The anonymization statement must cover every screenshot, hero included, not only the ones below the hero.
+    expect(page).toMatch(/all screenshots[\s\S]*deterministic, anonymized example data/i);
+    expect(page).not.toMatch(/screenshots?\s+below[\s\S]*deterministic, anonymized example data/i);
+  });
+
+  it('states the workspace and pillar scope the way the guide does', () => {
+    const page = source('index.md');
+
+    // Workspace choices are mutually exclusive, so they must be joined with "or", never listed together with a pillar clause.
+    expect(page).toContain('every visible workspace or an explicit workspace selection');
+    expect(page).not.toContain('Choose one workspace, every visible workspace, and any subset of pillars');
+    expect(page).toMatch(/any single pillar, any subset, or all seven pillars/);
+  });
+
+  it('describes improvement verification as the guide does', () => {
+    const page = source('index.md');
+
+    // Marking an action done changes the requirement's outcome only when a later assessment verifies it.
+    expect(page).toContain("does not change a requirement's outcome");
   });
 
   it('teases the safe, explicit installation sequence', () => {

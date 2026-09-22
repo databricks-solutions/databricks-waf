@@ -21,7 +21,7 @@ permalink: /
   </figure>
 </section>
 
-<p class="example-data-note"><strong>Preview data:</strong> Every screenshot below contains deterministic, anonymized example data. No customer workspace, user identity, or customer record appears.</p>
+<p class="example-data-note"><strong>Preview data:</strong> All screenshots on this page, including the hero above, contain deterministic, anonymized example data. No customer workspace, user identity, or customer record appears.</p>
 
 <section class="landing-outcomes" aria-labelledby="outcomes-title">
   <p class="section-kicker">One accountable evidence chain</p>
@@ -56,7 +56,8 @@ permalink: /
     <h2>Separate collected evidence from human judgement</h2>
     <p>Automated evidence gives the team an indicative posture. Review shows measured outcomes, practices that need an accountable answer, and measurement gaps without blurring the three.</p>
     <ul>
-      <li>Choose one workspace, every visible workspace, and any subset of pillars.</li>
+      <li>Assess every visible workspace or an explicit workspace selection.</li>
+      <li>Scope any single pillar, any subset, or all seven pillars.</li>
       <li>Answer only what platform data cannot settle.</li>
       <li>Confirm or deliberately skip each selected pillar before publication.</li>
     </ul>
@@ -114,7 +115,7 @@ permalink: /
   </div>
   <figure class="landing-figure">
     <img src="{{ '/assets/images/improvement-plan.jpg' | relative_url }}" width="1024" height="576" loading="lazy" alt="Improvement action showing the required outcome, platform engineering owner, current standing, and later-run verification condition">
-    <figcaption>Marking an action done does not change posture. The estate has to satisfy the verification condition on a later run.</figcaption>
+    <figcaption>Marking an action done does not change a requirement's outcome. A later assessment verifies it, or shows a contradiction if the requirement is still unmet.</figcaption>
   </figure>
 </section>
 
