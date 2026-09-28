@@ -111,7 +111,9 @@ export function registerReviewRoutes(app: Application, options: ReviewRouteOptio
       return;
     }
     try {
-      const open = await store.openReviews(assessmentOf(request));
+      // A custom run can collect answers, but cannot record pillar decisions or publish. Keeping its
+      // review in the open-review inbox would create work that can never be completed.
+      const open = (await store.openReviews(assessmentOf(request))).filter((one) => one.review.definitionId != null);
       const payload: OpenReviewsPayload<Date> = {
         eligibility: eligible(),
         reviews: open.map((one) => presentReview(one, store, options.reviewStorage)),

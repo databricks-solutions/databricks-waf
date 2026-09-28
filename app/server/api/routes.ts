@@ -1926,11 +1926,23 @@ export function registerApi(served: Application, options: ApiOptions): void {
       const measured = settledByMeasurement(reference);
       const inconclusive = inconclusiveMeasurements(reference);
       const unreachable = unreachableMeasurements(reference);
+      // Older full scans did not record requestedPillars. Their score still records which
+      // pillars this build collected, so a run-specific pass must not offer questions from
+      // unrelated catalogue pillars.
+      const runPillars =
+        reference?.requestedPillars ??
+        (reference?.score.pillars.length ? reference.score.pillars.map((pillar) => pillar.pillarId) : undefined);
       const payload: AttestationsPayload<Date> = {
         durable: store.durable,
         ...(store.durable ? {} : { durabilityNote: options.attestationStorage ?? NO_ATTESTATION_STORE }),
-        requirements: attestable(options.catalogue, options.registry, measured, inconclusive, unreachable).map(
-          (control) => ({
+        requirements: attestable(options.catalogue, options.registry, measured, inconclusive, unreachable)
+          .filter(
+            (control) =>
+              requestedRunId === '' ||
+              runPillars == null ||
+              runPillars.includes(control.pillarId)
+          )
+          .map((control) => ({
             controlId: control.id,
             pillarId: control.pillarId,
             principleId: control.principleId,
@@ -1939,8 +1951,7 @@ export function registerApi(served: Application, options: ApiOptions): void {
             askedBecause: askedBecause(control, inconclusive),
             ...asked(control),
             ...withAnswer(recorded.get(control.id)),
-          })
-        ),
+          })),
       };
       response.json(payload);
     } catch (cause) {

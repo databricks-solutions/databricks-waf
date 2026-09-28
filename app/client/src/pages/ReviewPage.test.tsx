@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { MemoryRouter } from 'react-router';
 import { describe, expect, it } from 'vitest';
 import type { AssessmentResult, AssessmentReview, PillarReview } from '../api/types';
-import { AssessStatePage, AssessmentDefinitionRequired, PublishedReview } from './ReviewPage';
+import { AssessStatePage, PublishedReview } from './ReviewPage';
 
 const PILLARS: readonly PillarReview[] = [
   {
@@ -97,22 +97,6 @@ function completed(eligible: boolean): AssessmentReview {
 }
 
 describe('the completed review handoff', () => {
-  it('makes the exact setup action dominant when an ad-hoc run cannot enter human review', () => {
-    const markup = renderToStaticMarkup(
-      <MemoryRouter>
-        <AssessmentDefinitionRequired runId="run-ad-hoc" />
-      </MemoryRouter>
-    );
-
-    expect(markup).toContain('Review needs a saved assessment');
-    expect(markup).toContain('indicative automated result');
-    expect(markup).toContain('href="/definitions/setup"');
-    expect(markup).toContain('Define an assessment');
-    expect(markup).toContain('href="/history/run-ad-hoc"');
-    expect(markup).toContain('View automated result');
-    expect(markup.indexOf('Define an assessment')).toBeLessThan(markup.indexOf('View automated result'));
-  });
-
   it('keeps the Assess stage, recovery action and Dashboard route in one semantic hierarchy', () => {
     const markup = renderToStaticMarkup(
       <MemoryRouter>

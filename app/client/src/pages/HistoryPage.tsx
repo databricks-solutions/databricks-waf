@@ -56,6 +56,11 @@ import {
 import type { ScanSummary, Schedule, ScheduleRun } from '../api/types';
 import { methodologyLabel } from '../methodology-identity';
 
+function scanLink(scan: ScanSummary): string {
+  const scope = encodeURIComponent(scan.stamp?.definition?.id ?? '');
+  return `/history/${encodeURIComponent(scan.id)}?definitionId=${scope}`;
+}
+
 /**
  * @param notes How many notes each run carries, so a reader can see which were written about.
  *
@@ -78,7 +83,7 @@ export function columns(
               cell in the row — posture, results, pillars, identity — is a fact about the run whose
               record the reader wants, and aiming at the date to get there is the layout's job being
               done by the reader. See `.wa-table tbody tr:has(.wa-row-link)`. */}
-          <Link to={`/history/${scan.id}`} className="wa-row-link wa-numeric text-wa-text">
+          <Link to={scanLink(scan)} className="wa-row-link wa-numeric text-wa-text">
             {new Date(scan.finishedAt).toLocaleString()}
           </Link>
           <span className="wa-caption">
@@ -93,8 +98,8 @@ export function columns(
       header: 'Report',
       cell: (scan) =>
         scan.resultId == null ? (
-          <Link to={`/history/${scan.id}`} className="wa-caption wa-aside-link wa-row-inset">
-            Awaiting review
+          <Link to={scanLink(scan)} className="wa-caption wa-aside-link wa-row-inset">
+            {scan.stamp?.definition == null ? 'Indicative only' : 'Awaiting review'}
           </Link>
         ) : (
           <Link to={`/report/${scan.resultId}`} className="wa-body-compact wa-aside-link wa-row-inset">

@@ -264,6 +264,53 @@ async function opened(base: string, scans: ScanStore, over: Partial<Scan> = {}):
 }
 
 describe('opening a review', () => {
+  it('keeps a custom run out of the open review inbox while retaining its exact record', async () => {
+    const { base, scans } = await serve();
+    const review = await opened(base, scans, { stamp: { ...scan().stamp, definition: undefined } });
+
+    const open = await read<OpenReviewsPayload>(base, '/api/reviews?definitionId=');
+    const exact = await read<AssessmentReviewPayload>(base, `/api/reviews/${review.id}?definitionId=`);
+
+    expect(open.reviews).toEqual([]);
+    expect(exact).toMatchObject({ id: review.id, runId: review.runId });
+  });
+
+  it('keeps a partly reviewed assessment open while another assessment starts, then resumes the first', async () => {
+    const { base, scans } = await serve();
+    const first = await opened(base, scans, { id: 'scan-a' });
+    const firstDecision = await send(base, `/api/reviews/${first.id}/pillars/reliability/skip`);
+    expect(firstDecision.status).toBe(201);
+
+    const second = await opened(base, scans, {
+      id: 'scan-b',
+      stamp: { ...scan().stamp, definition: { id: 'definition-2', version: 1, fingerprint: 'second' } },
+    });
+    expect(second.id).not.toBe(first.id);
+    const secondDecision = await send(
+      base,
+      `/api/reviews/${second.id}/pillars/security-compliance-and-privacy/skip?definitionId=definition-2`
+    );
+    expect(secondDecision.status).toBe(201);
+
+    const firstInbox = await read<OpenReviewsPayload>(base, '/api/reviews?definitionId=definition-1');
+    const secondInbox = await read<OpenReviewsPayload>(base, '/api/reviews?definitionId=definition-2');
+    expect(firstInbox.reviews).toMatchObject([
+      { id: first.id, runId: 'scan-a', pillars: [{ pillarId: 'reliability' }] },
+    ]);
+    expect(secondInbox.reviews).toMatchObject([
+      { id: second.id, runId: 'scan-b', pillars: [{ pillarId: 'security-compliance-and-privacy' }] },
+    ]);
+    expect((await send(base, `/api/reviews/${first.id}?definitionId=definition-2`, undefined, 'GET')).status).toBe(404);
+
+    const resumed = await send(base, `/api/reviews/${first.id}/pillars/security-compliance-and-privacy/skip`);
+    expect(resumed.status).toBe(201);
+    expect(resumed.body).toMatchObject({ id: first.id, runId: 'scan-a', result: { runId: 'scan-a' } });
+    const stillOpen = await read<OpenReviewsPayload>(base, '/api/reviews?definitionId=definition-2');
+    expect(stillOpen.reviews).toMatchObject([
+      { id: second.id, runId: 'scan-b', pillars: [{ pillarId: 'security-compliance-and-privacy' }] },
+    ]);
+  });
+
   it('stores it against the scan in the body and records the act against the run', async () => {
     const { base, scans, audit } = await serve();
     const review = await opened(base, scans);

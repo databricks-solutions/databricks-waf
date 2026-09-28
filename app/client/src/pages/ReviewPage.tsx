@@ -17,6 +17,7 @@
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link, Navigate, useParams, useSearchParams } from 'react-router';
 import { AlertTriangle, ArrowRight, CheckCircle2, CircleSlash } from 'lucide-react';
+import { answerWalkPath, reviewPath } from '../assessment-continuation';
 import { useAssessment } from '../api/assessment-context';
 import { useAnswerInReview, useAttestations, useOpenReviews, useRecordPillar, useReview, useScan } from '../api/hooks';
 import { AnswerForm, answerFormKey } from '../components/AnswerForm';
@@ -47,16 +48,17 @@ import type { AttestableRequirement, ReviewAnswer } from '../api/types';
 
 const EMPTY_REQUIREMENTS: readonly AttestableRequirement[] = [];
 
-function walkTo(pillarId: string, controlId: string): string {
-  return `/answers/walk?pillar=${encodeURIComponent(pillarId)}&control=${encodeURIComponent(controlId)}`;
+function walkTo(runId: string, definitionId: string, pillarId: string, controlId: string): string {
+  const query = new URLSearchParams({ runId, definitionId, pillar: pillarId, control: controlId });
+  return `/answers/walk?${query.toString()}`;
 }
 
-function runTo(runId: string): string {
-  return `/history/${runId}`;
+function runTo(runId: string, definitionId: string): string {
+  return `/history/${encodeURIComponent(runId)}?definitionId=${encodeURIComponent(definitionId)}`;
 }
 
 export function ReviewIndexPage() {
-  const { catalogue } = useAssessment();
+  const { catalogue, latestRun } = useAssessment();
   const open = useOpenReviews();
   const pillarCount = catalogue?.pillars.length ?? 0;
 
@@ -90,9 +92,12 @@ export function ReviewIndexPage() {
     );
   }
 
-  const waiting = open.data.reviews;
+  const waiting = open.data.reviews.filter((one) => one.definitionId != null);
+  if (waiting.length === 0 && latestRun != null && latestRun.stamp.definition == null) {
+    return <Navigate to={answerWalkPath(latestRun.id)} replace />;
+  }
   if (waiting.length === 1 && waiting[0] != null) {
-    return <Navigate to={`/review/${waiting[0].id}`} replace />;
+    return <Navigate to={reviewPath(waiting[0].id, waiting[0].definitionId ?? '')} replace />;
   }
 
   if (waiting.length === 0) {
@@ -139,7 +144,7 @@ export function ReviewIndexPage() {
         <ol className="wa-assess-review-list">
           {waiting.map((one) => (
             <li key={one.id}>
-              <Link to={`/review/${one.id}`}>
+              <Link to={reviewPath(one.id, one.definitionId ?? '')}>
                 <span>
                   <strong>{openedPhrase(one)}</strong>
                   <small>
@@ -250,6 +255,7 @@ export function ReviewPage() {
   };
 
   useEffect(() => {
+    if (review.data?.definitionId == null) return;
     const nextId = pillarToWrite(requested, currentId);
     if (nextId == null) return;
     const next = new URLSearchParams(params);
@@ -257,7 +263,7 @@ export function ReviewPage() {
     setParams(next, { replace: true });
     // Catch-up only: depending on `params` would rewrite on every search change.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [requested, currentId]);
+  }, [requested, currentId, review.data?.definitionId]);
 
   if (review.error != null) {
     return (
@@ -312,7 +318,7 @@ export function ReviewPage() {
   }
 
   if (review.data.definitionId == null) {
-    return <AssessmentDefinitionRequired runId={review.data.runId} />;
+    return <Navigate to={answerWalkPath(review.data.runId, requested ?? undefined)} replace />;
   }
 
   if (answers.error != null) {
@@ -343,7 +349,7 @@ export function ReviewPage() {
         technicalDetail={scan.error}
         reason="collector-failed"
         action={
-          <Link className="wa-customer-secondary-action" to={`/history/${review.data.runId}`}>
+          <Link className="wa-customer-secondary-action" to={runTo(review.data.runId, review.data.definitionId ?? '')}>
             This run
           </Link>
         }
@@ -472,6 +478,7 @@ export function ReviewPage() {
               summary={current}
               title={pillarTitle(current.pillarId)}
               runId={assembled.runId}
+              definitionId={assembled.definitionId ?? ''}
               recording={recording}
               answering={answering}
               answeredHere={assembled.answers}
@@ -513,35 +520,16 @@ export function ReviewPage() {
             </ol>
           )}
           <div className="wa-assess-progress-foot">
-            <Link to={`/history/${assembled.runId}`}>Collected run</Link>
-            <Link to="/answers">Human evidence</Link>
+            <Link to={runTo(assembled.runId, assembled.definitionId ?? '')}>Collected run</Link>
+            <Link
+              to={`/answers?runId=${encodeURIComponent(assembled.runId)}&definitionId=${encodeURIComponent(assembled.definitionId ?? '')}`}
+            >
+              Human evidence
+            </Link>
           </div>
         </Surface>
       </div>
     </CustomerPage>
-  );
-}
-
-export function AssessmentDefinitionRequired({ runId }: { readonly runId: string }) {
-  return (
-    <AssessStatePage
-      title="Define an assessment to continue"
-      summary="This custom run remains available as an indicative automated result, but it cannot become a published report."
-      heading="Review needs a saved assessment"
-      detail="This run has no saved assessment definition, so Review cannot record human decisions or publish a report. Define the scope, then run that assessment to continue."
-      reason="not-yet-collected"
-      action={
-        <div className="wa-assess-state-actions">
-          <Link className="wa-customer-primary-action" to="/definitions/setup">
-            Define an assessment
-            <ArrowRight aria-hidden />
-          </Link>
-          <Link className="wa-customer-secondary-action" to={runTo(runId)}>
-            View automated result
-          </Link>
-        </div>
-      }
-    />
   );
 }
 
@@ -618,6 +606,7 @@ function PillarPane({
   summary,
   title,
   runId,
+  definitionId,
   recording,
   answering,
   answeredHere,
@@ -627,6 +616,7 @@ function PillarPane({
   readonly summary: PillarSummary;
   readonly title: string;
   readonly runId: string;
+  readonly definitionId: string;
   readonly recording: ReturnType<typeof useRecordPillar>;
   readonly answering: ReturnType<typeof useAnswerInReview>;
   readonly answeredHere: readonly ReviewAnswer[];
@@ -763,7 +753,7 @@ function PillarPane({
         <p>{automaticPhrase(summary.automatic.length)}</p>
         {summary.automatic.length > 0 && runId !== '' && (
           <p>
-            <Link className="wa-customer-tertiary-action" to={runTo(runId)}>
+            <Link className="wa-customer-tertiary-action" to={runTo(runId, definitionId)}>
               This run
             </Link>
           </p>
@@ -808,7 +798,10 @@ function PillarPane({
               const open = answeringControl === item.requirement.controlId;
               return (
                 <li key={item.requirement.controlId}>
-                  <Link className="wa-assess-question-link" to={walkTo(summary.pillarId, item.requirement.controlId)}>
+                  <Link
+                    className="wa-assess-question-link"
+                    to={walkTo(runId, definitionId, summary.pillarId, item.requirement.controlId)}
+                  >
                     <span>
                       <StateBadge state={stateOf(item.requirement)} />
                       <strong>{item.requirement.title}</strong>

@@ -15,12 +15,15 @@ import { shortPillarLabel } from './shell/pillar-label';
 import { Badge, type Tone } from './ui/StatusBadge';
 import { Surface } from './system';
 import { attentionReason } from '../pages/review-summary';
+import { answerWalkForRunPath, continuationPath, runHistoryPath } from '../assessment-continuation';
 import type { AssessmentReview, AttestableRequirement, Score } from '../api/types';
 
 /** The run fields the indicative Dashboard reads before a final assessment exists. */
 export interface UnpublishedScan {
   readonly id: string;
+  readonly stamp: { readonly definition?: { readonly id: string } };
   readonly state: 'complete' | 'partial';
+  readonly requestedPillars?: readonly string[];
   readonly incompleteReason?: string;
   readonly measurement: readonly {
     readonly pillarId: string;
@@ -86,6 +89,15 @@ function countPhrase(count: number, singular: string): string {
   return `${count.toLocaleString()} ${singular}${count === 1 ? '' : 's'}`;
 }
 
+function pillarLinkLabel(standing: Standing, humanAttention: number | undefined, reviewable: boolean, inReview: boolean) {
+  if (standing.label === 'Skipped') return 'View skipped decision';
+  if (standing.label === 'Confirmed') return 'View confirmed decision';
+  if ((humanAttention ?? 0) > 0) {
+    return `${reviewable && inReview ? 'Review' : 'Answer'} ${countPhrase(humanAttention ?? 0, 'question')}`;
+  }
+  return reviewable && inReview ? 'Review this pillar' : 'View pillar questions';
+}
+
 function Fact({ label, children }: { readonly label: string; readonly children: React.ReactNode }) {
   return (
     <div className="min-w-0 border-t border-wa-divider px-4 py-3 first:border-t-0 sm:border-l sm:border-t-0 sm:first:border-l-0">
@@ -93,11 +105,6 @@ function Fact({ label, children }: { readonly label: string; readonly children: 
       <dd className="wa-body-compact pt-0.5 text-wa-text">{children}</dd>
     </div>
   );
-}
-
-function reviewPath(reviewId: string | undefined, pillarId: string): string {
-  if (reviewId == null) return '/review';
-  return `/review/${reviewId}?pillar=${encodeURIComponent(pillarId)}`;
 }
 
 function evidenceMix(observed: number, imported: number, attested: number): string {
@@ -124,18 +131,29 @@ export function UnpublishedSummary({
 }: UnpublishedSummaryProps) {
   const measured = new Set(scan.measurement.map((one) => one.pillarId));
   const reviewId = review?.id ?? scan.finalisation?.reviewId;
+  const reviewable = scan.stamp.definition != null;
+  const shownPillars = pillars.filter((pillar) => scan.score.pillars.some((score) => score.pillarId === pillar.id));
+  const reviewPillars = review?.selectedPillars ?? scan.requestedPillars;
   const assessed = scan.estate.assessed.length;
   const recorded = review?.pillars.length;
   const scope =
     scan.estate.undeterminedReason == null ? countPhrase(assessed, 'workspace') : 'Scope could not be determined';
   const progress =
     reviewIssue != null
-      ? 'Review status unavailable'
-      : recorded != null
-        ? `${String(recorded)} of ${String(pillars.length)} pillars recorded`
-        : reviewLoading
-          ? 'Reading review progress'
-          : 'No review record read';
+      ? reviewable
+        ? 'Review status unavailable'
+        : 'Question status unavailable'
+      : !reviewable
+        ? requirements == null
+          ? requirementsLoading
+            ? 'Reading questions'
+            : 'Questions not read'
+          : `${String(requirements.filter((one) => attentionReason(one) != null).length)} questions need attention`
+        : recorded != null
+          ? `${String(recorded)} of ${String(reviewPillars?.length ?? shownPillars.length)} pillars recorded`
+          : reviewLoading
+            ? 'Reading review progress'
+            : 'No review record read';
   const includesOtherEvidence = scan.score.pillars.some(
     (pillar) => pillar.composition.attested > 0 || pillar.composition['admin-collected'] > 0
   );
@@ -158,15 +176,17 @@ export function UnpublishedSummary({
                 ? 'Review the evidence and add the human context the scan cannot observe.'
                 : (scan.incompleteReason ?? 'The run stopped before completing its collection plan.')}
               {' These scores are available now, but they are not the published report.'}
+              {!reviewable &&
+                ' This run has no saved assessment, so its questions can be answered but it cannot publish a report.'}
             </p>
             {reviewIssue != null && <p className="wa-caption text-wa-danger">{reviewIssue}</p>}
             {requirementsIssue != null && <p className="wa-caption text-wa-danger">{requirementsIssue}</p>}
           </div>
           <div className="flex shrink-0 flex-wrap gap-2">
-            <Link className="wa-button-primary" to={reviewId == null ? '/review' : `/review/${reviewId}`}>
-              Complete review
+            <Link className="wa-button-primary" to={continuationPath(scan, reviewId)}>
+              {reviewable ? 'Complete review' : 'Answer human questions'}
             </Link>
-            <Link className="wa-button-secondary" to={`/history/${scan.id}`}>
+            <Link className="wa-button-secondary" to={runHistoryPath(scan)}>
               Inspect collected evidence
             </Link>
           </div>
@@ -176,7 +196,7 @@ export function UnpublishedSummary({
           <Fact label="Scope read">{scope}</Fact>
           <Fact label="Pillars collected">{countPhrase(measured.size, 'pillar')}</Fact>
           <Fact label="Requirement readings">{scan.score.totalControls.toLocaleString()} recorded</Fact>
-          <Fact label="Review progress">{progress}</Fact>
+          <Fact label={reviewable ? 'Review progress' : 'Human questions'}>{progress}</Fact>
         </dl>
       </Surface>
 
@@ -193,8 +213,9 @@ export function UnpublishedSummary({
         label="Indicative pillar scores"
       >
         <ul className="grid gap-3 md:grid-cols-2 xl:grid-cols-7">
-          {pillars.map((pillar) => {
+          {shownPillars.map((pillar) => {
             const standing = standingOf(pillar.id, measured, review, reviewLoading, reviewIssue);
+            const inReview = !reviewable || reviewPillars == null || reviewPillars.includes(pillar.id);
             const score = scan.score.pillars.find((one) => one.pillarId === pillar.id);
             const measurement = scan.measurement.find((one) => one.pillarId === pillar.id);
             const coverage = score == null ? undefined : pillarCoverage(score);
@@ -259,7 +280,7 @@ export function UnpublishedSummary({
                       Carried forward from{' '}
                       <Link
                         className="font-semibold text-wa-action hover:underline"
-                        to={`/history/${measurement.scanId}`}
+                        to={runHistoryPath({ id: measurement.scanId, stamp: scan.stamp })}
                       >
                         the {measuredDate(measurement.measuredAt)} scan
                       </Link>
@@ -275,11 +296,9 @@ export function UnpublishedSummary({
                   )}
                   <Link
                     className="wa-caption font-semibold text-wa-action hover:underline"
-                    to={reviewPath(reviewId, pillar.id)}
+                    to={inReview ? continuationPath(scan, reviewId, pillar.id) : answerWalkForRunPath(scan, pillar.id)}
                   >
-                    {(humanAttention ?? 0) > 0
-                      ? `Review ${countPhrase(humanAttention ?? 0, 'question')}`
-                      : 'Review this pillar'}
+                    {pillarLinkLabel(standing, humanAttention, reviewable, inReview)}
                   </Link>
                 </div>
               </li>

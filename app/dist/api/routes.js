@@ -1138,10 +1138,11 @@ function registerApi(served, options) {
 			const measured = settledByMeasurement(reference);
 			const inconclusive = inconclusiveMeasurements(reference);
 			const unreachable = unreachableMeasurements(reference);
+			const runPillars = reference?.requestedPillars ?? (reference?.score.pillars.length ? reference.score.pillars.map((pillar) => pillar.pillarId) : void 0);
 			const payload = {
 				durable: store.durable,
 				...store.durable ? {} : { durabilityNote: options.attestationStorage ?? NO_ATTESTATION_STORE },
-				requirements: attestable(options.catalogue, options.registry, measured, inconclusive, unreachable).map((control) => ({
+				requirements: attestable(options.catalogue, options.registry, measured, inconclusive, unreachable).filter((control) => requestedRunId === "" || runPillars == null || runPillars.includes(control.pillarId)).map((control) => ({
 					controlId: control.id,
 					pillarId: control.pillarId,
 					principleId: control.principleId,

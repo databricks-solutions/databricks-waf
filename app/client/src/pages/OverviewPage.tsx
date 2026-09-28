@@ -2,6 +2,7 @@ import { Alert, AlertDescription, AlertTitle, Spinner } from '@databricks/appkit
 import { ArrowRight, ExternalLink } from 'lucide-react';
 import { useMemo } from 'react';
 import { Link } from 'react-router';
+import { continuationPath } from '../assessment-continuation';
 import { useAssessment } from '../api/assessment-context';
 import {
   useDecisions,
@@ -138,13 +139,7 @@ export function OverviewPage() {
         <>
           {latestRun != null && latestRun.id !== scan.id && (
             <PendingReviewStatus
-              to={
-                latestReview.data?.id == null
-                  ? latestRun.finalisation?.reviewId == null
-                    ? '/review'
-                    : `/review/${latestRun.finalisation.reviewId}`
-                  : `/review/${latestReview.data.id}`
-              }
+              to={continuationPath(latestRun, latestReview.data?.id ?? latestRun.finalisation?.reviewId)}
             />
           )}
 

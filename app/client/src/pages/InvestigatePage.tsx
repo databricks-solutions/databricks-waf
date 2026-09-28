@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ExternalLink } from 'lucide-react';
 import type { TopologyEdge, TopologyNode, TopologyPayload } from '../../../shared/api/topology';
 import { useAssessment } from '../api/assessment-context';
+import { continuationPath } from '../assessment-continuation';
 import { useDecisions, useResultChanges, useSelectableWorkspaces, useTopology } from '../api/hooks';
 import type {
   CatalogueControl,
@@ -81,7 +82,7 @@ const CHANGE_LABEL: Readonly<Record<ChangeClass, string>> = {
 };
 
 export function InvestigatePage() {
-  const { scan, result, pillarTitle, controlOf } = useAssessment();
+  const { scan, result, latestRun, pillarTitle, controlOf } = useAssessment();
   const topology = useTopology();
   const workspaces = useSelectableWorkspaces();
   const decisions = useDecisions();
@@ -96,11 +97,18 @@ export function InvestigatePage() {
             layout="compact"
             reason="not-yet-collected"
             heading="No published report to investigate"
-            detail="Complete the open review to publish the report. The Dashboard remains available while that work is open."
+            detail={
+              latestRun?.stamp.definition == null && latestRun != null
+                ? 'The latest run is a custom scan. Its questions can be answered, but it cannot publish a report without a saved assessment.'
+                : 'Complete the open review to publish the report. The Dashboard remains available while that work is open.'
+            }
             action={
               <span className="flex flex-wrap gap-2">
-                <Link className="wa-button-primary" to="/review">
-                  Open review
+                <Link
+                  className="wa-button-primary"
+                  to={latestRun == null ? '/review' : continuationPath(latestRun, latestRun.finalisation?.reviewId)}
+                >
+                  {latestRun?.stamp.definition == null && latestRun != null ? 'Answer human questions' : 'Open review'}
                 </Link>
                 <Link className="wa-button-secondary" to="/overview">
                   Dashboard

@@ -1807,6 +1807,41 @@ describe('answering the requirements nothing can measure', () => {
     expect(reviewed.requirements.map((one) => one.controlId)).toContain(controlId);
   });
 
+  it('asks only the selected pillars when continuing a specific targeted run', async () => {
+    const scans = await scanSettling(blocked());
+    const source = await scans.get('measured');
+    if (source == null) throw new Error('The run under test was not stored.');
+    await scans.save({ ...source, id: 'targeted', requestedPillars: ['cost-optimization'] });
+    const { url } = await withStore(scans);
+
+    const targeted = (await (await fetch(`${url}/api/attestations?runId=targeted`)).json()) as {
+      requirements: { pillarId: string }[];
+    };
+    const unscoped = (await (await fetch(`${url}/api/attestations`)).json()) as {
+      requirements: { pillarId: string }[];
+    };
+
+    expect(targeted.requirements.length).toBeGreaterThan(0);
+    expect(targeted.requirements.every((one) => one.pillarId === 'cost-optimization')).toBe(true);
+    expect(unscoped.requirements.some((one) => one.pillarId !== 'cost-optimization')).toBe(true);
+  });
+
+  it('scopes questions for an older full run using the pillars it actually scored', async () => {
+    const store = new InMemoryAttestationStore();
+    const scans = new InMemoryScanStore();
+    const url = await startApp({ attestations: store, scans, measuredPillars: ['cost-optimization', 'reliability'] });
+    const started = await post('/api/scan', { 'x-forwarded-access-token': 'token' }, url);
+    const runId = String(started.body.id);
+    expect((await scans.get(runId))?.requestedPillars).toBeUndefined();
+
+    const response = await fetch(`${url}/api/attestations?runId=${encodeURIComponent(runId)}`);
+    const body = (await response.json()) as { requirements: { pillarId: string }[] };
+    expect(body.requirements.length).toBeGreaterThan(0);
+    expect(new Set(body.requirements.map((one) => one.pillarId))).toEqual(
+      new Set(['cost-optimization', 'reliability'])
+    );
+  });
+
   it('keeps asking about a practice a scan settled, because only an answer could have settled it', async () => {
     // An attestation-class requirement with an outcome has one because somebody answered it. Taking
     // it off this page on that basis would leave the answer nowhere to be renewed, so it would
