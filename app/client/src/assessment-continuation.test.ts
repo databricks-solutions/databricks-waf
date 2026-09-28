@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { answerWalkPath, assessmentOverviewPath, continuationPath, runHistoryPath } from './assessment-continuation';
+import {
+  answerWalkForAssessmentPath,
+  answerWalkPath,
+  assessmentOverviewPath,
+  continuationPath,
+  resultReportPath,
+  runHistoryPath,
+} from './assessment-continuation';
 
 describe('continuing an unfinished run', () => {
   const custom = { id: 'custom-run', stamp: {} };
@@ -23,6 +30,10 @@ describe('continuing an unfinished run', () => {
     expect(continuationPath(saved, 'review-a')).toBe('/review/review-a?definitionId=assessment-a');
     expect(continuationPath(saved)).toBe('/review?definitionId=assessment-a');
     expect(runHistoryPath(saved)).toBe('/history/saved-run?definitionId=assessment-a');
+    expect(answerWalkForAssessmentPath('assessment-a', 'reliability')).toBe(
+      '/answers/walk?definitionId=assessment-a&pillar=reliability'
+    );
+    expect(resultReportPath('result-a', 'assessment-a')).toBe('/report/result-a?definitionId=assessment-a');
   });
 
   it('keeps two in-progress assessments on their own continuation routes', () => {

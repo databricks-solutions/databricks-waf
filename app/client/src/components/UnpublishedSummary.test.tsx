@@ -217,11 +217,18 @@ describe('the unpublished Dashboard', () => {
   });
 
   it('sends a carried-forward pillar outside this review to its answers', () => {
-    const markup = render({ review: { ...REVIEW, selectedPillars: ['cost-optimization'] } });
+    const markup = render({
+      scan: { ...SCAN, requestedPillars: ['cost-optimization'] },
+      review: { ...REVIEW, selectedPillars: ['cost-optimization'] },
+    });
 
     expect(markup).toContain('href="/review/review-1?definitionId=assessment-1&amp;pillar=cost-optimization"');
-    expect(markup).toContain('href="/answers/walk?runId=run-1&amp;definitionId=assessment-1&amp;pillar=reliability"');
+    expect(markup).toContain('href="/answers/walk?definitionId=assessment-1&amp;pillar=reliability"');
+    expect(markup).toContain('Answer 3 questions');
     expect(markup).not.toContain('href="/review/review-1?definitionId=assessment-1&amp;pillar=reliability"');
+    expect(markup).not.toContain(
+      'href="/answers/walk?runId=run-1&amp;definitionId=assessment-1&amp;pillar=reliability"'
+    );
   });
 
   it('states reused evidence instead of calling the whole score automated', () => {

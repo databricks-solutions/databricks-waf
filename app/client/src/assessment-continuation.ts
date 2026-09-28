@@ -24,6 +24,12 @@ export function answerWalkForRunPath(run: ContinuableRun, pillarId?: string): st
   return `/answers/walk?${query.toString()}`;
 }
 
+/** A carried-forward pillar is outside the new run's question scope but belongs to this assessment. */
+export function answerWalkForAssessmentPath(definitionId: string, pillarId: string): string {
+  const query = new URLSearchParams({ definitionId, pillar: pillarId });
+  return `/answers/walk?${query.toString()}`;
+}
+
 export function reviewPath(reviewId: string, definitionId: string, pillarId?: string): string {
   const query = new URLSearchParams({ definitionId });
   if (pillarId != null) query.set('pillar', pillarId);
@@ -32,6 +38,11 @@ export function reviewPath(reviewId: string, definitionId: string, pillarId?: st
 
 export function runHistoryPath(run: ContinuableRun): string {
   return `/history/${encodeURIComponent(run.id)}?${runScope(run)}`;
+}
+
+/** A report URL must retain its assessment when opened later or shared. */
+export function resultReportPath(resultId: string, definitionId: string | null): string {
+  return `/report/${encodeURIComponent(resultId)}?definitionId=${encodeURIComponent(definitionId ?? '')}`;
 }
 
 export function continuationPath(run: ContinuableRun, reviewId?: string, pillarId?: string): string {

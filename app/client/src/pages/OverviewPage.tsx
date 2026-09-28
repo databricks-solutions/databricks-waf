@@ -2,7 +2,7 @@ import { Alert, AlertDescription, AlertTitle, Spinner } from '@databricks/appkit
 import { ArrowRight, ExternalLink } from 'lucide-react';
 import { useMemo } from 'react';
 import { Link } from 'react-router';
-import { continuationPath } from '../assessment-continuation';
+import { continuationPath, resultReportPath } from '../assessment-continuation';
 import { useAssessment } from '../api/assessment-context';
 import {
   useDecisions,
@@ -49,7 +49,11 @@ export function OverviewPage() {
   const decisions = useDecisions();
   const raised = useRaisedActions();
   const latestReview = useReviewForRun(latestRun?.id ?? '');
-  const attestations = useAttestations(latestRun?.id ?? null);
+  // A saved assessment's Dashboard can show pillars carried forward outside a targeted rerun.
+  // Read the whole assessment for their counts; custom scans still need their exact run scope.
+  const attestations = useAttestations(
+    latestRun == null ? null : latestRun.stamp.definition == null ? latestRun.id : undefined
+  );
   const resultChanges = useResultChanges(result?.id ?? '');
   const pillars = catalogue?.pillars ?? [];
 
@@ -231,7 +235,7 @@ export function PublishedDashboard({
 }) {
   return (
     <>
-      <DashboardPosture scan={scan} resultId={resultId} />
+      <DashboardPosture scan={scan} resultId={resultId} definitionId={scan.stamp.definition?.id ?? null} />
 
       <DashboardPriority scan={scan} gaps={gaps} first={queue[0]} control={control} actions={actions} />
 
@@ -403,9 +407,11 @@ export function DashboardMeasurementGaps({ gaps }: { readonly gaps: readonly Gap
 export function DashboardPosture({
   scan,
   resultId,
+  definitionId,
 }: {
   readonly scan: Pick<Scan, 'finishedAt' | 'score'>;
   readonly resultId?: string;
+  readonly definitionId: string | null;
 }) {
   const coverage = estateCoverage(scan.score);
   const confidence = confidenceOf(coverage);
@@ -419,7 +425,7 @@ export function DashboardPosture({
       description={`Published ${new Date(scan.finishedAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}`}
       action={
         resultId == null ? null : (
-          <Link className="wa-customer-secondary-action" to={`/report/${resultId}`}>
+          <Link className="wa-customer-secondary-action" to={resultReportPath(resultId, definitionId)}>
             Open report <ArrowRight aria-hidden className="h-4 w-4" />
           </Link>
         )

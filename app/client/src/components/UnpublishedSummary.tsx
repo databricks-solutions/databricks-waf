@@ -15,7 +15,7 @@ import { shortPillarLabel } from './shell/pillar-label';
 import { Badge, type Tone } from './ui/StatusBadge';
 import { Surface } from './system';
 import { attentionReason } from '../pages/review-summary';
-import { answerWalkForRunPath, continuationPath, runHistoryPath } from '../assessment-continuation';
+import { answerWalkForAssessmentPath, continuationPath, runHistoryPath } from '../assessment-continuation';
 import type { AssessmentReview, AttestableRequirement, Score } from '../api/types';
 
 /** The run fields the indicative Dashboard reads before a final assessment exists. */
@@ -89,7 +89,12 @@ function countPhrase(count: number, singular: string): string {
   return `${count.toLocaleString()} ${singular}${count === 1 ? '' : 's'}`;
 }
 
-function pillarLinkLabel(standing: Standing, humanAttention: number | undefined, reviewable: boolean, inReview: boolean) {
+function pillarLinkLabel(
+  standing: Standing,
+  humanAttention: number | undefined,
+  reviewable: boolean,
+  inReview: boolean
+) {
   if (standing.label === 'Skipped') return 'View skipped decision';
   if (standing.label === 'Confirmed') return 'View confirmed decision';
   if ((humanAttention ?? 0) > 0) {
@@ -296,7 +301,11 @@ export function UnpublishedSummary({
                   )}
                   <Link
                     className="wa-caption font-semibold text-wa-action hover:underline"
-                    to={inReview ? continuationPath(scan, reviewId, pillar.id) : answerWalkForRunPath(scan, pillar.id)}
+                    to={
+                      !inReview && scan.stamp.definition != null
+                        ? answerWalkForAssessmentPath(scan.stamp.definition.id, pillar.id)
+                        : continuationPath(scan, reviewId, pillar.id)
+                    }
                   >
                     {pillarLinkLabel(standing, humanAttention, reviewable, inReview)}
                   </Link>

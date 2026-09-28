@@ -55,6 +55,7 @@ import {
 } from './schedule-language';
 import type { ScanSummary, Schedule, ScheduleRun } from '../api/types';
 import { methodologyLabel } from '../methodology-identity';
+import { resultReportPath } from '../assessment-continuation';
 
 function scanLink(scan: ScanSummary): string {
   const scope = encodeURIComponent(scan.stamp?.definition?.id ?? '');
@@ -102,7 +103,10 @@ export function columns(
             {scan.stamp?.definition == null ? 'Indicative only' : 'Awaiting review'}
           </Link>
         ) : (
-          <Link to={`/report/${scan.resultId}`} className="wa-body-compact wa-aside-link wa-row-inset">
+          <Link
+            to={resultReportPath(scan.resultId, scan.stamp?.definition?.id ?? null)}
+            className="wa-body-compact wa-aside-link wa-row-inset"
+          >
             Open report
           </Link>
         ),
