@@ -46,7 +46,11 @@ export interface AssessmentValue {
    * Absent for a scheduled run observed by the follower, so unattended completion creates inbox
    * work without pulling a reader away from what they are doing.
    */
-  readonly completedReview?: { readonly runId: string; readonly reviewId: string };
+  readonly completedReview?: {
+    readonly runId: string;
+    readonly reviewId: string;
+    readonly definitionId: string | null;
+  };
   /**
    * The pillars the run in flight is measuring, when it is a targeted rerun.
    *

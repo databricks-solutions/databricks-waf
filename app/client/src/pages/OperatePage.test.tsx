@@ -54,6 +54,39 @@ describe('the operating inbox composition', () => {
     expect(markup).toContain('took 5m 0s');
   });
 
+  it('counts the remaining pillars of a partially finished assessment', () => {
+    const open = {
+      ...review('review-1', 'scan-1'),
+      definitionId: 'assessment-1',
+      selectedPillars: ['cost-optimization', 'reliability'],
+      pillars: [
+        {
+          id: 'decision-1',
+          reviewId: 'review-1',
+          runId: 'scan-1',
+          pillarId: 'cost-optimization',
+          kind: 'skipped' as const,
+          unresolvedControlIds: [],
+          by: 'schedule-principal',
+          at: '2026-08-18T08:10:00.000Z',
+        },
+      ],
+    };
+    const markup = renderToStaticMarkup(
+      <MemoryRouter>
+        <ReviewInbox
+          reviews={[open]}
+          scans={new Map([['scan-1', scan('scan-1')]])}
+          pillarCount={7}
+          now={new Date('2026-08-20T10:00:00.000Z')}
+        />
+      </MemoryRouter>
+    );
+
+    expect(markup).toContain('1 pillar left');
+    expect(markup).not.toContain('6 pillars left');
+  });
+
   it('routes every named specialist surface into the existing improvement lifecycle', () => {
     const markup = renderToStaticMarkup(
       <MemoryRouter>

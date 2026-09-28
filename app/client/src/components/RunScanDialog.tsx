@@ -5,6 +5,7 @@
 // dialog makes the two parts of that question explicit and keeps the final start as a separate action.
 
 import { useMemo, useState, type ReactNode } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router';
 import {
   Alert,
   AlertDescription,
@@ -16,6 +17,7 @@ import {
   Spinner,
 } from '@databricks/appkit-ui/react';
 import { Play } from 'lucide-react';
+import { assessmentOverviewPath } from '../assessment-continuation';
 import { useAssessment } from '../api/assessment-context';
 import type { AssessmentChoice, Chosen } from '../api/assessment-choice';
 import { useSelectableWorkspaces, type ScanRequest } from '../api/hooks';
@@ -80,9 +82,8 @@ export function eligiblePillars<T extends { readonly id: string }>(
 }
 
 /**
- * Undefined means the saved question or custom build-wide set can be sent as-is. When a saved
- * assessment still names a pillar this build no longer measures, send the visible supported set as
- * a targeted run instead of hiding the unsupported pillar and then asking the server for it anyway.
+ * A custom run records the pillars shown in the dialog so its later question pass has the same
+ * scope. A saved assessment can use its own fixed scope unless this build supports only part of it.
  */
 export function pillarsForConfirmation(
   mode: 'all' | 'selected',
@@ -92,6 +93,7 @@ export function pillarsForConfirmation(
   saved: readonly string[] | undefined
 ): readonly string[] | undefined {
   if (mode === 'selected') return selected;
+  if (basis === 'custom') return offered;
   if (basis === 'saved' && saved?.some((id) => !offered.includes(id)) === true) return offered;
   return undefined;
 }
@@ -113,6 +115,8 @@ export function RunScanDialog({ children }: RunScanDialogProps) {
 
 function RunScanForm({ onStarted }: { readonly onStarted: () => void }) {
   const { catalogue, selected, setChosen, runScan, scanning } = useAssessment();
+  const navigate = useNavigate();
+  const [params] = useSearchParams();
   const directory = useSelectableWorkspaces();
   const [basis, setBasis] = useState<'saved' | 'custom'>(selected == null ? 'custom' : 'saved');
   const [workspaceScope, setWorkspaceScope] = useState<'account' | 'selected'>('account');
@@ -186,6 +190,11 @@ function RunScanForm({ onStarted }: { readonly onStarted: () => void }) {
         if (confirmed.chosen != null) setChosen(confirmed.chosen);
         runScan(confirmed.request);
         onStarted();
+        // A run-specific page pins its original assessment in the URL. Leave it before a new
+        // custom run changes the selection, or the pinned URL would select the old one again.
+        if (params.has('definitionId')) {
+          void navigate(assessmentOverviewPath(basis === 'saved' ? (selected?.id ?? null) : null));
+        }
       }}
     >
       {selected != null && (
@@ -308,13 +317,20 @@ function RunScanForm({ onStarted }: { readonly onStarted: () => void }) {
             {String(pillarCount)} pillar{pillarCount === 1 ? '' : 's'} · {workspaceSummary}
             {lookbackSummary}
           </p>
+          {basis === 'custom' && (
+            <p className="wa-caption text-wa-warning">
+              A custom scan produces indicative results and answerable human questions. It cannot publish a report
+              without a saved assessment. <Link to="/definitions/setup">Define an assessment</Link> first if you need a
+              report.
+            </p>
+          )}
           {(invalidWorkspaces || invalidPillars) && (
             <p className="wa-caption text-wa-danger">Choose at least one pillar and one workspace.</p>
           )}
         </div>
         <button type="submit" className="wa-customer-primary-action" disabled={invalid}>
           {scanning ? <Spinner className="h-3.5 w-3.5" /> : <Play aria-hidden className="h-3.5 w-3.5" />}
-          Start assessment
+          {basis === 'custom' ? 'Start custom scan' : 'Start assessment'}
         </button>
       </div>
     </form>

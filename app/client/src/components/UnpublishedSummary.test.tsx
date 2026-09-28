@@ -61,6 +61,7 @@ const SCORE: Score = {
 
 const SCAN = {
   id: 'run-1',
+  stamp: { definition: { id: 'assessment-1' } },
   state: 'complete' as const,
   measurement: PILLARS.map((pillar) => ({
     pillarId: pillar.id,
@@ -103,6 +104,7 @@ const REQUIREMENTS: readonly AttestableRequirement[] = [
 const REVIEW: AssessmentReview = {
   id: 'review-1',
   runId: 'run-1',
+  definitionId: 'assessment-1',
   openedBy: 'reviewer@example.com',
   openedAt: '2026-08-20T00:00:00.000Z',
   pillars: [],
@@ -134,6 +136,19 @@ function render(over: Partial<Parameters<typeof UnpublishedSummary>[0]> = {}): s
 }
 
 describe('the unpublished Dashboard', () => {
+  it('sends an unfinished custom run straight to its run-specific pillar questions', () => {
+    const markup = render({ scan: { ...SCAN, stamp: {} }, review: { ...REVIEW, definitionId: undefined } });
+
+    expect(markup).toContain('Answer human questions');
+    expect(markup).toContain('href="/answers/walk?runId=run-1&amp;definitionId="');
+    expect(markup).toContain('href="/answers/walk?runId=run-1&amp;definitionId=&amp;pillar=cost-optimization"');
+    expect(markup).toContain('Answer 4 questions');
+    expect(markup).toContain('22 questions need attention');
+    expect(markup).toContain('cannot publish a report');
+    expect(markup).not.toContain('href="/review/review-1"');
+    expect(markup).not.toContain('Complete review');
+  });
+
   it('shows an indicative automated score and evidence gap for every pillar before review', () => {
     const markup = render();
 
@@ -144,9 +159,9 @@ describe('the unpublished Dashboard', () => {
     expect(markup).toContain('7 pillars');
     expect(markup).toContain('63 recorded');
     expect(markup).toContain('0 of 7 pillars recorded');
-    expect(markup).toContain('href="/review/review-1"');
-    expect(markup).toContain('href="/review/review-1?pillar=cost-optimization"');
-    expect(markup).toContain('href="/history/run-1"');
+    expect(markup).toContain('href="/review/review-1?definitionId=assessment-1"');
+    expect(markup).toContain('href="/review/review-1?definitionId=assessment-1&amp;pillar=cost-optimization"');
+    expect(markup).toContain('href="/history/run-1?definitionId=assessment-1"');
     expect(markup.match(/Indicative score/g)).toHaveLength(8);
     expect(markup.match(/\/100/g)).toHaveLength(7);
     expect(markup).toContain('61');
@@ -164,6 +179,56 @@ describe('the unpublished Dashboard', () => {
     expect(markup).not.toContain('Not met');
     expect(markup).not.toContain('Export');
     expect(markup).not.toContain('Priority findings');
+  });
+
+  it('shows only collected pillars and counts the review scope of a partly finished assessment', () => {
+    const selectedPillars = ['cost-optimization', 'reliability'];
+    const markup = render({
+      scan: {
+        ...SCAN,
+        requestedPillars: selectedPillars,
+        score: { ...SCORE, pillars: SCORE.pillars.filter((one) => selectedPillars.includes(one.pillarId)) },
+      },
+      review: {
+        ...REVIEW,
+        selectedPillars,
+        pillars: [
+          {
+            id: 'pillar-skipped',
+            reviewId: REVIEW.id,
+            runId: SCAN.id,
+            pillarId: 'reliability',
+            kind: 'skipped',
+            unresolvedControlIds: [],
+            by: 'reviewer@example.com',
+            at: '2026-08-20T00:01:00.000Z',
+          },
+        ],
+      },
+    });
+
+    expect(markup).toContain('1 of 2 pillars recorded');
+    expect(markup.match(/Indicative score/g)).toHaveLength(3);
+    expect(markup).toContain('pillar=cost-optimization');
+    expect(markup).toContain('pillar=reliability');
+    expect(markup).not.toContain('pillar=data-and-ai-governance');
+    expect(markup).toContain('View skipped decision');
+    expect(markup).not.toContain('Review 3 questions');
+  });
+
+  it('sends a carried-forward pillar outside this review to its answers', () => {
+    const markup = render({
+      scan: { ...SCAN, requestedPillars: ['cost-optimization'] },
+      review: { ...REVIEW, selectedPillars: ['cost-optimization'] },
+    });
+
+    expect(markup).toContain('href="/review/review-1?definitionId=assessment-1&amp;pillar=cost-optimization"');
+    expect(markup).toContain('href="/answers/walk?definitionId=assessment-1&amp;pillar=reliability"');
+    expect(markup).toContain('Answer 3 questions');
+    expect(markup).not.toContain('href="/review/review-1?definitionId=assessment-1&amp;pillar=reliability"');
+    expect(markup).not.toContain(
+      'href="/answers/walk?runId=run-1&amp;definitionId=assessment-1&amp;pillar=reliability"'
+    );
   });
 
   it('states reused evidence instead of calling the whole score automated', () => {
@@ -256,7 +321,7 @@ describe('the unpublished Dashboard', () => {
     expect(markup).toContain('2 of 7 pillars recorded');
     expect(markup).toContain('Confirmed');
     expect(markup).toContain('Skipped');
-    expect(markup).toContain('href="/review/review-1?pillar=reliability"');
+    expect(markup).toContain('href="/review/review-1?definitionId=assessment-1&amp;pillar=reliability"');
   });
 
   it('renders an unreadable review as unknown rather than zero progress', () => {
@@ -299,7 +364,7 @@ describe('the unpublished Dashboard', () => {
 
     expect(markup).toContain('Carried-forward pillars name the earlier scan');
     expect(markup).toContain('Carried forward from');
-    expect(markup).toContain('href="/history/run-before"');
+    expect(markup).toContain('href="/history/run-before?definitionId=assessment-1"');
     expect(markup).not.toContain('Based on automated observations from this scan');
   });
 

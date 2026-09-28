@@ -58,8 +58,12 @@ const EMPTY: readonly AttestableRequirement[] = [];
  * not ask. The other filters are deliberately not carried: state and search narrow a triage list,
  * and a pass whose scope was "the expired ones matching 'backup'" is not a pass over a principle.
  */
-function walkTo(pillar: string): string {
-  return pillar === ALL ? '/answers/walk' : `/answers/walk?pillar=${encodeURIComponent(pillar)}`;
+function walkTo(pillar: string, runId: string | null, definitionId: string | null): string {
+  const query = new URLSearchParams();
+  if (runId != null) query.set('runId', runId);
+  if (definitionId != null) query.set('definitionId', definitionId);
+  if (pillar !== ALL) query.set('pillar', pillar);
+  return query.size === 0 ? '/answers/walk' : `/answers/walk?${query.toString()}`;
 }
 
 const SEVERITY_RANK: Readonly<Record<Severity, number>> = {
@@ -73,7 +77,9 @@ const SEVERITY_RANK: Readonly<Record<Severity, number>> = {
 export function AttestationsPage() {
   const { pillarTitle } = useAssessment();
   const [params, setParams] = useSearchParams();
-  const answers = useAttestations();
+  const runId = params.get('runId');
+  const definitionId = params.get('definitionId');
+  const answers = useAttestations(runId ?? undefined);
   const submission = useSubmitAnswer(answers.reload);
 
   const state = params.get('state') ?? ALL;
@@ -176,6 +182,15 @@ export function AttestationsPage() {
 
   return (
     <CustomerPage>
+      {runId != null && definitionId === '' && (
+        <div className="wa-notice-warning flex items-start gap-2" role="status">
+          <AlertTriangle aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-wa-warning" />
+          <p className="wa-body-compact">
+            These answers belong to a custom run. They can be recorded, but this run cannot publish a report without a
+            saved assessment.
+          </p>
+        </div>
+      )}
       {/* The one thing a reader has to know before they type: whether what they write will still
           be here tomorrow. A page that accepted a considered statement and lost it on the next
           restart would be worse than one that refused it, so this is a banner and not a footnote. */}
@@ -213,7 +228,7 @@ export function AttestationsPage() {
                     done one has no reason to guess that a second surface exists, so it is offered
                     here rather than added to the rail — the rail would present two pages as
                     alternatives when one is a mode of the other. */
-              <Link className="wa-button-secondary shrink-0" to={walkTo(pillar)}>
+              <Link className="wa-button-secondary shrink-0" to={walkTo(pillar, runId, definitionId)}>
                 <ListOrdered aria-hidden className="h-4 w-4" />
                 Answer in order
               </Link>
@@ -299,7 +314,12 @@ export function AttestationsPage() {
                         <button
                           type="button"
                           className="wa-button-secondary"
-                          onClick={() => setParams({}, { replace: true })}
+                          onClick={() => {
+                            const kept = new URLSearchParams();
+                            if (runId != null) kept.set('runId', runId);
+                            if (definitionId != null) kept.set('definitionId', definitionId);
+                            setParams(kept, { replace: true });
+                          }}
                         >
                           Clear filters
                         </button>

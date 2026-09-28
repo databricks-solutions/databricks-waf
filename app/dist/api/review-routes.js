@@ -19,7 +19,7 @@ function registerReviewRoutes(app, options) {
 			return;
 		}
 		try {
-			const open = await store.openReviews(assessmentOf(request));
+			const open = (await store.openReviews(assessmentOf(request))).filter((one) => one.review.definitionId != null);
 			const payload = {
 				eligibility: eligible(),
 				reviews: open.map((one) => presentReview(one, store, options.reviewStorage)),

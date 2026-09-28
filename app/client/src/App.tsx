@@ -1,4 +1,4 @@
-import { createBrowserRouter, RouterProvider, NavLink, Outlet, useNavigate } from 'react-router';
+import { createBrowserRouter, RouterProvider, NavLink, Outlet, useNavigate, useSearchParams } from 'react-router';
 import { useEffect, useState } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@databricks/appkit-ui/react';
 import { Menu } from 'lucide-react';
@@ -160,6 +160,31 @@ function Layout() {
   );
 }
 
+/** A link to a run carries the assessment it belongs to, even after another is selected. */
+function ScopedLayout() {
+  const [params] = useSearchParams();
+  const requested = params.get('definitionId');
+  const { definitionId, choices, setChosen } = useAssessment();
+  const wanted = requested === '' ? null : requested;
+
+  useEffect(() => {
+    if (requested == null || definitionId === undefined || definitionId === wanted) return;
+    if (wanted == null) setChosen({ kind: 'none' });
+    else if (choices.some((one) => one.id === wanted)) setChosen({ kind: 'one', id: wanted });
+  }, [requested, wanted, definitionId, choices, setChosen]);
+
+  if (requested != null && definitionId !== wanted) {
+    return choices.some((one) => one.id === wanted) || definitionId === undefined ? (
+      <div role="status">Opening this assessment…</div>
+    ) : (
+      <div role="alert">
+        This assessment is no longer available. <NavLink to="/definitions">Open Assessments</NavLink> to choose another.
+      </div>
+    );
+  }
+  return <Layout />;
+}
+
 /**
  * An interactive completion enters the exact review the server opened for that run.
  *
@@ -226,7 +251,7 @@ const CUSTOMER_PREVIEWS = import.meta.env.DEV
 const router = createBrowserRouter([
   ...DEVELOPMENT_ROUTES,
   {
-    element: <Layout />,
+    element: <ScopedLayout />,
     children: [
       { path: '/', element: <Landing /> },
       ...CUSTOMER_PREVIEWS,

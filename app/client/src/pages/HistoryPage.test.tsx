@@ -43,20 +43,53 @@ describe('the customer-result boundary in raw-run history', () => {
     expect(keys).not.toContain('results');
   });
 
-  it('sends an unfinished run back to its evidence record without rendering its provisional score', () => {
+  it('labels a custom run as indicative and links to its exact evidence record', () => {
     const markup = customerResult(summary());
 
-    expect(markup).toContain('Awaiting review');
-    expect(markup).toContain('/history/scan-1');
+    expect(markup).toContain('Indicative only');
+    expect(markup).toContain('/history/scan-1?definitionId=');
     expect(markup).toContain('wa-row-inset');
     expect(markup).not.toContain('65.3');
   });
 
+  it('labels a saved assessment run as awaiting review', () => {
+    const markup = customerResult(
+      summary({
+        stamp: {
+          catalogueVersion: 'v1',
+          catalogueFingerprint: 'scope-a',
+          executionMode: 'on-behalf-of-user',
+          actor: 'analyst@example.com',
+          scope: { description: 'the account' },
+          lookbackDays: 30,
+          definition: { id: 'assessment-a', version: 1, fingerprint: 'scope-a' },
+        },
+      })
+    );
+
+    expect(markup).toContain('Awaiting review');
+    expect(markup).toContain('/history/scan-1?definitionId=assessment-a');
+    expect(markup).not.toContain('65.3');
+  });
+
   it('links a completed run to its published report', () => {
-    const markup = customerResult(summary({ resultId: 'result-1' }));
+    const markup = customerResult(
+      summary({
+        resultId: 'result-1',
+        stamp: {
+          catalogueVersion: 'v1',
+          catalogueFingerprint: 'scope-a',
+          executionMode: 'on-behalf-of-user',
+          actor: 'analyst@example.com',
+          scope: { description: 'the account' },
+          lookbackDays: 30,
+          definition: { id: 'assessment-a', version: 1, fingerprint: 'scope-a' },
+        },
+      })
+    );
 
     expect(markup).toContain('Open report');
-    expect(markup).toContain('/report/result-1');
+    expect(markup).toContain('/report/result-1?definitionId=assessment-a');
     expect(markup).toContain('wa-row-inset');
     expect(markup).not.toContain('65.3');
   });

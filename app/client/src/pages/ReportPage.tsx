@@ -21,6 +21,7 @@
 import { Printer } from 'lucide-react';
 import { useMemo, type ReactNode } from 'react';
 import { Link, useParams } from 'react-router';
+import { answerWalkPath, continuationPath } from '../assessment-continuation';
 import { useAssessment } from '../api/assessment-context';
 import type { AlsoAsking } from '../api/assessment-context';
 import { customerResult } from '../api/final-result';
@@ -56,7 +57,7 @@ import type { CatalogueControl, Decision, ImprovementAction, Note, Scan, ValueRe
 
 /** The report for the run the app has in hand, which is the newest one. */
 export function ReportPage() {
-  const { scan, result, loading, error } = useAssessment();
+  const { scan, result, latestRun, loading, error } = useAssessment();
   return scan != null && result != null ? (
     <Report scan={scan} resultId={result.id} />
   ) : (
@@ -65,14 +66,30 @@ export function ReportPage() {
       {...(error != null ? { error } : {})}
       heading="No report is available"
       detail={
-        scan != null
-          ? 'Finish the open review to publish the report.'
-          : 'Run an assessment from the Dashboard, then return here to open its report.'
+        latestRun?.stamp.definition == null && latestRun != null
+          ? 'The latest run is a custom scan. It can collect human answers but cannot publish a report without a saved assessment.'
+          : latestRun != null
+            ? 'Finish the open review to publish the report.'
+            : 'Run an assessment from the Dashboard, then return here to open its report.'
       }
       action={
-        <Link className="wa-customer-primary-action" to={scan != null ? '/review' : '/overview'}>
-          {scan != null ? 'Continue review' : 'Open Dashboard'}
-        </Link>
+        latestRun?.stamp.definition == null && latestRun != null ? (
+          <span className="flex flex-wrap gap-2">
+            <Link className="wa-customer-primary-action" to="/definitions/setup">
+              Define an assessment
+            </Link>
+            <Link className="wa-customer-secondary-action" to={answerWalkPath(latestRun.id)}>
+              Answer human questions
+            </Link>
+          </span>
+        ) : (
+          <Link
+            className="wa-customer-primary-action"
+            to={latestRun == null ? '/overview' : continuationPath(latestRun, latestRun.finalisation?.reviewId)}
+          >
+            {latestRun == null ? 'Open Dashboard' : 'Continue review'}
+          </Link>
+        )
       }
     />
   );
