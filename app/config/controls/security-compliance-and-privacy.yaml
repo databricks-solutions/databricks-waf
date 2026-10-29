@@ -1396,13 +1396,16 @@ principles:
           - gcp
         collector: sql:jobs.inventory
         criteria: >-
-          Jobs where the run_as field contains an email address are running as a user account rather
-          than a service principal. A job running as a user account uses that person's permissions,
-          outlives their employment, and produces audit entries attributed to an individual rather
-          than a workload. The share of jobs running as service principals over the total with a
-          recorded run_as identity is the metric; jobs with no recorded run_as are counted
-          separately and reported but excluded from the share because the field is absent on rows
-          written before the column existed.
+          Jobs where the run_as_user_name field holds an email address are running as a user account
+          rather than a service principal. A job running as a user account uses that person's
+          permissions, outlives their employment, and produces audit entries attributed to an
+          individual rather than a workload. A UUID in run_as_user_name is a service principal's
+          application ID. Any other value, including a group name, and a name that was never
+          recorded, is unknown. The share of jobs running as service principals over the jobs
+          classified as a user or a service principal is the metric; unknown jobs are counted
+          separately and reported but excluded from the share because the field is not populated on
+          rows written before early December 2025. The run_as field holds only an ID and does not
+          say which kind of identity it is.
         thresholds:
           pass_share: 1
           partial_share: 0.8
