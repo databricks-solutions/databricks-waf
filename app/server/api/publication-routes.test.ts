@@ -627,6 +627,25 @@ describe('publishing a month', () => {
     await expect(harness.publications.ofMonth(month('2026-07'))).resolves.toEqual([]);
   });
 
+  it('refuses the unreleased interim variant of Version 1, whichever state its stamp recorded', async () => {
+    const interim = {
+      ...BASIS,
+      publicMethodology: {
+        publicVersion: 1,
+        manifestDigest: 'sha256:3ffb685e36d092c91f52a93a172c1db7e32a2ec5f88f3efdab361390eb0dd71f',
+        state: 'released' as const,
+      },
+    };
+    const harness = await serve({ scans: [closedIn('2026-07', 100, interim)] });
+
+    const { status, body } = await send(harness.base, '/api/months/2026-07/publish');
+
+    expect(status).toBe(409);
+    expect(body).toMatchObject({ error: 'methodology-not-released' });
+    expect((body as { message: string }).message).toContain('unreleased interim variant of Version 1');
+    await expect(harness.publications.ofMonth(month('2026-07'))).resolves.toEqual([]);
+  });
+
   it('refuses a candidate methodology record until its release is approved', async () => {
     const candidate = {
       ...BASIS,

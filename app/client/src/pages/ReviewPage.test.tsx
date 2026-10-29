@@ -141,7 +141,7 @@ describe('the completed review handoff', () => {
     );
     expect(markup).toContain('Your Dashboard is ready');
     expect(markup).toContain('Open Dashboard');
-    expect(markup).toContain('Methodology Version 1 is not released');
+    expect(markup).toContain('The current methodology is not released');
     expect(markup).toContain('monthly publication remains held');
     expect(markup).not.toContain('methodology-not-released');
     expect(markup).not.toContain('not eligible to appear on the Dashboard');

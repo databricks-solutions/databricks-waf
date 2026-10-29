@@ -1,4 +1,5 @@
 import { fromBytes } from "../records/digest.js";
+import { INTERIM_VERSION_1_LABEL, isInterimVersionOne } from "../shared/api/methodology-interim.js";
 import { assessmentOf } from "./assessment-query.js";
 import { eligible, ineligible } from "../shared/api/eligibility.js";
 import { finalisationOf } from "../review/finalisation.js";
@@ -166,7 +167,7 @@ function registerPublicationRoutes(app, options) {
 		const finalisation = standing.finalisation;
 		const unreviewed = closing == null || finalisation == null || finalisation.finalised ? void 0 : notReviewed(month, closing.finishedAt, finalisation.recorded, finalisation.expected, closed);
 		const methodologyUnpublishable = closing == null ? void 0 : methodologyRefusal(month, closing, closed);
-		const eligibility = !standing.eligibility.eligible ? standing.eligibility : methodologyUnpublishable == null ? eligible() : ineligible("incomplete", "methodology-not-released", methodologyUnpublishable, "Run the released Methodology Version 1 assessment, complete its review, and retry publication.");
+		const eligibility = !standing.eligibility.eligible ? standing.eligibility : methodologyUnpublishable == null ? eligible() : ineligible("incomplete", "methodology-not-released", methodologyUnpublishable, "Run an assessment under a released methodology version, complete its review, and retry publication.");
 		return {
 			sources: {
 				month,
@@ -191,7 +192,8 @@ function registerPublicationRoutes(app, options) {
 	}
 	function methodologyRefusal(month, closing, closed) {
 		const methodology = closing.stamp?.publicMethodology;
-		if (methodology == null) return `${selectedRun(monthLabel(month), runMoment(closing.finishedAt), closed)}, which records no public methodology release. It is pre-release development evidence and cannot be published as Methodology Version 1.`;
+		if (methodology == null) return `${selectedRun(monthLabel(month), runMoment(closing.finishedAt), closed)}, which records no public methodology release. It is pre-release development evidence and cannot be published under a public methodology version.`;
+		if (isInterimVersionOne(methodology)) return `${selectedRun(monthLabel(month), runMoment(closing.finishedAt), closed)}, which records the ${INTERIM_VERSION_1_LABEL}. That scoring shape was never released, so a customer publication cannot rest on it.`;
 		if (methodology.state !== "released") return `${selectedRun(monthLabel(month), runMoment(closing.finishedAt), closed)}, which records Methodology Version ${String(methodology.publicVersion)} as a release candidate. A customer publication requires a released methodology record.`;
 	}
 	/**

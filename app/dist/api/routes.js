@@ -416,7 +416,7 @@ function registerApi(served, options) {
 		}
 		const scan = scanFromFinalResult(result, source);
 		if (scan == null) {
-			resultGateFailure(response, 409, ineligible("incomplete", "legacy-result", `Published report ${result.id} predates the Version 2 outcome and cannot produce a report file.`, "Complete a new assessment and review under Methodology Version 1, then use that report."));
+			resultGateFailure(response, 409, ineligible("incomplete", "legacy-result", `Published report ${result.id} predates the Version 2 outcome and cannot produce a report file.`, "Complete a new assessment and review under the current methodology, then use that report."));
 			return;
 		}
 		return {

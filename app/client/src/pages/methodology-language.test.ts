@@ -12,6 +12,9 @@ import {
   fieldsPhrase,
   shapeSentence,
   spanSentence,
+  releaseNotice,
+  releaseSummary,
+  releaseTitle,
   standingSentence,
   revisionSentence,
   weightPhrase,
@@ -246,9 +249,59 @@ describe('whether the last run records this public methodology', () => {
     ).toContain('different manifest digest');
   });
 
+  it('names the unreleased interim variant of Version 1 against released Version 1', () => {
+    const interim = 'sha256:3ffb685e36d092c91f52a93a172c1db7e32a2ec5f88f3efdab361390eb0dd71f';
+    expect(
+      standingSentence(current, { publicVersion: 1, manifestDigest: interim, state: 'released' }),
+    ).toBe('The most recent run records the unreleased interim variant of Version 1, not released Version 1.');
+  });
+
+  it('names the unreleased interim variant of Version 1 against a Version 2 candidate', () => {
+    const interim = 'sha256:3ffb685e36d092c91f52a93a172c1db7e32a2ec5f88f3efdab361390eb0dd71f';
+    const candidate = { publicVersion: 2, manifestDigest: 'sha256:two', state: 'candidate' as const, effectiveDate: null };
+    expect(
+      standingSentence(candidate, { publicVersion: 1, manifestDigest: interim, state: 'released' }),
+    ).toBe('The most recent run records the unreleased interim variant of Version 1, not Version 2.');
+  });
+
+  it('names the current version when the latest run is a pre-release record', () => {
+    const candidate = { publicVersion: 2, manifestDigest: 'sha256:two', state: 'candidate' as const, effectiveDate: null };
+    expect(standingSentence(candidate, undefined)).toBe(
+      'The most recent run is a pre-release development record. It does not carry Methodology Version 2.',
+    );
+  });
+
   it('does not call candidate evidence released', () => {
     expect(
       standingSentence(current, { publicVersion: 1, manifestDigest: 'sha256:aaa', state: 'candidate' }),
     ).toBe('The most recent run records Methodology Version 1 as a release candidate.');
+  });
+});
+
+describe('the page wording for a release candidate and a release', () => {
+  const candidate = { publicVersion: 2, state: 'candidate' as const };
+  const released = { publicVersion: 1, state: 'released' as const };
+
+  it('titles the page with the version it describes and says when it is a candidate', () => {
+    expect(releaseTitle(candidate)).toBe('Methodology Version 2 candidate');
+    expect(releaseTitle(released)).toBe('Methodology Version 1');
+  });
+
+  it('describes a candidate as not yet the released standard', () => {
+    expect(releaseSummary(candidate)).toContain('release candidate');
+    expect(releaseSummary(candidate)).toContain('not yet released');
+    expect(releaseSummary(released)).toBe(
+      'The released customer standard, scoring method, and exact requirements used by this build.',
+    );
+  });
+
+  it('tells a reader of a candidate what it cannot yet be used for', () => {
+    const notice = releaseNotice(candidate);
+    expect(notice).toContain('Version 1 remains the released standard');
+    expect(notice).toContain('cannot be compared with Version 1');
+    expect(notice).toContain('publication');
+    expect(releaseNotice(released)).toBeUndefined();
+    // Nothing to say about a first candidate: there is no earlier release to remain the standard.
+    expect(releaseNotice({ publicVersion: 1, state: 'candidate' })).toBeUndefined();
   });
 });

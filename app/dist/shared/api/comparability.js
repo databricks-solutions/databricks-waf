@@ -1,4 +1,5 @@
 import internal_delivery_patterns_default from "./internal-delivery-patterns.js";
+import { INTERIM_VERSION_1_LABEL, isInterimVersionOne, methodologyVersionName } from "./methodology-interim.js";
 //#region shared/api/comparability.ts
 const INTERNAL_DELIVERY_NAMES = internal_delivery_patterns_default.map((pattern) => new RegExp(pattern, "iu"));
 /**
@@ -115,14 +116,21 @@ function comparable(a, b, across, options) {
 * ships Version 1. Candidate runs carry their candidate state and exact manifest, so two matching
 * candidate records can be compared without either being presented as released. Publication remains
 * a separate, stricter gate.
+*
+* Different public versions are refused whatever the catalogue span between them: a version is a
+* different standard, and describing what separates two of them would make a trend of what is not one.
 */
 function methodologyBarrier(a, b) {
 	const one = a.publicMethodology;
 	const two = b.publicMethodology;
 	if (one == null && two == null) return "Neither scan records a public methodology release. They are pre-release development records, so they are not points in a customer methodology trend.";
 	if (one == null || two == null) return "One scan records a public methodology release and the other is a pre-release development record. They do not belong to one customer methodology trend.";
-	if (one.publicVersion !== two.publicVersion) return `These scans belong to different public methodology versions (${String(one.publicVersion)} and ${String(two.publicVersion)}).`;
-	if (one.manifestDigest !== two.manifestDigest) return `These scans name Methodology Version ${String(one.publicVersion)} with different manifest digests, so they do not describe the same released standard.`;
+	const interim = isInterimVersionOne(one) || isInterimVersionOne(two);
+	if (one.publicVersion !== two.publicVersion) {
+		const [first, second] = interim ? [methodologyVersionName(one), methodologyVersionName(two)] : [String(one.publicVersion), String(two.publicVersion)];
+		return `These scans belong to different public methodology versions (${first} and ${second}).`;
+	}
+	if (one.manifestDigest !== two.manifestDigest) return `These scans name Methodology Version ${String(one.publicVersion)} with different manifest digests` + (interim ? `, and one of them is the ${INTERIM_VERSION_1_LABEL}, which was never released` : "") + ", so they do not describe the same released standard.";
 }
 /**
 * What a change of catalogue between two runs means for comparing them.

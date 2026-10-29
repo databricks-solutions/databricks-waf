@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
   RELEASED_MANIFEST_DIGESTS,
@@ -79,6 +80,18 @@ describe('the pinned digests of released methodologies', () => {
     expect(RELEASED_MANIFEST_DIGESTS[1]).toBe(
       'sha256:30d26e28904afb7e2c95799daef7ee26219c1461728ded11f514435394c99761'
     );
+  });
+
+  it('keeps the committed Version 1 manifest at the digest of the v0.1.0 release', () => {
+    const committed = JSON.parse(
+      readFileSync(new URL('../config/methodology/version-1.manifest.json', import.meta.url), 'utf8')
+    ) as { manifest_digest: string };
+
+    expect(committed.manifest_digest).toBe(
+      'sha256:30d26e28904afb7e2c95799daef7ee26219c1461728ded11f514435394c99761'
+    );
+    expect(manifestDigestOf(committed)).toBe(committed.manifest_digest);
+    expect(() => assertFrozenAgainstPin(1, 'released', committed)).not.toThrow();
   });
 
   it('accepts a released manifest whose content digest is the pin', () => {
