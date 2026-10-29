@@ -56,11 +56,12 @@ describe('the methodology this build measures against', () => {
   it('serves the public release separately from technical catalogue provenance', async () => {
     const payload = await methodology();
 
-    expect(payload.release.publicVersion).toBe(1);
-    expect(payload.release.state).toBe('released');
-    expect(payload.release.effectiveDate).toBe('2026-08-28');
-    expect(payload.release.releaseCommit).toBe('60ff57fa7ceb2ca844532376230c0769b9f304ba');
-    expect(payload.release.approvedBy).toBe('Al Thrussell (product owner)');
+    expect(payload.release.publicVersion).toBe(2);
+    expect(payload.release.state).toBe('candidate');
+    expect(payload.release.candidateStartedAt).toBe('2026-10-29');
+    expect(payload.release.effectiveDate).toBeNull();
+    expect(payload.release.releaseCommit).toBeNull();
+    expect(payload.release.approvedBy).toBeNull();
     expect(payload.release.manifestDigest).toMatch(/^sha256:[0-9a-f]{64}$/);
     expect(payload.technical.catalogueRevision).toBe(catalogue.version.version);
     expect(payload.technical.catalogueFingerprint).toBe(catalogue.version.fingerprint);

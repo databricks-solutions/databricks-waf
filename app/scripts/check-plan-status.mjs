@@ -710,6 +710,8 @@ const EVIDENCE = [
     files: [
       'config/methodology/version-1.manifest.json',
       'config/methodology/version-1.release.json',
+      'config/methodology/version-2.manifest.json',
+      'config/methodology/version-2.release.json',
       'scripts/methodology-manifest.mts',
     ],
   },
