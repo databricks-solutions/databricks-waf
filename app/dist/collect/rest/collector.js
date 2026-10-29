@@ -32,6 +32,7 @@ var RestCollector = class {
 		return results;
 	}
 	async runProbe(probe, context) {
+		if (probe.run === void 0) return refusedWithoutCalling(probe);
 		const started = Date.now();
 		const outcome = await context.scheduler.run({
 			surface: "rest",
@@ -56,6 +57,30 @@ var RestCollector = class {
 		});
 	}
 };
+/**
+* The result for a probe whose call no app can make, without making it.
+*
+* The refusal is structured so a remedy does not have to read the sentence to know this is a platform
+* limit, and the sentence still carries the platform's `required scopes:` wording so a stored signal
+* is understood by the text matching that predates the field. The account plane gets its own
+* sentence because no scope is the obstacle there: a workspace token is rejected before scopes are
+* considered.
+*/
+function refusedWithoutCalling(probe) {
+	const refusal = probe.scope === "account" ? { kind: "account-plane" } : {
+		kind: "ungrantable-scope",
+		scope: probe.scope
+	};
+	const demand = `required scopes: ${probe.scope}`;
+	const reason = refusal.kind === "account-plane" ? `${probe.what} is account-plane configuration, and this app is installed in a workspace. A workspace token is rejected by the account endpoints before authorisation is considered, so no scope and no grant would change that. The call was not made. Until an administrator's own reading is imported, this control is answered by attestation rather than by measurement. (${demand})` : failureReason(probe, "permission-denied", `${demand}; the call was not made`);
+	return {
+		...unmeasurable(probe.id, reason, {
+			...COMPLETE,
+			reach: REST_REACH
+		}),
+		refusal
+	};
+}
 /**
 * Every REST probe is workspace-reach, and this is not a simplification.
 *

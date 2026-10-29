@@ -1,8 +1,8 @@
 {
   "what": "The shape of a scan as it is stored, read out of the type declarations, with the codec version that was current when the shape was last recorded. See scripts/stored-shape.mts and row 90.",
   "codecVersion": 4,
-  "digest": "09b7c0472eb6050f",
-  "pathCount": 321,
+  "digest": "89a5dea1c66c4734",
+  "pathCount": 324,
   "paths": [
     "estate.assessed[].id:string",
     "estate.assessed[].name:string",
@@ -287,6 +287,9 @@
     "signals[].provenance?.collector:string",
     "signals[].provenance?.from?:string",
     "signals[].provenance?.surface:\"ai\"|\"cloud\"|\"describe\"|\"plans\"|\"rest\"|\"sql\"",
+    "signals[].refusal?|0.kind:\"ungrantable-scope\"",
+    "signals[].refusal?|0.scope:string",
+    "signals[].refusal?|1.kind:\"account-plane\"",
     "signals[].status:\"observed\"|\"unmeasurable\"",
     "signals[].unmeasurableReason?:string",
     "spend[].bytesRead?:number",

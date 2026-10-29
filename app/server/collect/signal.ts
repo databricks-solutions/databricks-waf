@@ -112,6 +112,20 @@ export function describeReach(reach: Reach | undefined, workspaces?: number): st
   return 'an unstated part of the estate, which is a gap in this app rather than a finding about yours';
 }
 
+/**
+ * Why a call was refused, as a fact a remedy can read instead of a sentence it has to parse.
+ *
+ * `unmeasurableReason` is prose for the reader, and wording changes; deciding what a reader can do
+ * by matching it means every rewording is a chance to reclassify a platform limit as a defect.
+ * This is set only where the collector knows the cause before any call is made, so a signal without
+ * one says nothing either way and a remedy falls back to the words. Decision A6 in docs/decisions.md.
+ */
+export type Refusal =
+  /** The call needs a scope Databricks Apps does not offer an app. No install can be granted it. */
+  | { readonly kind: 'ungrantable-scope'; readonly scope: string }
+  /** The call is to the account plane, which a workspace token cannot reach whatever it carries. */
+  | { readonly kind: 'account-plane' };
+
 export interface SignalResult<T = unknown> {
   readonly id: SignalId;
   readonly status: SignalStatus;
@@ -124,6 +138,12 @@ export interface SignalResult<T = unknown> {
    * ticket; naming the missing grant does not.
    */
   readonly unmeasurableReason?: string;
+  /**
+   * The structured cause behind `unmeasurableReason`, when the collector knew it.
+   *
+   * Optional inside the stored signal, so a scan recorded before it existed reads as it did.
+   */
+  readonly refusal?: Refusal;
   readonly collectedAt: Date;
   /** Wall-clock cost of collecting it, for the scan footprint. */
   readonly durationMs: number;

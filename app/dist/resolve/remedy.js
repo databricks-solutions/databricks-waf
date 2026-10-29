@@ -18,7 +18,7 @@ function remedyFor(required, signals, context = {}) {
 	const failed = required.filter((id) => (signals.get(id)?.status ?? "unmeasurable") === "unmeasurable");
 	if (failed.length === 0) return void 0;
 	return {
-		...failed.map((id) => one(id, signals.get(id)?.unmeasurableReason, context)).reduce((so_far, candidate) => rank(candidate.kind) > rank(so_far.kind) ? candidate : so_far),
+		...failed.map((id) => one(id, signals.get(id), context)).reduce((so_far, candidate) => rank(candidate.kind) > rank(so_far.kind) ? candidate : so_far),
 		signals: failed
 	};
 }
@@ -64,11 +64,13 @@ const ORDER = [
 function rank(kind) {
 	return ORDER.indexOf(kind);
 }
-function one(signal, reason, context) {
+function one(signal, result, context) {
+	const reason = result?.unmeasurableReason;
 	const base = {
 		signals: [signal],
 		...reason != null ? { because: reason } : {}
 	};
+	if (result?.refusal != null) return fromRefusal(result.refusal, context, base);
 	if (reason == null) return {
 		...base,
 		kind: "report",
@@ -98,6 +100,25 @@ function one(signal, reason, context) {
 	};
 }
 /**
+* A refusal the collector recorded as a fact, which is always a limit of the platform.
+*
+* Both kinds end at a person, so both are `attest`. The family table is not consulted: it describes
+* the endpoint the catalogue names, and this refusal describes the call that was actually considered.
+*/
+function fromRefusal(refusal, context, base) {
+	return {
+		...base,
+		kind: "attest",
+		says: refusal.kind === "account-plane" ? accountPlaneSays(familyOf(context.collector)?.label ?? "This setting") : ungrantableScopeSays(refusal.scope)
+	};
+}
+function accountPlaneSays(label) {
+	return `${label} is account-plane configuration, and this app is installed in a workspace. The token is rejected before authorisation is considered, so no scope and no grant would help. Answer this requirement on the Answers page instead.`;
+}
+function ungrantableScopeSays(scope) {
+	return `Reading this needs the "${scope}" scope, which Databricks Apps does not offer an app. No install of this app can be granted it, so answer this requirement on the Answers page rather than waiting for a version that measures it.`;
+}
+/**
 * A refusal that named a scope, which is three different situations wearing one message.
 *
 * The distinction is the reason `declared-scopes.ts` exists: "invalid scope, required scopes:
@@ -109,7 +130,7 @@ function fromScope(signal, scope, context, base) {
 	if (family != null && !family.grantable) return {
 		...base,
 		kind: "attest",
-		says: family.plane === "account" ? `${family.label} is account-plane configuration, and this app is installed in a workspace. The token is rejected before authorisation is considered, so no scope and no grant would help. Answer this requirement on the Answers page instead.` : `Reading this needs the "${scope}" scope, which Databricks Apps does not offer an app. No install of this app can be granted it, so answer this requirement on the Answers page rather than waiting for a version that measures it.`
+		says: family.plane === "account" ? accountPlaneSays(family.label) : ungrantableScopeSays(scope)
 	};
 	if (context.declaredScopes?.includes(scope) === true) return {
 		...base,
