@@ -129,6 +129,7 @@ Use **Runs** for exact collection history, **Months** for closed reporting perio
 - Confidence follows from coverage and evidence quality.
 - Human answers are labelled as stated, not read.
 - Cross-run movement is shown only where scope and methodology are comparable.
+- A monthly publication closes on the month's latest scheduled run and opens on the newest earlier scan comparable with it; where none is, its movement sections are empty and say why. See decision A9 in [Decisions](decisions.md).
 - Improvement actions and risk decisions never silently change the score.
 
 ## Next

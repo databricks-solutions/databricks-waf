@@ -9,7 +9,7 @@
 // asserts something about the estate is a claim, claims are what get reviewed, and a claim buried in
 // JSX is one nobody reads twice.
 
-import type { Schedule, ScheduleRun } from '../api/types';
+import type { ScanSummary, Schedule, ScheduleRun } from '../api/types';
 
 /** Whether the cadence is holding, as the one word the header shows. */
 export type Health = 'working' | 'stopped' | 'failing' | 'unknown';
@@ -385,7 +385,11 @@ function retryClause(retries: Retries | undefined): string | undefined {
   // "apart" needs two gaps to be apart from each other, and one retry has one gap. The singular reads as
   // a schedule with two waits in it otherwise.
   const wait =
-    retries.waitMs == null ? '' : retries.times === 1 ? `, ${waitFor(retries.waitMs)} later` : ` about ${waitFor(retries.waitMs)} apart`;
+    retries.waitMs == null
+      ? ''
+      : retries.times === 1
+        ? `, ${waitFor(retries.waitMs)} later`
+        : ` about ${waitFor(retries.waitMs)} apart`;
 
   /*
    * Both values are said, because they are different promises and the panel used to make only one of
@@ -700,6 +704,42 @@ export const REPEATED = 'the same failure again';
 export const RUNS_VIEWS = { scans: 'Scans', job: 'Job runs' } as const;
 
 export type RunsView = keyof typeof RUNS_VIEWS;
+
+/**
+ * Which scans the Scans view lists, and why the scheduled ones are the default.
+ *
+ * The scheduled service principal is the system of record for trends and monthly publications (decision
+ * A9 in docs/decisions.md), so its runs are what the page opens on. A run somebody started by hand is a
+ * different observer — what it sees depends on who pressed the button — and listed among the scheduled
+ * ones it reads as the estate moving. It is one filter away, and `all` is the whole record.
+ */
+export const SCAN_FILTERS = { scheduled: 'Scheduled', interactive: 'By hand', all: 'All' } as const;
+
+export type ScanFilter = keyof typeof SCAN_FILTERS;
+
+/** The filter a `?scans=` value names; anything else, or nothing, is the scheduled default. */
+export function scanFilterFrom(value: string | null): ScanFilter {
+  return value === 'interactive' || value === 'all' ? value : 'scheduled';
+}
+
+/**
+ * The scans a filter keeps.
+ *
+ * A run recorded before the trigger was kept is in neither kind: the record does not say, and calling it
+ * by hand would put a fact in the history that was never measured. It is in `all`.
+ */
+export function filterScans<T extends Pick<ScanSummary, 'trigger'>>(scans: readonly T[], filter: ScanFilter): T[] {
+  return scans.filter((scan) => filter === 'all' || scan.trigger === filter);
+}
+
+/** How many scans each filter holds, so a default that is empty can say what is behind the other two. */
+export function scanFilterCounts(scans: readonly Pick<ScanSummary, 'trigger'>[]): Record<ScanFilter, number> {
+  return {
+    scheduled: filterScans(scans, 'scheduled').length,
+    interactive: filterScans(scans, 'interactive').length,
+    all: scans.length,
+  };
+}
 
 /** What the job-runs view is a list of, as the table's caption for a screen reader. */
 export const JOB_RUNS_CAPTION =

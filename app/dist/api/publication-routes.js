@@ -3,7 +3,7 @@ import { assessmentOf } from "./assessment-query.js";
 import { eligible, ineligible } from "../shared/api/eligibility.js";
 import { finalisationOf } from "../review/finalisation.js";
 import { inPublishedOrder, monthLabel, monthOpensOn, parseMonth, supersededBy, unsuperseded } from "../monthly/publication.js";
-import { closingScan, monthContent, scoreText } from "../monthly/content.js";
+import { closingScan, monthContent, openingReading, scoreText } from "../monthly/content.js";
 import { currentMonthIn, monthHasClosed } from "../monthly/closed.js";
 import { noSelectedRun, selectedRun, selectedRunReference } from "../monthly/publication-language.js";
 import { monthCsv, monthDocument, monthJson } from "../monthly/document.js";
@@ -153,7 +153,6 @@ function registerPublicationRoutes(app, options) {
 	async function assemble(month, window, timezone, scope, closed) {
 		const summaries = await options.scans.history(SOURCE_LIMIT, scope);
 		const scans = summaries.filter((scan) => inWindow(scan.finishedAt, window.start, window.end));
-		const priorScan = summaries.find((scan) => scan.finishedAt.getTime() < window.start.getTime());
 		const runs = await options.runs?.recent(SOURCE_LIMIT, scope) ?? [];
 		const risks = await options.risks?.all(scope) ?? [];
 		const improvements = options.improvements;
@@ -161,6 +160,8 @@ function registerPublicationRoutes(app, options) {
 		const actions = (improvements == null ? [] : await Promise.all(plans.map((plan) => improvements.actions(plan.id, scope)))).flat();
 		const series = await priorSeries(month, timezone, summaries, scope);
 		const closing = closingScan(summaries, window);
+		const opening = openingReading(summaries.filter((scan) => scan.finishedAt.getTime() < window.start.getTime()), closing);
+		const priorScan = opening.scan;
 		const standing = await standingFor(closing, month, scope, closed);
 		const finalisation = standing.finalisation;
 		const unreviewed = closing == null || finalisation == null || finalisation.finalised ? void 0 : notReviewed(month, closing.finishedAt, finalisation.recorded, finalisation.expected, closed);
@@ -173,6 +174,7 @@ function registerPublicationRoutes(app, options) {
 				runs,
 				scans,
 				...priorScan != null ? { priorScan } : {},
+				...opening.refusal != null ? { priorRefusal: opening.refusal } : {},
 				risks,
 				actions,
 				label: options.label,
@@ -290,7 +292,7 @@ function registerPublicationRoutes(app, options) {
 		const publication = {
 			...identity,
 			ordinal,
-			documentVersion: 1,
+			documentVersion: 2,
 			json,
 			csv: monthCsv(document),
 			digest: fromBytes(Buffer.from(json, "utf8")),

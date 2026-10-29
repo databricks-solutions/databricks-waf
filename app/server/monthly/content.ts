@@ -11,12 +11,20 @@
 //
 // # What a month opened at, and what it closed at
 //
-// Three of the sections are movements, and a movement needs two ends. The end is the last scan whose
-// result landed inside the month; the start is the reading the month opened at, which is the last
-// scan *before* it — `priorScan`. Comparing the month's first in-month scan to its last would measure
-// only what changed after the first run of the month, missing the step between last month's close and
-// this month's open, which is usually where the change is. A month with no prior scan has no opening
-// reading to move from, so its movements and its finding deltas are empty rather than measured
+// Three of the sections are movements, and a movement needs two ends. The end is the month's closing
+// reading: the last *scheduled* run whose result landed inside the month, because the scheduled service
+// principal is the system of record (decision A9 in docs/decisions.md) — and, only where the month has no
+// scheduled run, the last scan of any kind, which the document says. The start is the reading the month
+// opened at, which is the last scan *before* it that can be compared with the closing one —
+// `priorScan`. Comparing the month's first in-month scan to its last would measure only what changed
+// after the first run of the month, missing the step between last month's close and this month's open,
+// which is usually where the change is.
+//
+// A movement across two readings that are not the same question is not a movement: a different
+// identity sees a different estate, a different lookback or methodology asks a different question. So
+// the opening reading must pass the same `comparable` rule the trend applies, and a month with no
+// opening reading that does has its movements and its finding deltas empty — with the rule's reason
+// alongside, so the empty section explains itself — rather than measured across the barrier or
 // against themselves.
 //
 // # The window is passed in, not computed here
@@ -30,10 +38,10 @@
 import { inForce, type AcceptedRisk } from '../accept/risk.js';
 import type { ImprovementAction } from '../improve/action.js';
 import type { Run } from '../run/run.js';
-import { comparable } from '../scan/scan.js';
+import { comparable, stampEnough } from '../scan/scan.js';
 import type { ScanStamp } from '../scan/scan.js';
 import type { OutcomeCounts, ScanSummary } from '../scan/store.js';
-import type { DeltaRow, ExceptionRow, Fact, MonthContent, Movement, TrendPoint } from './document.js';
+import type { ClosingReading, DeltaRow, ExceptionRow, Fact, MonthContent, Movement, TrendPoint } from './document.js';
 import { monthLabel, type MonthId } from './publication.js';
 import type { FinalisationPayload } from '../../shared/api/contract.js';
 
@@ -70,8 +78,16 @@ export interface MonthSources {
   readonly runs: readonly Run[];
   /** Scan summaries whose result landed in the window, in any order. */
   readonly scans: readonly ScanSummary[];
-  /** The last scan before the window: the reading the month opened at. Absent for a first month. */
+  /**
+   * The reading the month opened at: the newest scan before the window that `openingReading` found
+   * comparable with the closing one. Absent for a first month, and for a month with none that is.
+   */
   readonly priorScan?: ScanSummary;
+  /**
+   * Why no earlier scan could open the month, where `openingReading` looked and refused them all.
+   * Carried so the empty movement sections say so. Absent where there was no earlier scan to refuse.
+   */
+  readonly priorRefusal?: string;
   /** Every accepted risk the caller read, across controls. Grouped and read in force here. */
   readonly risks: readonly AcceptedRisk[];
   /** Every improvement action the caller read. Windowed by its own timestamps here. */
@@ -154,18 +170,87 @@ function inWindow(at: Date, window: MonthWindow): boolean {
 }
 
 /**
- * The last scan of the month: the one whose result landed latest inside the window.
+ * The last scan of the month: the scheduled run whose result landed latest inside the window, or the
+ * latest scan of any kind where the month has no scheduled run.
+ *
+ * Scheduled first because the scheduled service principal is the system of record (decision A9 in
+ * docs/decisions.md): an assessor's interactive run is a different observer, and letting whichever
+ * finished last close the month would let a spot-check replace the reading the trend is built from. A
+ * run that did not record its trigger is not known to be scheduled, so it does not take the preference.
  *
  * Exported for the endpoint, which finds each prior published month's closing scan the same way to
  * build the trend's series — one definition of "the month's close" rather than two that drift.
  */
 export function closingScan(scans: readonly ScanSummary[], window: MonthWindow): ScanSummary | undefined {
-  return scans
-    .filter((scan) => inWindow(scan.finishedAt, window))
-    .reduce<ScanSummary | undefined>((latest, scan) => {
-      if (latest == null) return scan;
-      return scan.finishedAt.getTime() > latest.finishedAt.getTime() ? scan : latest;
-    }, undefined);
+  const inMonth = scans.filter((scan) => inWindow(scan.finishedAt, window));
+  const scheduled = inMonth.filter((scan) => scan.trigger === 'scheduled');
+  return latest(scheduled.length > 0 ? scheduled : inMonth);
+}
+
+function latest(scans: readonly ScanSummary[]): ScanSummary | undefined {
+  return scans.reduce<ScanSummary | undefined>((newest, scan) => {
+    if (newest == null) return scan;
+    return scan.finishedAt.getTime() > newest.finishedAt.getTime() ? scan : newest;
+  }, undefined);
+}
+
+/**
+ * Why a reading cannot open a month that `closing` closes, or undefined where it can.
+ *
+ * The server's own `comparable`, in the order the trend reads it (later run first), so the reason reads
+ * the same here as there. A reading without a usable stamp cannot be shown comparable, which is the
+ * rule the trend applies through `stampEnough`: absence is not agreement.
+ */
+function openingBarrier(opening: ScanSummary, closing: ScanSummary): string | undefined {
+  if (!stampEnough(closing.stamp)) {
+    return 'The run that closed the month did not record how it was measured, so nothing can be shown to be comparable with it.';
+  }
+  if (!stampEnough(opening.stamp)) {
+    return 'The earlier scan did not record how it was measured, so it cannot be shown to be comparable with the run that closed the month.';
+  }
+  const verdict = comparable(closing.stamp, opening.stamp);
+  return verdict.ok ? undefined : verdict.reason;
+}
+
+/**
+ * The reading a month opened at: the newest scan before it that can be compared with the closing one.
+ *
+ * A newer scan that cannot be compared is passed over rather than measured against, because the month's
+ * movement is a statement about the estate and a scan taken as a different identity or over a different
+ * lookback is not a reading of the same one. Where none qualifies, the reason given is the newest earlier
+ * scan's — the nearest reading to the month, and the one a reader asks about.
+ *
+ * Exported for the endpoint, which reads the scans and so chooses the opening; `monthContent` checks the
+ * choice again, so a caller that hands in an opening it did not choose this way is corrected here.
+ */
+export function openingReading(
+  earlier: readonly ScanSummary[],
+  closing: ScanSummary | undefined
+): { readonly scan?: ScanSummary; readonly refusal?: string } {
+  if (closing == null) return {};
+  const newestFirst = [...earlier].sort((a, b) => b.finishedAt.getTime() - a.finishedAt.getTime());
+  let refusal: string | undefined;
+  for (const candidate of newestFirst) {
+    const barrier = openingBarrier(candidate, closing);
+    if (barrier == null) return { scan: candidate };
+    refusal ??= barrier;
+  }
+  return refusal != null ? { refusal } : {};
+}
+
+/** What the document says about which reading closed the month. */
+function closingReading(closing: ScanSummary, month: MonthId): ClosingReading {
+  if (closing.trigger === 'scheduled') {
+    return { kind: 'scheduled', statement: 'The month closes on its latest scheduled run, the system of record.' };
+  }
+  const how =
+    closing.trigger === 'interactive'
+      ? 'was started by hand'
+      : 'did not record whether it was scheduled or started by hand';
+  return {
+    kind: 'latest-scan',
+    statement: `No scheduled run finished in ${monthLabel(month)}, so the month closes on its latest scan, which ${how}.`,
+  };
 }
 
 /**
@@ -361,6 +446,24 @@ function actionsMoved(actions: readonly ImprovementAction[], window: MonthWindow
 }
 
 /**
+ * What the empty movement sections say for themselves, where there is a closing run and no opening one.
+ *
+ * Absent where the month has its two readings, and where no run closed it: with nothing to move to, an
+ * explanation of why nothing moved would be about a measurement that was never going to be made.
+ */
+function movementNote(
+  closing: ScanSummary | undefined,
+  opening: ScanSummary | undefined,
+  refusal: string | undefined,
+  month: MonthId
+): string | undefined {
+  if (closing == null || opening != null) return undefined;
+  return refusal != null
+    ? `Movement and finding changes are not shown: no earlier scan can be compared with the run that closed the month. ${refusal}`
+    : `Movement and finding changes are not shown: no scan finished before ${monthLabel(month)}, so the month has no opening reading to measure from.`;
+}
+
+/**
  * The month's whole content, ready for the builder to freeze.
  *
  * A pure function of the records passed in: the same sources produce the same rows, which is what lets
@@ -371,6 +474,11 @@ function actionsMoved(actions: readonly ImprovementAction[], window: MonthWindow
 export function monthContent(sources: MonthSources): MonthContent {
   const closing = closingScan(sources.scans, sources.window);
   const finalisation = sources.finalisation;
+  // The opening is checked here whatever the caller chose: the bytes are frozen, so a movement across a
+  // barrier is not one a later reader can be told about.
+  const checked = sources.priorScan != null && closing != null ? openingBarrier(sources.priorScan, closing) : undefined;
+  const opening = checked == null ? sources.priorScan : undefined;
+  const note = movementNote(closing, opening, checked ?? sources.priorRefusal, sources.month);
   return {
     ...(closing != null && finalisation?.resultId != null
       ? {
@@ -390,9 +498,11 @@ export function monthContent(sources: MonthSources): MonthContent {
           },
         }
       : {}),
+    ...(closing != null ? { closing: closingReading(closing, sources.month) } : {}),
     runHealth: runHealth(sources.runs, sources.window),
-    findingDeltas: findingDeltas(sources.priorScan, closing, sources.label),
-    movement: movement(sources.priorScan, closing),
+    findingDeltas: findingDeltas(opening, closing, sources.label),
+    movement: movement(opening, closing),
+    ...(note != null ? { movementNote: note } : {}),
     actions: actionsMoved(sources.actions, sources.window),
     exceptions: exceptions(sources.risks, sources.window.end, sources.label),
     outcomes: outcomes(closing),

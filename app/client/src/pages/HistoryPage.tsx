@@ -42,11 +42,16 @@ import { usePaged } from '../components/ui/paging';
 import { CustomerPage, Surface } from '../components/system';
 import { duration, identity, measured, requestSentence, startedBy, whoRan } from './run-language';
 import {
+  filterScans,
   inZone,
   JOB_RUNS_CAPTION,
   REPEATED,
   RUN_STATE_LABEL,
   RUNS_VIEWS,
+  SCAN_FILTERS,
+  scanFilterCounts,
+  scanFilterFrom,
+  type ScanFilter,
   took,
   triggerCaption,
   withoutRepeats,
@@ -292,7 +297,17 @@ export function HistoryPage() {
   // honest: there is nothing to know yet.
   const assessesAsName = data?.scans.find((scan) => scan.actor === schedule.data?.assessesAs)?.actorName;
 
-  const paged = usePaged(data?.scans ?? [], 10);
+  // The scheduled runs unless the reader asks for another kind, carried in the URL like the view above.
+  const filter: ScanFilter = scanFilterFrom(params.get('scans'));
+  const filterTo = (next: ScanFilter) => {
+    const to = new URLSearchParams(params);
+    if (next === 'scheduled') to.delete('scans');
+    else to.set('scans', next);
+    setParams(to, { replace: true });
+  };
+  const counts = scanFilterCounts(data?.scans ?? []);
+
+  const paged = usePaged(filterScans(data?.scans ?? [], filter), 10);
   const pagedJobs = usePaged(jobRuns, 10);
 
   return (
@@ -350,6 +365,22 @@ export function HistoryPage() {
                 </button>
               ))}
             </span>
+            {view === 'scans' && (
+              <span className="wa-segmented" role="group" aria-label="Which scans to list">
+                {(Object.keys(SCAN_FILTERS) as readonly ScanFilter[]).map((one) => (
+                  <button
+                    key={one}
+                    type="button"
+                    aria-pressed={one === filter}
+                    onClick={() => {
+                      filterTo(one);
+                    }}
+                  >
+                    {SCAN_FILTERS[one]} ({counts[one]})
+                  </button>
+                ))}
+              </span>
+            )}
           </>
         }
       >
@@ -362,15 +393,20 @@ export function HistoryPage() {
             <div>
               {view === 'scans' ? (
                 <DataTable
-                  caption="Previous scans of this workspace, newest first"
+                  caption={`Previous ${filter === 'all' ? '' : `${SCAN_FILTERS[filter].toLowerCase()} `}scans of this workspace, newest first`}
                   columns={columns(pillarTitle, notes.data?.counts)}
                   rows={paged.rows}
                   rowKey={(scan) => scan.id}
                   empty={{
                     reason: 'not-yet-collected',
-                    heading: 'No scans recorded',
+                    heading:
+                      filter === 'all'
+                        ? 'No scans recorded'
+                        : `No ${SCAN_FILTERS[filter].toLowerCase()} scans recorded`,
                     detail:
-                      'Run an assessment from the Dashboard. Once two runs have been recorded on the same basis, this page can compare them.',
+                      filter === 'all'
+                        ? 'Run an assessment from the Dashboard. Once two runs have been recorded on the same basis, this page can compare them.'
+                        : `${filter === 'scheduled' ? 'The scheduled job has not recorded a scan yet.' : 'Nobody has started a scan by hand.'} The other filters list the rest of the record.`,
                   }}
                 />
               ) : (
@@ -400,6 +436,11 @@ export function HistoryPage() {
               <p>
                 A run that carried pillars forward includes scores it did not measure itself; the Pillars column
                 identifies them.
+              </p>
+              <p>
+                The scheduled runs are listed first because the scheduled service principal is the system of record: a
+                month closes on its latest scheduled run, and its trend is drawn from those. A run started by hand is
+                one filter away, and runs recorded before the trigger was kept appear under All.
               </p>
             </Disclosure>
           ) : (
