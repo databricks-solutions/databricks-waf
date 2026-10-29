@@ -13,6 +13,7 @@ import type { Standing, Standings } from '../decide/standing.js';
 import type { Finding } from '../resolve/finding.js';
 import type { Scan } from '../scan/scan.js';
 import type { ExportVariant } from './variant.js';
+import { projectScan } from '../share/projection.js';
 import type { FinalisationPayload } from '../../shared/api/contract.js';
 
 const RAN = new Date('2026-03-04T09:30:00.000Z');
@@ -741,5 +742,62 @@ describe('the filename', () => {
   it('carries the date and the run, so two downloads in a folder can be told apart', () => {
     expect(exportName(scan(), 'csv')).toBe('well-architected-2026-03-04-run-1234.csv');
     expect(exportName(scan(), 'json')).toBe('well-architected-2026-03-04-run-1234.json');
+  });
+});
+
+describe('a file for a reader outside the assessor group', () => {
+  const importedFirst = finding({
+    evidence: [
+      {
+        signal: 'rest:workspace:preview.workspace-conf',
+        observed: 'enableIpAccessLists is true',
+        expected: 'Enabled',
+        coverage: { mode: 'complete' },
+        collectedAt: READ,
+        evidenceClass: 'admin-collected',
+        provenance: {
+          surface: 'rest',
+          collector: 'admin-script:conf',
+          authority: 'admin-cli',
+          actor: 'ops.admin@example.com',
+        },
+        at: { lead: 'Workspaces', items: [{ label: 'ws-1', url: 'https://ws-1.example.com/x' }] },
+      },
+    ],
+  });
+  const reader = { assessor: false, group: 'waf-assessors' };
+  const shown = (): Scan => projectScan(scan({ findings: [importedFirst] }), reader);
+
+  it('carries the typed placeholder on each withheld reading in the JSON, and nothing of the reading', () => {
+    const document = assessmentDocument({ scan: shown(), catalogue: CATALOGUE });
+    const text = JSON.stringify(document);
+    const evidence = (document.findings as readonly { evidence: readonly Record<string, unknown>[] }[])[0]?.evidence[0];
+
+    expect(evidence?.withheld).toMatchObject({ withheld: 'admin-reading', visibleTo: 'waf-assessors' });
+    expect(evidence?.observed).toContain('waf-assessors');
+    expect(text).not.toContain('enableIpAccessLists');
+    expect(text).not.toContain('ops.admin@example.com');
+  });
+
+  it('says in the sheet that the attribution and the resources were withheld, rather than leaving them blank', () => {
+    const rows = assessmentRows({ scan: shown(), catalogue: CATALOGUE });
+    const header = rows[0];
+    const cell = (name: string) => rows[1][header.indexOf(name)];
+
+    expect(cell('read_as')).toContain('withheld');
+    expect(cell('read_as')).toContain('waf-assessors');
+    expect(cell('where')).toContain('withheld');
+    expect(rows.flat().join('\n')).not.toContain('ops.admin@example.com');
+    expect(rows.flat().join('\n')).not.toContain('ws-1.example.com');
+  });
+
+  it('writes nothing new into an assessor\u2019s file', () => {
+    const document = assessmentDocument({ scan: scan({ findings: [importedFirst] }), catalogue: CATALOGUE });
+    const evidence = (document.findings as readonly { evidence: readonly Record<string, unknown>[] }[])[0]?.evidence[0];
+
+    expect(evidence).not.toHaveProperty('withheld');
+    expect(assessmentRows({ scan: scan({ findings: [importedFirst] }), catalogue: CATALOGUE })[1]).toContain(
+      'ops.admin@example.com (admin-cli)'
+    );
   });
 });

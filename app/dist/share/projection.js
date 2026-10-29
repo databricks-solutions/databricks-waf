@@ -54,6 +54,15 @@ function projectEvidence(evidence, reader) {
 		withheld: placeholder
 	};
 }
+/**
+* The placeholder on a projected copy of evidence, or nothing on a stored one.
+*
+* Read through here because `withheld` is not a field of the stored `Evidence`: only the copy a reader
+* outside the assessor group is sent carries it, and the stored shape does not move for it.
+*/
+function withheldOf(evidence) {
+	return evidence.withheld;
+}
 /** The findings of a record with each one's evidence projected, and every other field as it was. */
 function projectFindings(findings, reader) {
 	if (reader.assessor) return findings;
@@ -157,4 +166,4 @@ function projectImportPayload(payload, reader) {
 	};
 }
 //#endregion
-export { carriesPrincipals, projectAdvisoryPayload, projectEvidence, projectFindings, projectImportPayload, projectResultPayload, projectReviewPayload, projectScan, projectScanPayload, projectSignal, withheldFrom };
+export { carriesPrincipals, projectAdvisoryPayload, projectEvidence, projectFindings, projectImportPayload, projectResultPayload, projectReviewPayload, projectScan, projectScanPayload, projectSignal, withheldFrom, withheldOf };

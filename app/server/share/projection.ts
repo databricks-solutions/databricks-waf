@@ -42,6 +42,7 @@ import type {
 } from '../../shared/api/contract.js';
 import { JOBS, RUN_AS_USER_LEAD } from '../resolve/resolvers/security-jobs.js';
 import { TOKENS } from '../resolve/resolvers/security-settings.js';
+import type { Evidence } from '../resolve/finding.js';
 import type { Scan } from '../scan/scan.js';
 
 /** Who is reading, and the group that decides what they may see. */
@@ -129,6 +130,16 @@ export function projectEvidence<E extends EvidenceView>(
   const placeholder = withheldFrom(kind, reader.group);
   const kept = kind === 'admin-reading' ? without(evidence, ['at', 'provenance']) : without(evidence, ['at']);
   return { ...kept, observed: placeholder.reason, withheld: placeholder } as E & { readonly withheld?: WithheldPayload };
+}
+
+/**
+ * The placeholder on a projected copy of evidence, or nothing on a stored one.
+ *
+ * Read through here because `withheld` is not a field of the stored `Evidence`: only the copy a reader
+ * outside the assessor group is sent carries it, and the stored shape does not move for it.
+ */
+export function withheldOf(evidence: Evidence): WithheldPayload | undefined {
+  return (evidence as Evidence & { readonly withheld?: WithheldPayload }).withheld;
 }
 
 /** The findings of a record with each one's evidence projected, and every other field as it was. */

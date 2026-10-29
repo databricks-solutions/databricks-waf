@@ -440,7 +440,7 @@ describe.each(['colleague', 'no token', 'identity lookup failing'] as const)('a 
       const { status, text } = await read(path, reader);
 
       expect(status, path).toBe(200);
-      for (const secret of PRINCIPALS_AND_READINGS) expect(text, `${path} leaked ${secret}`).not.toContain(secret);
+      for (const secret of PRINCIPALS_AND_READINGS) expect(text, `${path} contained ${secret}`).not.toContain(secret);
     }
   });
 
@@ -498,6 +498,36 @@ describe.each(['colleague', 'no token', 'identity lookup failing'] as const)('a 
 
     expect(text).toContain(OPEN.headline);
     expect(text).toContain(ASSESSORS);
+  });
+
+  it.each(['scans', 'results'] as const)('carries the typed placeholder in the JSON export of %s', async (kind) => {
+    const id = kind === 'scans' ? seeded.runId : seeded.resultId;
+    const { text } = await read(`/api/${kind}/${id}/export.json${scope}`, reader);
+    const evidence = (
+      JSON.parse(text) as {
+        findings: { evidence?: { withheld?: { withheld: string; visibleTo: string }; observed: string }[] }[];
+      }
+    ).findings.flatMap((finding) => finding.evidence ?? []);
+    const withheld = evidence.filter((one) => one.withheld != null);
+
+    expect(withheld.map((one) => one.withheld?.withheld).sort()).toEqual([
+      'admin-reading',
+      'principal-identifiers',
+      'principal-identifiers',
+    ]);
+    for (const one of withheld) {
+      expect(one.withheld?.visibleTo).toBe(ASSESSORS);
+      expect(one.observed).toContain(ASSESSORS);
+    }
+    for (const secret of PRINCIPALS_AND_READINGS) expect(text).not.toContain(secret);
+  });
+
+  it('says in the CSV export that evidence was withheld, and names the group', async () => {
+    const { text } = await read(`/api/scans/${seeded.runId}/export.csv${scope}`, reader);
+
+    expect(text).toContain('withheld');
+    expect(text).toContain(ASSESSORS);
+    for (const secret of PRINCIPALS_AND_READINGS) expect(text).not.toContain(secret);
   });
 
   it.each(['scans', 'results'] as const)(
