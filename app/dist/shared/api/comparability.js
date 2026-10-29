@@ -71,7 +71,7 @@ function comparable(a, b, across, options) {
 		ok: false,
 		reason: "One scan read the estate as the identity that started it and the other as a service principal. The two see different parts of the estate, so a change between them is not a change in the estate."
 	};
-	if (a.actor !== b.actor) return {
+	if (a.actor.trim().toLowerCase() !== b.actor.trim().toLowerCase()) return {
 		ok: false,
 		reason: `These scans ran as different identities (${a.actor} and ${b.actor}), whose visible estates may differ.`
 	};

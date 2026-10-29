@@ -180,7 +180,7 @@ const ASSESSORS = 'waf-assessors';
 let scimGroups: readonly string[] | undefined = [ASSESSORS];
 
 /** What SCIM calls the caller, and what it says the caller is named when that is not the same. */
-let scimUserName = 'admin@example.com';
+let scimUserName: string | undefined = 'admin@example.com';
 let scimDisplayName: string | undefined;
 
 /** Stands in for the workspace: answers the SCIM current-user call, header and all. */
@@ -189,7 +189,7 @@ const workspace: RequestListener = (request, response) => {
     response.writeHead(200, { 'content-type': 'application/json', 'x-databricks-org-id': '1234567890' });
     response.end(
       JSON.stringify({
-        userName: scimUserName,
+        ...(scimUserName != null ? { userName: scimUserName } : {}),
         ...(scimDisplayName != null ? { displayName: scimDisplayName } : {}),
         ...(scimGroups == null
           ? {}
@@ -3057,6 +3057,18 @@ describe('who a change is attributed to', () => {
 
     expect(status).toBe(200);
     expect((body.stamp as { actor: string }).actor).toBe('admin@example.com');
+  });
+
+  it('falls back to the forwarded header actor when SCIM returns no userName', async () => {
+    // A minimal stub or a custom principal record can answer without a userName. There is nothing to
+    // compare the header against, so it is the only name there is.
+    scimUserName = undefined;
+    const url = await startApp({});
+
+    const { status, body } = await start(url, { 'x-forwarded-email': 'forwarded@example.com' });
+
+    expect(status).toBe(200);
+    expect((body.stamp as { actor: string }).actor).toBe('forwarded@example.com');
   });
 
   it('records a service principal under its application id, with its name beside it', async () => {

@@ -116,7 +116,9 @@ export function comparable(
         'One scan read the estate as the identity that started it and the other as a service principal. The two see different parts of the estate, so a change between them is not a change in the estate.',
     };
   }
-  if (a.actor !== b.actor) {
+  // Without regard to case, as the gate compares a caller's name: one person is not two identities
+  // because a proxy and the workspace spell their address differently.
+  if (a.actor.trim().toLowerCase() !== b.actor.trim().toLowerCase()) {
     return {
       ok: false,
       reason: `These scans ran as different identities (${a.actor} and ${b.actor}), whose visible estates may differ.`,

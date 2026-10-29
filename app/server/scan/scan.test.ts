@@ -785,6 +785,14 @@ describe('comparing two scans', () => {
     });
   });
 
+  it('compares the identity that ran each scan without regard to letter case', () => {
+    // The gate compares a caller's name case-insensitively, so the same person can be recorded
+    // as Someone@Example.com on one run and someone@example.com on another.
+    const result = comparable(stamp({ actor: 'Someone@Example.com' }), stamp({ actor: ' someone@example.COM ' }));
+
+    expect(result.ok).toBe(true);
+  });
+
   it('names the differing field rather than merely refusing', () => {
     for (const [field, differing] of [
       ['catalogue', stamp({ catalogueFingerprint: 'def', catalogueVersion: '4' })],

@@ -62,7 +62,6 @@ describe('attention labels', () => {
   it('names the four reasons the fields support, and not changed or event-triggered', () => {
     expect(ATTENTION_LABEL.unanswered).toBe('Not yet answered');
     expect(ATTENTION_LABEL.expired).toBe('Lapsed');
-    expect(ATTENTION_LABEL.due).toBe('Due for review');
     expect(ATTENTION_LABEL.inconclusive).toBe('Scan could not tell');
     expect(Object.keys(ATTENTION_LABEL)).not.toContain('changed');
     expect(Object.keys(ATTENTION_LABEL)).not.toContain('event-triggered');

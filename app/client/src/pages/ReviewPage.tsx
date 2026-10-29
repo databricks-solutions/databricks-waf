@@ -43,7 +43,7 @@ import {
   skipNotice,
   waitingPhrase,
 } from './review-language';
-import { pillarToWrite, resumePillar, summarisePillars, type PillarSummary } from './review-summary';
+import { pillarToWrite, resumePillar, skippedUnresolved, summarisePillars, type PillarSummary } from './review-summary';
 import type { AttestableRequirement, ReviewAnswer } from '../api/types';
 
 const EMPTY_REQUIREMENTS: readonly AttestableRequirement[] = [];
@@ -713,7 +713,7 @@ function PillarPane({
               <p id={noticeId}>
                 {pending === 'confirm'
                   ? `${confirmNotice(title, summary.cited)}${finalDecision ? ` ${finalDecisionNotice()}` : ''}`
-                  : `${skipNotice(title, summary.reused.length + summary.attention.length)}${finalDecision ? ` ${finalDecisionNotice()}` : ''}`}
+                  : `${skipNotice(title, skippedUnresolved(summary))}${finalDecision ? ` ${finalDecisionNotice()}` : ''}`}
               </p>
               <div className="wa-assess-decision-actions">
                 <button
@@ -790,7 +790,7 @@ function PillarPane({
         <p>
           {summary.attention.length === 0
             ? 'Nothing to ask in this pillar.'
-            : 'These are the questions this review asks. Answers that are current sit under On record now, not here.'}
+            : 'These are the questions this review asks. Answers that still count sit under On record now, not here.'}
         </p>
         {summary.attention.length > 0 && (
           <ul className="wa-assess-question-list">

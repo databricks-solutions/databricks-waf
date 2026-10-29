@@ -22,6 +22,9 @@ interface StatementRecord {
   readonly measuredAt: string | null;
   readonly warehouseId: string | null;
   readonly statementSha: string | null;
+  /** The text hash the reading was actually taken on, when the statement has changed since. */
+  readonly carriedFromStatementSha?: string | null;
+  readonly carriedForwardNote?: string;
   readonly slicedInRecording: boolean;
   readonly sliceColumn: string | null;
   readonly rows: number | null;
@@ -179,6 +182,19 @@ describe('the recorded runtime baseline', () => {
       const record = baseline.statements[name];
       if (record == null) continue;
       expect(record.statementSha, `${name}.statementSha`).toBe(sha(submitted(name)));
+    }
+  });
+
+  it('says plainly when a reading is carried forward from an earlier statement text', () => {
+    // A recording whose hash was moved to the current text without a new reading would read as a
+    // measurement of that text. A carried reading names the hash it was taken on and says what has
+    // changed since, so the table can show it and the Q1 claim can wait for a fresh one.
+    for (const [name, record] of Object.entries(baseline.statements)) {
+      if (record.carriedFromStatementSha == null) continue;
+      expect(record.carriedForwardNote?.trim() ?? '', `${name}.carriedForwardNote`).not.toBe('');
+      expect(record.carriedFromStatementSha, `${name} carries a reading from its own current text`).not.toBe(
+        record.statementSha
+      );
     }
   });
 

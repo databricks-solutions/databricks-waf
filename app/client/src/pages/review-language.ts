@@ -18,7 +18,6 @@ export const KIND_LABEL: Readonly<Record<PillarReview['kind'], string>> = {
 export const ATTENTION_LABEL: Readonly<Record<AttentionReason, string>> = {
   unanswered: 'Not yet answered',
   expired: 'Lapsed',
-  due: 'Due for review',
   inconclusive: 'Scan could not tell',
 };
 
@@ -87,7 +86,8 @@ export function reusedPhrase(count: number): string {
 }
 
 /**
- * What a confirm of this pillar would freeze, counted from current accepted evidence.
+ * What a confirm of this pillar would freeze, counted from the accepted answers that still count:
+ * current ones and those inside their renewal window.
  *
  * Zero is a real answer for a pillar whose reviewed run handed no requirement to a person.
  */
