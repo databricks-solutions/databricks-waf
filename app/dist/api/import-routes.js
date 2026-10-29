@@ -3,6 +3,7 @@ import { UnsafeJsonError, parseUntrusted } from "../import/parse.js";
 import { MalformedEnvelopeError, envelopeFrom } from "../import/envelope.js";
 import { REPLAYED, assess } from "../import/trust.js";
 import { ReplayedImportError, summaryOf } from "../import/store.js";
+import { projectImportPayload } from "../share/projection.js";
 //#region server/api/import-routes.ts
 const NO_STORE = "This install has nowhere to keep imported evidence, so a file cannot be accepted: it would answer requirements on this page and be gone on the next restart, which is worse than not having answered them. Bind a Lakebase instance to the app and the import becomes available.";
 function noteOf(note) {
@@ -59,7 +60,7 @@ function verdictOf(verdict, imported) {
 }
 function registerImportRoutes(app, options) {
 	const now = options.now ?? (() => /* @__PURE__ */ new Date());
-	app.get("/api/evidence/imports", async (_request, response) => {
+	app.get("/api/evidence/imports", async (request, response) => {
 		const store = options.imports;
 		if (store == null) {
 			response.json({
@@ -69,10 +70,11 @@ function registerImportRoutes(app, options) {
 			});
 			return;
 		}
+		const reader = await options.reader(request);
 		const held = await store.summaries();
 		const payload = {
 			durable: store.durable,
-			imports: held.map(presentImport),
+			imports: held.map((one) => projectImportPayload(presentImport(one), reader)),
 			acceptedForDays: 30
 		};
 		response.json(payload);

@@ -1,3 +1,4 @@
+import { projectAdvisoryPayload } from "../share/projection.js";
 import { jobRules, sizingRules, workloadRules, writeRules } from "../advise/workload-rules.js";
 import { assessmentOf } from "./assessment-query.js";
 import { RunNotJoinable } from "../run/runs.js";
@@ -398,7 +399,7 @@ function registerAdvisoryRoutes(app, options) {
 			});
 			return;
 		}
-		response.json(advisoryPayload(latest));
+		response.json(projectAdvisoryPayload(advisoryPayload(latest), await options.reader(request)));
 	});
 	/**
 	* The advisor's history, newest first.
@@ -442,7 +443,7 @@ function registerAdvisoryRoutes(app, options) {
 			});
 			return;
 		}
-		response.json(advisoryPayload(found));
+		response.json(projectAdvisoryPayload(advisoryPayload(found), await options.reader(request)));
 	});
 	const runAdvisoryFor = (trigger) => async (request, response) => {
 		let act;

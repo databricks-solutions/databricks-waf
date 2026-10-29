@@ -527,7 +527,7 @@
     },
     {
       "file": "server/scan/postgres-store.ts",
-      "line": 85,
+      "line": 92,
       "table": "scans",
       "class": "scoped",
       "shape": "predicate",
@@ -537,7 +537,7 @@
     },
     {
       "file": "server/scan/postgres-store.ts",
-      "line": 121,
+      "line": 128,
       "table": "scans",
       "class": "scoped",
       "shape": "predicate",
@@ -547,7 +547,7 @@
     },
     {
       "file": "server/scan/postgres-store.ts",
-      "line": 141,
+      "line": 148,
       "table": "scans",
       "class": "scoped",
       "shape": "predicate",
@@ -623,5 +623,5 @@
       "validation_attempts": 2
     }
   },
-  "measuredAt": "2026-08-28T05:49:44.836Z"
+  "measuredAt": "2026-10-29T12:47:13.099Z"
 }

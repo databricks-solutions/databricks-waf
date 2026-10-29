@@ -41,6 +41,7 @@ import { NotInList } from '../components/ui/NotInList';
 import { onlySelection, selectionFrom, usePaged } from '../components/ui/paging';
 import { useRevealedPane } from '../components/ui/reveal';
 import { Badge, IdentifierBadge } from '../components/ui/StatusBadge';
+import { WithheldNote } from '../components/WithheldNote';
 import {
   findingsSentence,
   leadWriteFinding,
@@ -293,12 +294,21 @@ function Selected({ shape }: { shape: WriteShape }) {
         </div>
       )}
 
+      {shape.statementWithheld != null && (
+        <div>
+          <h2 className="wa-label">The statement</h2>
+          <p className="wa-body-compact mt-1">
+            <WithheldNote withheld={shape.statementWithheld} />
+          </p>
+        </div>
+      )}
+
       {shape.statementText != null && (
         <div>
           <h2 className="wa-label">The statement</h2>
-          {/* Shown as recorded, for the reason the workloads page gives: this runs inside the customer's
-              own environment against their own history, and redacting it back would cost the surface its
-              point. An estate under customer-managed keys has none of this to show. */}
+          {/* Shown as recorded to the assessor group and replaced by a placeholder for everyone else, for
+              the reason the workloads page gives. An estate under customer-managed keys has none of this
+              to show. */}
           <pre className="wa-code-block mt-1 rounded-sm bg-wa-surface-subtle">{shape.statementText}</pre>
           <p className="wa-caption mt-1">{REPRESENTATIVE_NOTE}</p>
         </div>

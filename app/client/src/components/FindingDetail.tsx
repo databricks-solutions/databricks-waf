@@ -17,7 +17,7 @@ import { Link } from 'react-router';
 import { Fragment, type ReactNode } from 'react';
 import { useAssessment, type AlsoAsking } from '../api/assessment-context';
 import { coverageNote, measuredTogether } from './verdict-language';
-import { collectorNote, provenanceSentence } from './provenance-language';
+import { collectorNote, readSentence } from './provenance-language';
 import { attributionPhrase, renewalPhrase } from '../pages/attest-language';
 import { DecisionNote, StandingBadge } from './DecisionNote';
 import { RemedyNote } from './RemedyNote';
@@ -28,6 +28,7 @@ import { ActionPanel as CustomerActionPanel, Fact, FactList, Surface, TechnicalD
 import { FindingConfidence, FindingHistory } from './FindingConfidence';
 import { FindingGuidance } from './FindingGuidance';
 import { FoundOnSection } from './FoundOn';
+import { EvidenceValue } from './WithheldNote';
 import { MeasurementRemedyAction } from './MeasurementRemedyAction';
 import { findingActionReason } from './finding-action-language';
 import type {
@@ -117,7 +118,7 @@ export function FindingDetail({
   // Provenance comes off the first piece of evidence: which collector saw this, and when. Absent
   // for a finding that was never observed, where a timestamp would be an invention.
   const first = finding.evidence[0];
-  const read = provenanceSentence(first?.provenance);
+  const read = readSentence(first);
   const collector = collectorNote(first?.provenance);
   // The rows with something to say above the resources section. A row carrying `at` is rendered
   // there in full, so it appears here only where it also states an expectation — which no resolver
@@ -192,7 +193,7 @@ export function FindingDetail({
                 {evidence.at == null && (
                   <Fact
                     label={evidence.bearing === 'detail' ? 'Where' : 'Observed'}
-                    value={evidence.observed}
+                    value={<EvidenceValue evidence={evidence} />}
                     emphasis="strong"
                   />
                 )}

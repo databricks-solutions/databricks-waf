@@ -72,6 +72,10 @@ export function tiersSentence(imported: EvidenceImport): string {
  * would read as data this app failed to display.
  */
 export function collectedBySentence(imported: EvidenceImport): string {
+  // The collector's name is shown to the assessor group only; everyone else is told who can see it.
+  if (imported.collectedByWithheld != null) {
+    return `Uploaded by ${imported.importedBy}. ${imported.collectedByWithheld.reason}`;
+  }
   return imported.collectedBy != null
     ? `Collected by ${imported.collectedBy}, uploaded by ${imported.importedBy}.`
     : `Uploaded by ${imported.importedBy}. The collecting identity is not recorded, which is expected for an account-only collection.`;

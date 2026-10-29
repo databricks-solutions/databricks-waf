@@ -41,6 +41,7 @@ import {
 } from '../import/store.js';
 import type { ScanStore } from '../scan/store.js';
 import type { Act } from '../audit/record.js';
+import { projectImportPayload, type Reader } from '../share/projection.js';
 import type { AuditAction, AuditTarget } from '../audit/event.js';
 
 export interface ImportRouteOptions {
@@ -54,6 +55,11 @@ export interface ImportRouteOptions {
    * is held against, and the newer answer is the right one.
    */
   readonly store: ScanStore;
+  /**
+   * Who is reading, so the name of whoever collected a file is shown only to the assessor group's
+   * direct members. Required for the reason `ReviewRouteOptions.reader` gives.
+   */
+  readonly reader: (request: Request) => Promise<Reader>;
   /** Establishes that the caller may change something, or throws, and opens the act for the log. */
   readonly permitted: (
     request: Request,
@@ -138,7 +144,7 @@ function verdictOf(verdict: TrustVerdict, imported?: ImportedEvidence): Evidence
 export function registerImportRoutes(app: Application, options: ImportRouteOptions): void {
   const now = options.now ?? ((): Date => new Date());
 
-  app.get('/api/evidence/imports', async (_request, response) => {
+  app.get('/api/evidence/imports', async (request, response) => {
     const store = options.imports;
     if (store == null) {
       // 200 rather than 503, because "nowhere to keep one" is a true and complete answer to "what do
@@ -149,12 +155,14 @@ export function registerImportRoutes(app: Application, options: ImportRouteOptio
       return;
     }
 
+    const reader = await options.reader(request);
+
     // `summaries` rather than `all`: this page shows what is held and never a probe, and the envelopes
     // are the one thing in this table stored out of line. Row 85 measured the difference.
     const held = await store.summaries();
     const payload: EvidenceImportsPayload = {
       durable: store.durable,
-      imports: held.map(presentImport),
+      imports: held.map((one) => projectImportPayload(presentImport(one), reader)),
       acceptedForDays: MAX_AGE_DAYS,
     };
     response.json(payload);

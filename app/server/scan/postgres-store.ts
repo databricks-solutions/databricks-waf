@@ -13,8 +13,15 @@
 // Written as the app's service principal, which is the identity that owns the schema. That is
 // deliberately a different identity from the one that reads the estate: the estate is read as the
 // signed-in user, so nobody sees more than they are entitled to, while scan history is the app's
-// own bookkeeping about work a user already did. Anyone who can open the app can read it, which
-// is the same authority they have to run the scan again themselves.
+// own bookkeeping about work a user already did.
+//
+// What a stored scan holds is what the identity that ran it could read, which is not what every
+// reader's own grants reach, so the history is not open in full to anyone who can open the app.
+// Scores, outcomes and summaries are. Principal identifiers in findings evidence and an
+// administrator's imported readings are shown only to direct members of the assessor group, and
+// everyone else gets a placeholder; the same holds for statement text in advisories. The record
+// itself is stored whole and unchanged, and the policy is applied when it is read
+// (`server/share/projection.ts`). Decision D1 in docs/decisions.md.
 
 import type { Scan } from './scan.js';
 import { summarise, type ScanStore, type ScanSummary } from './store.js';

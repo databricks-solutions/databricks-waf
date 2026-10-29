@@ -93,6 +93,8 @@ import {
   type EstateScope,
 } from '../collect/estate-scope.js';
 import { NotPermittedError, recordRefusal, requirePermission, requireVerifiedIdentity } from '../authorize/group.js';
+import { assessorCheck } from '../share/reader.js';
+import { projectScan, projectScanPayload, type Reader } from '../share/projection.js';
 import { AuditRecorder, closedWhenAnswered, TrailUnwritableError, type Act, type Actor } from '../audit/record.js';
 import { AUDIT_PHRASES, type AuditAction, type AuditTarget } from '../audit/event.js';
 import { authoredGuidance, type GuidanceLibrary } from '../guidance/guidance.js';
@@ -409,6 +411,19 @@ export function registerApi(served: Application, options: ApiOptions): void {
   });
 
   /**
+   * Who is reading, for the routes that serve what a run stored.
+   *
+   * Asked of the request rather than of the route, so every read that can carry a restricted field
+   * answers the same question the same way, and cached for that request alone by `assessorCheck`.
+   * Decision D1 in docs/decisions.md.
+   */
+  const isAssessor = assessorCheck({ host: options.host, assessorGroup: options.assessorGroup });
+  const readerOf = async (request: Request): Promise<Reader> => ({
+    assessor: await isAssessor(request),
+    group: options.assessorGroup,
+  });
+
+  /**
    * Where a run stands with its review, for the payload that carries its score.
    *
    * Read here rather than left to a second request, because every surface that shows a score has the
@@ -650,12 +665,15 @@ export function registerApi(served: Application, options: ApiOptions): void {
       return;
     }
     response.json(
-      present(
-        scan,
-        await historyFor(options.store, assessmentOf(request)),
-        options.catalogue.changelog,
-        await targetsFor(scan, options.definitions, new Date()),
-        await standingOf(scan.id, assessmentOf(request))
+      projectScanPayload(
+        present(
+          scan,
+          await historyFor(options.store, assessmentOf(request)),
+          options.catalogue.changelog,
+          await targetsFor(scan, options.definitions, new Date()),
+          await standingOf(scan.id, assessmentOf(request))
+        ),
+        await readerOf(request)
       )
     );
   });
@@ -670,12 +688,15 @@ export function registerApi(served: Application, options: ApiOptions): void {
       return;
     }
     response.json(
-      present(
-        scan,
-        await historyFor(options.store, assessmentOf(request)),
-        options.catalogue.changelog,
-        await targetsFor(scan, options.definitions, new Date()),
-        await standingOf(scan.id, assessmentOf(request))
+      projectScanPayload(
+        present(
+          scan,
+          await historyFor(options.store, assessmentOf(request)),
+          options.catalogue.changelog,
+          await targetsFor(scan, options.definitions, new Date()),
+          await standingOf(scan.id, assessmentOf(request))
+        ),
+        await readerOf(request)
       )
     );
   });
@@ -940,8 +961,9 @@ export function registerApi(served: Application, options: ApiOptions): void {
       // The review of this run, whichever run it is: unlike a standing, it is recorded against the run
       // itself, so an export of a six-week-old scan carries that scan's own review rather than nothing.
       const reviewed = await standingOf(scan.id, scan.stamp.definition?.id ?? null);
+      // Projected before it is sealed, so the file a reader downloads is the file their digest is of.
       const file = seal({
-        scan,
+        scan: projectScan(scan, await readerOf(request)),
         catalogue: options.catalogue,
         decisions: decided,
         format,
@@ -1074,15 +1096,20 @@ export function registerApi(served: Application, options: ApiOptions): void {
 
   const listExports = async (
     scan: Scan,
-    identity: { readonly correlation: string; readonly resultId?: string }
+    identity: { readonly correlation: string; readonly resultId?: string },
+    reader: Reader
   ): Promise<RunExportsPayload> => {
     const decided = await exportDecisions(scan);
+    // The scan the reader's own downloads are built from, so each digest listed is the digest of the
+    // bytes that reader is sent. A colleague's file differs from an assessor's wherever evidence is
+    // withheld, and one digest for both would read as tampering to whoever checked it.
+    const shown = projectScan(scan, reader);
     // Read once for every file listed, and the same read the download makes — the digests here have to
     // be the digests of the bytes that endpoint produces, so both have to see the same review.
     const reviewed = await standingOf(scan.id, scan.stamp.definition?.id ?? null);
     const fileOf = (variant: ExportVariant, format: 'csv' | 'json'): ExportFilePayload => {
       const file = seal({
-        scan,
+        scan: shown,
         catalogue: options.catalogue,
         decisions: decided,
         format,
@@ -1134,13 +1161,19 @@ export function registerApi(served: Application, options: ApiOptions): void {
   app.get('/api/scans/:id/exports', async (request: Request<{ id: string }>, response: Response) => {
     const scan = await exportSubject(request, response);
     if (scan == null) return;
-    response.json(await listExports(scan, { correlation: scan.id }));
+    response.json(await listExports(scan, { correlation: scan.id }, await readerOf(request)));
   });
 
   app.get('/api/results/:id/exports', async (request: Request<{ id: string }>, response: Response) => {
     const result = await finalResultSubject(request, response);
     if (result == null) return;
-    response.json(await listExports(result.scan, { correlation: result.resultId, resultId: result.resultId }));
+    response.json(
+      await listExports(
+        result.scan,
+        { correlation: result.resultId, resultId: result.resultId },
+        await readerOf(request)
+      )
+    );
   });
 
   /**
@@ -1722,6 +1755,7 @@ export function registerApi(served: Application, options: ApiOptions): void {
   // the result that exists only when every pillar has one. Completing a scan does not replace
   // current(); only finalising a review does.
   registerReviewRoutes(app, {
+    reader: readerOf,
     ...(options.reviews != null ? { reviews: options.reviews } : {}),
     ...(options.reviewStorage != null ? { reviewStorage: options.reviewStorage } : {}),
     ...(options.now != null ? { now: options.now } : {}),
@@ -1846,6 +1880,7 @@ export function registerApi(served: Application, options: ApiOptions): void {
   // module because turning a request into a scope, a window and a set of collectors is this file's job,
   // and having two places do it would be two answers to "what does an advisory run read".
   registerAdvisoryRoutes(app, {
+    reader: readerOf,
     ...(options.advisories != null ? { advisories: options.advisories } : {}),
     ...(options.runs != null ? { runs: options.runs } : {}),
     asking: (request, actor, granted) => advisoryRequest(request, actor, granted, options),
@@ -1858,6 +1893,7 @@ export function registerApi(served: Application, options: ApiOptions): void {
   // import compares the collecting script against the one published above and wants the copy already
   // loaded. Route order does not affect the `nosniff` middleware, which was installed before either.
   registerImportRoutes(app, {
+    reader: readerOf,
     ...(options.imports != null ? { imports: options.imports } : {}),
     store: options.store,
     permitted: (request, response, action, context) => permitted(request, response, options, action, context),

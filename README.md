@@ -163,6 +163,9 @@ The table counts 184 catalogue entries against 165 scored controls. The differen
 - Assessment reads run on behalf of the signed-in user; collectors use parameterised SQL and read-only
   API routes.
 - Mutations require direct membership in the configured assessor group.
+- Stored results are readable by everyone who can open the App, except statement text, principal
+  identifiers in findings evidence and imported admin readings, which only direct members of the assessor
+  group see. Everyone else gets a placeholder, in pages and exports alike.
 - Customer records remain in customer-owned Lakebase. The App never asks for or stores personal access
   tokens.
 - The optional AI layer can explain and prioritise findings. It cannot change a finding or score.

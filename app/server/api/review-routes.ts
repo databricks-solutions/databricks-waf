@@ -47,6 +47,7 @@ import type { CatalogueControl } from '../catalogue/catalogue.js';
 import type { Scan } from '../scan/scan.js';
 import type { ScanSummary } from '../scan/store.js';
 import { assessmentOf } from './assessment-query.js';
+import { projectResultPayload, projectReviewPayload, type Reader } from '../share/projection.js';
 import { eligible, ineligible, type GateEligibilityPayload } from '../../shared/api/eligibility.js';
 
 export interface ReviewRouteOptions {
@@ -68,6 +69,14 @@ export interface ReviewRouteOptions {
   readonly cadenceDays?: (spec: CatalogueControl) => number | undefined;
   /** Human-answerable controls for the reviewed run, in catalogue order. */
   readonly requirementsFor: (scan: Scan) => readonly ReviewableControl[];
+  /**
+   * Who is reading, for the routes that serve a stored result.
+   *
+   * Required rather than optional, so a build that forgot it fails to compile instead of serving every
+   * reader the findings' evidence in full. The writes below are answered to a caller `permitted` has
+   * already admitted, who is an assessor by that very check.
+   */
+  readonly reader: (request: Request) => Promise<Reader>;
   readonly permitted: (
     request: Request,
     response: Response,
@@ -95,6 +104,10 @@ export function registerReviewRoutes(app: Application, options: ReviewRouteOptio
   const now = options.now ?? (() => new Date());
   const newId = options.newId ?? (() => crypto.randomUUID());
 
+  /** A review as this request's reader may see it: the frozen result inside it carries the findings' evidence. */
+  const shownReview = async (request: Request, record: ReviewRecord, store: ReviewStore) =>
+    projectReviewPayload(presentReview(record, store, options.reviewStorage), await options.reader(request));
+
   app.get('/api/reviews', async (request, response) => {
     const store = options.reviews;
     if (store == null) {
@@ -116,7 +129,7 @@ export function registerReviewRoutes(app: Application, options: ReviewRouteOptio
       const open = (await store.openReviews(assessmentOf(request))).filter((one) => one.review.definitionId != null);
       const payload: OpenReviewsPayload<Date> = {
         eligibility: eligible(),
-        reviews: open.map((one) => presentReview(one, store, options.reviewStorage)),
+        reviews: await Promise.all(open.map((one) => shownReview(request, one, store))),
         durable: store.durable,
         ...(store.durable ? {} : { durabilityNote: options.reviewStorage ?? NOT_DURABLE }),
       };
@@ -161,7 +174,7 @@ export function registerReviewRoutes(app: Application, options: ReviewRouteOptio
         );
         return;
       }
-      response.json(dated(presentReview(got, store, options.reviewStorage)));
+      response.json(dated(await shownReview(request, got, store)));
     } catch (cause) {
       readFailure(response, 'review', cause);
     }
@@ -206,7 +219,7 @@ export function registerReviewRoutes(app: Application, options: ReviewRouteOptio
         );
         return;
       }
-      response.json(dated(presentReview(got, store, options.reviewStorage)));
+      response.json(dated(await shownReview(request, got, store)));
     } catch (cause) {
       readFailure(response, 'review', cause);
     }
@@ -240,7 +253,9 @@ export function registerReviewRoutes(app: Application, options: ReviewRouteOptio
           : eligibilityOfResult(result, options.pillars);
       const payload: CurrentResultPayload<Date> = {
         eligibility: resultEligibility,
-        ...(result != null && resultEligibility.eligible ? { result: presentResult(result) } : {}),
+        ...(result != null && resultEligibility.eligible
+          ? { result: projectResultPayload(presentResult(result), await options.reader(request)) }
+          : {}),
         durable: store.durable,
         ...(store.durable ? {} : { durabilityNote: options.reviewStorage ?? NOT_DURABLE }),
       };
@@ -337,7 +352,7 @@ export function registerReviewRoutes(app: Application, options: ReviewRouteOptio
         gateFailure(response, 409, resultEligibility);
         return;
       }
-      response.json(dated(presentResult(result)));
+      response.json(dated(projectResultPayload(presentResult(result), await options.reader(request))));
     } catch (cause) {
       readFailure(response, 'result', cause, 'report');
     }
