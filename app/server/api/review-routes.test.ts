@@ -458,13 +458,22 @@ describe('confirm-current', () => {
     });
   });
 
-  it('refuses unanswered and due manual work before a record is written', async () => {
+  it('refuses expired and unanswered manual work before a record is written', async () => {
     const { base, scans, attestations, reviews, audit } = await serve({
-      requirementsFor: () => [CONTROLS['SCP-01-01'], { ...CONTROLS['SCP-01-01'], id: 'SCP-01-02' }],
+      requirementsFor: () => [
+        CONTROLS['SCP-01-01'],
+        { ...CONTROLS['SCP-01-01'], id: 'SCP-01-02' },
+        { ...CONTROLS['SCP-01-01'], id: 'SCP-01-03' },
+      ],
     });
+    // Due for renewal at NOW, which still counts, so only the other two are asked about.
     await attestations.record({
       ...attestation('att-due', 'SCP-01-01', new Date('2026-08-20T09:00:00.000Z')),
       attestedAt: new Date('2026-07-21T09:00:00.000Z'),
+    });
+    await attestations.record({
+      ...attestation('att-expired', 'SCP-01-02', new Date('2026-08-12T09:00:00.000Z')),
+      attestedAt: new Date('2026-05-14T09:00:00.000Z'),
     });
     const review = await opened(base, scans);
 

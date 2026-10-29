@@ -332,6 +332,14 @@ export interface ApiOptions {
   readonly reviews?: ReviewStore;
   readonly reviewStorage?: string;
   /**
+   * The clock the review routes read: when a review opens, when a pillar is decided, and whether each
+   * answer still counts at that moment. Absent means the wall clock.
+   *
+   * Injected so a test can place a review at a chosen point in an answer's life — current, due for
+   * renewal or expired — instead of at whatever date the suite happens to run.
+   */
+  readonly now?: () => Date;
+  /**
    * Where validation attempts are kept. Absent means they are not kept, and the routes say so rather
    * than accepting a question about a claim that nothing would answer.
    */
@@ -1714,6 +1722,7 @@ export function registerApi(served: Application, options: ApiOptions): void {
   registerReviewRoutes(app, {
     ...(options.reviews != null ? { reviews: options.reviews } : {}),
     ...(options.reviewStorage != null ? { reviewStorage: options.reviewStorage } : {}),
+    ...(options.now != null ? { now: options.now } : {}),
     scans: options.store,
     // The catalogue, not the measured subset. A targeted rerun still needs every pillar recorded
     // before a result exists; measuring fewer pillars does not shrink the review.

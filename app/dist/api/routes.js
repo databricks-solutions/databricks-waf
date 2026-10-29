@@ -999,6 +999,7 @@ function registerApi(served, options) {
 	registerReviewRoutes(app, {
 		...options.reviews != null ? { reviews: options.reviews } : {},
 		...options.reviewStorage != null ? { reviewStorage: options.reviewStorage } : {},
+		...options.now != null ? { now: options.now } : {},
 		scans: options.store,
 		pillars: options.catalogue.pillars.map((pillar) => pillar.id),
 		...options.attestations != null ? { attestations: options.attestations } : {},
