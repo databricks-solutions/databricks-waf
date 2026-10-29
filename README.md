@@ -221,9 +221,9 @@ production dependency whose licence is absent or outside the reviewed allowlist.
 
 | Licence | Resolved production packages |
 | --- | ---: |
-| MIT | 362 |
-| Apache-2.0 | 97 |
-| ISC | 27 |
+| MIT | 385 |
+| Apache-2.0 | 101 |
+| ISC | 29 |
 | BSD-3-Clause | 15 |
 | MPL-2.0 | 12 |
 | 0BSD | 2 |
@@ -237,7 +237,7 @@ production dependency whose licence is absent or outside the reviewed allowlist.
 | clsx | 2.1.1 | MIT | [npm](https://www.npmjs.com/package/clsx/v/2.1.1) |
 | embla-carousel-react | 8.6.0 | MIT | [npm](https://www.npmjs.com/package/embla-carousel-react/v/8.6.0) |
 | express | 5.2.1 | MIT | [npm](https://www.npmjs.com/package/express/v/5.2.1) |
-| js-yaml | 5.4.0 | MIT | [npm](https://www.npmjs.com/package/js-yaml/v/5.4.0) |
+| js-yaml | 5.4.1 | MIT | [npm](https://www.npmjs.com/package/js-yaml/v/5.4.1) |
 | lucide-react | 1.34.0 | ISC | [npm](https://www.npmjs.com/package/lucide-react/v/1.34.0) |
 | next-themes | 0.4.6 | MIT | [npm](https://www.npmjs.com/package/next-themes/v/0.4.6) |
 | react | 19.2.8 | MIT | [npm](https://www.npmjs.com/package/react/v/19.2.8) |
@@ -247,7 +247,7 @@ production dependency whose licence is absent or outside the reviewed allowlist.
 | tailwind-merge | 3.6.0 | MIT | [npm](https://www.npmjs.com/package/tailwind-merge/v/3.6.0) |
 | tailwindcss-animate | 1.0.7 | MIT | [npm](https://www.npmjs.com/package/tailwindcss-animate/v/1.0.7) |
 | tw-animate-css | 1.4.0 | MIT | [npm](https://www.npmjs.com/package/tw-animate-css/v/1.4.0) |
-| zod | 4.4.3 | MIT | [npm](https://www.npmjs.com/package/zod/v/4.4.3) |
+| zod | 4.6.6 | MIT | [npm](https://www.npmjs.com/package/zod/v/4.6.6) |
 
 First-party `@databricks/*` packages are governed separately by their published Apache-2.0 terms.
 

@@ -22,6 +22,74 @@
                 "description": "Default LLM serving endpoint name",
                 "origin": "user"
               }
+            },
+            "scope": "model-serving",
+            "binding": {
+              "yamlKey": "serving_endpoint",
+              "varFields": [
+                [
+                  "name",
+                  "name"
+                ]
+              ]
+            }
+          },
+          {
+            "type": "experiment",
+            "alias": "MLflow experiment for agent traces",
+            "resourceKey": "agents-mlflow-experiment",
+            "description": "When bound, agent turns and tool calls are traced to this MLflow experiment via OpenTelemetry. Tracing is a no-op when unset.",
+            "permission": "CAN_EDIT",
+            "fields": {
+              "experimentId": {
+                "env": "MLFLOW_EXPERIMENT_ID",
+                "description": "MLflow experiment id traces are logged to",
+                "origin": "user"
+              }
+            },
+            "binding": {
+              "yamlKey": "experiment",
+              "varFields": [
+                [
+                  "experimentId",
+                  "experiment_id"
+                ]
+              ]
+            }
+          },
+          {
+            "type": "volume",
+            "alias": "Agent skills",
+            "resourceKey": "agents-skills",
+            "description": "Optional Unity Catalog Volume providing catalog-sourced agent skills (read-only)",
+            "permission": "READ_VOLUME",
+            "fields": {
+              "path": {
+                "env": "DATABRICKS_VOLUME_AGENT_SKILLS",
+                "description": "Volume path for agent skills (e.g. /Volumes/catalog/schema/skills)",
+                "discovery": {
+                  "type": "kind",
+                  "resourceKind": "volume",
+                  "select": "full_name"
+                },
+                "origin": "user"
+              }
+            },
+            "scope": "files",
+            "binding": {
+              "yamlKey": "uc_securable",
+              "varFields": [
+                [
+                  "path",
+                  "securable_full_name"
+                ]
+              ],
+              "staticFields": [
+                [
+                  "securable_type",
+                  "VOLUME"
+                ]
+              ]
             }
           }
         ]
@@ -47,6 +115,22 @@
                 "description": "Three-level UC name of the default index (catalog.schema.index_name)",
                 "origin": "user"
               }
+            },
+            "scope": "vector-search",
+            "binding": {
+              "yamlKey": "uc_securable",
+              "varFields": [
+                [
+                  "id",
+                  "securable_full_name"
+                ]
+              ],
+              "staticFields": [
+                [
+                  "securable_type",
+                  "TABLE"
+                ]
+              ]
             }
           }
         ],
@@ -86,6 +170,16 @@
                 },
                 "origin": "user"
               }
+            },
+            "scope": "sql",
+            "binding": {
+              "yamlKey": "sql_warehouse",
+              "varFields": [
+                [
+                  "id",
+                  "id"
+                ]
+              ]
             }
           }
         ],
@@ -127,6 +221,22 @@
                 },
                 "origin": "user"
               }
+            },
+            "scope": "files",
+            "binding": {
+              "yamlKey": "uc_securable",
+              "varFields": [
+                [
+                  "path",
+                  "securable_full_name"
+                ]
+              ],
+              "staticFields": [
+                [
+                  "securable_type",
+                  "VOLUME"
+                ]
+              ]
             }
           }
         ],
@@ -167,11 +277,28 @@
                 "description": "Genie Space display name",
                 "origin": "user"
               }
+            },
+            "scope": "genie",
+            "binding": {
+              "yamlKey": "genie_space",
+              "varFields": [
+                [
+                  "name",
+                  "name"
+                ],
+                [
+                  "id",
+                  "space_id"
+                ]
+              ]
             }
           }
         ],
         "optional": []
       },
+      "scopes": [
+        "genie"
+      ],
       "scaffolding": {
         "rules": {
           "must": [
@@ -199,6 +326,15 @@
                 "description": "Numeric Databricks job ID. Find it in the Jobs UI or via `databricks jobs list`.",
                 "origin": "user"
               }
+            },
+            "binding": {
+              "yamlKey": "job",
+              "varFields": [
+                [
+                  "id",
+                  "id"
+                ]
+              ]
             }
           }
         ],
@@ -221,6 +357,7 @@
             "fields": {
               "project": {
                 "description": "Full Lakebase Postgres project resource name. Obtain by running `databricks postgres list-projects`, select the desired item from the output array and use its .name value.",
+                "bundleIgnore": true,
                 "examples": [
                   "projects/{project-id}"
                 ],
@@ -295,6 +432,20 @@
                 "value": "require",
                 "origin": "platform"
               }
+            },
+            "appOnly": true,
+            "binding": {
+              "yamlKey": "postgres",
+              "varFields": [
+                [
+                  "branch",
+                  "branch"
+                ],
+                [
+                  "database",
+                  "database"
+                ]
+              ]
             }
           }
         ],
@@ -322,8 +473,8 @@
     },
     "serving": {
       "name": "serving",
-      "displayName": "Model Serving Plugin",
-      "description": "Authenticated proxy to Databricks Model Serving endpoints",
+      "displayName": "Model Serving Plugin (deprecated)",
+      "description": "DEPRECATED: use the agents plugin instead. Authenticated proxy to Databricks Model Serving endpoints",
       "package": "@databricks/appkit",
       "resources": {
         "required": [
@@ -339,11 +490,25 @@
                 "description": "Serving endpoint name",
                 "origin": "user"
               }
+            },
+            "scope": "model-serving",
+            "binding": {
+              "yamlKey": "serving_endpoint",
+              "varFields": [
+                [
+                  "name",
+                  "name"
+                ]
+              ]
             }
           }
         ],
         "optional": []
-      }
+      },
+      "scopes": [
+        "model-serving"
+      ],
+      "deprecated": true
     }
   },
   "scaffolding": {

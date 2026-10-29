@@ -22,3 +22,17 @@ Each section records one settled question about how the App works: what was deci
 - `app/server/review/review.ts`: `pillarEvidenceManifest`, which accepts an answer when `counts()` says it still counts at the moment the pillar is decided.
 - `app/server/api/review-routes.ts`: pillar confirmation, which refuses with `pillar-needs-attention` only while an unanswered question or an expired answer remains.
 - `app/server/attest/attestation.ts`: `stateOf()` and `counts()`, the one definition of current, due and expired that scoring, confirmation and the published report share.
+
+## A19: dependency advisories are fixed by upgrading Appkit first
+
+**Status:** decided 2026-10-29 by the product owner
+
+**Decision.** When the production dependency audit reports advisories, upgrade `@databricks/appkit` and `@databricks/appkit-ui` to the current release first, and re-run the audit. Add an `overrides` entry in `app/package.json` only for an advisory the upgrade leaves, pinned to the fixed version that the registry serves. Never apply a fix that `npm audit` proposes as a downgrade of Appkit.
+
+**Reason.** Appkit pins most of its transitive dependencies exactly, so the current release carries the newest fixes and every override added beside it is one more pin to keep current. Downgrading to an older Appkit reintroduces the advisories that release was upgraded to remove. The blocking audit stays meaningful only if it passes because the tree is fixed, not because the advisory was hidden.
+
+**Governs:**
+
+- `app/package.json`: the `@databricks/appkit` and `@databricks/appkit-ui` versions, and the `overrides` block, where each entry exists for a fixed version Appkit's own pins would otherwise hold back.
+- `app/osv-scanner.toml`: lists only findings with no published fix, each with a reason, a reachability argument and an expiry.
+- `.github/workflows/security.yml` and `.github/workflows/dependency-advisories.yml`: the blocking `npm audit --omit=dev --audit-level=high` step.
