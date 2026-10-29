@@ -34,6 +34,7 @@ import { METHODOLOGY } from '../server/scan/identity.js';
 import { CREDIT, SEVERITY_WEIGHT } from '../server/score/score.js';
 import {
   assertFrozenAgainstPin,
+  assertPinnedVersionsShip,
   assertReleasedMetadata,
   assertReleaseTransition,
   releasedMethodologyChanged,
@@ -88,7 +89,9 @@ function releasePath(version: number): string {
   return join(METHODOLOGY_DIRECTORY, `version-${String(version)}.release.json`);
 }
 
-const versions = readdirSync(METHODOLOGY_DIRECTORY)
+const methodologyFiles = readdirSync(METHODOLOGY_DIRECTORY);
+assertPinnedVersionsShip(methodologyFiles);
+const versions = methodologyFiles
   .map((name) => /^version-(\d+)\.release\.json$/.exec(name)?.[1])
   .filter((digits): digits is string => digits != null)
   .map(Number)
@@ -108,7 +111,9 @@ function sorted<T>(values: readonly T[], key: (value: T) => string = (value) => 
 
 const release = JSON.parse(readFileSync(RELEASE, 'utf8')) as ReleaseSource;
 if (release.public_version !== currentVersion) {
-  throw new Error(`version-${String(currentVersion)}.release.json names public version ${String(release.public_version)}.`);
+  throw new Error(
+    `version-${String(currentVersion)}.release.json names public version ${String(release.public_version)}.`
+  );
 }
 const label = `Methodology Version ${String(currentVersion)}`;
 
@@ -370,7 +375,9 @@ checkSupersededVersions();
 
 if (releasing) {
   if (release.state !== 'released') {
-    throw new Error(`Set the complete released facts in version-${String(currentVersion)}.release.json before running --release.`);
+    throw new Error(
+      `Set the complete released facts in version-${String(currentVersion)}.release.json before running --release.`
+    );
   }
   let currentValue: unknown;
   try {

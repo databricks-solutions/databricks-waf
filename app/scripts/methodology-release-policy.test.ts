@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   RELEASED_MANIFEST_DIGESTS,
   assertFrozenAgainstPin,
+  assertPinnedVersionsShip,
   assertReleasedMetadata,
   assertReleaseTransition,
   manifestDigestOf,
@@ -110,5 +111,36 @@ describe('the pinned digests of released methodologies', () => {
 
   it('leaves a candidate with no pin to the generator comparison', () => {
     expect(() => assertFrozenAgainstPin(2, 'candidate', candidate, pins)).not.toThrow();
+  });
+});
+
+describe('the files of every pinned version', () => {
+  const pins = { 1: 'sha256:one', 2: 'sha256:two' };
+
+  it('accepts a tree that ships a release record and manifest for every pin', () => {
+    expect(() =>
+      assertPinnedVersionsShip(
+        [
+          'version-1.release.json',
+          'version-1.manifest.json',
+          'version-2.release.json',
+          'version-2.manifest.json',
+          'version-3.release.json',
+        ],
+        pins
+      )
+    ).not.toThrow();
+  });
+
+  it('refuses a tree where a pinned version has lost its release record', () => {
+    expect(() =>
+      assertPinnedVersionsShip(['version-1.manifest.json', 'version-2.release.json', 'version-2.manifest.json'], pins)
+    ).toThrow(/Methodology Version 1.*version-1\.release\.json/);
+  });
+
+  it('refuses a tree where a pinned version has lost its manifest', () => {
+    expect(() =>
+      assertPinnedVersionsShip(['version-1.release.json', 'version-1.manifest.json', 'version-2.release.json'], pins)
+    ).toThrow(/Methodology Version 2.*version-2\.manifest\.json/);
   });
 });

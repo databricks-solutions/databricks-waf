@@ -45,7 +45,7 @@ config/controls/*.yaml
 
 # Generated and byte-checked by `scripts/methodology-manifest.mts`. Its digest is over the generated
 # contract, and a formatter must not become a second writer of those bytes.
-config/methodology/version-1.manifest.json
+config/methodology/*.manifest.json
 
 # Rewritten by `appkit plugin sync` on every build, so formatting it means the
 # next build immediately un-formats it and CI fails on a file nobody edited.

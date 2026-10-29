@@ -69,7 +69,9 @@ function fixedMethodology(manifest: unknown): unknown {
 export function assertReleasedMetadata(releaseValue: unknown): void {
   const release = object(releaseValue, 'The methodology release record');
   const name =
-    typeof release.public_version === 'number' ? `Methodology Version ${String(release.public_version)}` : 'Methodology Version';
+    typeof release.public_version === 'number'
+      ? `Methodology Version ${String(release.public_version)}`
+      : 'Methodology Version';
   if (release.state !== 'released') throw new Error(`${name} must be marked released.`);
 
   const effectiveDate = nonblank(release.effective_date, `The ${name} effective date`);
@@ -82,6 +84,30 @@ export function assertReleasedMetadata(releaseValue: unknown): void {
     throw new Error(`The ${name} source commit must be a full Git SHA.`);
   }
   nonblank(release.approved_by, `The ${name} approver`);
+}
+
+/**
+ * Require the release record and manifest of every pinned version to be present.
+ *
+ * `fileNames` are the entries of the methodology directory. A pin is only checked against files that
+ * exist, so removing a released version's files would otherwise leave nothing to compare and the pin
+ * would never be consulted.
+ */
+export function assertPinnedVersionsShip(
+  fileNames: readonly string[],
+  pins: Readonly<Record<number, string>> = RELEASED_MANIFEST_DIGESTS
+): void {
+  const present = new Set(fileNames);
+  for (const version of Object.keys(pins).map(Number)) {
+    for (const kind of ['release', 'manifest']) {
+      const file = `version-${String(version)}.${kind}.json`;
+      if (!present.has(file)) {
+        throw new Error(
+          `Methodology Version ${String(version)} is released and pinned, but ${file} is missing. Restore the released file.`
+        );
+      }
+    }
+  }
 }
 
 /**
