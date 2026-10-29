@@ -134,6 +134,18 @@ export interface Envelope {
   readonly digest: string;
 }
 
+/**
+ * The workspace the workspace half of an envelope was collected from, when it was collected at all.
+ *
+ * What an imported reading is held to when a scan decides whether it is about the workspace in
+ * question. A file whose workspace tier did not run, or ran under an identity that named no workspace,
+ * has none, and its workspace-level readings can then be held but not attributed.
+ */
+export function workspaceOf(envelope: Envelope): string | undefined {
+  const tier = envelope.tiers.workspace;
+  return tier.ran ? tier.identity?.workspaceId : undefined;
+}
+
 function fail(reason: MalformedReason, message: string, at?: string): never {
   throw new MalformedEnvelopeError(reason, message, at);
 }
@@ -216,11 +228,44 @@ function digestOf(holder: Record<string, unknown>, key: string, at: string): str
   return value;
 }
 
+/**
+ * A host the script recorded, refused unless it is an `https:` origin.
+ *
+ * The host is shown to readers and carried on every reading made under that tier, so it has to be a
+ * place a reader could go to: a scheme that runs code or sends credentials in the clear, a URL that
+ * embeds a login, or one that points at a path within a site is none of those. A trailing slash is
+ * the origin itself and is accepted, since the CLI prints one with and without.
+ */
+function hostOf(holder: Record<string, unknown>, key: string, at: string): string {
+  const value = text(holder, key, at);
+  const refusal = `${at} must be an https origin such as https://example.cloud.databricks.com, with no path, query or credentials.`;
+
+  let parsed: URL;
+  try {
+    parsed = new URL(value);
+  } catch {
+    return fail('bad-field', refusal, at);
+  }
+
+  const bare =
+    parsed.protocol === 'https:' &&
+    parsed.username === '' &&
+    parsed.password === '' &&
+    parsed.search === '' &&
+    parsed.hash === '' &&
+    parsed.pathname === '/' &&
+    // `new URL` accepts a trailing `?` or `#` and reports them as empty, which would let a query
+    // marker through on a host the check says has none.
+    !/[?#]/.test(value);
+  if (!bare) fail('bad-field', refusal, at);
+  return value;
+}
+
 function identityFrom(value: unknown, at: string): TierIdentity {
   const held = object(value, at);
   return {
     username: optionalText(held, 'username', `${at}.username`),
-    host: text(held, 'host', `${at}.host`),
+    host: hostOf(held, 'host', `${at}.host`),
     accountId: optionalText(held, 'account_id', `${at}.account_id`),
     workspaceId: optionalText(held, 'workspace_id', `${at}.workspace_id`),
     authType: optionalText(held, 'auth_type', `${at}.auth_type`),

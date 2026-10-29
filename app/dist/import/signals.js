@@ -223,21 +223,24 @@ const REVIVERS = /* @__PURE__ */ new Map([
 * when it was imported, and a reading that could not say whose authority produced it would be
 * unattributable — which is the one thing an imported number may not be.
 */
-function readingsFrom(imported) {
+function readingsFrom(imported, tiers) {
 	const signals = /* @__PURE__ */ new Map();
 	const unrevived = /* @__PURE__ */ new Set();
-	for (const probe of imported.envelope.probes) for (const name of probe.signals) {
-		if (!signalled(name)) {
-			unrevived.add(name);
-			continue;
+	for (const probe of imported.envelope.probes) {
+		if (tiers != null && !tiers.includes(probe.tier)) continue;
+		for (const name of probe.signals) {
+			if (!signalled(name)) {
+				unrevived.add(name);
+				continue;
+			}
+			const reviver = REVIVERS.get(name);
+			if (reviver == null) {
+				unrevived.add(name);
+				continue;
+			}
+			const revived = resultFrom(name, probe, reviver, imported.envelope);
+			if (preferred(signals.get(name), revived)) signals.set(name, revived);
 		}
-		const reviver = REVIVERS.get(name);
-		if (reviver == null) {
-			unrevived.add(name);
-			continue;
-		}
-		const revived = resultFrom(name, probe, reviver, imported.envelope);
-		if (preferred(signals.get(name), revived)) signals.set(name, revived);
 	}
 	return {
 		signals,
@@ -321,7 +324,8 @@ function provenanceFor(probe, envelope) {
 		collector: `admin-script:${probe.label}`,
 		authority: "admin-cli",
 		actor: identity?.username ?? `an unnamed ${probe.tier} administrator`,
-		...identity?.host != null ? { from: identity.host } : {}
+		...identity?.host != null ? { from: identity.host } : {},
+		...probe.tier === "workspace" && identity?.workspaceId != null ? { workspaceId: identity.workspaceId } : {}
 	};
 }
 /**

@@ -12,7 +12,7 @@
 import type { Catalogue } from '../catalogue/catalogue.js';
 import type { Collector, SignalId, SignalResult } from '../collect/signal.js';
 import type { CredentialProvider } from '../collect/credentials.js';
-import type { EstateScope } from '../collect/estate-scope.js';
+import { restWorkspace, type EstateScope } from '../collect/estate-scope.js';
 import type { RunDefinition } from './identity.js';
 import type { ResolverRegistry } from '../resolve/resolver.js';
 import type { Attestation } from '../attest/attestation.js';
@@ -24,6 +24,7 @@ import { carryForward } from './carry-forward.js';
 import { aliasLookup, runScan, type Scan, type ScanTrigger } from './scan.js';
 import type { ScanStore } from './store.js';
 import type { EvidenceImportStore } from '../import/store.js';
+import { workspaceOf, type Tier } from '../import/envelope.js';
 import { readingsFrom } from '../import/signals.js';
 import type { AssessmentScope } from '../store/assessment-scope.js';
 
@@ -280,7 +281,7 @@ export class ScanRunner {
     const attestations = await this.answers(scope);
     // Read alongside the answers and for the same reason: one read per run, so a file imported
     // mid-scan does not apply to some requirements and not others.
-    const imported = await this.importedReadings();
+    const imported = await this.importedReadings(request.scope);
     // The customer's applicability decisions, read once for the same reason, so a decision recorded
     // mid-scan does not take a requirement out of some pillars and not others.
     const decisions = await this.decisions(scope);
@@ -350,24 +351,39 @@ export class ScanRunner {
   }
 
   /**
-   * The readings imported administrators collected, newest collection winning.
+   * The readings imported administrators collected that are about what this scan assesses, newest
+   * collection winning.
    *
    * Read here for the same reasons the answers are: one read at the start of the run, so every
    * finding reflects the same set of imports, and a store that cannot be read yields none rather
    * than failing the scan — an unreachable table should cost the imported requirements, which then
    * report as unmeasured with a reason, not the pillars that never depended on it.
    *
-   * Oldest applied first so that a newer collection of the same signal overwrites an older one. That
-   * ordering is this method's business and not `merged`'s, which is deliberately ignorant of dates:
-   * it enforces the class rule between observed and imported, and both of these are imported.
+   * Scoped, because an account install holds files from several workspaces and a setting is a fact
+   * about one of them. The workspace half of a file applies only when it was collected from the
+   * workspace the REST surface describes — the one this app is installed in, or the one the scan was
+   * narrowed to — and never to a scan whose workspace is not known, since a reading that cannot be
+   * attributed cannot be shown to be about anything. The account half describes the account and
+   * applies to every scan. The import-time check refuses a file for another account when it knows
+   * which one this is.
+   *
+   * Oldest applied first so that a newer collection of the same signal overwrites an older one, which
+   * makes the winner the newest import for each signal and workspace: only one workspace's files get
+   * this far. That ordering is this method's business and not `merged`'s, which is deliberately
+   * ignorant of dates: it enforces the class rule between observed and imported, and both of these
+   * are imported.
    */
-  private async importedReadings(): Promise<ReadonlyMap<SignalId, SignalResult>> {
+  private async importedReadings(scope: EstateScope): Promise<ReadonlyMap<SignalId, SignalResult>> {
     if (this.options.imports == null) return new Map();
     try {
       const held = await this.options.imports.all();
+      const describes = restWorkspace(scope);
       const applied = new Map<SignalId, SignalResult>();
       for (const one of [...held].sort((a, b) => a.generatedAt.getTime() - b.generatedAt.getTime())) {
-        for (const [id, reading] of readingsFrom(one).signals) applied.set(id, reading);
+        const workspaceId = one.workspaceId ?? workspaceOf(one.envelope);
+        const tiers: Tier[] = ['account'];
+        if (describes != null && workspaceId === describes) tiers.push('workspace');
+        for (const [id, reading] of readingsFrom(one, tiers).signals) applied.set(id, reading);
       }
       return applied;
     } catch {

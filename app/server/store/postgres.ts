@@ -337,6 +337,19 @@ export async function ensureSchema(sql: Sql, schema: string): Promise<void> {
   // `docs/design/import-list-cost.md`.
   await sql.query(`alter table ${schema}.imported_evidence add column if not exists summary jsonb`);
 
+  // The workspace the file's workspace half was collected from, promoted out of `body` so a
+  // workspace's files can be found without reading every envelope, which is what scoping an imported
+  // reading to the workspace it describes asks of the table.
+  //
+  // Nullable, because a row written before this column existed has none and a file whose workspace tier
+  // did not run never will. The first is read out of the body when the row is read — one definition of
+  // the answer, in `import/envelope.ts`, rather than a second one in a migration — and the second is
+  // simply a file with nothing to attribute. Additive, so a build that predates it ignores the column.
+  await sql.query(`alter table ${schema}.imported_evidence add column if not exists workspace_id text`);
+  await sql.query(
+    `create index if not exists imported_evidence_workspace on ${schema}.imported_evidence (workspace_id, imported_at desc)`
+  );
+
   // What people did, as opposed to what it produced. Append-only and chained: `sequence` is the
   // primary key and is contiguous, so a removed row leaves a gap a verifier reports, and each row's
   // digest covers the digest of the row before it, so an edit in place cannot be made consistent

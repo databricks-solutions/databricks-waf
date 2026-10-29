@@ -2029,4 +2029,36 @@ describe.skipIf(!bound)('the reads that count and exclude in SQL, against a real
     expect(rows[0]?.summary).not.toBeNull();
     expect(typeof rows[0]?.summary).toBe('object');
   });
+
+  it('keeps the workspace in its own column, and reads it from the body for a row that predates it', async () => {
+    // What the fake cannot settle about the workspace column: that the new statements are valid, that
+    // the value survives a real driver as text, and that a row with a null column is still attributed.
+    const store = new PostgresEvidenceImportStore({ db });
+    const raw = envelope({ generated_at: '2026-08-04T10:41:52Z' });
+    const held = envelopeFrom({ ...raw, digest: digestOf(raw.probes) });
+    const one = {
+      digest: `sha256:${'b8'.repeat(32)}`,
+      generatedAt: new Date(held.generatedAt),
+      importedAt: REQUESTED,
+      importedBy: 'importer@example.com',
+      envelope: held,
+      cautions: [],
+    };
+    await store.record(one);
+
+    const { rows } = await db.query<{ workspace_id: string | null }>(
+      `select workspace_id from ${db.schema}.imported_evidence where digest = $1`,
+      [one.digest]
+    );
+    expect(rows[0]?.workspace_id).toBe('7000000000000001');
+    expect((await store.all()).find((held) => held.digest === one.digest)?.workspaceId).toBe('7000000000000001');
+
+    // The upgrade case: a row written before the column, whose body still names the workspace.
+    await db.query(`update ${db.schema}.imported_evidence set workspace_id = null where digest = $1`, [one.digest]);
+    expect((await store.all()).find((held) => held.digest === one.digest)?.workspaceId).toBe('7000000000000001');
+
+    // Boot again over the same schema, which is what a rolling deploy does and must change nothing.
+    await ensureSchema(db, db.schema);
+    expect((await store.all()).find((held) => held.digest === one.digest)?.workspaceId).toBe('7000000000000001');
+  });
 });

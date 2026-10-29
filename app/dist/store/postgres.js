@@ -152,6 +152,8 @@ async function ensureSchema(sql, schema) {
   `);
 	await sql.query(`create index if not exists imported_evidence_newest_first on ${schema}.imported_evidence (imported_at desc)`);
 	await sql.query(`alter table ${schema}.imported_evidence add column if not exists summary jsonb`);
+	await sql.query(`alter table ${schema}.imported_evidence add column if not exists workspace_id text`);
+	await sql.query(`create index if not exists imported_evidence_workspace on ${schema}.imported_evidence (workspace_id, imported_at desc)`);
 	await sql.query(`
     create table if not exists ${schema}.audit_events (
       sequence    bigint      primary key,

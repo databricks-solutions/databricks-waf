@@ -11,7 +11,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { merged, readingsFrom, revivable } from './signals.js';
-import { envelope, probe } from './envelope-fixture.js';
+import { envelope, identity, probe } from './envelope-fixture.js';
 import { envelopeFrom } from './envelope.js';
 import type { ImportedEvidence } from './store.js';
 import type { TokenInventory, WorkspaceSettings } from '../collect/rest/shapes.js';
@@ -19,6 +19,7 @@ import { observed, unmeasurable, type SignalId, type SignalResult } from '../col
 
 const SETTINGS: SignalId = 'rest:workspace:preview.workspace-conf';
 const TOKENS: SignalId = 'rest:workspace:token.list';
+const LOG_DELIVERY: SignalId = 'rest:account:accounts.log-delivery';
 
 /**
  * A stored import, built from the same raw JSON the wire carries and validated the same way.
@@ -246,6 +247,35 @@ describe('the provenance an imported reading carries', () => {
     ).signals.get(TOKENS);
 
     expect(result?.provenance?.actor).toBe('an unnamed workspace administrator');
+  });
+
+  it('names the workspace a workspace-tier reading was collected from', () => {
+    const result = one({ signals: [TOKENS], value: { token_infos: [] } });
+
+    expect(result?.provenance?.workspaceId).toBe('7000000000000001');
+  });
+
+  it('names no workspace for an account-tier reading, which is about the account', () => {
+    const result = one({ signals: [LOG_DELIVERY], tier: 'account', value: { log_delivery_configurations: [] } });
+
+    expect(result?.provenance?.workspaceId).toBeUndefined();
+  });
+
+  it('can be asked for one tier of the file only', () => {
+    const both = imported({
+      tiers: {
+        workspace: { ran: true, identity: identity() },
+        account: { ran: true, identity: identity({ workspace_id: null, host: 'https://accounts.cloud.databricks.com' }) },
+      },
+      probes: [
+        probe({ signals: [TOKENS], value: { token_infos: [] } }),
+        probe({ signals: [LOG_DELIVERY], tier: 'account', value: { log_delivery_configurations: [] } }),
+      ],
+    });
+
+    expect([...readingsFrom(both, ['workspace']).signals.keys()]).toStrictEqual([TOKENS]);
+    expect([...readingsFrom(both, ['account']).signals.keys()]).toStrictEqual([LOG_DELIVERY]);
+    expect([...readingsFrom(both).signals.keys()].sort()).toStrictEqual([LOG_DELIVERY, TOKENS].sort());
   });
 
   it('is dated when the administrator collected it, not when the scan ran', () => {
