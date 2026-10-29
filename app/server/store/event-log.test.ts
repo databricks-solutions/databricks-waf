@@ -167,6 +167,103 @@ describe('an append-only log in Lakebase', () => {
     expect(db.statements.some((sql) => sql.includes('where control_id = $1'))).toBe(true);
   });
 
+  it('asks the database for each requirement\'s newest records rather than reading every one', async () => {
+    const { db, log: notes } = log();
+    await notes.append(note({ id: 'old', at: new Date('2026-01-01T00:00:00Z') }));
+    await notes.append(note({ id: 'new', at: new Date('2026-05-01T00:00:00Z') }));
+    await notes.append(note({ id: 'other', controlId: 'CO-01-01', at: new Date('2026-02-01T00:00:00Z') }));
+    db.statements.length = 0;
+
+    expect((await notes.current()).map((record) => record.id)).toEqual(['new', 'other']);
+    // One statement: nothing is tied and everything read, so there is nothing more to ask.
+    expect(db.statements).toEqual([
+      'select control_id, body from waf.attestations where (control_id, attested_at) in (select control_id, max(attested_at) from waf.attestations group by control_id)',
+    ]);
+  });
+
+  it('keeps the narrowing inside the assessment that was asked for, on both sides of it', async () => {
+    const { db, log: notes } = log();
+    await notes.append(note({ id: 'a', definitionId: 'def-a', at: new Date('2026-01-01T00:00:00Z') }));
+    await notes.append(note({ id: 'b', definitionId: 'def-b', at: new Date('2026-05-01T00:00:00Z') }));
+    db.statements.length = 0;
+
+    // The newer record is another assessment's, so it must not decide what this one's newest is.
+    expect((await notes.current('def-a')).map((record) => record.id)).toEqual(['a']);
+    expect(db.statements).toEqual([
+      'select control_id, body from waf.attestations where (control_id, attested_at) in (select control_id, max(attested_at) from waf.attestations where definition_id = $1 group by control_id) and definition_id = $1',
+    ]);
+  });
+
+  it('settles a tie from the requirement\'s own history, and asks for that of the tied requirements alone', async () => {
+    const { db, log: notes } = log();
+    await notes.append(note({ id: 'first', at: NOW }));
+    await notes.append(note({ id: 'second', at: NOW, supersedes: 'first' }));
+    await notes.append(note({ id: 'older', at: new Date('2026-01-01T00:00:00Z') }));
+    await notes.append(note({ id: 'alone', controlId: 'CO-01-01', at: new Date('2026-02-01T00:00:00Z') }));
+    db.statements.length = 0;
+
+    expect((await notes.current()).map((record) => record.id)).toEqual(['second', 'alone']);
+    expect(db.statements).toEqual([
+      'select control_id, body from waf.attestations where (control_id, attested_at) in (select control_id, max(attested_at) from waf.attestations group by control_id)',
+      'select body from waf.attestations where control_id = any($1::text[]) order by attested_at desc',
+    ]);
+  });
+
+  it('follows a chain that runs through a record older than the two it joins', async () => {
+    // `a` and `c` carry one stamp and `b`, which supersedes `a` and is superseded by `c`, carries an
+    // earlier one — a clock that stepped back. The depth of `c` counts `b`, which is not at the newest
+    // stamp, so a tie settled from the tied records alone would see two records with nothing between
+    // them and fall to their ids.
+    const { log: notes } = log();
+    await notes.append(note({ id: 'a', at: NOW }));
+    await notes.append(note({ id: 'b', at: new Date('2026-01-01T00:00:00Z'), supersedes: 'a' }));
+    await notes.append(note({ id: 'c', at: NOW, supersedes: 'b' }));
+
+    expect((await notes.current()).map((record) => record.id)).toEqual(['c']);
+  });
+
+  it('falls back to the newest record that reads when the newest cannot, and reports the count once', async () => {
+    const onError = vi.fn();
+    const db = new FakePostgres();
+    db.seed('attestations', {
+      id: 'ok',
+      control_id: 'DG-02-01',
+      attested_at: new Date('2026-01-01T00:00:00Z'),
+      body: note({ id: 'ok' }),
+    });
+    db.seed('attestations', {
+      id: 'bad',
+      control_id: 'DG-02-01',
+      attested_at: new Date('2026-05-01T00:00:00Z'),
+      body: { id: 'bad', at: 'not a date' },
+    });
+    db.seed('attestations', {
+      id: 'fine',
+      control_id: 'CO-01-01',
+      attested_at: new Date('2026-02-01T00:00:00Z'),
+      body: note({ id: 'fine', controlId: 'CO-01-01' }),
+    });
+    const { log: notes } = log({ db, onError });
+    db.statements.length = 0;
+
+    expect((await notes.current()).map((record) => record.id)).toEqual(['fine', 'ok']);
+    expect(db.statements).toHaveLength(2);
+    expect(db.statements[1]).toBe(
+      'select body from waf.attestations where control_id = any($1::text[]) order by attested_at desc'
+    );
+    expect(onError).toHaveBeenCalledTimes(1);
+    expect(String(onError.mock.calls[0]?.[1])).toContain('1 stored note record(s)');
+  });
+
+  it('prefers the readable record of a tie to the unreadable one it shares a stamp with', async () => {
+    const db = new FakePostgres();
+    db.seed('attestations', { id: 'ok', control_id: 'DG-02-01', attested_at: NOW, body: note({ id: 'ok' }) });
+    db.seed('attestations', { id: 'bad', control_id: 'DG-02-01', attested_at: NOW, body: { id: 'bad', at: 'x' } });
+    const { log: notes } = log({ db });
+
+    expect((await notes.current()).map((record) => record.id)).toEqual(['ok']);
+  });
+
   it('has nothing rather than failing on a fresh install', async () => {
     const { log: notes } = log();
 
@@ -193,7 +290,7 @@ describe('an append-only log in Lakebase', () => {
     // assessment down with it.
     const onError = vi.fn();
     const db = new FakePostgres({
-      failOn: (sql) => (sql.startsWith('select body') ? new Error('connection terminated unexpectedly') : undefined),
+      failOn: (sql) => (sql.startsWith('select') ? new Error('connection terminated unexpectedly') : undefined),
     });
     const { log: notes } = log({ db, onError });
 

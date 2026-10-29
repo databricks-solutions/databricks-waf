@@ -317,6 +317,105 @@ describe('accepted risks in postgres', () => {
     expect(errors).toEqual(['read accepted risks for GOV-04']);
   });
 
+  it('reads the register as the newest revision of each acceptance, not every revision to reduce here', async () => {
+    const { store, db } = postgres();
+    await store.record(risk());
+    await store.revoke(ended());
+    await store.record(risk({ id: 'risk-2', controlId: 'SEC-01', recordedAt: new Date('2026-04-11T09:00:00.000Z') }));
+    db.statements.length = 0;
+
+    const read = await store.all();
+
+    expect(read.map((one) => [one.id, one.revoked != null])).toEqual([
+      ['risk-2', false],
+      ['risk-1', true],
+    ]);
+    // One statement, and the one that leaves Postgres to choose the revision: nothing else has to leave
+    // the database for a register to be read, however many revisions there are behind it.
+    expect(db.statements).toEqual([
+      'select distinct on (id) id, body from waf.accepted_risks order by id, revision desc',
+    ]);
+  });
+
+  it('keeps the register inside one assessment, or inside the records that name none', async () => {
+    const { store, db } = postgres();
+    await store.record(risk({ id: 'mine', definitionId: 'def-1' }));
+    await store.record(risk({ id: 'theirs', controlId: 'SEC-01', definitionId: 'def-2' }));
+    await store.record(risk({ id: 'neither', controlId: 'SEC-02', definitionId: undefined }));
+    db.statements.length = 0;
+
+    expect((await store.all('def-1')).map((one) => one.id)).toEqual(['mine']);
+    expect((await store.all(null)).map((one) => one.id)).toEqual(['neither']);
+    expect(db.statements).toEqual([
+      'select distinct on (id) id, body from waf.accepted_risks where definition_id = $1 order by id, revision desc',
+      'select distinct on (id) id, body from waf.accepted_risks where definition_id is null order by id, revision desc',
+    ]);
+  });
+
+  it('reads an older revision of the acceptances whose newest cannot be read, and only those', async () => {
+    // The newest revision of risk-1 is the revocation, and it will not parse. The acceptance has to
+    // stand rather than vanish, so the older revision is fetched for that id alone; risk-2 read cleanly
+    // the first time and is not asked about again.
+    const { store, db, errors } = postgres();
+    await store.record(risk());
+    await store.record(risk({ id: 'risk-2', controlId: 'SEC-01', recordedAt: new Date('2026-04-11T09:00:00.000Z') }));
+    db.seed('accepted_risks', {
+      id: 'risk-1',
+      revision: 1,
+      control_id: 'GOV-04',
+      owner: 'platform-engineering',
+      residual: 'low',
+      expires_at: EXPIRES,
+      recorded_at: RECORDED,
+      revoked: true,
+      body: { id: 'risk-1', controlId: 'GOV-04' },
+      digest: 'x',
+    });
+    db.statements.length = 0;
+
+    const read = await store.all();
+
+    expect(read.map((one) => [one.id, one.revoked])).toEqual([
+      ['risk-2', undefined],
+      ['risk-1', undefined],
+    ]);
+    expect(db.statements).toEqual([
+      'select distinct on (id) id, body from waf.accepted_risks order by id, revision desc',
+      'select id, body from waf.accepted_risks where id = any($1::text[]) order by revision desc',
+    ]);
+    expect(errors).toEqual(['read accepted risks']);
+  });
+
+  it('keeps the fallback inside the assessment that was asked for', async () => {
+    const { store, db } = postgres();
+    await store.record(risk({ id: 'risk-1', definitionId: 'def-1' }));
+    db.seed('accepted_risks', {
+      id: 'risk-1',
+      revision: 1,
+      control_id: 'GOV-04',
+      definition_id: 'def-1',
+      revoked: true,
+      body: { id: 'risk-1' },
+      digest: 'x',
+    });
+    db.statements.length = 0;
+
+    expect((await store.all('def-1')).map((one) => one.id)).toEqual(['risk-1']);
+    expect(db.statements[1]).toBe(
+      'select id, body from waf.accepted_risks where id = any($1::text[]) and definition_id = $2 order by revision desc'
+    );
+  });
+
+  it('answers as a requirement nobody has accepted only when nothing is stored, not when nothing reads', async () => {
+    // An acceptance every revision of which is unreadable is dropped and counted, which is what `for`
+    // already does with it; it is not turned into a failure of the whole register.
+    const { store, db, errors } = postgres();
+    db.seed('accepted_risks', { id: 'risk-9', revision: 0, control_id: 'GOV-04', definition_id: 'def-1', body: {} });
+
+    expect(await store.all()).toEqual([]);
+    expect(errors).toEqual(['read accepted risks']);
+  });
+
   it('drops a revoked row whose date will not parse rather than reading it as still standing', async () => {
     // The direction that matters: read as standing, a finding stays parked on an acceptance somebody
     // has already ended. Dropped, the requirement is back on the queue and the log says a row could

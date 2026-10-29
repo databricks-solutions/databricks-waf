@@ -47,59 +47,81 @@ export class PostgresDefinitionStore implements DefinitionStore {
 
   async all(): Promise<readonly AssessmentDefinition[]> {
     const { db } = this.options;
+    const operation = 'read every assessment definition';
     try {
       const [definitions, versions] = await Promise.all([
         db.query<DefinitionRow>(`select id, archived_at from ${db.schema}.assessment_definitions`),
-        // Unordered, and sorted by version number below. The event log makes the same choice for the
+        // Unordered, and sorted by version number in `assemble`. The event log makes the same choice for the
         // same reason: ordering done in one place cannot differ between this store and the in-memory
         // one, and the row count here is versions-per-assessment, not scans.
         db.query<VersionRow>(`select definition_id, body from ${db.schema}.assessment_definition_versions`),
       ]);
-
-      const byDefinition = new Map<string, DefinitionVersion[]>();
-      let unreadable = 0;
-      for (const row of versions.rows) {
-        const version = revive(row.body);
-        if (version == null) {
-          unreadable += 1;
-          continue;
-        }
-        byDefinition.set(row.definition_id, [...(byDefinition.get(row.definition_id) ?? []), version]);
-      }
-      // Counted and reported once, because a schema change that makes every row unreadable would
-      // otherwise emit a line per version and the number is the useful part.
-      if (unreadable > 0) {
-        this.options.onError?.(
-          'read every assessment definition',
-          new Error(`${String(unreadable)} stored definition versions could not be read and were skipped.`),
-        );
-      }
-
-      const assembled: AssessmentDefinition[] = [];
-      for (const row of definitions.rows) {
-        const stored = byDefinition.get(row.id)?.sort((a, b) => a.version - b.version);
-        // A definition row with no readable version is not a definition. Skipped rather than
-        // returned as an empty shell, because every caller reads fields off its current version.
-        if (stored == null || stored.length === 0) continue;
-        const archivedAt = row.archived_at == null ? undefined : new Date(row.archived_at);
-        assembled.push({
-          id: row.id,
-          versions: stored,
-          ...(archivedAt != null && !Number.isNaN(archivedAt.getTime()) ? { archivedAt } : {}),
-        });
-      }
-      return newestFirst(assembled);
+      return newestFirst(this.assemble(definitions.rows, versions.rows, operation));
     } catch (error) {
-      this.options.onError?.('read every assessment definition', error);
+      this.options.onError?.(operation, error);
       throw error;
     }
   }
 
   async get(id: string): Promise<AssessmentDefinition | undefined> {
-    // Read through `all` rather than a narrowed query. There are tens of these, not thousands, and
-    // one assembly path means the two cannot disagree about how a row becomes a definition.
-    const definitions = await this.all();
-    return definitions.find((definition) => definition.id === id);
+    const { db } = this.options;
+    const operation = `read assessment definition ${id}`;
+    try {
+      // The same two tables `all` reads, narrowed to one id on each, and put together by the same
+      // function: one assembly path means the two cannot disagree about how a row becomes a definition.
+      const [definitions, versions] = await Promise.all([
+        db.query<DefinitionRow>(`select id, archived_at from ${db.schema}.assessment_definitions where id = $1`, [id]),
+        db.query<VersionRow>(
+          `select definition_id, body from ${db.schema}.assessment_definition_versions where definition_id = $1`,
+          [id],
+        ),
+      ]);
+      return this.assemble(definitions.rows, versions.rows, operation)[0];
+    } catch (error) {
+      this.options.onError?.(operation, error);
+      throw error;
+    }
+  }
+
+  /** Definition rows and their version rows as definitions, skipping what cannot be read. */
+  private assemble(
+    definitions: readonly DefinitionRow[],
+    versions: readonly VersionRow[],
+    operation: string,
+  ): AssessmentDefinition[] {
+    const byDefinition = new Map<string, DefinitionVersion[]>();
+    let unreadable = 0;
+    for (const row of versions) {
+      const version = revive(row.body);
+      if (version == null) {
+        unreadable += 1;
+        continue;
+      }
+      byDefinition.set(row.definition_id, [...(byDefinition.get(row.definition_id) ?? []), version]);
+    }
+    // Counted and reported once, because a schema change that makes every row unreadable would
+    // otherwise emit a line per version and the number is the useful part.
+    if (unreadable > 0) {
+      this.options.onError?.(
+        operation,
+        new Error(`${String(unreadable)} stored definition versions could not be read and were skipped.`),
+      );
+    }
+
+    const assembled: AssessmentDefinition[] = [];
+    for (const row of definitions) {
+      const stored = byDefinition.get(row.id)?.sort((a, b) => a.version - b.version);
+      // A definition row with no readable version is not a definition. Skipped rather than
+      // returned as an empty shell, because every caller reads fields off its current version.
+      if (stored == null || stored.length === 0) continue;
+      const archivedAt = row.archived_at == null ? undefined : new Date(row.archived_at);
+      assembled.push({
+        id: row.id,
+        versions: stored,
+        ...(archivedAt != null && !Number.isNaN(archivedAt.getTime()) ? { archivedAt } : {}),
+      });
+    }
+    return assembled;
   }
 
   async create(definition: AssessmentDefinition): Promise<void> {

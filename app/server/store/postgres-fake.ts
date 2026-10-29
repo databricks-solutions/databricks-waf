@@ -310,6 +310,25 @@ export class FakePostgres implements Sql {
       );
     if (excluding) return this.excluding(excluding, values);
 
+    // `select distinct on (c) … from t [where …] order by c, … `, the newest revision of each record.
+    //
+    // Modelled as Postgres defines it rather than as a `group by`: the rows are put in the stated order
+    // and the first of each `c` is kept, so an `order by` that did not lead with `c`, or that put the
+    // newest revision second, would answer differently here too. Matched before the plain select, which
+    // would otherwise take `distinct on (c) c` for the projection.
+    const distinctOn = /^select distinct on \((\w+)\) (.+?) from (\S+)(?: where (.+?))? order by (.+?)$/i.exec(sql);
+    if (distinctOn) return this.firstOf(distinctOn, values);
+
+    // `select control_id, body from t where (control_id, c) in (select control_id, max(c) from t [where …]
+    // group by control_id) [and …]`: every row that carries its requirement's newest stamp, ties included.
+    // Special-cased because a row-value `in` over an aggregate is not something the where-clause language
+    // above can say, and it is the one statement the event logs need it for.
+    const newestStamped =
+      /^select control_id, body from (\S+) where \(control_id, (\w+)\) in \(\s*select control_id, max\((\w+)\) from (\S+)(?: where (.+?))? group by control_id\s*\)(?: and (.+?))?$/i.exec(
+        sql
+      );
+    if (newestStamped) return this.newestStamped(newestStamped, values);
+
     const select = /^select (.+?) from (\S+)(?: where (.+?))?(?: order by (.+?))?(?: limit (\S+))?(?: for update)?$/i.exec(sql);
     if (select) return this.select(select, values);
 
@@ -613,6 +632,63 @@ export class FakePostgres implements Sql {
       limit,
       values
     );
+  }
+
+  /** `select distinct on (c) cols from t [where …] order by c, …`: the first row of each `c` in that order. */
+  private firstOf(match: RegExpExecArray, values: readonly unknown[]): FakeRow[] {
+    const [, distinct = '', projected = '', table = '', where, order = ''] = match;
+
+    const terms = order.split(',').map((term) => {
+      const parsed = /^\s*(\w+)(?: (asc|desc))?\s*$/i.exec(term);
+      if (parsed == null) throw new Error(`FakePostgres only understands "column [asc|desc]" terms, got "${term}"`);
+      return { column: parsed[1] ?? '', sign: (parsed[2] ?? 'asc').toLowerCase() === 'desc' ? -1 : 1 };
+    });
+    // Postgres requires the `distinct on` expressions to lead the `order by`, and refuses the statement
+    // otherwise, so a fake that accepted one would be the more forgiving of the two.
+    if (terms[0]?.column !== distinct) {
+      throw new Error(`FakePostgres: "distinct on (${distinct})" must lead the order by, got "${order}"`);
+    }
+
+    const ordered = this.rows(this.unqualify(table))
+      .filter((row) => this.matches(row, where, values))
+      .sort((left, right) => {
+        for (const { column, sign } of terms) {
+          const found = sign * compare(left[column], right[column]);
+          if (found !== 0) return found;
+        }
+        return 0;
+      });
+
+    const seen = new Set<unknown>();
+    const first = ordered.filter((row) => {
+      if (seen.has(row[distinct])) return false;
+      seen.add(row[distinct]);
+      return true;
+    });
+    return this.shape(first, projected.split(',').map((column) => column.trim()), undefined, undefined, values);
+  }
+
+  /** The rows holding each requirement's newest stamp, and every row tied with it. */
+  private newestStamped(match: RegExpExecArray, values: readonly unknown[]): FakeRow[] {
+    const [, table = '', stamp = '', maxed = '', innerTable = '', innerWhere, outerWhere] = match;
+    if (stamp !== maxed || table !== innerTable) {
+      throw new Error(`FakePostgres wants one table and one stamp column on both sides, got "${match[0]}"`);
+    }
+
+    const rows = this.rows(this.unqualify(table));
+    const newest = new Map<unknown, unknown>();
+    for (const row of rows.filter((one) => this.matches(one, innerWhere, values))) {
+      const held = newest.get(row['control_id']);
+      if (held == null || compare(row[stamp], held) > 0) newest.set(row['control_id'], row[stamp]);
+    }
+
+    const kept = rows.filter(
+      (row) =>
+        newest.has(row['control_id']) &&
+        compare(row[stamp], newest.get(row['control_id'])) === 0 &&
+        this.matches(row, outerWhere, values)
+    );
+    return this.shape(kept, ['control_id', 'body'], undefined, undefined, values);
   }
 
   private select(match: RegExpExecArray, values: readonly unknown[]): FakeRow[] {

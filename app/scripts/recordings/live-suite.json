@@ -1,10 +1,10 @@
 {
   "what": "The last run of server/store/postgres.live.test.ts that passed, and the SQL it passed against.",
-  "ran": "2026-10-29T13:57:13.770Z",
-  "commit": "32c30627ea4c043af62c2e2b4a3b856ca19831ba",
+  "ran": "2026-10-29T14:27:40.679Z",
+  "commit": "7e7a225312b5b926aef4ebfe38a22e6fb4a7d5d0",
   "endpoint": "local",
-  "tests": 71,
-  "digest": "b8c1dd2ffffc7ce1",
+  "tests": 79,
+  "digest": "bc59e0748d4ee7a3",
   "lifecycle": {
     "restarted": true,
     "definition": {
@@ -28,8 +28,10 @@
     }
   },
   "covered": [
+    "server/accept/postgres-store.ts",
     "server/admin/retention-store.ts",
     "server/advise/plan-store.ts",
+    "server/apply/postgres-store.ts",
     "server/attest/postgres-store.ts",
     "server/decide/store.ts",
     "server/define/postgres-store.ts",
@@ -45,14 +47,12 @@
     "server/scan/postgres-store.ts",
     "server/store/audit-gaps.ts",
     "server/store/audit-log.ts",
+    "server/store/event-log.ts",
     "server/store/postgres.ts",
     "server/validate/postgres-store.ts"
   ],
   "uncovered": [
-    "server/accept/postgres-store.ts",
     "server/advise/store.ts",
-    "server/apply/postgres-store.ts",
-    "server/scan/store-choice.ts",
-    "server/store/event-log.ts"
+    "server/scan/store-choice.ts"
   ]
 }
