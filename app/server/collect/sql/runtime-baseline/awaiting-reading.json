@@ -7,8 +7,8 @@
     "those, and there are only two honest things to do with it: keep it out of the tree until somebody",
     "can log in, or ship it and say plainly that it has no budget.",
     "",
-    "This file is the second. A name here buys exactly one thing — the recording is allowed not to",
-    "mention it — and costs the rest: the gate prints it as unbudgeted, refuses to call Q1 complete",
+    "This file is the second. A name here buys exactly one thing \u2014 the recording is allowed not to",
+    "mention it \u2014 and costs the rest: the gate prints it as unbudgeted, refuses to call Q1 complete",
     "while the list is non-empty, and refuses an entry whose statement has since been measured, so the",
     "list can only shrink. Everything else a statement owes still applies: a declared row bound, a",
     "benchmark class, a descriptor, a reach.",
@@ -18,7 +18,7 @@
     "reading.",
     "",
     "What the paragraph above got wrong, until row 77: it enumerates what a name here costs and it was",
-    "not the whole list. A labs reading is the only thing in this build that parses SQL — the bounds and",
+    "not the whole list. A labs reading is the only thing in this build that parses SQL \u2014 the bounds and",
     "grain checks read statements with scan.ts, which says in its own header that it is not a parser. So",
     "an exemption from a measured duration was an exemption from ever being read, and",
     "serving_asset_quality shipped with a missing comma between its two CTEs, failing PARSE_SYNTAX_ERROR",
@@ -81,38 +81,6 @@
           "serving_assets": "main.default.placeholder",
           "serving_limit": "2000"
         }
-      }
-    },
-    "query_capacity": {
-      "since": "2026-09-02",
-      "why": "new statement for OE-03-01 (system.query.history service-limits signal). Validated on deep-test-1: 96 763 587 statements, 851 774 waiting_at_capacity_duration_ms > 0 in 30 days. Labs baseline owed before Q1-complete.",
-      "owedBy": "task-A",
-      "submitted": {
-        "at": "2026-09-02T00:00:00.000Z",
-        "profile": "deep-test-1",
-        "warehouseId": "0123456789abcdef",
-        "statementSha": "sha256:121dc6eea1e1120d32af94386e1071799e3fb5f9914208ee28c0cc35fd68e50c",
-        "sqlState": "00000",
-        "error": null,
-        "parameters": {
-          "live_workspace_ids": "",
-          "lookback_days": "30",
-          "workspace_id": ""
-        }
-      }
-    },
-    "security_dbfs_tables": {
-      "since": "2026-09-02",
-      "why": "new statement for SCP-04-05 (system.information_schema.tables DBFS-root managed table count). Validated on deep-test-1 with expanded customer_catalog predicate: 374 managed tables, 0 on DBFS root (all on S3 UC storage). Labs baseline owed before Q1-complete.",
-      "owedBy": "task-B",
-      "submitted": {
-        "at": "2026-09-02T00:00:00.000Z",
-        "profile": "deep-test-1",
-        "warehouseId": "0123456789abcdef",
-        "statementSha": "sha256:34ff4f68507c00692547e195c0de4f5676de172a1bc18c6dd47b00275998b840",
-        "sqlState": "00000",
-        "error": null,
-        "parameters": {}
       }
     }
   }
