@@ -27,9 +27,13 @@ const manifest = {
 describe('the public methodology identity', () => {
   it('stamps new records with the highest public version this build ships', () => {
     expect(PUBLIC_METHODOLOGY.publicVersion).toBe(2);
-    expect(PUBLIC_METHODOLOGY.state).toBe('candidate');
-    expect(PUBLIC_METHODOLOGY.effectiveDate).toBeUndefined();
-    expect(PUBLIC_METHODOLOGY.manifestDigest).toMatch(/^sha256:[0-9a-f]{64}$/);
+    expect(PUBLIC_METHODOLOGY.state).toBe('released');
+    expect(PUBLIC_METHODOLOGY.effectiveDate).toBe('2026-10-30');
+    expect(PUBLIC_METHODOLOGY.releaseCommit).toBe('8cd410c28ded4a6d518ae5d39aec501e9948ac5a');
+    expect(PUBLIC_METHODOLOGY.approvedBy).toBe('Al Thrussell (product owner)');
+    expect(PUBLIC_METHODOLOGY.manifestDigest).toBe(
+      'sha256:b37a74119b37489b882713880c32005f5142d0c6da6903c8751d67debf69cffe'
+    );
   });
 
   it('keeps every shipped version, with Version 1 the exact released artefact', () => {

@@ -21,6 +21,7 @@ type JsonObject = Record<string, unknown>;
  */
 export const RELEASED_MANIFEST_DIGESTS: Readonly<Record<number, string>> = {
   1: 'sha256:30d26e28904afb7e2c95799daef7ee26219c1461728ded11f514435394c99761',
+  2: 'sha256:b37a74119b37489b882713880c32005f5142d0c6da6903c8751d67debf69cffe',
 };
 
 function object(value: unknown, label: string): JsonObject {
