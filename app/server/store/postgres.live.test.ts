@@ -122,20 +122,44 @@ async function open(schema: string): Promise<Postgres> {
   return ENDPOINT.includes('/') ? openPostgres({ env }) : openPostgres({ env, connect: connectDirect });
 }
 
-async function connectDirect(): Promise<Sql> {
+/**
+ * The connection for a Provisioned instance, or for any Postgres a role and password are given for.
+ *
+ * With `PGUSER` set the role and password come from the environment and the Databricks CLI is not
+ * run, which is what lets this file be driven against a local PostgreSQL cluster. Without it the role
+ * is the Databricks identity and the password a short-lived token for it.
+ */
+function connectionConfig(): pg.ClientConfig {
+  const database = process.env.PGDATABASE ?? 'databricks_postgres';
+
+  if (process.env.PGUSER != null && process.env.PGUSER !== '') {
+    return {
+      host: ENDPOINT,
+      port: Number(process.env.PGPORT ?? 5432),
+      database,
+      user: process.env.PGUSER,
+      password: process.env.PGPASSWORD,
+      ssl: process.env.PGSSLMODE === 'disable' ? false : true,
+    };
+  }
+
   const profile = process.env.DATABRICKS_CONFIG_PROFILE ?? 'DEFAULT';
   const cli = (args: readonly string[]): Record<string, unknown> =>
     JSON.parse(execFileSync('databricks', [...args, '-p', profile], { encoding: 'utf8' })) as Record<string, unknown>;
 
-  const client = new pg.Client({
+  return {
     host: ENDPOINT,
     port: 5432,
-    database: process.env.PGDATABASE ?? 'databricks_postgres',
+    database,
     // The Postgres role is the Databricks identity, and the password is a short-lived token for it.
     user: String(cli(['current-user', 'me', '-o', 'json']).userName),
     password: String(cli(['auth', 'token']).access_token),
     ssl: true,
-  });
+  };
+}
+
+async function connectDirect(): Promise<Sql> {
+  const client = new pg.Client(connectionConfig());
   await client.connect();
   const query = <T = Record<string, unknown>>(text: string, values?: readonly unknown[]) =>
     client.query<T extends pg.QueryResultRow ? T : never>(text, values as unknown[]) as Promise<{ rows: T[] }>;
