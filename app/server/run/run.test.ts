@@ -10,6 +10,7 @@ import {
   answered,
   endedAs,
   joinable,
+  live,
   refusalMeans,
   resumeFrom,
   sameRequest,
@@ -87,6 +88,44 @@ describe('unheld', () => {
 
   it('is unheld the moment the claim lapses, since the holder cannot be asked whether it is alive', () => {
     expect(unheld(run({ lease: { holder: 'one', until: now } }), now)).toBe(true);
+  });
+});
+
+describe('live', () => {
+  const now = new Date('2026-01-01T00:00:30Z');
+
+  it('is true while a lease that has not lapsed is held', () => {
+    const held = run({ lease: { holder: 'a', until: new Date(now.getTime() + 1000) } });
+    expect(live(held, now)).toBe(true);
+  });
+
+  it('is false once the holder stopped renewing, since nothing is working on the run', () => {
+    const lapsed = run({ lease: { holder: 'a', until: new Date(now.getTime() - 1000) } });
+    expect(live(lapsed, now)).toBe(false);
+  });
+
+  it('is false for a run that was released, which the next trigger may take at once', () => {
+    expect(live(run({ attempts: 1 }), now)).toBe(false);
+  });
+
+  it('is true for a run asked for a moment ago that nothing has claimed yet', () => {
+    // The window between opening a run and claiming it. Without it a second instance could be admitted
+    // in the gap, and both would then claim a run of their own.
+    expect(live(run({ attempts: 0, requestedAt: new Date(now.getTime() - 1000) }), now)).toBe(true);
+  });
+
+  it('is false for one nothing claimed within a lease window, so a trigger that died before claiming blocks nobody', () => {
+    const unclaimed = run({ attempts: 0, requestedAt: new Date(now.getTime() - LEASE_SECONDS * 1000) });
+    expect(live(unclaimed, now)).toBe(false);
+  });
+
+  it('is false for a run that has finished', () => {
+    const done = run({
+      state: 'complete',
+      finishedAt: now,
+      lease: { holder: 'a', until: new Date(now.getTime() + 1000) },
+    });
+    expect(live(done, now)).toBe(false);
   });
 });
 

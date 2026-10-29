@@ -16,6 +16,8 @@
 // a timestamptz column holds whatever Date went in — so a test that wants to prove a Date survives
 // the wire has to go to `postgres.live.test.ts` for it.
 
+import { AsyncLocalStorage } from 'node:async_hooks';
+
 import type { Sql } from './postgres.js';
 
 export interface FakeRow {
@@ -97,7 +99,10 @@ export class FakePostgres implements Sql {
   private readonly created = new Set<string>();
   private calls = 0;
   private ended = false;
-  private inSession = false;
+  /** Set for the life of a session and for everything awaited inside it, which is what tells a nested call from a concurrent one. */
+  private readonly inside = new AsyncLocalStorage<true>();
+  /** The end of the last session started, which the next one waits for. */
+  private lastSession: Promise<void> = Promise.resolve();
 
   constructor(private readonly options: FakePostgresOptions = {}) {
     this.schema = options.schema ?? 'waf';
@@ -134,20 +139,37 @@ export class FakePostgres implements Sql {
    * Nested sessions are refused rather than flattened: Postgres treats a second `begin` as a warning
    * and carries on in the first transaction, so a caller that nested them would get one commit point
    * here and one there, and the fake should not be the more forgiving of the two.
+   *
+   * A session started while another is open waits for it to end. Two callers' sessions are two
+   * connections, and with the copy above they could not overlap without one's rollback undoing the
+   * other's commit. Waiting is stricter than a database, which lets transactions overlap until they
+   * conflict, and that is the right direction to err in: it is what an advisory lock taken first thing in
+   * a transaction does to a second transaction taking the same one, and it is the only thing about such a
+   * lock a single-threaded fake can honestly answer.
    */
   async session<T>(run: (sql: Sql) => Promise<T>): Promise<T> {
-    if (this.inSession) throw new Error('session() inside session(): Postgres has no nested transactions');
-    this.inSession = true;
-    const before = new Map([...this.tables].map(([name, rows]) => [name, new Map(rows)]));
+    if (this.inside.getStore() === true) {
+      throw new Error('session() inside session(): Postgres has no nested transactions');
+    }
+
+    const turn = this.lastSession;
+    let finished = (): void => undefined;
+    this.lastSession = new Promise<void>((resolve) => (finished = resolve));
+    await turn;
+
     try {
-      const answer = await run(this);
-      return answer;
-    } catch (cause) {
-      this.tables.clear();
-      for (const [name, rows] of before) this.tables.set(name, rows);
-      throw cause;
+      return await this.inside.run(true, async () => {
+        const before = new Map([...this.tables].map(([name, rows]) => [name, new Map(rows)]));
+        try {
+          return await run(this);
+        } catch (cause) {
+          this.tables.clear();
+          for (const [name, rows] of before) this.tables.set(name, rows);
+          throw cause;
+        }
+      });
     } finally {
-      this.inSession = false;
+      finished();
     }
   }
 
@@ -189,6 +211,16 @@ export class FakePostgres implements Sql {
     // wants to prove the lock is taken asserts on `statements`, which is the only thing about it a
     // single-threaded fake can honestly answer.
     if (/^lock table /i.test(sql)) return [];
+    // An advisory lock held to the end of the transaction. Outside one, a real database takes it and
+    // releases it with the statement, so a store that forgot its transaction would be admitting nothing
+    // and passing here; refusing is what makes that visible. Inside one it is recorded and nothing else,
+    // because `session` already makes a second session wait, which is all the lock is for.
+    if (/^select pg_advisory_xact_lock\(hashtext\('[\w.-]+' \|\| \$\d+::text\)\)$/i.test(sql)) {
+      if (this.inside.getStore() !== true) {
+        throw new Error(`${sql}: an advisory transaction lock outside a transaction is released at once`);
+      }
+      return [];
+    }
     if (/^(begin|commit|rollback)$/i.test(sql)) {
       throw new Error(`${sql}: use session() rather than issuing transaction statements through query()`);
     }

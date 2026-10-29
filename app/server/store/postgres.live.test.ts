@@ -52,7 +52,7 @@
 
 import { execFileSync } from 'node:child_process';
 import { writeFileSync } from 'node:fs';
-import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import pg from 'pg';
 import { ensureSchema, openPostgres, SCHEMA_ENV, type Postgres, type Sql } from './postgres.js';
 import { PostgresAuditLog, type AuditLog } from './audit-log.js';
@@ -72,7 +72,7 @@ import type { ImprovementAction } from '../improve/action.js';
 import { PostgresRetentionGateway, PostgresRetentionStore } from '../admin/retention-store.js';
 import { DEFAULT_PERIOD_DAYS, DEFAULT_POLICY, RETAINED, RETENTION_CLASSES, planRetention } from '../admin/retention.js';
 import { PostgresRunStore, type Opening } from '../run/run-store.js';
-import { joinable, resumeFrom, sameRequest, type RunRequest } from '../run/run.js';
+import { joinable, LEASE_SECONDS, resumeFrom, RunAdmissionRefused, sameRequest, type RunRequest } from '../run/run.js';
 import { observed, type SignalId } from '../collect/signal.js';
 import { planReset, resetInstall } from '../admin/reset.js';
 import { PostgresSetupDraftStore } from '../define/setup-postgres-store.js';
@@ -1937,9 +1937,18 @@ describe.skipIf(!bound)('retention against a real Lakebase database', () => {
 describe.skipIf(!bound)('the run record against a real Lakebase database', () => {
   const RUNS = `${SCHEMA}_runs`;
   const REQUEST: RunRequest = { scope: { description: 'the account' }, lookbackDays: 30 };
-  const AT = new Date('2026-08-06T00:00:00.000Z');
+  const BASE = new Date('2026-08-06T00:00:00.000Z');
   let db: Postgres;
   let store: PostgresRunStore;
+  // Each test works an hour after the last. Admission turns on whether a run of the kind is live, so runs
+  // an earlier test left unfinished have to have lapsed by the time the next one asks, or every test after
+  // the first would be refused for a reason that has nothing to do with what it is about.
+  let tick = 0;
+  let at = BASE;
+  beforeEach(() => {
+    tick += 1;
+    at = new Date(BASE.getTime() + tick * 3_600_000);
+  });
 
   beforeAll(async () => {
     db = await open(RUNS);
@@ -1960,7 +1969,7 @@ describe.skipIf(!bound)('the run record against a real Lakebase database', () =>
       trigger: 'scheduled',
       ...(key != null ? { idempotencyKey: key } : {}),
       request: REQUEST,
-      requestedAt: AT,
+      requestedAt: at,
     };
   }
 
@@ -1990,7 +1999,7 @@ describe.skipIf(!bound)('the run record against a real Lakebase database', () =>
     expect(sameRequest(run.request, asked)).toBe(true);
     expect(sameRequest(readBack!.request, asked)).toBe(true);
     expect(
-      joinable(readBack!, { actor: 'someone@example.com', kind: 'assessment', request: asked }, AT)
+      joinable(readBack!, { actor: 'someone@example.com', kind: 'assessment', request: asked }, at)
     ).toBeUndefined();
   });
 
@@ -2007,8 +2016,8 @@ describe.skipIf(!bound)('the run record against a real Lakebase database', () =>
     // The assertion the fake cannot make. Both statements are in flight together against one row, and
     // the condition that keeps them apart is in the `where` of each.
     const [one, other] = await Promise.all([
-      store.claim('live-run-3', 'process-a', AT),
-      store.claim('live-run-3', 'process-b', AT),
+      store.claim('live-run-3', 'process-a', at),
+      store.claim('live-run-3', 'process-b', at),
     ]);
 
     expect([one, other].filter((attempt) => attempt != null)).toHaveLength(1);
@@ -2019,10 +2028,10 @@ describe.skipIf(!bound)('the run record against a real Lakebase database', () =>
 
   it('keeps a checkpoint per signal, and hands it back as a reading', async () => {
     await store.open(opening('live-run-4'));
-    const attempt = await store.claim('live-run-4', 'process-a', AT);
+    const attempt = await store.claim('live-run-4', 'process-a', at);
     const signal: SignalId = 'rest:workspace:token.list';
-    await store.checkpoint('live-run-4', [observed(signal, { tokens: 3 }, 12)], AT);
-    await store.checkpoint('live-run-4', [observed(signal, { tokens: 4 }, 12)], new Date(AT.getTime() + 1000));
+    await store.checkpoint('live-run-4', [observed(signal, { tokens: 3 }, 12)], at);
+    await store.checkpoint('live-run-4', [observed(signal, { tokens: 4 }, 12)], new Date(at.getTime() + 1000));
 
     const reached = resumeFrom(await store.checkpoints('live-run-4'));
 
@@ -2032,21 +2041,21 @@ describe.skipIf(!bound)('the run record against a real Lakebase database', () =>
     expect(reached.get(signal)?.value).toEqual({ tokens: 4 });
 
     // And they go when the run has a scan holding the same readings.
-    await store.finish(attempt!, { state: 'complete', at: AT, scanId: 'live-scan-4' });
+    await store.finish(attempt!, { state: 'complete', at, scanId: 'live-scan-4' });
     expect(await store.checkpoints('live-run-4')).toEqual([]);
-    expect(await store.claim('live-run-4', 'process-b', new Date(AT.getTime() + 999_000))).toBeUndefined();
+    expect(await store.claim('live-run-4', 'process-b', new Date(at.getTime() + 999_000))).toBeUndefined();
   });
 
   it('takes a failed run back up under its own key, keeping what the broken attempt reached', async () => {
     await store.open(opening('live-run-5', 'live-key-5'));
-    const broke = await store.claim('live-run-5', 'process-a', AT);
+    const broke = await store.claim('live-run-5', 'process-a', at);
     const signal: SignalId = 'rest:workspace:token.list';
-    await store.checkpoint('live-run-5', [observed(signal, { tokens: 1 }, 9)], AT);
-    await store.finish(broke!, { state: 'failed', at: AT, why: 'the warehouse went away' });
+    await store.checkpoint('live-run-5', [observed(signal, { tokens: 1 }, 9)], at);
+    await store.finish(broke!, { state: 'failed', at: at, why: 'the warehouse went away' });
 
     expect(await store.checkpoints('live-run-5')).toHaveLength(1);
 
-    const retry = await store.claim('live-run-5', 'process-b', new Date(AT.getTime() + 999_000));
+    const retry = await store.claim('live-run-5', 'process-b', new Date(at.getTime() + 999_000));
 
     expect(retry?.number).toBe(2);
     const run = await store.get('live-run-5');
@@ -2062,30 +2071,30 @@ describe.skipIf(!bound)('the run record against a real Lakebase database', () =>
     // that a takeover between the read and the write cannot be missed. That distinction does not exist in
     // the fake, where nothing can happen between two statements.
     await store.open(opening('live-run-6'));
-    const stalled = await store.claim('live-run-6', 'process-a', AT);
+    const stalled = await store.claim('live-run-6', 'process-a', at);
     const signal: SignalId = 'rest:workspace:token.list';
-    await store.checkpoint('live-run-6', [observed(signal, { tokens: 2 }, 7)], AT);
-    const took = await store.claim('live-run-6', 'process-b', new Date(AT.getTime() + 999_000));
+    await store.checkpoint('live-run-6', [observed(signal, { tokens: 2 }, 7)], at);
+    const took = await store.claim('live-run-6', 'process-b', new Date(at.getTime() + 999_000));
 
-    expect(await store.finish(stalled!, { state: 'complete', at: AT, scanId: 'live-scan-stale' })).toBe(false);
+    expect(await store.finish(stalled!, { state: 'complete', at, scanId: 'live-scan-stale' })).toBe(false);
 
     // The readings the holder is resuming from are still there, and the run is still that holder's.
     expect(await store.checkpoints('live-run-6')).toHaveLength(1);
     const during = await store.get('live-run-6');
     expect(during?.state).toBe('running');
     expect(during?.scanId).toBeUndefined();
-    expect(await store.finish(took!, { state: 'complete', at: AT, scanId: 'live-scan-6' })).toBe(true);
+    expect(await store.finish(took!, { state: 'complete', at, scanId: 'live-scan-6' })).toBe(true);
     expect((await store.get('live-run-6'))?.scanId).toBe('live-scan-6');
   });
 
   it('records a cancel as a date and nothing else, so it cannot overwrite an outcome', async () => {
-    await store.cancel('live-run-5', new Date(AT.getTime() + 5000));
-    await store.cancel('live-run-5', new Date(AT.getTime() + 9000));
+    await store.cancel('live-run-5', new Date(at.getTime() + 5000));
+    await store.cancel('live-run-5', new Date(at.getTime() + 9000));
 
     const run = await store.get('live-run-5');
     expect(run?.state).toBe('running');
     // The first request, so the date says when the decision was made rather than when it was repeated.
-    expect(run?.cancelRequestedAt).toEqual(new Date(AT.getTime() + 5000));
+    expect(run?.cancelRequestedAt).toEqual(new Date(at.getTime() + 5000));
     expect(await store.cancelRequested('live-run-5')).toBe(true);
   });
 
@@ -2095,6 +2104,169 @@ describe.skipIf(!bound)('the run record against a real Lakebase database', () =>
     // `live-run-4` finished; the rest were left running by the tests above.
     expect(unfinished).not.toContain('live-run-4');
     expect(unfinished).toContain('live-run-5');
+  });
+
+  /*
+   * Admission, which is a lock and a read and an insert in one transaction, and which only a second
+   * connection can test. The fake serialises sessions and so can say the lock is taken; it cannot say that
+   * a real `pg_advisory_xact_lock` on a hash of the kind makes the second transaction wait, nor that the
+   * waiting one then reads what the first committed.
+   */
+  describe('admitting a run', () => {
+    // Two more connections of their own. A handle opened for a Provisioned instance is one client, and a
+    // transaction on it is every statement sent through it, so two callers on `db` would interleave inside
+    // one session rather than be two. A second instance is a second connection, so each of these is one.
+    let other: Postgres;
+    let watcher: Postgres;
+    let otherStore: PostgresRunStore;
+
+    beforeAll(async () => {
+      other = await open(RUNS);
+      watcher = await open(RUNS);
+      otherStore = new PostgresRunStore(other);
+    }, 60_000);
+
+    afterAll(async () => {
+      await other?.end();
+      await watcher?.end();
+    }, 60_000);
+
+    const LOCK = `select pg_advisory_xact_lock(hashtext('waf.run-admission.' || $1::text))`;
+
+    /** The insert `open` makes, for a transaction that is holding the lock and has not committed. */
+    function insertLive(sql: Sql, id: string, kind: string): Promise<unknown> {
+      return sql.query(
+        `insert into ${RUNS}.runs
+           (id, kind, requested_at, actor, trigger, request, state, attempts, lease_until)
+           values ($1, $2, $3, 'someone@example.com', 'scheduled', $4::jsonb, 'running', 0, $3)`,
+        [id, kind, at, JSON.stringify(REQUEST)]
+      );
+    }
+
+    async function waitingOnAdvisoryLocks(): Promise<number> {
+      const { rows } = await watcher.query<{ waiting: string }>(
+        `select count(*)::text as waiting from pg_locks where locktype = 'advisory' and not granted`
+      );
+      return Number(rows[0]?.waiting ?? 0);
+    }
+
+    it('takes a lock a second connection waits on, and then refuses it while the first run is live', async () => {
+      let release = (): void => undefined;
+      const gate = new Promise<void>((resolve) => (release = resolve));
+      let locked = (): void => undefined;
+      const holding = new Promise<void>((resolve) => (locked = resolve));
+
+      // One connection that has taken the lock and written the run `open` would have, and has not yet
+      // committed — which is the position a first instance is in for the length of its transaction.
+      const first = db.session!(async (sql) => {
+        await sql.query(LOCK, ['assessment']);
+        await insertLive(sql, 'live-admit-1', 'assessment');
+        locked();
+        await gate;
+      });
+      await holding;
+
+      let settled = false;
+      const second = otherStore
+        .open({ ...opening('live-admit-2', 'live-admit-key-2'), requestedAt: new Date(at.getTime() + 1000) })
+        .then(
+          (opened) => ({ opened }),
+          (refused: unknown) => ({ refused })
+        )
+        .finally(() => (settled = true));
+
+      // Long enough for a statement that was not waiting to have answered, and the lock table agrees: a
+      // second backend is queued on the advisory lock rather than running.
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      expect(settled).toBe(false);
+      expect(await waitingOnAdvisoryLocks()).toBe(1);
+
+      release();
+      await first;
+      const outcome = await second;
+
+      // It read the committed row after the wait, saw its lease live, and refused naming it.
+      expect('refused' in outcome).toBe(true);
+      const refused = (outcome as { refused: unknown }).refused;
+      expect(refused).toBeInstanceOf(RunAdmissionRefused);
+      expect((refused as RunAdmissionRefused).run.id).toBe('live-admit-1');
+      expect(await store.get('live-admit-2')).toBeUndefined();
+      expect(await waitingOnAdvisoryLocks()).toBe(0);
+    });
+
+    it('does not make the other kind wait, since the lock is named for the kind', async () => {
+      let release = (): void => undefined;
+      const gate = new Promise<void>((resolve) => (release = resolve));
+      let locked = (): void => undefined;
+      const holding = new Promise<void>((resolve) => (locked = resolve));
+      const first = db.session!(async (sql) => {
+        await sql.query(LOCK, ['assessment']);
+        locked();
+        await gate;
+      });
+      await holding;
+
+      const advisory = await otherStore.open({ ...opening('live-admit-3', 'live-admit-key-3'), kind: 'advisory' });
+
+      expect(advisory.created).toBe(true);
+      release();
+      await first;
+    });
+
+    it('lets exactly one of two opens issued together through, whichever connection gets there first', async () => {
+      const outcomes = await Promise.allSettled([
+        store.open(opening('live-admit-4', 'live-admit-key-4')),
+        otherStore.open(opening('live-admit-5', 'live-admit-key-5')),
+      ]);
+
+      expect(outcomes.map((outcome) => outcome.status).sort()).toEqual(['fulfilled', 'rejected']);
+      const refused = outcomes.find((outcome): outcome is PromiseRejectedResult => outcome.status === 'rejected');
+      expect(refused?.reason).toBeInstanceOf(RunAdmissionRefused);
+      const written = (await store.unfinished()).filter((run) => ['live-admit-4', 'live-admit-5'].includes(run.id));
+      expect(written).toHaveLength(1);
+    });
+
+    it('admits another once the first run has finished, and once its holder stopped renewing', async () => {
+      await store.open(opening('live-admit-6', 'live-admit-key-6'));
+      const attempt = await store.claim('live-admit-6', 'process-a', at);
+
+      await expect(
+        store.open({ ...opening('live-admit-7', 'live-admit-key-7'), requestedAt: new Date(at.getTime() + 5000) })
+      ).rejects.toBeInstanceOf(RunAdmissionRefused);
+
+      // Finished: the run is over, and the install is free.
+      await store.finish(attempt!, {
+        state: 'complete',
+        at: new Date(at.getTime() + 10_000),
+        scanId: 'live-admit-scan',
+      });
+      const afterFinish = await store.open({
+        ...opening('live-admit-8', 'live-admit-key-8'),
+        requestedAt: new Date(at.getTime() + 11_000),
+      });
+      expect(afterFinish.created).toBe(true);
+
+      // Lapsed: claimed and never renewed, so a lease window later the run no longer counts.
+      await store.claim('live-admit-8', 'process-b', new Date(at.getTime() + 11_000));
+      const afterLapse = await store.open({
+        ...opening('live-admit-9', 'live-admit-key-9'),
+        requestedAt: new Date(at.getTime() + 12_000 + LEASE_SECONDS * 1000),
+      });
+      expect(afterLapse.created).toBe(true);
+    });
+
+    it('lets the same key through to the run it names, so a retry is told what became of it', async () => {
+      await store.open(opening('live-admit-10', 'live-admit-key-10'));
+      await store.claim('live-admit-10', 'process-a', at);
+
+      const retry = await store.open({
+        ...opening('live-admit-11', 'live-admit-key-10'),
+        requestedAt: new Date(at.getTime() + 5000),
+      });
+
+      expect(retry.created).toBe(false);
+      expect(retry.run.id).toBe('live-admit-10');
+    });
   });
 });
 

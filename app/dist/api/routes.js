@@ -639,18 +639,17 @@ function registerApi(served, options) {
 			resultGateFailure(response, 503, ineligible("unreadable", "result-history-unreadable", `The comparison history for published report ${result.id} could not be read.`, "Restore the database connection and retry this comparison."));
 		}
 	});
-	app.get("/api/scan/status", (_request, response) => {
-		const running = options.runner.running();
-		const run = options.runs?.holding();
-		const payload = running == null ? { running: false } : {
-			running: true,
-			startedAt: running.startedAt,
-			actor: running.actor,
-			scope: running.scope,
-			callsMade: running.callsMade,
-			...running.trigger != null && { trigger: running.trigger },
-			...run != null && { run }
-		};
+	/**
+	* What is running now, for a reader who did not start it.
+	*
+	* Read from the run record where there is one, so every instance of a scaled install says the same
+	* thing: a page served by a different instance from the one that started the scan is still told it is
+	* going, and by whom. Where this process is the one collecting, its own runner supplies the progress
+	* count, which nothing durable holds. Where nothing durable is bound, or the record cannot be read,
+	* what this process knows is all there is, and it is reported as such.
+	*/
+	app.get("/api/scan/status", async (_request, response) => {
+		const payload = await scanStatus(options.runner.running(), options.runs);
 		response.json(payload);
 	});
 	/**
@@ -2327,12 +2326,52 @@ function resultGateFailure(response, status, eligibility) {
 		eligibility
 	});
 }
+/**
+* The scan status, from the run record where one is bound.
+*
+* The record is asked first and decides *whether* a scan is running; this process's runner only enriches
+* the answer when the run is its own. Where the record names a run this process is not collecting — it is
+* on another instance — the answer is what the record holds, without a call count, because that count is
+* the other process's and is not written anywhere.
+*
+* Falls back to the local runner, with no run named, when nothing durable is bound or the read fails. A
+* status that errors would show the page nothing at all, and the local answer is true as far as it goes.
+*/
+async function scanStatus(local, runs) {
+	const onThisProcess = (run) => local == null ? { running: false } : {
+		running: true,
+		startedAt: local.startedAt,
+		actor: local.actor,
+		scope: local.scope,
+		callsMade: local.callsMade,
+		...local.trigger != null && { trigger: local.trigger },
+		...run != null && { run }
+	};
+	if (runs == null) return onThisProcess();
+	let live;
+	try {
+		live = await runs.live("assessment");
+	} catch {
+		return onThisProcess(runs.holding());
+	}
+	if (live == null) return onThisProcess(runs.holding());
+	if (local != null && runs.holding() === live.id) return onThisProcess(live.id);
+	return {
+		running: true,
+		startedAt: live.requestedAt,
+		actor: live.actor,
+		scope: live.request.scope,
+		trigger: live.trigger,
+		run: live.id
+	};
+}
 function respondToFailure(response, cause) {
 	if (cause instanceof ScanInProgressError) {
 		response.status(409).json({
 			error: "scan-in-progress",
 			message: cause.message,
-			running: cause.running
+			running: cause.running,
+			...cause.run != null && { run: cause.run }
 		});
 		return;
 	}

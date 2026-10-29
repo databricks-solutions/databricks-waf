@@ -43,7 +43,7 @@ import type { Act } from '../audit/record.js';
 import { EXPLAINS } from '../analyze/serverless.js';
 import { sighted, type Advisory } from '../advise/advisory.js';
 import type { AdvisoryStore, AdvisorySummary } from '../advise/store.js';
-import type { AdvisoryRunRequest } from '../advise/runner.js';
+import { AdvisoryInProgressError, type AdvisoryRunRequest } from '../advise/runner.js';
 import { RunNotJoinable, type Advised, type Runs } from '../run/runs.js';
 import type { ScanTrigger } from '../scan/scan.js';
 import type { EstateScope } from '../collect/estate-scope.js';
@@ -648,6 +648,16 @@ export function registerAdvisoryRoutes(app: Application, options: AdvisoryRouteO
       response.json(summary);
     } catch (cause) {
       await act?.failed(cause);
+      // A refusal rather than a failure, for the reason a refused scan is one: nothing is broken, one is
+      // already going, and the run it names is what the caller can read or stop.
+      if (cause instanceof AdvisoryInProgressError) {
+        response.status(409).json({
+          error: 'advisory-in-progress',
+          message: cause.message,
+          ...(cause.run != null && { run: cause.run }),
+        });
+        return;
+      }
       if (cause instanceof RunNotJoinable) {
         response.status(409).json({
           error: 'run-not-joinable',

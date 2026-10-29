@@ -1,8 +1,9 @@
 import { projectAdvisoryPayload } from "../share/projection.js";
 import { jobRules, sizingRules, workloadRules, writeRules } from "../advise/workload-rules.js";
 import { assessmentOf } from "./assessment-query.js";
-import { RunNotJoinable } from "../run/runs.js";
 import { EXPLAINS } from "../analyze/serverless.js";
+import { AdvisoryInProgressError } from "../advise/runner.js";
+import { RunNotJoinable } from "../run/runs.js";
 import { sighted } from "../advise/advisory.js";
 const NO_ADVISOR = "This build has no workload advisor, so there is nothing to read here and nothing to run. The advisor needs a SQL warehouse to read the estate with and somewhere durable to keep what it concludes; bind both and the Optimisation section appears.";
 /** One advisory, as a reader outside the process sees it. */
@@ -499,6 +500,14 @@ function registerAdvisoryRoutes(app, options) {
 			response.json(summary);
 		} catch (cause) {
 			await act?.failed(cause);
+			if (cause instanceof AdvisoryInProgressError) {
+				response.status(409).json({
+					error: "advisory-in-progress",
+					message: cause.message,
+					...cause.run != null && { run: cause.run }
+				});
+				return;
+			}
 			if (cause instanceof RunNotJoinable) {
 				response.status(409).json({
 					error: "run-not-joinable",

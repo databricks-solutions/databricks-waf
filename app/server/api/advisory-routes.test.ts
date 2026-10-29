@@ -359,6 +359,38 @@ describe('starting an advisory run', () => {
   });
 });
 
+describe('a second advisory run while one is going', () => {
+  /** One that takes long enough for a second request to arrive while it is still reading. */
+  function slow(): Collector {
+    return {
+      surface: 'sql',
+      name: 'sql',
+      signals: [...ADVISORY_SIGNALS],
+      collect: async (ids): Promise<SignalResult[]> => {
+        await new Promise((resolve) => setTimeout(resolve, 120));
+        return ids.map((id) => unmeasurable(id, 'The warehouse refused the statement.'));
+      },
+    };
+  }
+
+  it('is a conflict naming the run that is going, rather than a server error', async () => {
+    const { base } = await serve({ collector: slow() });
+
+    const first = fetch(`${base}/api/advisory`, { method: 'POST' });
+    await new Promise((resolve) => setTimeout(resolve, 40));
+    const second = await fetch(`${base}/api/advisory`, { method: 'POST' });
+    const refused = (await second.json()) as { error: string; message: string; run?: string };
+
+    expect(second.status).toBe(409);
+    expect(refused.error).toBe('advisory-in-progress');
+    expect(typeof refused.run).toBe('string');
+    expect(refused.message).toContain('already running');
+
+    const finished = (await (await first).json()) as { runId: string };
+    expect(finished.runId).toBe(refused.run);
+  });
+});
+
 describe('reading what the advisor concluded', () => {
   it('answers the latest run, and 404s before anything has run', async () => {
     const { base } = await serve();

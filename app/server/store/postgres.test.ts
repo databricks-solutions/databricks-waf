@@ -413,6 +413,63 @@ describe('a transaction on the handle', () => {
     await expect(nested).rejects.toThrow('nested transactions');
   });
 
+  /*
+   * Two sessions are two connections. The second waits for the first to end rather than interleaving
+   * with it, which is the only part of an advisory lock the fake can honestly model: a store that takes
+   * the lock and then reads is serialised against another doing the same.
+   */
+  it('makes a second session wait for the first rather than interleaving with it', async () => {
+    const fake = new FakePostgres();
+    const order: string[] = [];
+    let release = (): void => undefined;
+    const held = new Promise<void>((resolve) => (release = resolve));
+
+    const first = fake.session(async () => {
+      order.push('first begins');
+      await held;
+      order.push('first ends');
+    });
+    const second = fake.session(() => {
+      order.push('second begins');
+      return Promise.resolve();
+    });
+
+    await Promise.resolve();
+    expect(order).toEqual(['first begins']);
+    release();
+    await Promise.all([first, second]);
+    expect(order).toEqual(['first begins', 'first ends', 'second begins']);
+  });
+
+  it('keeps one session\u2019s rollback from undoing what another committed', async () => {
+    const fake = new FakePostgres();
+    const first = fake.session(async (sql) => {
+      await sql.query('insert into waf.scans (id) values ($1)', ['one']);
+      throw new Error('and then the connection went');
+    });
+    const second = fake.session((sql) => sql.query('insert into waf.scans (id) values ($1)', ['two']));
+
+    await expect(first).rejects.toThrow('and then the connection went');
+    await second;
+    expect(fake.rows('scans')).toEqual([{ id: 'two' }]);
+  });
+
+  it('accepts an advisory transaction lock inside a session, and records it', async () => {
+    const fake = new FakePostgres();
+    await fake.session((sql) =>
+      sql.query("select pg_advisory_xact_lock(hashtext('waf.run-admission.' || $1::text))", ['assessment'])
+    );
+
+    expect(fake.statements).toEqual(["select pg_advisory_xact_lock(hashtext('waf.run-admission.' || $1::text))"]);
+  });
+
+  it('refuses an advisory transaction lock outside one, which a real database would release at once', async () => {
+    const fake = new FakePostgres();
+    await expect(
+      fake.query("select pg_advisory_xact_lock(hashtext('waf.run-admission.' || $1::text))", ['assessment'])
+    ).rejects.toThrow(/outside a transaction/);
+  });
+
   it('refuses transaction statements issued through query, since those would not nest either', async () => {
     const fake = new FakePostgres();
     await expect(fake.query('begin')).rejects.toThrow('use session()');

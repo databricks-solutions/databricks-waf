@@ -118,6 +118,8 @@ databricks current-user me --profile &lt;profile&gt;
 <h2 id="8-run-the-first-assessment">8. Run the first assessment</h2>
 <p>Select <strong>Run assessment</strong> from the header. Choose the saved definition or a one-off custom scope, then choose all included pillars or a subset. Nothing starts until <strong>Start assessment</strong> is selected.</p>
 <p>The Dashboard shows indicative automated posture as soon as collection completes. Publication waits for the selected pillars to be reviewed.</p>
+<h2 id="running-more-than-one-instance">Running more than one instance</h2>
+<p>The App can run on two or more instances behind the one URL, and Databricks recommends at least two. Every instance reads and writes the same Lakebase database, so they agree on what is running. At most one assessment run and one advisory run are live at a time across all of them: a second request is refused with a <code>409</code> that names the run already going, and no run record is written for the refusal. Progress and status are read from the run record, so any instance reports a scan that another started. A rolling deploy that serves the old and new versions side by side is covered, because the admission rule needs no schema change. See decision A16 in <a href="/databricks-waf/decisions/">Product decisions</a>.</p>
 <h2 id="optional-schedule">Optional schedule</h2>
 <p>Finish an interactive run first. Then follow <a href="/databricks-waf/configuration/#scheduled-assessments">Configure scheduled assessments</a>. Deployment never unpauses the schedule for you.</p>
 <h2 id="next">Next</h2>

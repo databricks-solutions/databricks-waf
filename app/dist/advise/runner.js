@@ -6,10 +6,10 @@ import { workloadRules } from "./workload-rules.js";
 import { CollectionScheduler } from "../scan/scheduler.js";
 import { collectSignals, withInputs } from "../collect/collection.js";
 import "../scan/runner.js";
-import { JOB_INVENTORY, SERVERLESS_ANALYZER_SIGNALS, WORKSPACES, analyseServerless } from "../analyze/serverless.js";
 import { localWarehouseIds } from "../collect/sql/plans/warehouses.js";
 import { PlanFetcher } from "../collect/sql/plans/fetch.js";
 import { retrievePlans, summarise } from "../collect/sql/plans/retrieve.js";
+import { JOB_INVENTORY, SERVERLESS_ANALYZER_SIGNALS, WORKSPACES, analyseServerless } from "../analyze/serverless.js";
 import { analyseJobs } from "./jobs.js";
 import { analyseSizing } from "./sizing.js";
 import { analyseWrites } from "./writes.js";
@@ -102,10 +102,13 @@ const REAL_PLAN_ACCESS = (credentials, identity) => ({
 var AdvisoryInProgressError = class extends Error {
 	startedAt;
 	actor;
-	constructor(startedAt, actor) {
-		super(`An advisory run started by ${actor} at ${startedAt.toISOString()} is already running. One runs at a time so two people cannot double the load on the warehouse for the same advice. Wait for it to finish; its result will be the latest.`);
+	run;
+	/** `run` names the record behind the run that is going, where there is one, so a refused caller can follow it. */
+	constructor(startedAt, actor, run) {
+		super(`An advisory run started by ${actor} at ${startedAt.toISOString()} is already running${run == null ? "" : ` as run ${run}`}. One runs at a time so two people cannot double the load on the warehouse for the same advice. Wait for it to finish; its result will be the latest.`);
 		this.startedAt = startedAt;
 		this.actor = actor;
+		this.run = run;
 		this.name = "AdvisoryInProgressError";
 	}
 };

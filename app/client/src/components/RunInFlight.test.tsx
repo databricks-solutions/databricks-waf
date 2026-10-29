@@ -72,6 +72,15 @@ describe('RunInFlightView', () => {
     expect(markup).not.toContain('0 queries');
   });
 
+  it('says so when another instance is doing the work, since only that instance has a count', () => {
+    const markup = render({ run: { running: true, startedAt: STARTED_AT, actor: 'ana@example.com' } });
+
+    // A run that is going on elsewhere has no count here, and "planning" beside a clock that keeps
+    // running would read as a run that never gets started.
+    expect(markup).toContain('Collecting on another instance');
+    expect(markup).not.toContain('Planning the queries it will run');
+  });
+
   it('offers the previous run as the only honest estimate of how long this will take', () => {
     expect(render({ previous: PREVIOUS })).toContain('The previous run took 3m 30s');
   });

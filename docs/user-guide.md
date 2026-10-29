@@ -28,7 +28,7 @@ Select **Run assessment** in the header. The scope dialog starts with the curren
 
 Collection reads only what the scanning identity is allowed to read. A missing grant, absent system table or unreadable API becomes a visible measurement gap attached to the affected requirements.
 
-Only one scan runs at a time. You may move around the App while it runs; the header preserves progress and routes you into review when collection completes.
+Only one scan runs at a time, however many instances of the App are serving it. If somebody else has started one, **Run assessment** tells you which run is going rather than starting a second. You may move around the App while it runs; the header preserves progress and routes you into review when collection completes.
 
 ## 3. Read the indicative result
 
