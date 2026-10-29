@@ -1,5 +1,5 @@
-import { factFromAttestation, findingFromAttestation } from "../resolve/resolver.js";
 import { counts } from "../attest/attestation.js";
+import { findingFromAttestation, withAnswer, withoutAnswer } from "../resolve/resolver.js";
 import { scoreFindings } from "../score/score.js";
 import { digestOf, hexOf } from "../records/digest.js";
 import { selectedPillarsOf } from "./review.js";
@@ -60,13 +60,7 @@ function finalAssessmentProjector(options) {
 			const selected = decisionByPillar.get(finding.pillarId)?.kind === "confirmed" ? selectedByControl.get(finding.controlId) : void 0;
 			const control = controls.get(finding.controlId);
 			if (control == null) throw new FinalAssessmentProjectionError(`The reviewed run contains ${finding.controlId}, which this build cannot place in the catalogue.`);
-			if (finding.outcome !== "unmeasurable" && finding.attested?.bearing !== "outcome") {
-				const { attested: _was, ...automated } = finding;
-				return selected == null ? automated : {
-					...automated,
-					attested: factFromAttestation(selected, "record")
-				};
-			}
+			if (finding.outcome !== "unmeasurable" && finding.attested?.bearing !== "outcome") return selected == null ? withoutAnswer(finding) : withAnswer(finding, selected, result.finalisedAt);
 			if (selected != null) return {
 				...findingFromAttestation(control, selected),
 				evidence: finding.evidence

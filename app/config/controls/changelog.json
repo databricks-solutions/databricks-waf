@@ -283,5 +283,29 @@
         ]
       }
     ]
+  },
+  {
+    "version": 21,
+    "fingerprint": "sha256:fefd02c559ae6664774564100072097edc4e6f4fa8fb10d45cfb00d739ba84a5",
+    "recordedAt": "2026-10-29",
+    "scored_units": 165,
+    "describes": true,
+    "added": [],
+    "removed": [],
+    "renamed": [],
+    "changed": [
+      {
+        "id": "DG-01-03",
+        "fields": [
+          "thresholds"
+        ]
+      },
+      {
+        "id": "OE-03-01",
+        "fields": [
+          "thresholds"
+        ]
+      }
+    ]
   }
 ]

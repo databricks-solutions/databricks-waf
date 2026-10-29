@@ -117,7 +117,9 @@ async function storeHolding(findings: readonly Finding[]): Promise<InMemoryScanS
   return store;
 }
 
-async function answersFor(findings: readonly Finding[]): Promise<readonly { controlId: string; question: string }[]> {
+async function answersFor(
+  findings: readonly Finding[]
+): Promise<readonly { controlId: string; question: string; askedBecause: string }[]> {
   const store = await storeHolding(findings);
   const attestations = new InMemoryAttestationStore();
   const routes = express();
@@ -138,7 +140,9 @@ async function answersFor(findings: readonly Finding[]): Promise<readonly { cont
   const url = await servedAt(routes, servers);
 
   const response = await fetch(`${url}/api/attestations`);
-  const body = (await response.json()) as { requirements: { controlId: string; question: string }[] };
+  const body = (await response.json()) as {
+    requirements: { controlId: string; question: string; askedBecause: string }[];
+  };
   return body.requirements;
 }
 
@@ -180,5 +184,129 @@ describe('the advice on a finding and the page it sends the reader to', () => {
     expect(endpoints?.unmeasured).toBe('unreachable');
     expect(endpoints?.remedy?.kind).toBe('attest');
     expect((await answersFor(findings)).map((requirement) => requirement.controlId)).toContain('SCP-03-07');
+  });
+});
+
+/**
+ * Findings from the five units whose measurement stops at a cap, resolved by their real resolvers.
+ *
+ * Every one of them is measured, so none of them would reach the answers page by being unmeasured:
+ * what puts them there is that the measurement is capped, and an answer is how the cap is lifted.
+ */
+function cappedFindings(answer: 'met' | undefined): readonly Finding[] {
+  const CENSUS = 'sql:uc.census' as SignalId;
+  const JOBS = 'sql:jobs.inventory' as SignalId;
+  const PIPELINES = 'sql:pipelines.inventory' as SignalId;
+  const PLATFORM = 'sql:uc.platform_census' as SignalId;
+  const CAPACITY = 'sql:query.capacity' as SignalId;
+  const SERVING_ENTITIES = 'sql:serving.model_entities' as SignalId;
+  const RUN_TRACKING = 'sql:mlflow.run_tracking' as SignalId;
+  const read = (id: SignalId, value: unknown): [SignalId, SignalResult] => [
+    id,
+    observed(id, value, 1, { mode: 'complete' }),
+  ];
+  const signals = new Map<SignalId, SignalResult>([
+    read(CENSUS, {
+      tableCount: 120,
+      catalogCount: 4,
+      schemaCount: 18,
+      managedTables: 100,
+      externalTables: 20,
+      views: 0,
+      metricViews: 0,
+      foreignTables: 0,
+      deltaTables: 120,
+      icebergTables: 0,
+      optimizedFormatTables: 120,
+      describedTables: 100,
+      distinctOwners: 5,
+      databricksOwnedTables: 0,
+      databricksOwnedCatalogs: '',
+    }),
+    read(PLATFORM, { taggedTables: 40, taggedColumns: 0, routines: 0, ownsMetastore: true, sharingPrivileges: [] }),
+    read(JOBS, [
+      {
+        workspaceId: '1',
+        jobId: 'j-1',
+        name: 'nightly',
+        scheduled: true,
+        scheduledKnown: true,
+        healthRuleCount: 1,
+        healthRulesKnown: true,
+        hasStreamBacklogRule: false,
+        tagCount: 1,
+        deploymentKind: 'BUNDLE',
+      },
+    ]),
+    read(PIPELINES, []),
+    read(CAPACITY, { totalStatements: 1000, waitingAtCapacity: 0, totalWaitMs: 0 }),
+    read(SERVING_ENTITIES, [
+      {
+        customModels: 1,
+        customModelsWithAVersion: 1,
+        customModelsNamedInUc: 1,
+        liveEntities: 1,
+        liveEndpoints: 1,
+        foundationModels: 0,
+        externalModels: 0,
+        featureSpecs: 0,
+      },
+    ]),
+    read(RUN_TRACKING, { runs: 10, runsFromAJob: 10, runsWithoutASource: 0 }),
+  ]);
+  const attested =
+    answer == null
+      ? undefined
+      : (controlId: string) => ({
+          id: `answer-${controlId}`,
+          controlId,
+          answer,
+          statement: 'Every change is reviewed and deployed from the platform repository.',
+          owner: 'platform@example.com',
+          attestedBy: 'admin@example.com',
+          attestedAt: new Date(),
+          reviewBy: new Date(Date.now() + 90 * 86_400_000),
+        });
+  return catalogue.controls
+    .filter((control) => CAPPED_CONTROLS.includes(control.id))
+    .map((control) => resolveControl(control, signals, registry.get(control.id), attested?.(control.id)));
+}
+
+const CAPPED_CONTROLS = [
+  'OE-01-02',
+  'OE-02-01',
+  'IU-01-05',
+  'OE-01-04',
+  'OE-01-06',
+  'IU-04-01',
+  'IU-04-02',
+  'OE-03-01',
+];
+
+describe('a requirement whose measurement stops at a cap', () => {
+  it('is measured at its cap by the resolvers this fixture reaches', () => {
+    // The apparatus: without this the tests below could pass over findings that were never capped.
+    const found = cappedFindings(undefined)
+      .map((finding) => [finding.controlId, finding.outcome, finding.capped] as const)
+      .sort(([left], [right]) => left.localeCompare(right));
+    expect(found).toEqual([...CAPPED_CONTROLS].sort().map((controlId) => [controlId, 'partial', true]));
+  });
+
+  it.each([undefined, 'met' as const])('stays on the answers page, whether it is %s', async (answer) => {
+    const findings = cappedFindings(answer);
+    const offered = await answersFor(findings);
+
+    for (const controlId of CAPPED_CONTROLS) {
+      const slot = offered.find((requirement) => requirement.controlId === controlId);
+      expect(slot, `${controlId} is not on the answers page`).toBeDefined();
+      expect(slot?.askedBecause).toBe('capped');
+      expect(slot?.question).not.toMatch(/How well does this describe your estate\?$/u);
+    }
+  });
+
+  it('is not offered when it is not capped', async () => {
+    const offered = (await answersFor(findingsWithNothingRead())).map((requirement) => requirement.controlId);
+    // With nothing read, none of the five is measured, so none of them is at a cap.
+    expect(offered.filter((controlId) => ['OE-01-06', 'OE-03-01', 'IU-04-01'].includes(controlId))).toEqual([]);
   });
 });

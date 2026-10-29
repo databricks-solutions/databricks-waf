@@ -353,7 +353,15 @@ describe('OE-02-01 and IU-01-05, infrastructure as code', () => {
     // jobs that carry it; it says nothing about the jobs that do not.
     const finding = findingFor(
       'OE-02-01',
-      signalsOf([[JOBS, Array.from({ length: 10 }, (_, index) => job({ jobId: `j-${index}`, deploymentKind: 'BUNDLE' }))], [PIPELINES, []]])
+      signalsOf([
+        [
+          JOBS,
+          Array.from({ length: 10 }, (_, index) =>
+            job({ jobId: `j-${index}`, ...(index < 3 ? { deploymentKind: 'BUNDLE' } : {}) })
+          ),
+        ],
+        [PIPELINES, []],
+      ])
     );
     expect(finding.outcome).toBe('partial');
     expect(finding.outcomeReason).toContain('Terraform-managed jobs carry no');
@@ -567,12 +575,12 @@ describe('OE-03-01, service limits and quotas', () => {
     expect(finding.outcomeReason).not.toContain('attestation');
   });
 
-  it('caps at partial when a significant share of statements hit a capacity limit', () => {
+  it('fails when a significant share of statements hit a capacity limit', () => {
     const finding = findingFor(
       'OE-03-01',
       signalsOf([[CAPACITY, capacity({ totalStatements: 10_000, waitingAtCapacity: 500 })]])
     );
-    expect(finding.outcome).toBe('partial');
+    expect(finding.outcome).toBe('fail');
     expect(finding.evidence[0]?.observed).toContain('500');
     expect(finding.evidence[0]?.observed).toContain('10,000');
     expect(finding.outcomeReason).toContain('regularly');
@@ -605,7 +613,8 @@ describe('OE-03-01, service limits and quotas', () => {
       'OE-03-01',
       signalsOf([[CAPACITY, capacity({ totalStatements: 50_000, waitingAtCapacity: 1_000 })]])
     );
-    expect(finding.outcome).toBe('partial');
+    // 2% waiting, which is above the 1% the band allows.
+    expect(finding.outcome).toBe('fail');
     expect(finding.evidence[0]?.observed).toContain('1,000');
   });
 });

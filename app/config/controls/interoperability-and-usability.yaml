@@ -290,8 +290,11 @@ principles:
         severity: medium
         alias_group: data-products
         criteria: >-
-          Published assets carry tags, so a consumer can tell a product from a working table. Caps
-          at partial: whether the business trusts them is not something the metastore records.
+          Published assets carry tags, so a consumer can tell a product from a working table. Tagged
+          tables cap at partial, and a current "met" answer lifts that to a pass: whether the
+          business trusts them is not something the metastore records. No tags is a measured
+          shortfall an answer does not lift: partial where at least 80% of tables are described,
+          fail below that.
         remediation:
           summary: Tag published tables with their status and owner so consumers can tell what to build on.
           sql: >-

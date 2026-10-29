@@ -1,6 +1,6 @@
 {
-  "version": 20,
-  "fingerprint": "sha256:d955c6bcfab3d41a28d4f9a74b991b59fc5f79efbb1a41c68617c198b5da1a10",
+  "version": 21,
+  "fingerprint": "sha256:fefd02c559ae6664774564100072097edc4e6f4fa8fb10d45cfb00d739ba84a5",
   "scored_units": 165,
   "controls": {
     "CO-01-01": {
@@ -522,7 +522,10 @@
         "azure",
         "gcp"
       ],
-      "thresholds": null,
+      "thresholds": {
+        "pass_share": 0.8,
+        "partial_share": 0.4
+      },
       "preconditions": []
     },
     "DG-01-04": {
@@ -1313,7 +1316,8 @@
         "gcp"
       ],
       "thresholds": {
-        "partial_share": 0.01
+        "pass_share": 1,
+        "partial_share": 0.99
       },
       "preconditions": []
     },

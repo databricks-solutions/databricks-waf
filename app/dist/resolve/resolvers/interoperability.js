@@ -71,8 +71,9 @@ const INTEROPERABILITY_RESOLVERS = [
 		};
 		return {
 			outcome: "partial",
+			capped: true,
 			evidence: [evidenceFrom(context, PLATFORM, `${platform.taggedTables} of ${census.tableCount} tables tagged (${percent(tagged)}), ${platform.taggedColumns} tagged columns`, "Published assets are tagged with their status, so a consumer can tell a product from a working table"), detailFrom(context, PLATFORM, `${census.describedTables} tables described, ${census.distinctOwners} distinct owners, ${platform.routines} registered function${platform.routines === 1 ? "" : "s"}`)],
-			outcomeReason: "Tagging and descriptions are in use, which is the metadata a data product needs. This caps at partial because the rest of the requirement is semantic: whether the same business concept is named the same way across schemas, and whether the business actually trusts these assets, is not something the metastore records."
+			outcomeReason: "Tagging and descriptions are in use, which is the metadata a data product needs. This stays partial because the rest of the requirement is semantic: whether the same business concept is named the same way across schemas, and whether the business actually trusts these assets, is not something the metastore records. The person accountable for the data products can say so: a current answer of \"met\" lifts it to a pass."
 		};
 	}))),
 	sourcedFrom([VECTOR], fromSignals([SERVING], ["IU-03-04"], (context) => {

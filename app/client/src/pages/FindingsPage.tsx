@@ -475,7 +475,9 @@ export function FindingsPage() {
                             <SeverityBadge severity={finding.severity} />
                             {/* The basis travels with the verdict. A reader scanning ten rows of
                               outcomes must not have to open each one to learn which were measured. */}
-                            {finding.attested?.bearing === 'outcome' && <AttestedBadge />}
+                            {(finding.attested?.bearing === 'outcome' || finding.attested?.bearing === 'co-signed') && (
+                              <AttestedBadge />
+                            )}
                             {/* So does the decision. This list is where somebody checks whether a
                               failure is being handled, and a row that looks identical to an
                               unattended one is the row they chase twice. */}

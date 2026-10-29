@@ -27,7 +27,7 @@
 
 import type { Coverage, Reach } from '../collect/signal.js';
 import { classOf } from './evidence-class.js';
-import type { Evidence, Finding } from './finding.js';
+import { decidedByAnswer, type Evidence, type Finding } from './finding.js';
 
 /**
  * How firmly the outcome is established.
@@ -121,12 +121,18 @@ function limitationsOf(finding: Finding, circumstances: Circumstances): readonly
   const limitations: Limitation[] = [];
 
   const attested = finding.attested;
-  if (attested != null && attested.bearing === 'outcome') {
+  if (attested != null && decidedByAnswer(attested)) {
     limitations.push({
       kind: 'attested',
       says:
-        `This is ${attested.by}'s answer about the practice, recorded ${on(attested.at)}, not something this app read. ` +
-        `${attested.owner} is accountable for it.`,
+        attested.bearing === 'co-signed'
+          ? // The app did read part of this, and the sentence has to say so: calling it all somebody's
+            // word would understate what was measured, and calling it all measured would overstate it.
+            `This app measured it up to partial, which is as far as the platform can show. ${attested.by} ` +
+            `answered that the rest is met, recorded ${on(attested.at)}, and that answer is what lifts it to a ` +
+            `pass. ${attested.owner} is accountable for it.`
+          : `This is ${attested.by}'s answer about the practice, recorded ${on(attested.at)}, not something this app read. ` +
+            `${attested.owner} is accountable for it.`,
     });
     const days = daysUntil(attested.reviewBy, circumstances.asOf);
     if (days != null && days <= EXPIRING_WITHIN_DAYS) {

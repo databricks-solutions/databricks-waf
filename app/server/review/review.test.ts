@@ -210,6 +210,43 @@ describe('a pillar evidence manifest', () => {
     expect(manifest.unresolvedControlIds).toEqual(['SCP-01-01', 'SCP-01-02', 'SCP-01-03', 'SCP-01-04']);
   });
 
+  describe('a requirement the measurement already settled up to a cap', () => {
+    // An answer lifts the cap and nothing else needs one, so the pillar can be confirmed without it:
+    // the measured outcome stands. A counting answer is still cited, because the lift in the
+    // published report is only as good as the answer the review froze.
+    const optional = [
+      { id: 'OE-01-06', pillarId: PILLAR, optional: true },
+      { id: 'OE-03-01', pillarId: PILLAR, optional: true },
+    ];
+
+    it('does not ask for an answer that was never given, and does not leave the pillar unresolved by it', () => {
+      const manifest = pillarEvidenceManifest([...controls, ...optional], [], PILLAR, NOW);
+
+      expect(manifest.attentionControlIds).not.toContain('OE-01-06');
+      expect(manifest.unresolvedControlIds).not.toContain('OE-01-06');
+      expect(manifest.attentionControlIds).toContain('SCP-01-01');
+    });
+
+    it('cites an answer that counts', () => {
+      const given = answer('att-cap', 'OE-01-06', new Date('2027-08-13T09:00:00.000Z'));
+      const manifest = pillarEvidenceManifest([...controls, ...optional], [given], PILLAR, NOW);
+
+      expect(manifest.attestationIds).toEqual(['att-cap']);
+      expect(manifest.attentionControlIds).not.toContain('OE-01-06');
+    });
+
+    it('does not ask for one that has lapsed, since the cap simply stands again', () => {
+      const lapsed = {
+        ...answer('att-lapsed', 'OE-03-01', new Date('2026-08-12T09:00:00.000Z')),
+        attestedAt: new Date('2026-05-14T09:00:00.000Z'),
+      };
+      const manifest = pillarEvidenceManifest([...controls, ...optional], [lapsed], PILLAR, NOW);
+
+      expect(manifest.attestationIds).toEqual([]);
+      expect(manifest.attentionControlIds).not.toContain('OE-03-01');
+    });
+  });
+
   it('accepts a due answer until the instant it expires', () => {
     const before = pillarEvidenceManifest(controls, [due], PILLAR, new Date(due.reviewBy.getTime() - 1));
     const at = pillarEvidenceManifest(controls, [due], PILLAR, due.reviewBy);

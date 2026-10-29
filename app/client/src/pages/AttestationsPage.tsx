@@ -109,7 +109,7 @@ export function AttestationsPage() {
   const pillars = useMemo(() => [...new Set(all.map((one) => one.pillarId))].sort(), [all]);
 
   const kinds = useMemo(() => {
-    const tally: Record<AskedBecause, number> = { 'no-telemetry': 0, 'not-authorised': 0, inconclusive: 0 };
+    const tally: Record<AskedBecause, number> = { 'no-telemetry': 0, 'not-authorised': 0, inconclusive: 0, capped: 0 };
     for (const requirement of all) tally[requirement.askedBecause] += 1;
     return tally;
   }, [all]);

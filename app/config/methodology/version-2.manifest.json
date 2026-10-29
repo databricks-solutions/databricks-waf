@@ -35,8 +35,8 @@
     ]
   },
   "technical_provenance": {
-    "catalogue_revision": "20",
-    "catalogue_fingerprint": "sha256:d955c6bcfab3d41a28d4f9a74b991b59fc5f79efbb1a41c68617c198b5da1a10"
+    "catalogue_revision": "21",
+    "catalogue_fingerprint": "sha256:fefd02c559ae6664774564100072097edc4e6f4fa8fb10d45cfb00d739ba84a5"
   },
   "counts": {
     "pillars": 7,
@@ -46,7 +46,7 @@
     "measured": 85,
     "question_setting": 53,
     "question_practice": 46,
-    "question_contracts": 118,
+    "question_contracts": 126,
     "administrator_probes": 27
   },
   "scoring": {
@@ -70,7 +70,7 @@
     "overall_aggregation": "unweighted mean of pillars that have a score",
     "unknowns": "unmeasurable and not-applicable leave the weighted mean; unmeasured applicable requirements widen the low/high range",
     "alias_groups": "one requirement is scored once per pillar at the group worst outcome and reported in every pillar that expresses it",
-    "evidence_precedence": "applicability is evaluated before evidence; a measurement overrides an attestation and an attestation decides only an unmeasurable reading"
+    "evidence_precedence": "applicability is evaluated before evidence; a measurement overrides an attestation and an attestation decides only an unmeasurable reading, with one exception: a partial a resolver marks as the ceiling of what the platform can show is lifted to pass by a current or due \"met\" answer, and nothing lifts a fail or a measured shortfall"
   },
   "questions": {
     "answers": [
@@ -86,7 +86,8 @@
       "not-applicable": "not-applicable"
     },
     "due_window_days": 30,
-    "expiry": "an answer stops counting at reviewBy and the requirement returns to unmeasured",
+    "expiry": "an answer stops counting at reviewBy; a requirement it decided returns to unmeasured, and one it lifted returns to its measured partial",
+    "cap_lift": "a capped partial is lifted to pass only by a current or due \"met\" answer, recorded with the bearing co-signed; \"partially-met\", \"not-met\" and \"not-applicable\" are recorded and never counted, and no answer lowers a measurement",
     "attribution": "owner and recording identity are required; a later answer supersedes rather than rewrites the earlier record"
   },
   "assurance": {
@@ -1573,7 +1574,10 @@
         "weight": 10,
         "coverage_mode": "complete",
         "alias_group": "unity-catalog-governed",
-        "thresholds": null,
+        "thresholds": {
+          "pass_share": 0.8,
+          "partial_share": 0.4
+        },
         "preconditions": []
       },
       "evidence": {
@@ -1585,6 +1589,7 @@
           "sql:uc.census"
         ],
         "enrichment_signals": [
+          "sql:serving.model_entities",
           "sql:uc.lineage_coverage",
           "sql:uc.schema_census"
         ],
@@ -2450,6 +2455,13 @@
           "evidence_guidance": "The repository holding the definitions, and the CI job that deploys them. If you use Terraform, name the state backend; if asset bundles, the bundle root.",
           "why_asked": "The same reading as OE-02-01, which asks this from the operational side: no job here carries a bundle deployment marker, and Terraform-deployed jobs carry none either, so the two cannot be told apart from the platform’s own record.",
           "cadence_days": 180
+        },
+        {
+          "trigger": "measurement-stops-at-its-cap",
+          "question": "Are your jobs, pipelines and compute defined in version-controlled code and deployed by a pipeline, rather than created and edited in the workspace UI?",
+          "evidence_guidance": "The repository holding the definitions, and the CI job that deploys them. If you use Terraform, name the state backend; if asset bundles, the bundle root.",
+          "why_asked": "The scan found asset-bundle deployments, and Databricks records `deployment.kind = BUNDLE` on the jobs they deploy. That shows a deployment pipeline exists for those jobs. It cannot show that the rest is covered: the Terraform provider writes jobs through the same API a person uses and leaves no marker, and the pipelines, clusters and warehouses beside the jobs leave none either. An answer of \"met\" lifts the measured partial to a pass. Any other answer is recorded beside the measurement and leaves it as it is.",
+          "cadence_days": 180
         }
       ]
     },
@@ -2899,7 +2911,15 @@
         "azure",
         "gcp"
       ],
-      "questions": []
+      "questions": [
+        {
+          "trigger": "measurement-stops-at-its-cap",
+          "question": "Do the people who build on your published tables trust them as data products, with a consistent meaning for the same business concept across schemas?",
+          "evidence_guidance": "The catalogue of published products, or the tagging convention that marks one, and who certifies a table as a product. A shared glossary is the usual evidence for consistent meaning.",
+          "why_asked": "Tables in the metastore carry tags, which is the metadata a consumer uses to tell a product from a working table. Whether the business trusts them, and whether a concept is named the same way in two schemas, is semantic and is not something the metastore records. An answer of \"met\" lifts the measured partial to a pass. Any other answer is recorded beside the measurement and leaves it as it is.",
+          "cadence_days": 180
+        }
+      ]
     },
     {
       "id": "IU-04-02",
@@ -2951,7 +2971,15 @@
         "azure",
         "gcp"
       ],
-      "questions": []
+      "questions": [
+        {
+          "trigger": "measurement-stops-at-its-cap",
+          "question": "Does the same business concept mean the same thing, and carry the same name, in every schema that holds it?",
+          "evidence_guidance": "The business glossary or data dictionary, and how a new definition is reconciled with an existing one.",
+          "why_asked": "The same reading as IU-04-01, asked as the semantic-consistency requirement: tags are present, and whether they mean the same thing across schemas is not something the metastore records. An answer of \"met\" lifts the measured partial to a pass. Any other answer is recorded beside the measurement and leaves it as it is.",
+          "cadence_days": 180
+        }
+      ]
     },
     {
       "id": "IU-04-03",
@@ -3120,6 +3148,13 @@
           "evidence_guidance": "The repository holding the notebooks and job definitions that run in production, and how a change to one reaches the workspace. A notebook edited in place and never committed is the case this asks about.",
           "why_asked": "The same reading as OE-02-01, asked as the source-control requirement: a bundle deploys notebooks and job definitions together from one repository, and no job here carries the marker that would prove it. Terraform-deployed jobs carry none either, so the platform cannot tell a repository-managed estate from one edited in the UI.",
           "cadence_days": 180
+        },
+        {
+          "trigger": "measurement-stops-at-its-cap",
+          "question": "Is all production code in enterprise source control, with no production logic that exists only in a workspace notebook?",
+          "evidence_guidance": "The repository holding the notebooks and job definitions that run in production, and how a change to one reaches the workspace. A notebook edited in place and never committed is the case this asks about.",
+          "why_asked": "The scan found asset-bundle deployments, and Databricks records `deployment.kind = BUNDLE` on the jobs they deploy. That shows a deployment pipeline exists for those jobs. It cannot show that the rest is covered: the Terraform provider writes jobs through the same API a person uses and leaves no marker, and the pipelines, clusters and warehouses beside the jobs leave none either. An answer of \"met\" lifts the measured partial to a pass. Any other answer is recorded beside the measurement and leaves it as it is.",
+          "cadence_days": 180
         }
       ]
     },
@@ -3232,7 +3267,15 @@
         "azure",
         "gcp"
       ],
-      "questions": []
+      "questions": [
+        {
+          "trigger": "measurement-stops-at-its-cap",
+          "question": "Does every model reach production through one defined process, with evaluation gates, a promotion path and a review step that are enforced rather than followed by habit?",
+          "evidence_guidance": "The runbook or pipeline definition that takes a model from experiment to a served endpoint, and where the evaluation and approval steps are recorded.",
+          "why_asked": "The scan found MLOps tooling in use — custom models on managed serving endpoints, or training runs started by jobs. That shows the infrastructure for a standard lifecycle exists. It cannot show that the process is documented, gated and enforced, which no system table records. An answer of \"met\" lifts the measured partial to a pass. Any other answer is recorded beside the measurement and leaves it as it is.",
+          "cadence_days": 90
+        }
+      ]
     },
     {
       "id": "OE-01-05",
@@ -3344,7 +3387,15 @@
         "azure",
         "gcp"
       ],
-      "questions": []
+      "questions": [
+        {
+          "trigger": "measurement-stops-at-its-cap",
+          "question": "Were your catalogs divided along a deliberate boundary — environment, domain or team — that you would choose again today?",
+          "evidence_guidance": "The document or decision that set the catalog layout, and who owns it. If the boundary has drifted from the one chosen, say so in the answer.",
+          "why_asked": "The metastore holds more than one catalog, which shows the estate was divided. Whether the boundary is environment, domain or team, and whether it is the one that was intended, is not readable from the metastore. An answer of \"met\" lifts the measured partial to a pass. Any other answer is recorded beside the measurement and leaves it as it is.",
+          "cadence_days": 180
+        }
+      ]
     },
     {
       "id": "OE-02-01",
@@ -3400,6 +3451,13 @@
           "question": "Are your jobs, pipelines and compute defined in version-controlled code and deployed by a pipeline, rather than created and edited in the workspace UI?",
           "evidence_guidance": "The repository holding the definitions, and the CI job that deploys them. If you use Terraform, name the state backend; if asset bundles, the bundle root. What matters is that a change to a job goes through review before it reaches the workspace.",
           "why_asked": "Databricks records `deployment.kind = BUNDLE` on jobs deployed by an asset bundle, and none of yours carry it. That is not evidence of hand-built jobs: the Terraform provider creates jobs through the same API a person uses and leaves no marker at all, so a fully Terraform-managed estate looks exactly like this one. Nothing the platform records distinguishes them.",
+          "cadence_days": 180
+        },
+        {
+          "trigger": "measurement-stops-at-its-cap",
+          "question": "Are your jobs, pipelines and compute defined in version-controlled code and deployed by a pipeline, with nothing in production created or edited by hand in the workspace?",
+          "evidence_guidance": "The repository holding the definitions, and the CI job that deploys them. If you use Terraform, name the state backend; if asset bundles, the bundle root. What matters is that a change goes through review before it reaches the workspace.",
+          "why_asked": "The scan found asset-bundle deployments, and Databricks records `deployment.kind = BUNDLE` on the jobs they deploy. That shows a deployment pipeline exists for those jobs. It cannot show that the rest is covered: the Terraform provider writes jobs through the same API a person uses and leaves no marker, and the pipelines, clusters and warehouses beside the jobs leave none either. An answer of \"met\" lifts the measured partial to a pass. Any other answer is recorded beside the measurement and leaves it as it is.",
           "cadence_days": 180
         }
       ]
@@ -3979,7 +4037,8 @@
         "coverage_mode": "complete",
         "alias_group": null,
         "thresholds": {
-          "partial_share": 0.01
+          "pass_share": 1,
+          "partial_share": 0.99
         },
         "preconditions": []
       },
@@ -4003,7 +4062,15 @@
         "azure",
         "gcp"
       ],
-      "questions": []
+      "questions": [
+        {
+          "trigger": "measurement-stops-at-its-cap",
+          "question": "Does someone watch headroom against your service limits and quotas, and raise them before a limit bites?",
+          "evidence_guidance": "The alert or dashboard that tracks quota usage, and who is notified. Quota headroom is an account console fact, so the answer is usually a runbook or an alert on the account.",
+          "why_asked": "No statement in the window waited at a capacity limit, which shows limits are not currently biting. It does not show that anyone would notice them approaching, and headroom is not recorded in the workspace. An answer of \"met\" lifts the measured partial to a pass. Any other answer is recorded beside the measurement and leaves it as it is.",
+          "cadence_days": 90
+        }
+      ]
     },
     {
       "id": "OE-03-02",
@@ -10993,10 +11060,10 @@
   ],
   "digests": {
     "scoring": "sha256:6d9ff9d9c99a9b24e643d50a9a11c62c81d8da67ba414cecf49ae430e34e1879",
-    "evidence": "sha256:d0877c1f61ac7d2f4bf0394053d17a84cd0214366b10a2ef0819401e7d2afcc2",
-    "questions": "sha256:b5ec4c9bb371f653da1e12876af507884cf936b359bb81b1c6ada4d89ec36809",
-    "methodology_content": "sha256:8cb2a955a108f8678372f1d44b78c0adaf0f3c73b8af0cdc046941ec82403d76"
+    "evidence": "sha256:1b74bb4cc312ec49ede858fe89a6e33d6b05ce5fd69bc25f8f9035759de2a2c6",
+    "questions": "sha256:4ea276422462f679f9a822a36f0b3de60bf7bda9bda9aee859394c08ae6c4c5f",
+    "methodology_content": "sha256:0f8a6416efc61e78d56db0fa3cf5f63a00e09d6d3ba4fcc9073851bd700ffe4b"
   },
   "generated_by": "app/scripts/methodology-manifest.mts",
-  "manifest_digest": "sha256:668b511b741ef8d154e49bb6030612a33c8bd9c4fdfb8377d8efa30c2bfe71a5"
+  "manifest_digest": "sha256:c5a7eb44c526acdbb2eb0c61ec1652517ce64bbbf08c9d7a70d4b9c2f2a3e4dc"
 }

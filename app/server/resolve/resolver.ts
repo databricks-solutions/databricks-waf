@@ -26,6 +26,7 @@ import {
 } from './finding.js';
 import { resolveApplicability, type Applicability, type Precondition } from './applicability.js';
 import { attestRemedy, remedyFor, type Remedy } from './remedy.js';
+import { liftCap } from './resolvers/helpers.js';
 
 /** The catalogue entry a resolver is answering, narrowed to what resolution needs. */
 export interface ControlSpec {
@@ -92,6 +93,16 @@ export interface Resolution {
    * A refusal still wins where one exists. It names the scope or the object, and this cannot.
    */
   readonly remedy?: Remedy;
+  /**
+   * Set on a `partial` that is the ceiling of what the platform can show, rather than a shortfall it
+   * measured. Only a result carrying it can be lifted, and only by a counting "met" answer.
+   *
+   * A resolver declares this because only the resolver knows which of its `partial`s is which. A
+   * bundle marker on every job and a bundle marker on one job in ten are both `partial`, and the
+   * first is a cap while a catalog count that comes back as one catalog is `fail`, not a cap at all.
+   * Ignored on every other outcome: see `liftCap`.
+   */
+  readonly capped?: true;
 }
 
 /**
@@ -218,10 +229,17 @@ export function resolveControl(
    * assessment would be worth precisely nothing. So an attestation is consulted only where
    * the resolver reached no verdict, and where the resolver did reach one the attestation is
    * still recorded on the finding — visible, and not counted.
+   *
+   * One exception, and it only ever moves a score up: where the resolver marked its `partial` as a
+   * cap, a current "met" lifts it. Nothing lifts a `fail` or a shortfall the app measured, and no
+   * answer lowers a measurement. Decision D2 in docs/decisions.md.
    */
   if (resolution.outcome === 'unmeasurable' && attested != null) {
     return { ...findingFromAttestation(spec, attested), evidence: resolution.evidence };
   }
+
+  const outcome = liftCap(resolution, attested);
+  const lifted = outcome !== resolution.outcome;
 
   const reason = reasonFor(resolution, applicability);
 
@@ -236,14 +254,16 @@ export function resolveControl(
 
   return {
     ...base(spec),
-    outcome: resolution.outcome,
+    outcome,
     coverage: coverageOf(resolution.evidence),
     evidence: resolution.evidence,
     ...(unmeasured != null ? { unmeasured } : {}),
     ...(reason != null ? { outcomeReason: reason } : {}),
     ...(remedyWhenUnmeasured(refused, unmeasured, resolution.remedy) ?? {}),
-    // Recorded, not counted: the measurement above decided this requirement.
-    ...(attested != null ? { attested: factFromAttestation(attested, 'record') } : {}),
+    ...(resolution.capped === true && resolution.outcome === 'partial' ? { capped: true as const } : {}),
+    // Counted only where it lifted a cap: the measurement decided everything else, and an answer
+    // beside it is recorded and no more.
+    ...(attested != null ? { attested: factFromAttestation(attested, lifted ? 'co-signed' : 'record') } : {}),
   };
 }
 
@@ -305,6 +325,35 @@ export const OUTCOME_OF_ANSWER: Readonly<Record<AttestedAnswer, Outcome>> = {
   'not-met': 'fail',
   'not-applicable': 'not-applicable',
 };
+
+/**
+ * A measured finding as it read before any answer touched it.
+ *
+ * A lift is taken back and an answer recorded beside the measurement is dropped, so the result is the
+ * outcome the resolver reached on its own. The final review starts from here: it re-applies the
+ * answers it cites to the stored finding, and a lift whose answer the review does not cite must not
+ * survive into the published report.
+ */
+export function withoutAnswer(finding: Finding): Finding {
+  const { attested, ...measured } = finding;
+  return attested?.bearing === 'co-signed' ? { ...measured, outcome: 'partial' } : measured;
+}
+
+/**
+ * A measured finding with one answer applied, by the same rule `resolveControl` applies it.
+ *
+ * For a stored finding with no resolver in the path: the answer is recorded beside the measurement,
+ * and lifts a capped `partial` where it counts and says "met". See `liftCap`.
+ */
+export function withAnswer(finding: Finding, attestation: Attestation, now: Date): Finding {
+  const measured = withoutAnswer(finding);
+  const outcome = liftCap({ outcome: measured.outcome, capped: measured.capped }, attestation, now);
+  return {
+    ...measured,
+    outcome,
+    attested: factFromAttestation(attestation, outcome !== measured.outcome ? 'co-signed' : 'record'),
+  };
+}
 
 export function findingFromAttestation(spec: ControlSpec, attested: Attestation): Finding {
   const outcome = OUTCOME_OF_ANSWER[attested.answer];

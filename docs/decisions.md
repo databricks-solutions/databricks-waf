@@ -174,3 +174,103 @@ The verdict bands are unchanged. The share that decides the outcome is service p
 - `app/server/collect/sql/shapes.ts`: `JobRow.runAsName` and the job row parser.
 - `app/server/resolve/resolvers/security-jobs.ts`: `runAsKind`, which classifies the name, and the `SCP-04-22` resolver, which lists user-run jobs by name.
 - `app/server/share/projection.ts`: unchanged. The name is a principal identifier, and it is withheld from readers outside the assessor group in the same evidence as before.
+
+## D2: an answer lifts a capped partial and never lowers a measurement
+
+**Status:** decided 2026-10-29 by the product owner
+
+**Decision.** Five measured units stop at `partial` because the platform shows that a practice has an artefact and cannot show that the artefact is the whole practice. A current "met" answer, or one that is due for renewal but has not expired (`counts()`), lifts that `partial` to `pass`. The resolver marks the `partial` as a cap, and only a marked `partial` is lifted.
+
+| Unit | The `partial` that a "met" lifts | What no answer changes |
+| --- | --- | --- |
+| `OE-01-02`, `OE-02-01`, `IU-01-05` (one alias group) | any job deployed by an asset bundle | |
+| `OE-01-04` | MLOps tooling in use | |
+| `OE-01-06` | more than one catalog | one catalog (`fail`) |
+| `IU-04-01`, `IU-04-02` | tables carry tags | no tags with 80% or more of tables described (`partial`), and no tags below that (`fail`) |
+| `OE-03-01` | no statement waited at a capacity limit | some waiting, up to 1% (`partial`), and more than 1% (`fail`) |
+
+Three rules hold for every unit:
+
+1. **Nothing lifts a `fail` or a shortfall the app measured.** An answer decides an outcome the app could not read, and it lifts a cap the resolver marked. It does not overturn a measurement.
+2. **No answer lowers a measurement.** "Partially-met", "not-met" and "not-applicable" leave the measured outcome as it is. They are recorded beside it and not counted.
+3. **More measured adoption never scores lower on the same answer.** With a "met", no adoption and an answer decides `pass`, and full adoption now reaches `pass` too. Before this, one bundle-deployed job scored `partial` on the same "met" that scored `pass` for an estate with none.
+
+The answer is recorded on the finding with a third bearing, `co-signed`: the outcome rests on both the measurement and the answer. It is counted as an answered outcome wherever the score reports how much of itself somebody said, and the finding keeps its measurement evidence. An answer that lifts nothing keeps the bearing `record`. A capped finding carries `capped`, so a lift whose answer lapses, or that the final review does not cite, returns to the measured `partial`.
+
+Capped requirements stay on the Answers page whether or not they have been answered, because the lift rests on the answer and the page is where it is renewed. They are optional in a review: a pillar can be confirmed without an answer to one, a counting answer is cited, and a lapsed one is not asked for.
+
+**Reason.** The cap was right and its side effect was not. A resolver that passed a bundle marker as "infrastructure as code" would overread its evidence, so the cap stays. But an answer reached these units only where the app had nothing to measure, so adopting the practice made the score worse than not adopting it on the same answer. Lifting the cap is the answer's only job, which keeps the integrity rule intact: a customer cannot answer away a gap the app measured.
+
+**Governs:**
+
+- `app/server/resolve/resolvers/helpers.ts`: `liftCap`, the one place the lift is decided.
+- `app/server/resolve/resolver.ts`: `resolveControl`, which applies the lift before the reason is written, and `withAnswer` and `withoutAnswer`, which apply and take back an answer on a stored finding.
+- `app/server/resolve/finding.ts`: `Finding.capped`, the `co-signed` bearing, and `decidedByAnswer`.
+- `app/server/resolve/resolvers/operational-excellence.ts` and `app/server/resolve/resolvers/interoperability.ts`: the branches marked `capped`.
+- `app/server/review/projection.ts` and `app/server/review/review.ts`: the final review re-applies the answers it cites, and treats a capped requirement as optional.
+- `app/server/api/routes.ts`: `attestable()` and `settledByMeasurement`, which keep a capped requirement on the Answers page.
+- `app/server/attest/capped-questions.ts`: the question each capped requirement asks.
+- `app/server/scan/codec.ts`: codec version 5, which stores `capped` and `co-signed`. Version 4 documents stay readable.
+- `app/scripts/methodology-manifest.mts`: the evidence-precedence and cap-lift statements of the methodology.
+
+## D3: OE-03-01 fails when more than 1% of statements waited at a capacity limit
+
+**Status:** decided 2026-10-29 by the product owner
+
+**Decision.** `OE-03-01` (`serviceUsageLimits`) returns `fail` when more than 1% of the statements in the window waited at a capacity limit. Up to 1%, and more than none, is `partial` as a measured shortfall. None waiting is `partial` as a cap that a "met" lifts (D2). No query history is not applicable.
+
+The band is declared in the catalogue `thresholds` and read over the share of statements that did not wait, so it reads in the direction every other band does: `pass_share: 1` is the edge of "none waited" and `partial_share: 0.99` is the edge of "1%". `check:thresholds` now fails when a declared band cannot change the outcome. A band whose pass line is 0 or less, above 1, or not above its partial line, or whose partial line is 0 or less, leaves an outcome no share can reach. The check judges the band a control is scored on: the catalogue's declaration over the resolver's compiled-in fallback.
+
+**Reason.** The control returned `partial` at 0% and at 100% of statements waiting, and its declared `partial_share` was read and never changed the outcome. A control that cannot fail says nothing about the quota pressure it exists to find. More than 1% of statements waiting is quota pressure that no monitoring practice explains away, so the fail is a measured one and no answer lifts it. A declared number that cannot move an outcome is the same fault as one nobody reads, so the check that catches the second now catches the first.
+
+**Governs:**
+
+- `app/server/resolve/resolvers/operational-excellence.ts`: `serviceUsageLimits`, which applies the band with `bandOutcome`.
+- `app/config/controls/enrichment.mjs`: the `OE-03-01` criteria and its `pass_share` and `partial_share`.
+- `app/scripts/check-thresholds.ts`: `deadBand` and `deadBands`, and the floor on how many bands the walk can judge.
+
+## D4: DG-01-02 and DG-01-03 score organisational design (revised by A8)
+
+**Status:** decided 2026-10-29 by the product owner. Revised by A8 for the AI half.
+
+**Decision.** `DG-01-02` and `DG-01-03` (`unityCatalogAdoption`, with `DG-01-03` completed by A8) score how the estate is organised. They do not score description coverage, which `DG-01-05` scores in the same pillar. The census says how many catalogs there are and how many distinct owners the tables have (`distinctOwners`).
+
+| Reading of the census | Outcome |
+| --- | --- |
+| every table is in one catalog | `fail` |
+| more than one catalog and `distinctOwners` of 1 or less | `partial` |
+| more than one catalog and more than one owner | `pass` |
+| no tables | not applicable, or unmeasurable where the empty reading cannot be established |
+
+The sentence still says what this metastore governs and not that it is everything, because the census cannot see a legacy metastore. The two requirements are one alias group, so the unit scores at the worse of the two.
+
+**Reason.** The controls used to pass whenever the metastore held a table. That was an honest sentence about a count, and it left a critical control the app could not fail. The census does show whether the estate was divided and whether ownership is distributed, and those are the observable halves of governing a metastore by design. A single catalog is where every grant, owner and environment boundary has to be made at the schema level or not at all. A single owner means one administrator holds the whole estate. Description coverage is `DG-01-05`'s, and scoring it twice would let one gap move two requirements.
+
+**Governs:**
+
+- `app/server/resolve/resolvers/governance.ts`: `unityCatalogAdoption` and `organisation`, which replace the reference to a planning note that no longer exists.
+- `app/config/controls/enrichment.mjs`: the `DG-01-02` and `DG-01-03` criteria and remediation.
+
+## A8: DG-01-03 reads where served custom models are registered
+
+**Status:** decided 2026-10-29 by the product owner
+
+**Decision.** `DG-01-03` is "data and AI assets in one place", so beside the catalog and ownership half of D4 it scores a second half: the share of served custom models registered in Unity Catalog, `customModelsNamedInUc / customModels`. It is read from `sql:serving.model_entities`, the signal `OE-02-08` reads for the same count in `model-lifecycle.ts`.
+
+| Share of served custom models in Unity Catalog | AI half |
+| --- | --- |
+| 80% or more | `pass` |
+| 40% or more, and below 80% | `partial` |
+| below 40% | `fail` |
+| no custom model is served | not applicable |
+
+- **The worse half decides.** `DG-01-03` takes the weaker of the two halves, and the alias group scores the weaker of it and `DG-01-02`. A well-divided data plane with its models in the workspace registry has two places, and an average would let the good half pay for the other.
+- **An enrichment, not a requirement.** The serving inventory is declared as an enrichment of `DG-01-03`, so a statement that failed leaves the catalog half standing and the control measured. `DG-01-02` does not ask for it.
+- **The bands are declared.** `pass_share: 0.8` and `partial_share: 0.4` sit in the catalogue `thresholds` of `DG-01-03`, so a reader can see which number to argue with. The product owner confirmed them on 2026-10-29.
+
+**Reason.** The census cannot see an AI asset, and a requirement titled "data and AI assets in one place" that never looked at an AI asset would pass an estate whose models sit outside Unity Catalog access control, lineage and audit. Models served from the workspace registry are the measurable form of that gap. Not applicable when none are served is a different statement from none being registered: with nothing served there is no AI asset to put anywhere.
+
+**Governs:**
+
+- `app/server/resolve/resolvers/governance.ts`: `registeredInUnityCatalog` and `dataAndAiInOnePlace`.
+- `app/config/controls/enrichment.mjs`: the `DG-01-03` criteria and `thresholds`.

@@ -65,6 +65,7 @@ const APP = join(HERE, '..');
  */
 const { INCONCLUSIVE_QUESTIONS } = await import(join(APP, 'server', 'attest', 'inconclusive-questions.ts'));
 const { BLOCKED_QUESTIONS } = await import(join(APP, 'server', 'attest', 'blocked-questions.ts'));
+const { CAPPED_QUESTIONS } = await import(join(APP, 'server', 'attest', 'capped-questions.ts'));
 const CONTROLS = join(APP, 'config', 'controls');
 const GUIDANCE = join(APP, 'config', 'guidance');
 const SCHEMA = join(GUIDANCE, 'guidance.schema.json');
@@ -123,7 +124,11 @@ const wanted = new Map();
  * inconclusive. A reader was being asked a question this app knew it could not answer, and given
  * nothing to answer it with.
  */
-const askable = new Set([...Object.keys(INCONCLUSIVE_QUESTIONS), ...Object.keys(BLOCKED_QUESTIONS)]);
+const askable = new Set([
+  ...Object.keys(INCONCLUSIVE_QUESTIONS),
+  ...Object.keys(BLOCKED_QUESTIONS),
+  ...Object.keys(CAPPED_QUESTIONS),
+]);
 const known = new Set();
 const files = new Map();
 

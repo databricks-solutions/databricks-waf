@@ -28,7 +28,7 @@
 
 import { verifiedBy, type ImprovementAction } from '../improve/action.js';
 import { ConcurrentChangeError, type ImprovementStore } from '../improve/store.js';
-import type { Finding } from '../resolve/finding.js';
+import { decidedByAnswer, type Finding } from '../resolve/finding.js';
 import type { Scan } from '../scan/scan.js';
 import {
   abandoned,
@@ -299,7 +299,8 @@ function freshlyMeasured(controlId: string, run: RunView): boolean {
 /**
  * What this run says about one requirement, in the terms the attempt reads.
  *
- * `attestedAt` is carried only where the answer decided the outcome. An answer recorded beside a
+ * `attestedAt` is carried only where the answer decided the outcome, which includes an answer that
+ * lifted a measured cap. An answer recorded beside a
  * measurement is not what the finding rests on, and passing its date would fail a validation for the
  * age of evidence that did not decide anything.
  */
@@ -310,6 +311,6 @@ function observationOf(controlId: string, run: RunView): Observation {
   return {
     controlId,
     outcome: finding.outcome,
-    ...(finding.attested?.bearing === 'outcome' ? { attestedAt: finding.attested.at } : {}),
+    ...(finding.attested != null && decidedByAnswer(finding.attested) ? { attestedAt: finding.attested.at } : {}),
   };
 }

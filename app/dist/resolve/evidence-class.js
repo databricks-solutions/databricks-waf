@@ -1,3 +1,4 @@
+import { decidedByAnswer } from "./finding.js";
 //#region server/resolve/evidence-class.ts
 /**
 * Strongest first. Lower is more reliable, which is what "one-directional" means in one number.
@@ -17,7 +18,9 @@ const RANK = {
 *
 * An attestation that bears on the outcome makes the finding attested, whatever else is attached.
 * That follows from the precedence above: a resolver that had an observation of its own would not
-* have consulted the answer, so an attested outcome means there was no observation to weigh.
+* have consulted the answer, so an attested outcome means there was no observation to weigh. The one
+* case with both is an answer that lifted a measured cap: the pass would not exist without it, so it
+* is as stated as any other and the measurement sits beside it as the reason it is not lower.
 *
 * Otherwise the *weakest* bearing evidence governs — the same rule `Finding.coverage` uses, for the
 * same reason. A verdict that needed an observation and an admin's import is only as good as the
@@ -29,7 +32,7 @@ const RANK = {
 * class of evidence behind a finding that has no evidence.
 */
 function classOf(finding) {
-	if (finding.attested?.bearing === "outcome") return "attested";
+	if (decidedByAnswer(finding.attested)) return "attested";
 	const bearing = finding.evidence.filter((one) => (one.bearing ?? "outcome") === "outcome");
 	if (bearing.length === 0) return decidedByApplicability(finding) ? "observed" : void 0;
 	return bearing.map((one) => one.evidenceClass ?? "observed").reduce((weakest, next) => RANK[next] > RANK[weakest] ? next : weakest);

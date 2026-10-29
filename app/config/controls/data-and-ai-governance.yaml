@@ -44,11 +44,18 @@ principles:
         severity: critical
         alias_group: unity-catalog-governed
         criteria: >-
-          The tables, catalogs and schemas this Unity Catalog metastore holds. The census cannot see
-          a legacy metastore, so the finding is a count of what is governed and not a share of an
-          estate — a pass says how many, and does not claim that it is everything.
+          How this Unity Catalog metastore is organised, scored on the census. Every table in one
+          catalog fails: there is no boundary to grant, own or separate environments along. More
+          than one catalog with a single owner across the estate is partial, because governance is
+          one administrator rather than distributed. More than one catalog and more than one owner
+          passes. Description coverage is not scored here; DG-01-05 scores it. The census cannot see
+          a legacy metastore, so a pass says how what is governed is organised and does not claim
+          that it is everything.
         remediation:
-          summary: Migrate remaining Hive metastore tables to Unity Catalog.
+          summary: >-
+            Divide the estate into catalogs along a deliberate boundary and give each catalog, and
+            the schemas in it, its own owner. Migrate any remaining Hive metastore tables to Unity
+            Catalog.
           sql: |-
             SYNC SCHEMA main.sales FROM hive_metastore.sales DRY RUN;
             SYNC SCHEMA main.sales FROM hive_metastore.sales SET OWNER `data-platform`;
@@ -67,9 +74,15 @@ principles:
         severity: critical
         alias_group: unity-catalog-governed
         criteria: >-
-          Same measurement as DG-01-02, read as the single-place-for-metadata requirement. Scored
-          once through the alias group. The count is of what this metastore holds, not of whether
-          anything sits beside it.
+          Data and AI assets in one place. The first half is DG-01-02: how the estate is organised
+          across catalogs and owners. The second is the share of served custom models registered in
+          Unity Catalog rather than the workspace model registry, read from the serving inventory:
+          pass at 80% or more, partial at 40% or more, otherwise fail, and not applicable when no
+          custom model is served. A missing serving inventory leaves the first half standing. The
+          worse half decides, and the alias group scores the worse of this and DG-01-02.
+        thresholds:
+          pass_share: 0.8
+          partial_share: 0.4
       - id: DG-01-04
         title: Track data and AI lineage to drive visibility of the data
         provenance: waf-docs

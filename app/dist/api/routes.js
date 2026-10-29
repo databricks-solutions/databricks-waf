@@ -6,9 +6,11 @@ import { clientFor } from "../collect/rest/client.js";
 import { MissingUserTokenError, USER_TOKEN_HEADER, actorFromHeaders, fromRequest } from "../collect/credentials.js";
 import { declaredScopes } from "../collect/rest/declared-scopes.js";
 import { StatementExecutor } from "../collect/sql/statements.js";
+import { decidedByAnswer } from "../resolve/finding.js";
 import { probeReach } from "../collect/rest/reach.js";
 import { InvalidAttestationError, cadenceDaysFor, draftFrom, stateOf } from "../attest/attestation.js";
 import { BLOCKED_QUESTIONS } from "../attest/blocked-questions.js";
+import { CAPPED_QUESTIONS } from "../attest/capped-questions.js";
 import { INCONCLUSIVE_QUESTIONS } from "../attest/inconclusive-questions.js";
 import { registerAttestation } from "../attest/register.js";
 import { InvalidDecisionError, draftFrom as draftFrom$1, parkDays } from "../decide/decision.js";
@@ -1028,7 +1030,14 @@ function registerApi(served, options) {
 		...options.attestations != null ? { attestations: options.attestations } : {},
 		control: (id) => controlIndex(options.catalogue).get(id),
 		cadenceDays: (spec) => asked(spec).cadenceDays,
-		requirementsFor: (scan) => attestable(options.catalogue, options.registry, settledByMeasurement(scan), inconclusiveMeasurements(scan), unreachableMeasurements(scan)),
+		requirementsFor: (scan) => {
+			const capped = cappedMeasurements(scan);
+			return attestable(options.catalogue, options.registry, settledByMeasurement(scan), inconclusiveMeasurements(scan), unreachableMeasurements(scan), capped).map((control) => ({
+				id: control.id,
+				pillarId: control.pillarId,
+				...capped.has(control.id) ? { optional: true } : {}
+			}));
+		},
 		permitted: (request, response, action, context) => permitted(request, response, options, action, context),
 		respondToFailure
 	});
@@ -1164,18 +1173,19 @@ function registerApi(served, options) {
 			const measured = settledByMeasurement(reference);
 			const inconclusive = inconclusiveMeasurements(reference);
 			const unreachable = unreachableMeasurements(reference);
+			const capped = cappedMeasurements(reference);
 			const runPillars = reference?.requestedPillars ?? (reference?.score.pillars.length ? reference.score.pillars.map((pillar) => pillar.pillarId) : void 0);
 			const payload = {
 				durable: store.durable,
 				...store.durable ? {} : { durabilityNote: options.attestationStorage ?? NO_ATTESTATION_STORE },
-				requirements: attestable(options.catalogue, options.registry, measured, inconclusive, unreachable).filter((control) => requestedRunId === "" || runPillars == null || runPillars.includes(control.pillarId)).map((control) => ({
+				requirements: attestable(options.catalogue, options.registry, measured, inconclusive, unreachable, capped).filter((control) => requestedRunId === "" || runPillars == null || runPillars.includes(control.pillarId)).map((control) => ({
 					controlId: control.id,
 					pillarId: control.pillarId,
 					principleId: control.principleId,
 					title: control.title,
 					severity: control.severity,
-					askedBecause: askedBecause(control, inconclusive),
-					...asked(control),
+					askedBecause: askedBecause(control, inconclusive, capped),
+					...asked(control, capped.has(control.id)),
 					...withAnswer(recorded.get(control.id))
 				}))
 			};
@@ -1480,17 +1490,21 @@ const NO_ATTESTATION_STORE = "Answers to the requirements that cannot be measure
 * the app has just measured is asking them to duplicate a reading — and if their report disagreed
 * with the measurement, the app would show a contradiction it already knows the answer to.
 *
+* A third group joins them: requirements the app measured up to a cap, where an answer is what lifts
+* it. They are offered because the scan reached the cap, not because anything was unreadable.
+*
 * The first kind is never removed, however a scan turned out. Their only route to an outcome is an
 * answer, so a settled one is settled *by* an answer, and dropping it from this page would leave no
 * way to renew it before it lapses.
 */
-function attestable(catalogue, registry, measured = /* @__PURE__ */ new Set(), inconclusive = /* @__PURE__ */ new Set(), unreachable = /* @__PURE__ */ new Set()) {
+function attestable(catalogue, registry, measured = /* @__PURE__ */ new Set(), inconclusive = /* @__PURE__ */ new Set(), unreachable = /* @__PURE__ */ new Set(), capped = /* @__PURE__ */ new Set()) {
 	const byId = descriptorsById();
 	return catalogue.controls.filter((control) => {
 		if (control.measurability === "attestation") return true;
 		if (beyondAnyInstall(control, registry, byId) && !measured.has(control.id)) return true;
 		if (inconclusive.has(control.id) && INCONCLUSIVE_QUESTIONS[control.id] != null) return true;
-		return unreachable.has(control.id);
+		if (unreachable.has(control.id)) return true;
+		return capped.has(control.id);
 	});
 }
 /**
@@ -1538,7 +1552,18 @@ function unreachableMeasurements(scan) {
 */
 function settledByMeasurement(scan) {
 	if (scan == null) return /* @__PURE__ */ new Set();
-	return new Set(scan.findings.filter((finding) => finding.outcome !== "unmeasurable" && finding.attested?.bearing !== "outcome").map((finding) => finding.controlId));
+	return new Set(scan.findings.filter((finding) => finding.outcome !== "unmeasurable" && !decidedByAnswer(finding.attested) && finding.capped !== true).map((finding) => finding.controlId));
+}
+/**
+* Requirements the last scan measured as far as the platform shows, where an answer lifts the cap.
+*
+* Read off the finding rather than derived from the catalogue, because a cap is a property of a
+* measurement and not of a requirement: the same control is capped on an estate with more than one
+* catalog and `fail` on one with a single catalog, and only the first has a question to ask.
+*/
+function cappedMeasurements(scan) {
+	if (scan == null) return /* @__PURE__ */ new Set();
+	return new Set(scan.findings.filter((finding) => finding.capped === true).map((finding) => finding.controlId));
 }
 /**
 * The last scan, or nothing if it cannot be read.
@@ -1569,27 +1594,33 @@ async function latestOrNothing(store, scope) {
 * judgement is at least honest about what is being requested, and CI fails on the gap so this
 * branch stays unreached.
 */
-function asked(control) {
+function asked(control, cappedHere = false) {
 	const blocked = BLOCKED_QUESTIONS[control.id];
-	const unsettled = INCONCLUSIVE_QUESTIONS[control.id];
-	const question = control.attestation?.question ?? blocked?.question ?? unsettled?.question;
-	const guidance = control.attestation?.evidenceGuidance ?? blocked?.evidence ?? unsettled?.evidence;
+	const capped = CAPPED_QUESTIONS[control.id];
+	const unsettled = cappedHere ? void 0 : INCONCLUSIVE_QUESTIONS[control.id];
+	const asking = cappedHere ? capped : void 0;
+	const question = control.attestation?.question ?? blocked?.question ?? unsettled?.question ?? asking?.question;
+	const guidance = control.attestation?.evidenceGuidance ?? blocked?.evidence ?? unsettled?.evidence ?? asking?.evidence;
+	const why = unsettled?.whyAsked ?? asking?.whyAsked;
 	return {
 		question: question ?? `${control.title}. How well does this describe your estate?`,
-		...guidance != null || unsettled != null ? { evidenceGuidance: [unsettled?.whyAsked, guidance].filter((part) => part != null).join("\n\n") } : {},
-		cadenceDays: cadenceDaysFor(control.severity, control.attestation?.cadenceDays ?? blocked?.cadenceDays ?? unsettled?.cadenceDays)
+		...guidance != null || why != null ? { evidenceGuidance: [why, guidance].filter((part) => part != null).join("\n\n") } : {},
+		cadenceDays: cadenceDaysFor(control.severity, control.attestation?.cadenceDays ?? blocked?.cadenceDays ?? INCONCLUSIVE_QUESTIONS[control.id]?.cadenceDays ?? capped?.cadenceDays)
 	};
 }
 /**
-* Which of the three reasons this requirement is being put to a person.
+* Which of the reasons this requirement is being put to a person.
 *
 * Order matters. A practice requirement is `no-telemetry` however a scan turned out, because no
-* scan was ever going to settle it. An inconclusive reading is checked before the authorisation
+* scan was ever going to settle it. A measurement at its cap is next, because it is the more specific
+* of the two scan-dependent reasons: the app read the requirement and an answer lifts what it read.
+* An inconclusive reading is checked before the authorisation
 * case so that a control which is both — written, unauthorised, and inconclusive this time —
 * reports the reason the reader can act on.
 */
-function askedBecause(control, inconclusive) {
+function askedBecause(control, inconclusive, capped = /* @__PURE__ */ new Set()) {
 	if (control.measurability === "attestation") return "no-telemetry";
+	if (capped.has(control.id)) return "capped";
 	if (inconclusive.has(control.id)) return "inconclusive";
 	return "not-authorised";
 }
