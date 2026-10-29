@@ -1,4 +1,4 @@
-import { NotPermittedError, recordRefusal, requirePermission } from "../authorize/group.js";
+import { NotPermittedError, recordRefusal, requirePermission, requireVerifiedIdentity } from "../authorize/group.js";
 import { NO_CHANGELOG, spanBetween } from "../catalogue/changelog.js";
 import { authoredGuidance } from "../guidance/guidance.js";
 import { DIRECTORY_SIGNAL } from "../collect/sql/collector.js";
@@ -777,7 +777,7 @@ function registerApi(served, options) {
 				requirePermission(options.assessorGroup, identity);
 				may = { start: true };
 			} catch (cause) {
-				if (!(cause instanceof NotPermittedError)) throw cause;
+				if (!(cause instanceof NotPermittedError) || cause.kind === "identity-mismatch") throw cause;
 				may = {
 					start: false,
 					refusal: cause.kind,
@@ -2044,9 +2044,29 @@ async function identify(request, host) {
 		token
 	}));
 }
+/**
+* The identity a read attributes, which is the proxy's header when there is one.
+*
+* A read records nothing against a person, so the header is allowed to stand in for SCIM's answer
+* here. The gate does not take this shortcut: see `verifiedIdentityFrom`.
+*/
 function identityFrom(headerActor, user) {
+	return identityOf(headerActor ?? user.userName, user);
+}
+/**
+* The identity a change is attributed to: what SCIM returned for the token, never the header.
+*
+* The header is only the fallback for a SCIM answer that carries no `userName`. Where both are
+* present the caller checks them against each other with `requireVerifiedIdentity`, so by the time
+* a change is recorded the two agree. A service principal's `userName` is its application id and
+* its display name is kept in `actorName`, as for any other caller. Decision A1 in docs/decisions.md.
+*/
+function verifiedIdentityFrom(headerActor, user) {
+	return identityOf(user.userName ?? headerActor, user);
+}
+function identityOf(actor, user) {
 	return {
-		actor: headerActor ?? user.userName ?? "unknown",
+		actor: actor ?? "unknown",
 		...user.displayName != null ? { actorName: user.displayName } : {},
 		scope: scopeFromProbe(user),
 		...user.groups != null ? { groups: user.groups } : {}
@@ -2067,15 +2087,18 @@ function identityFrom(headerActor, user) {
 */
 async function permitted(request, response, options, action, context = {}) {
 	const token = userToken(request);
-	const identity = identityFrom(actorFromHeaders(request), await probeCurrentUser({
+	const forwarded = actorFromHeaders(request);
+	const user = await probeCurrentUser({
 		host: options.host,
 		token
-	}));
+	});
+	const identity = verifiedIdentityFrom(forwarded, user);
 	const who = {
 		actor: identity.actor,
 		executionMode: "on-behalf-of-user"
 	};
 	try {
+		requireVerifiedIdentity(forwarded, user.userName);
 		requirePermission(options.assessorGroup, identity);
 	} catch (cause) {
 		if (cause instanceof NotPermittedError) {

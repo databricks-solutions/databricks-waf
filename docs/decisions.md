@@ -53,3 +53,16 @@ Each section records one settled question about how the App works: what was deci
 - `app/server/collect/rest/probes.ts`: `AdminOnlyProbe`, a probe with no `run()`.
 - `app/server/collect/rest/collector.ts`: `refusedWithoutCalling`, which answers an admin-only probe without a control-plane call.
 - `app/server/resolve/remedy.ts`: `one()` reads the refusal first, then falls back to `demandedScope` and the family table.
+
+## A1: identity comes from the verified token, never from a forwarded header
+
+**Status:** decided 2026-10-29 by the product owner
+
+**Decision.** A change is attributed to the identity the workspace returns for the caller's token: the `userName` from the SCIM current-user answer. A forwarded identity header is never the name a change is recorded under. When the header is present and names someone other than that `userName`, compared without regard to case, the change is refused with `403 identity-mismatch` and the refusal is recorded in the audit trail under the verified name. A request with no header is attributed to the verified `userName`. A service principal is recorded under its application id, which is its `userName`, with its display name kept beside it as `actorName`. Read-only routes keep the header shortcut, because they attribute nothing.
+
+**Reason.** Permission to change an assessment is decided on the groups SCIM lists for the token. If the name written beside the act came from somewhere else, a change could be authorised for one person and recorded against another, and the audit trail would stop describing who was permitted. Using the one name that the groups belong to keeps authorisation and attribution on the same principal. A mismatch is refused rather than resolved in favour of either name, because nothing in the request says which one is right. The app does not control the proxy in front of it, so it does not rely on the proxy to have replaced the header.
+
+**Governs:**
+
+- `app/server/api/routes.ts`: `permitted()`, which calls `verifiedIdentityFrom` and `requireVerifiedIdentity` before the membership check, and records a refusal through `options.audit?.refused`. `identityFrom` and `identify` keep the header for reads.
+- `app/server/authorize/group.ts`: `requireVerifiedIdentity`, and `identity-mismatch` among the kinds of `NotPermittedError`.
