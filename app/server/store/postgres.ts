@@ -337,14 +337,18 @@ export async function ensureSchema(sql: Sql, schema: string): Promise<void> {
   // `docs/design/import-list-cost.md`.
   await sql.query(`alter table ${schema}.imported_evidence add column if not exists summary jsonb`);
 
-  // The workspace the file's workspace half was collected from, promoted out of `body` so a
-  // workspace's files can be found without reading every envelope, which is what scoping an imported
-  // reading to the workspace it describes asks of the table.
+  // The workspace the file's workspace half was collected from, promoted out of `body` and recorded
+  // when the row is written, with an index for looking a workspace's files up by it.
+  //
+  // Nothing filters on it in SQL yet. `all()` reads the table and the scan runner picks a workspace's
+  // files from what comes back; the column and index are there so a lookup by workspace does not have
+  // to read every envelope when one is wanted.
   //
   // Nullable, because a row written before this column existed has none and a file whose workspace tier
   // did not run never will. The first is read out of the body when the row is read — one definition of
   // the answer, in `import/envelope.ts`, rather than a second one in a migration — and the second is
-  // simply a file with nothing to attribute. Additive, so a build that predates it ignores the column.
+  // simply a file with nothing to attribute. Nothing writes the answer back to a legacy row. Additive,
+  // so a build that predates it ignores the column.
   await sql.query(`alter table ${schema}.imported_evidence add column if not exists workspace_id text`);
   await sql.query(
     `create index if not exists imported_evidence_workspace on ${schema}.imported_evidence (workspace_id, imported_at desc)`

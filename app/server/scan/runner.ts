@@ -24,7 +24,7 @@ import { carryForward } from './carry-forward.js';
 import { aliasLookup, runScan, type Scan, type ScanTrigger } from './scan.js';
 import type { ScanStore } from './store.js';
 import type { EvidenceImportStore } from '../import/store.js';
-import { workspaceOf, type Tier } from '../import/envelope.js';
+import { accountOf, workspaceOf, type Tier } from '../import/envelope.js';
 import { readingsFrom } from '../import/signals.js';
 import type { AssessmentScope } from '../store/assessment-scope.js';
 
@@ -363,9 +363,11 @@ export class ScanRunner {
    * about one of them. The workspace half of a file applies only when it was collected from the
    * workspace the REST surface describes — the one this app is installed in, or the one the scan was
    * narrowed to — and never to a scan whose workspace is not known, since a reading that cannot be
-   * attributed cannot be shown to be about anything. The account half describes the account and
-   * applies to every scan. The import-time check refuses a file for another account when it knows
-   * which one this is.
+   * attributed cannot be shown to be about anything. The account half describes the account, so it
+   * applies to every scan but only from files of the scan's account: the one the newest file for the
+   * scanned workspace names, or failing that the newest file that names one at all. When no file
+   * names an account there is nothing to hold them to and they all apply. The import-time check
+   * refuses a file for a different account than the one already held, so this is the second of two.
    *
    * Oldest applied first so that a newer collection of the same signal overwrites an older one, which
    * makes the winner the newest import for each signal and workspace: only one workspace's files get
@@ -378,10 +380,16 @@ export class ScanRunner {
     try {
       const held = await this.options.imports.all();
       const describes = restWorkspace(scope);
+      const newest = [...held].sort((a, b) => b.generatedAt.getTime() - a.generatedAt.getTime());
+      const forWorkspace = newest.filter(
+        (one) => describes != null && (one.workspaceId ?? workspaceOf(one.envelope)) === describes
+      );
+      const account = [...forWorkspace, ...newest].map((one) => accountOf(one.envelope)).find((id) => id != null);
       const applied = new Map<SignalId, SignalResult>();
-      for (const one of [...held].sort((a, b) => a.generatedAt.getTime() - b.generatedAt.getTime())) {
+      for (const one of [...newest].reverse()) {
         const workspaceId = one.workspaceId ?? workspaceOf(one.envelope);
-        const tiers: Tier[] = ['account'];
+        const tiers: Tier[] = [];
+        if (account == null || accountOf(one.envelope) === account) tiers.push('account');
         if (describes != null && workspaceId === describes) tiers.push('workspace');
         for (const [id, reading] of readingsFrom(one, tiers).signals) applied.set(id, reading);
       }

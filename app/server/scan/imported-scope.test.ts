@@ -26,6 +26,9 @@ const LOG_DELIVERY: SignalId = 'rest:account:accounts.log-delivery';
 const WORKSPACE_A = '7000000000000001';
 const WORKSPACE_B = '7000000000000002';
 const WORKSPACE_C = '7000000000000003';
+const WORKSPACE_D = '7000000000000004';
+const ACCOUNT_X = '00000000-1111-2222-3333-444444444444';
+const ACCOUNT_Y = '99999999-1111-2222-3333-444444444444';
 const catalogue = loadCatalogue();
 const registry = buildRegistry();
 
@@ -58,7 +61,9 @@ function held(
   collected: string,
   workspaceId: string,
   ipAccessLists: 'true' | 'false',
-  withAccount = false
+  withAccount = false,
+  accountId = ACCOUNT_X,
+  auditLogs: 'ENABLED' | 'DISABLED' = 'ENABLED'
 ): ImportedEvidence {
   const probes = [
     probe({ signals: [SETTINGS], label: 'workspace-conf', fields: REQUESTED_KEYS, value: { enableIpAccessLists: ipAccessLists } }),
@@ -69,16 +74,20 @@ function held(
             tier: 'account',
             label: 'account-log-delivery',
             fields: ['log_delivery_configurations[].log_type'],
-            value: { log_delivery_configurations: [{ config_id: 'c1', log_type: 'AUDIT_LOGS', status: 'ENABLED' }] },
+            value: { log_delivery_configurations: [{ config_id: 'c1', log_type: 'AUDIT_LOGS', status: auditLogs }] },
           }),
         ]
       : []),
   ];
-  const accountIdentity = identity({ workspace_id: null, host: 'https://accounts.cloud.databricks.com' });
+  const accountIdentity = identity({
+    workspace_id: null,
+    account_id: accountId,
+    host: 'https://accounts.cloud.databricks.com',
+  });
   const raw = envelope({
     generated_at: collected,
     tiers: {
-      workspace: { ran: true, identity: identity({ workspace_id: workspaceId }) },
+      workspace: { ran: true, identity: identity({ workspace_id: workspaceId, account_id: accountId }) },
       account: withAccount ? { ran: true, identity: accountIdentity } : { ran: false, reason: 'Not run.' },
     },
     probes,
@@ -194,5 +203,69 @@ describe('which account-level readings a scan may use', () => {
     expect(finding(scan, 'SCP-04-02').outcome).toBe('pass');
     expect(names(scan, 'SCP-04-02', WORKSPACE_A)).toBe(false);
     expect(names(scan, 'SCP-04-02', WORKSPACE_B)).toBe(false);
+  });
+});
+
+describe('which account an account-level reading may come from', () => {
+  /** Account X's file says audit logs are delivered; the newer file from account Y says they are not. */
+  async function twoAccounts(): Promise<InMemoryEvidenceImportStore> {
+    const store = await imports();
+    await store.record(held('d', '2026-08-04T09:00:00Z', WORKSPACE_D, 'true', true, ACCOUNT_Y, 'DISABLED'));
+    return store;
+  }
+
+  it('takes the account half from files of the account the workspace\u2019s own file names', async () => {
+    const scan = await scanned(workspaceScope(WORKSPACE_A), await twoAccounts());
+
+    // A is in account X, so Y\u2019s newer account half is not offered and X\u2019s stands.
+    expect(finding(scan, 'SCP-04-02').outcome).toBe('pass');
+  });
+
+  it('takes it from the other account when that is the account the scanned workspace is in', async () => {
+    const scan = await scanned(workspaceScope(WORKSPACE_D), await twoAccounts());
+
+    expect(finding(scan, 'SCP-04-02').outcome).not.toBe('pass');
+    expect(finding(scan, 'SCP-04-02').outcome).not.toBe('unmeasurable');
+  });
+
+  it('follows the newest import when nothing was imported for the scanned workspace', async () => {
+    const scan = await scanned(workspaceScope(WORKSPACE_C), await twoAccounts());
+
+    // The newest file names account Y, so X\u2019s enabled configuration is not offered.
+    expect(finding(scan, 'SCP-04-02').outcome).not.toBe('pass');
+    expect(finding(scan, 'SCP-04-02').outcome).not.toBe('unmeasurable');
+  });
+
+  it('offers every file\u2019s account half when no file names an account', async () => {
+    const store = new InMemoryEvidenceImportStore();
+    const unnamed = held('e', '2026-08-01T09:00:00Z', WORKSPACE_A, 'true', true);
+    const bare = {
+      ...unnamed,
+      envelope: envelopeFrom({
+        ...envelope({
+          generated_at: '2026-08-01T09:00:00Z',
+          tiers: {
+            workspace: { ran: true, identity: identity({ workspace_id: WORKSPACE_A, account_id: null }) },
+            account: {
+              ran: true,
+              identity: identity({ workspace_id: null, account_id: null, host: 'https://accounts.cloud.databricks.com' }),
+            },
+          },
+          probes: [
+            probe({
+              signals: [LOG_DELIVERY],
+              tier: 'account',
+              label: 'account-log-delivery',
+              fields: ['log_delivery_configurations[].log_type'],
+              value: { log_delivery_configurations: [{ config_id: 'c1', log_type: 'AUDIT_LOGS', status: 'ENABLED' }] },
+            }),
+          ],
+        }),
+        digest: `sha256:${'e'.repeat(64)}`,
+      }),
+    };
+    await store.record(bare);
+
+    expect(finding(await scanned(workspaceScope(WORKSPACE_C), store), 'SCP-04-02').outcome).toBe('pass');
   });
 });

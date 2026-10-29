@@ -42,10 +42,11 @@ export interface ImportedEvidence {
   /**
    * The workspace the workspace half of the file was collected from, when there is one.
    *
-   * Held beside the envelope rather than only inside it so a store can find a workspace's files
-   * without reading every body, and so the scan runner has one place to ask. Absent when the workspace
-   * tier did not run. A record built without it is read as the envelope says; `workspaceOf` is the one
-   * definition of that.
+   * Recorded beside the envelope, in its own indexed column, so a lookup by workspace need not read
+   * every body, and so the scan runner has one place to ask. `all()` does not filter on it: it reads
+   * the table and gives a row written before the column the workspace its body names. Absent when the
+   * workspace tier did not run. A record built without it is read as the envelope says; `workspaceOf`
+   * is the one definition of that.
    */
   readonly workspaceId?: string;
   /**

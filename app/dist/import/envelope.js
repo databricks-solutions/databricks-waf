@@ -30,6 +30,17 @@ function workspaceOf(envelope) {
 	const tier = envelope.tiers.workspace;
 	return tier.ran ? tier.identity?.workspaceId : void 0;
 }
+/**
+* The account an envelope was collected against, from whichever tier named one.
+*
+* The account half is asked first because its profile is the one that addresses the account; the
+* workspace half carries the same id when its identity read one. Absent when neither said, which an
+* older script or a text-mode identity read can produce, and which means the file cannot be held to
+* an account.
+*/
+function accountOf(envelope) {
+	return envelope.tiers.account.identity?.accountId ?? envelope.tiers.workspace.identity?.accountId ?? void 0;
+}
 function fail(reason, message, at) {
 	throw new MalformedEnvelopeError(reason, message, at);
 }
@@ -195,4 +206,4 @@ function envelopeFrom(value) {
 	};
 }
 //#endregion
-export { MAX_STRING, MalformedEnvelopeError, SCHEMA, envelopeFrom, workspaceOf };
+export { MAX_STRING, MalformedEnvelopeError, SCHEMA, accountOf, envelopeFrom, workspaceOf };
