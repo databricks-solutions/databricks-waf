@@ -880,11 +880,16 @@ function registerApi(served, options) {
 		} : {},
 		respondToFailure
 	});
+	const gapLog = options.audit?.gaps;
 	registerHealthRoutes(app, {
 		respondToFailure,
+		...gapLog != null ? { gaps: gapLog } : {},
+		permitted: (request, response, action, context) => permitted(request, response, options, action, context),
+		...options.now != null ? { now: options.now } : {},
 		sourcesFor: async (request) => {
 			const token = forwardedToken(request);
 			return {
+				...gapLog != null ? await readGaps(gapLog) : {},
 				...options.pingDatabase != null ? { pingDatabase: options.pingDatabase } : {},
 				...options.storage != null ? { storage: options.storage } : {},
 				durable: options.store.durable,
@@ -2201,6 +2206,21 @@ function forwardedToken(request) {
 	const raw = request.headers[USER_TOKEN_HEADER];
 	const token = Array.isArray(raw) ? raw[0] : raw;
 	return token == null || token === "" ? void 0 : token;
+}
+/**
+* The lost-event markers for the diagnostics, or the reason they could not be read.
+*
+* Caught into the sources rather than thrown, because a markers table that cannot be read is a thing
+* the page has to say and not a reason for it to fail — and it must not read as none, which is what
+* `auditGapsUnreadable` is for. The cause is the first line of the message, as every other reading
+* here gives it.
+*/
+async function readGaps(gaps) {
+	try {
+		return { auditGaps: await gaps.unacknowledged() };
+	} catch (cause) {
+		return { auditGapsUnreadable: ((cause instanceof Error ? cause.message : String(cause)).split("\n")[0] ?? "").trim() || "no reason given" };
+	}
 }
 /**
 * What the last run did with the warehouse, for the reading that is observed rather than probed.

@@ -146,6 +146,7 @@ describe('opening the connection', () => {
         'assessment_results',
         'audit_events',
         'audit_floor',
+        'audit_gaps',
         'retention_periods',
         'legal_holds',
         'runs',
@@ -182,6 +183,22 @@ describe('opening the connection', () => {
     // requests: a retry of an answer whose response was lost writes the same attestation id again.
     expect(unique.some((sql) => /review_answers \(attestation_id\)/.test(sql))).toBe(true);
     expect(unique.some((sql) => /assessment_results \(review_id\)/.test(sql))).toBe(true);
+    // One acknowledgement per lost audit event, which is what keeps two people clicking the same button
+    // from rewriting who dealt with it and when.
+    expect(unique.some((sql) => /audit_gaps \(gap_id\)/.test(sql))).toBe(true);
+  });
+
+  it('keeps the lost-event markers append-only, with a row to acknowledge rather than a column to update', async () => {
+    const fake = new FakePostgres();
+    await openPostgres({ env: { [ENDPOINT_ENV]: ENDPOINT }, connect: () => Promise.resolve(fake) });
+
+    const table = fake.statements.find((sql) => sql.startsWith('create table if not exists waf.audit_gaps'));
+
+    expect(table).toBeDefined();
+    // No acknowledgement columns on the marker: acknowledging adds a row that names it.
+    expect(table).not.toMatch(/acknowledged/);
+    expect(table).toMatch(/kind\s+text\s+not null/);
+    expect(table).toMatch(/gap_id\s+text/);
   });
 
   it('adds nullable Version 2 result handles without rewriting legacy rows', async () => {

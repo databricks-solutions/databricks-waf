@@ -36,11 +36,12 @@
 // authority this app has to ask with and a reading taken on the app's own identity would answer a
 // question nobody asked.
 
-// The only import in this module, and a type. Every reading here is composed from values handed in,
+// The only imports in this module, and both types. Every reading here is composed from values handed in,
 // which is what lets the whole surface be tested without a database — and the posture is a word the
 // recorder owns, so naming it here rather than importing it would be a second copy of a vocabulary
-// that could disagree with the thing enforcing it.
+// that could disagree with the thing enforcing it. The gap is the shape the marker store hands back.
 import type { AuditPosture } from '../audit/record.js';
+import type { UnacknowledgedGaps } from '../store/audit-gaps.js';
 
 /** How a dependency is doing, in the four states an operator does different things about. */
 export type Standing =
@@ -94,8 +95,16 @@ export interface Health {
    * the page beside it about whether the install is healthy.
    */
   readonly well: boolean;
-  /** How many acts this process could not write down. Zero on a healthy install. */
+  /** How many acts this instance could not write down since it started. Zero on a healthy install. */
   readonly unrecorded: number;
+  /**
+   * The lost events that left a durable marker and have not been acknowledged, from the database and so
+   * the same whichever instance is asked. Absent when this install keeps no markers or could not read
+   * them, which `gapsUnreadable` says.
+   */
+  readonly gaps?: UnacknowledgedGaps;
+  /** Why the markers could not be read, when they could not. Never read as "none". */
+  readonly gapsUnreadable?: string;
 }
 
 /**
@@ -123,8 +132,20 @@ export interface HealthSources {
     readonly statements: number;
     readonly refused: number;
   };
-  /** How many events the recorder could not write. Absent when this install records no acts. */
+  /** How many events this instance's recorder could not write. Absent when this install records no acts. */
   readonly unrecorded?: number;
+  /**
+   * What the markers for lost events say, read from the database by the caller.
+   *
+   * Read by the caller rather than here, like every other source, so this module stays testable without a
+   * database. Absent for an install that keeps none.
+   */
+  readonly auditGaps?: UnacknowledgedGaps;
+  /**
+   * Why the markers could not be read. A read that failed is not evidence that nothing was lost, so it
+   * reads as a fault and not as an empty list.
+   */
+  readonly auditGapsUnreadable?: string;
   /**
    * What this install does about an act it cannot record.
    *
@@ -159,6 +180,8 @@ export async function readHealth(sources: HealthSources = {}): Promise<Health> {
     // to ignore the flag on the installs where it means something.
     well: !readings.some((reading) => reading.standing === 'degraded' || reading.standing === 'silent'),
     unrecorded: sources.unrecorded ?? 0,
+    ...(sources.auditGaps != null ? { gaps: sources.auditGaps } : {}),
+    ...(sources.auditGapsUnreadable != null ? { gapsUnreadable: sources.auditGapsUnreadable } : {}),
   };
 }
 
@@ -330,6 +353,12 @@ async function identityReading(sources: HealthSources, now: Date): Promise<Readi
  * operator does different things about them. It is also the only reading here that reports a fault
  * which has already happened and cannot be undone: an event that was not written is gone, and
  * nothing an operator does now recovers it. Which is exactly why it is volunteered.
+ *
+ * Two views of the same loss, and they answer different questions. The count is this instance's and
+ * lives in memory, so it says what is going wrong now and is zero after a restart or on another
+ * replica. The markers are in the database, so they say what is missing whichever instance is asked
+ * and however long ago it was lost, until somebody acknowledges it. A reading that had only the first
+ * would be clean on the page of the first deploy after an outage.
  */
 function auditReading(sources: HealthSources, now: Date): Reading {
   if (sources.unrecorded == null) {
@@ -342,6 +371,17 @@ function auditReading(sources: HealthSources, now: Date): Reading {
     };
   }
 
+  const marked = markedSentence(sources.auditGaps);
+  const unreadable =
+    sources.auditGapsUnreadable == null
+      ? ''
+      : `The markers for lost audit events could not be read (${sources.auditGapsUnreadable}), so this ` +
+        'install cannot say whether any exist.';
+  const outstanding = [marked, unreadable].filter((one) => one !== '').join(' ');
+  const acknowledging =
+    'Acknowledging a gap, in the list below, says that somebody has looked at it. It does not recover ' +
+    'the event or change the trail, so what happened has to come from elsewhere.';
+
   if (sources.unrecorded > 0) {
     const strict = sources.auditPosture === 'strict';
     return {
@@ -351,7 +391,7 @@ function auditReading(sources: HealthSources, now: Date): Reading {
       at: now,
       detail:
         `${String(sources.unrecorded)} ${sources.unrecorded === 1 ? 'action' : 'actions'} could not be written to ` +
-        'the trail since this app last started. They happened; the record of them did not. A gap in the ' +
+        'the trail since this instance last started. They happened; the record of them did not. A gap in the ' +
         'trail is not a gap in what was done.' +
         // Worth more than a repeat of the sentence above, because on a strict install this reading is
         // evidence about the setting itself: it is what refusing before the act did not prevent. Both
@@ -362,18 +402,38 @@ function auditReading(sources: HealthSources, now: Date): Reading {
           ? ' This install refuses an action it cannot reach the trail to record, so a count here is what ' +
             'that check could not prevent: a record that failed after the trail had answered, or a ' +
             'refusal the gate had already made before the check could run.'
-          : ''),
+          : '') +
+        (outstanding === '' ? '' : ` ${outstanding}`),
       // Deliberately not "acts are being refused". The count establishes that appends failed, and
       // nothing more: a trail that reads and will not write refuses nothing, and every act on it is
       // performed and lost exactly as on the default posture. Whether changes are being refused as
       // well is the database reading's to answer, and an action that asserted it here would send an
       // operator looking for refusals that may not be happening.
-      action: strict
-        ? 'The cause is the database reading above. Refusing before the action does not prevent this, so ' +
-          'the count is a real gap: read it as you would on any install. If the trail stops answering ' +
-          'altogether, the symptom changes — changes start being refused rather than going unrecorded.'
-        : 'The cause is the database reading above. Once it answers, new events are recorded again — the ones ' +
-          'already missed cannot be recovered, so what happened during the gap has to come from elsewhere.',
+      action:
+        (strict
+          ? 'The cause is the database reading above. Refusing before the action does not prevent this, so ' +
+            'the count is a real gap: read it as you would on any install. If the trail stops answering ' +
+            'altogether, the symptom changes — changes start being refused rather than going unrecorded.'
+          : 'The cause is the database reading above. Once it answers, new events are recorded again — the ones ' +
+            'already missed cannot be recovered, so what happened during the gap has to come from elsewhere.') +
+        (marked === '' ? '' : ` ${acknowledging}`),
+    };
+  }
+
+  // Nothing lost by this instance, and something lost by another or before the last restart, or the
+  // markers unreadable. Its own branch rather than a zero count read as clean, which is the reading the
+  // markers exist to prevent.
+  if (outstanding !== '') {
+    return {
+      dependency: 'audit-log',
+      standing: 'degraded',
+      provenance: 'probed',
+      at: now,
+      detail: `This instance has not lost any since it started. ${outstanding}`,
+      action:
+        marked === ''
+          ? 'The cause is the database reading above. Once it answers, the list of lost events can be read again.'
+          : acknowledging,
     };
   }
 
@@ -399,13 +459,33 @@ function auditReading(sources: HealthSources, now: Date): Reading {
     provenance: 'probed',
     at: now,
     detail:
-      'Every action since this app last started has been written to the trail. ' +
+      'Every action since this instance last started has been written to the trail' +
+      (sources.auditGaps == null ? '. ' : ', and no lost event is waiting to be acknowledged. ') +
       (sources.auditPosture === 'strict'
         ? 'An action this app cannot record is refused rather than performed, so a change that is not in ' +
           'the trail did not happen — except for a record that fails after the trail has answered, ' +
           'which would show as a count above.'
         : 'An action this app cannot record still stands, and the count above is how many there have been.'),
   };
+}
+
+/**
+ * The gaps that are waiting, as a sentence, or nothing when there are none.
+ *
+ * Says where they are held, because that is what makes the number different from the count beside it:
+ * these are in the database and so are reported by every instance, and a restart does not clear them.
+ * "At least" when the list was cut short, since a page that said "100" of a hundred and one would be
+ * reporting its own limit as the size of the problem.
+ */
+function markedSentence(gaps: UnacknowledgedGaps | undefined): string {
+  const count = gaps?.gaps.length ?? 0;
+  if (gaps == null || count === 0) return '';
+
+  return (
+    `${gaps.truncated ? 'At least ' : ''}${String(count)} lost audit ${count === 1 ? 'event is' : 'events are'} ` +
+    `recorded as ${count === 1 ? 'a gap' : 'gaps'} in the trail and ${count === 1 ? 'has' : 'have'} not been ` +
+    'acknowledged. They are held in the database, so every instance reports them and a restart does not clear them.'
+  );
 }
 
 /**

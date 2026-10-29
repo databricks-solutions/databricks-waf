@@ -15,6 +15,7 @@ import { InMemoryDecisionStore, PostgresDecisionStore } from "../decide/store.js
 import { PostgresDefinitionStore } from "../define/postgres-store.js";
 import { InMemorySetupDraftStore } from "../define/setup-store.js";
 import { PostgresSetupDraftStore } from "../define/setup-postgres-store.js";
+import { InMemoryAuditGapLog, PostgresAuditGapLog } from "../store/audit-gaps.js";
 import { PostgresImprovementStore } from "../improve/postgres-store.js";
 import { InMemoryNoteStore } from "../note/store.js";
 import { PostgresNoteStore } from "../note/postgres-store.js";
@@ -56,6 +57,7 @@ async function chooseStore(options = {}) {
 			drafts: new InMemorySetupDraftStore(),
 			imports: new InMemoryEvidenceImportStore(),
 			audit: new InMemoryAuditLog(),
+			auditGaps: new InMemoryAuditGapLog(),
 			improvements: new InMemoryImprovementStore(),
 			notes: new InMemoryNoteStore(),
 			serving: new InMemoryServingStore(),
@@ -96,6 +98,7 @@ async function chooseStore(options = {}) {
 		drafts: new PostgresSetupDraftStore(durable),
 		imports: new PostgresEvidenceImportStore(durable),
 		audit: new PostgresAuditLog(db),
+		auditGaps: new PostgresAuditGapLog(db),
 		improvements,
 		notes: new PostgresNoteStore(durable),
 		serving: new PostgresServingStore(durable),

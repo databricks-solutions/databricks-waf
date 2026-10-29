@@ -12,7 +12,7 @@ Use the lifecycle wrapper for every DAB change and the recovery wrapper for cust
 ## Daily and weekly operation
 
 - Open **Next actions** for incomplete reviews, contradicted work, overdue actions, expiring exceptions and partial scheduled runs.
-- Open **Diagnostics** when a dependency or evidence collector needs attention.
+- Open **Diagnostics** when a dependency or evidence collector needs attention. It also lists audit events the App could not write, until an assessor acknowledges each one.
 - Open **Runs** for exact interactive and scheduled execution records.
 - Open **Audit trail** when you need the actor, action, target and outcome of a mutation.
 - Re-run the assessment after changes; an action marked done is verified only when later evidence meets its requirement.

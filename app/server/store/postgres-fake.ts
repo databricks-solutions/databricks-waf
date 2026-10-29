@@ -273,7 +273,7 @@ export class FakePostgres implements Sql {
     // reading every attempt ever made. Matched before the plain select, which would otherwise take the
     // subquery's `from` for the statement's own.
     const excluding =
-      /^select (.+?) from (\S+) (\w+) where (.+?) and not exists \( select 1 from (\S+) (\w+) where (.+?) \)(?: order by (.+?))?$/i.exec(
+      /^select (.+?) from (\S+) (\w+) where (.+?) and not exists \( select 1 from (\S+) (\w+) where (.+?) \)(?: order by (.+?))?(?: limit (\S+))?$/i.exec(
         sql
       );
     if (excluding) return this.excluding(excluding, values);
@@ -537,7 +537,7 @@ export class FakePostgres implements Sql {
   }
 
   /**
-   * `select … from t a where … and not exists (select 1 from t b where b.c = a.c and …)`.
+   * `select … from t a where … and not exists (select 1 from t b where b.c = a.c and …) [order by …] [limit …]`.
    *
    * The subquery's `where` is split into the terms that correlate the two rows — `b.c = a.c`, matched on
    * the aliases — and the terms that stand on their own, which go through the same narrow matcher every
@@ -548,7 +548,7 @@ export class FakePostgres implements Sql {
    * tables would need more than this, and nothing here emits one.
    */
   private excluding(match: RegExpExecArray, values: readonly unknown[]): FakeRow[] {
-    const [, projected = '', outerTable = '', outerAlias = '', outerWhere, innerTable = '', innerAlias = '', innerWhere = '', order] =
+    const [, projected = '', outerTable = '', outerAlias = '', outerWhere, innerTable = '', innerAlias = '', innerWhere = '', order, limit] =
       match;
 
     const strip = (text: string, alias: string): string => text.replace(new RegExp(`\\b${alias}\\.`, 'g'), '');
@@ -578,7 +578,7 @@ export class FakePostgres implements Sql {
         .split(',')
         .map((column) => column.trim()),
       order == null ? undefined : strip(order, outerAlias),
-      undefined,
+      limit,
       values
     );
   }

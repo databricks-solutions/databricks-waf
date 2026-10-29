@@ -1,10 +1,10 @@
 {
   "what": "The last run of server/store/postgres.live.test.ts that passed, and the SQL it passed against.",
-  "ran": "2026-10-29T13:19:25.900Z",
-  "commit": "53ecd310b53327e54a567835e89812af41858b37",
+  "ran": "2026-10-29T13:36:51.669Z",
+  "commit": "0d5a05b306d65efe4682f95c436599e66c101b12",
   "endpoint": "local",
-  "tests": 55,
-  "digest": "d613ac3abd5db015",
+  "tests": 66,
+  "digest": "d6e11cb8ac0b3e6e",
   "lifecycle": {
     "restarted": true,
     "definition": {
@@ -43,6 +43,7 @@
     "server/review/postgres-store.ts",
     "server/run/run-store.ts",
     "server/scan/postgres-store.ts",
+    "server/store/audit-gaps.ts",
     "server/store/audit-log.ts",
     "server/store/postgres.ts",
     "server/validate/postgres-store.ts"

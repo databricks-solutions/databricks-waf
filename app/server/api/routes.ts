@@ -97,6 +97,7 @@ import { assessorCheck } from '../share/reader.js';
 import { projectScan, projectScanPayload, type Reader } from '../share/projection.js';
 import { AuditRecorder, closedWhenAnswered, TrailUnwritableError, type Act, type Actor } from '../audit/record.js';
 import { AUDIT_PHRASES, type AuditAction, type AuditTarget } from '../audit/event.js';
+import type { AuditGapLog, UnacknowledgedGaps } from '../store/audit-gaps.js';
 import { authoredGuidance, type GuidanceLibrary } from '../guidance/guidance.js';
 import { describeVerification, MEANS, type VerificationReport } from '../records/verify.js';
 import { DEFAULT_LOOKBACK_DAYS, ScanInProgressError, ScanRunner, type ScanRequest } from '../scan/runner.js';
@@ -1563,11 +1564,20 @@ export function registerApi(served: Application, options: ApiOptions): void {
   // is not the same permission as changing an assessment — and `health-routes.ts` says what that
   // constrains it to contain. Nothing in it spends the customer's money; `health/health.ts` says why
   // the warehouse reading is the one that is observed rather than probed.
+  //
+  // The lost audit events are read from the database on each request rather than counted in memory, so
+  // the page reports a gap whichever instance lost it and whichever one is asked. Acknowledging one is
+  // the exception to the page being ungated: it is a statement, so it takes the gate like every other.
+  const gapLog = options.audit?.gaps;
   registerHealthRoutes(app, {
     respondToFailure,
+    ...(gapLog != null ? { gaps: gapLog } : {}),
+    permitted: (request, response, action, context) => permitted(request, response, options, action, context),
+    ...(options.now != null ? { now: options.now } : {}),
     sourcesFor: async (request) => {
       const token = forwardedToken(request);
       return {
+        ...(gapLog != null ? await readGaps(gapLog) : {}),
         ...(options.pingDatabase != null ? { pingDatabase: options.pingDatabase } : {}),
         ...(options.storage != null ? { storage: options.storage } : {}),
         durable: options.store.durable,
@@ -3303,6 +3313,25 @@ function forwardedToken(request: { readonly headers: NodeJS.Dict<string | string
   const raw = request.headers[USER_TOKEN_HEADER];
   const token = Array.isArray(raw) ? raw[0] : raw;
   return token == null || token === '' ? undefined : token;
+}
+
+/**
+ * The lost-event markers for the diagnostics, or the reason they could not be read.
+ *
+ * Caught into the sources rather than thrown, because a markers table that cannot be read is a thing
+ * the page has to say and not a reason for it to fail — and it must not read as none, which is what
+ * `auditGapsUnreadable` is for. The cause is the first line of the message, as every other reading
+ * here gives it.
+ */
+async function readGaps(
+  gaps: AuditGapLog
+): Promise<{ readonly auditGaps: UnacknowledgedGaps } | { readonly auditGapsUnreadable: string }> {
+  try {
+    return { auditGaps: await gaps.unacknowledged() };
+  } catch (cause) {
+    const message = cause instanceof Error ? cause.message : String(cause);
+    return { auditGapsUnreadable: (message.split('\n')[0] ?? '').trim() || 'no reason given' };
+  }
 }
 
 /**

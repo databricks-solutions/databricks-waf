@@ -35,9 +35,28 @@ The DAB and `app.yaml` deliberately declare the same App environment:
 | `DATABRICKS_WAREHOUSE_ID` | `sql-warehouse` binding | Warehouse used by the server's statement executor. |
 | `LAKEBASE_ENDPOINT` | `postgres` binding | Platform-resolved Lakebase connection. Required for durable operation. |
 | `WAF_ASSESSOR_GROUP` | `assessor_group` | Direct-membership mutation gate, and the group whose direct members are shown restricted detail in stored results. |
-| `WAF_AUDIT_STRICT` | Manifest value `0` | Allows the App to start while reporting audit-health faults in Diagnostics; record mutations still fail if their audit event cannot be written. |
+| `WAF_AUDIT_STRICT` | Manifest value `0` | What the App does when an action cannot be written to the audit trail. `0` performs the action and records the loss. `1` refuses the action when the trail does not answer, and records the loss when a write fails after it did. See [What happens when an audit event cannot be written](#what-happens-when-an-audit-event-cannot-be-written). |
 
 Do not set these by hand in the deployed App. Change the DAB override and use the supported upgrade command so bundle state and runtime state stay aligned.
+
+### What happens when an audit event cannot be written
+
+The two values of `WAF_AUDIT_STRICT` differ in when the App checks the audit trail, and neither makes the action and its audit event one transaction.
+
+| Value | Before the action | If the audit event cannot be written |
+| --- | --- | --- |
+| `0` (default) | Nothing is checked. | The action stands. The App counts the loss and leaves a durable marker, so a database blip does not stop somebody answering a requirement. |
+| `1` | The App reads the end of the trail. If the trail does not answer, the action is refused and nothing happens. | If the trail answered and the write then failed, the action has already happened and stands. The App counts the loss and leaves the same marker. |
+
+At `1` the check narrows the window and does not close it. An audit event that fails to write after the trail answered cannot be prevented, only recorded. A refusal the gate makes before that check can be lost the same way. The reasoning is in [decision D7](decisions.md#d7-no-transactional-strict-audit-mode-a-lost-audit-event-is-recorded-durably).
+
+A marker holds the time, the action, the actor, what the action was on and the class of the failure. It holds nothing of the action's content. Markers are kept in the database beside the trail, so:
+
+- they survive a restart, which the in-memory count does not;
+- every instance of the App reports the same ones, whichever instance lost the event and whichever serves the request;
+- Diagnostics lists each one until a member of `assessor_group` acknowledges it. The acknowledgement is itself recorded in the audit trail under that person's name.
+
+Acknowledging says that somebody has looked. It does not recover the event, and the audit trail's verification reads the same chain it did before. The count on the Diagnostics page is labelled as this instance's because it is held in memory: it starts again at zero on a restart and another instance has its own. If the database refuses the marker as well, only that count and the App log remain.
 
 ## Interactive identity and permissions
 

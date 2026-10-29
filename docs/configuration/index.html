@@ -141,10 +141,39 @@
 <tr>
 <td><code>WAF_AUDIT_STRICT</code></td>
 <td>Manifest value <code>0</code></td>
-<td>Allows the App to start while reporting audit-health faults in Diagnostics; record mutations still fail if their audit event cannot be written.</td>
+<td>What the App does when an action cannot be written to the audit trail. <code>0</code> performs the action and records the loss. <code>1</code> refuses the action when the trail does not answer, and records the loss when a write fails after it did. See <a href="#what-happens-when-an-audit-event-cannot-be-written">What happens when an audit event cannot be written</a>.</td>
 </tr>
 </tbody></table>
 <p>Do not set these by hand in the deployed App. Change the DAB override and use the supported upgrade command so bundle state and runtime state stay aligned.</p>
+<h3 id="what-happens-when-an-audit-event-cannot-be-written">What happens when an audit event cannot be written</h3>
+<p>The two values of <code>WAF_AUDIT_STRICT</code> differ in when the App checks the audit trail, and neither makes the action and its audit event one transaction.</p>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Before the action</th>
+<th>If the audit event cannot be written</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>0</code> (default)</td>
+<td>Nothing is checked.</td>
+<td>The action stands. The App counts the loss and leaves a durable marker, so a database blip does not stop somebody answering a requirement.</td>
+</tr>
+<tr>
+<td><code>1</code></td>
+<td>The App reads the end of the trail. If the trail does not answer, the action is refused and nothing happens.</td>
+<td>If the trail answered and the write then failed, the action has already happened and stands. The App counts the loss and leaves the same marker.</td>
+</tr>
+</tbody></table>
+<p>At <code>1</code> the check narrows the window and does not close it. An audit event that fails to write after the trail answered cannot be prevented, only recorded. A refusal the gate makes before that check can be lost the same way. The reasoning is in <a href="/databricks-waf/decisions/#d7-no-transactional-strict-audit-mode-a-lost-audit-event-is-recorded-durably">decision D7</a>.</p>
+<p>A marker holds the time, the action, the actor, what the action was on and the class of the failure. It holds nothing of the action&#39;s content. Markers are kept in the database beside the trail, so:</p>
+<ul>
+<li>they survive a restart, which the in-memory count does not;</li>
+<li>every instance of the App reports the same ones, whichever instance lost the event and whichever serves the request;</li>
+<li>Diagnostics lists each one until a member of <code>assessor_group</code> acknowledges it. The acknowledgement is itself recorded in the audit trail under that person&#39;s name.</li>
+</ul>
+<p>Acknowledging says that somebody has looked. It does not recover the event, and the audit trail&#39;s verification reads the same chain it did before. The count on the Diagnostics page is labelled as this instance&#39;s because it is held in memory: it starts again at zero on a restart and another instance has its own. If the database refuses the marker as well, only that count and the App log remain.</p>
 <h2 id="interactive-identity-and-permissions">Interactive identity and permissions</h2>
 <p>The Databricks Apps proxy provides a short-lived on-behalf-of token for the signed-in user. The App requests only these functional scopes:</p>
 <ul>

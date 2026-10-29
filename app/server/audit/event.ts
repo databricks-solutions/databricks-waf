@@ -158,6 +158,11 @@ export const AUDIT_ACTIONS = [
   // reason read as absent on the ones that never had one.
   'month.publish',
   'month.supersede',
+  // Saying that somebody has looked at an audit event the app could not write down. An act of its own
+  // because it is a statement the way an answer or a decision is, and "who dealt with the gap in the
+  // trail, and when" is a question of the trail itself. It does not recover the event and the verb
+  // does not claim to: see `store/audit-gaps.ts`.
+  'gap.acknowledge',
 ] as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
@@ -227,6 +232,7 @@ export const AUDIT_PHRASES: Readonly<Record<AuditAction, string>> = {
   'retention.reset': "delete this install's assessment data",
   'month.publish': 'publish a month',
   'month.supersede': 'publish a correction to a month',
+  'gap.acknowledge': 'acknowledge a lost audit event',
 };
 
 /** How the act ended. Three, because the difference between them is what an auditor is reading for. */
@@ -304,7 +310,15 @@ export interface AuditTarget {
      * which is the opposite of what the log is asked. The `YYYY-MM` is minted by no one and typed by
      * no one: it is the calendar's, validated by `parseMonth` before it reaches here.
      */
-    | 'month';
+    | 'month'
+    /**
+     * A lost audit event, by the id the event would have had.
+     *
+     * The marker's id is the lost event's, so the target names the act that is missing from the trail
+     * and not a row that stands in for it: the question an auditor asks of an acknowledgement is which
+     * lost event it was about.
+     */
+    | 'audit-gap';
   /** An id this app minted, or a control id from the catalogue. Never a name somebody typed. */
   readonly id: string;
   /**

@@ -567,7 +567,7 @@
     },
     {
       "file": "server/store/postgres.ts",
-      "line": 1244,
+      "line": 1281,
       "table": null,
       "class": null,
       "shape": "unclassified",
@@ -623,5 +623,5 @@
       "validation_attempts": 2
     }
   },
-  "measuredAt": "2026-10-29T13:20:41.362Z"
+  "measuredAt": "2026-10-29T13:36:41.586Z"
 }
