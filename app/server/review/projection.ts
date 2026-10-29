@@ -44,6 +44,20 @@ export class FinalAssessmentProjectionError extends Error {
   }
 }
 
+/**
+ * A cited answer stopped counting between its pillar's confirm and the last selected pillar being
+ * recorded. The confirm that froze it is written once, so nothing in this review can put it right:
+ * the answer has to be renewed and the review started again from a new scan.
+ */
+export class CitedAnswerLapsedError extends FinalAssessmentProjectionError {
+  constructor(attestationId: string) {
+    super(
+      `Attestation ${attestationId} expired before every selected pillar was recorded, so this review can no longer be completed.`
+    );
+    this.name = 'CitedAnswerLapsedError';
+  }
+}
+
 export function finalAssessmentProjector(options: {
   readonly catalogue: Catalogue;
   readonly registry: ResolverRegistry;
@@ -125,9 +139,7 @@ export function finalAssessmentProjector(options: {
         );
       }
       if (!counts(attestation, result.finalisedAt)) {
-        throw new FinalAssessmentProjectionError(
-          `Attestation ${id} expired before the review completed, so that pillar must be reviewed again.`
-        );
+        throw new CitedAnswerLapsedError(id);
       }
       if (selectedByControl.has(attestation.controlId)) {
         throw new FinalAssessmentProjectionError(

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   ATTENTION_REASONS,
   attentionReason,
+  earliestDueBy,
   needsWork,
   pillarToWrite,
   recordedOf,
@@ -376,6 +377,39 @@ describe('what calls for work beyond the review gate', () => {
     expect(needsWork(requirement({ ...base, attestation: answered('current') }))).toBe(false);
     expect(needsWork(requirement({ ...base, askedBecause: 'capped' }))).toBe(false);
     expect(needsWork(requirement(base))).toBe(true);
+  });
+});
+
+describe('the earliest date a due answer stops counting', () => {
+  const base = { controlId: 'OE-01-01', pillarId: 'operational-excellence' } as const;
+  const dueBy = (reviewBy: string) => ({ ...answered('due'), reviewBy });
+
+  it('is the earliest review date among the due answers a confirm would cite', () => {
+    const [row] = summarisePillars(
+      ['operational-excellence'],
+      review(),
+      [],
+      [
+        requirement({ ...base, attestation: dueBy('2026-09-20T00:00:00.000Z') }),
+        requirement({ ...base, controlId: 'OE-01-02', attestation: dueBy('2026-09-05T00:00:00.000Z') }),
+        requirement({
+          ...base,
+          controlId: 'OE-01-03',
+          attestation: { ...answered('current'), reviewBy: '2026-08-30T00:00:00.000Z' },
+        }),
+      ]
+    );
+    expect(row == null ? undefined : earliestDueBy(row)).toBe('2026-09-05T00:00:00.000Z');
+  });
+
+  it('is absent when every cited answer is current', () => {
+    const [row] = summarisePillars(
+      ['operational-excellence'],
+      review(),
+      [],
+      [requirement({ ...base, attestation: answered('current') })]
+    );
+    expect(row == null ? 'missing' : earliestDueBy(row)).toBeUndefined();
   });
 });
 

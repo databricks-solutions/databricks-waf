@@ -23,6 +23,7 @@ import { InMemoryReviewStore, type ReviewStore } from '../review/store.js';
 import { InMemoryAttestationStore, type AttestationStore } from '../attest/store.js';
 import type { Attestation } from '../attest/attestation.js';
 import type { CatalogueControl } from '../catalogue/catalogue.js';
+import { CitedAnswerLapsedError } from '../review/projection.js';
 import { customerReviewMessage, registerReviewRoutes, type ReviewRouteOptions } from './review-routes.js';
 
 describe('customer review errors', () => {
@@ -72,6 +73,13 @@ class UnreadableReviewStore extends InMemoryReviewStore {
 
   override result(): Promise<never> {
     return Promise.reject(new Error('review database unavailable'));
+  }
+}
+
+/** A store whose final write finds that a cited answer lapsed after its pillar was confirmed. */
+class CitedAnswerLapsesBeforeFinalPillar extends InMemoryReviewStore {
+  override record(): ReturnType<ReviewStore['record']> {
+    return Promise.reject(new CitedAnswerLapsedError('att-lapsed'));
   }
 }
 
@@ -514,6 +522,25 @@ describe('confirm-current', () => {
 
     expect(status).toBe(400);
     expect(body).toMatchObject({ error: 'invalid-review' });
+  });
+});
+
+describe('finalisation refused because a cited answer lapsed', () => {
+  it('tells the reader to renew the answer and start a new review from a new scan', async () => {
+    const { base, scans } = await serve({
+      reviews: new CitedAnswerLapsesBeforeFinalPillar({ pillars: PILLARS }),
+    });
+    const review = await opened(base, scans);
+
+    const { status, body } = await send(base, `/api/reviews/${review.id}/pillars/reliability/skip`);
+
+    expect(status).toBe(409);
+    const refusal = body as { error: string; message: string; action: string };
+    expect(refusal.message).toContain('att-lapsed');
+    expect(refusal.action).toContain('Renew the expired answer');
+    expect(refusal.action).toContain('new scan');
+    expect(refusal.action).toContain('new review');
+    expect(refusal.action).not.toContain('retry this exact pillar decision');
   });
 });
 

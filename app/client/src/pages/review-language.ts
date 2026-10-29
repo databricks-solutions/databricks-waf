@@ -93,9 +93,9 @@ export function reusedPhrase(count: number): string {
  */
 export function citedPhrase(count: number): string {
   if (count === 0) {
-    return 'This pillar has no current human answer to freeze, so a confirm records none.';
+    return 'This pillar has no answer that still counts to freeze, so a confirm records none.';
   }
-  return `A confirm freezes the exact ${plural(count, 'current answer')} shown here.`;
+  return `A confirm freezes the exact ${count === 1 ? '1 answer that still counts' : `${String(count)} answers that still count`} shown here.`;
 }
 
 /**
@@ -104,8 +104,23 @@ export function citedPhrase(count: number): string {
  * Says what the immutable record will contain. The server rechecks the same evidence at write time,
  * so a date boundary or concurrent change refuses the decision instead of accepting stale browser state.
  */
-export function confirmNotice(pillarTitle: string, cited: number): string {
-  return `Confirm ${pillarTitle}? ${citedPhrase(cited)} A confirm is written once.`;
+export function confirmNotice(pillarTitle: string, cited: number, dueBy?: string): string {
+  return `Confirm ${pillarTitle}? ${citedPhrase(cited)}${dueNotice(dueBy)} A confirm is written once.`;
+}
+
+/**
+ * What a due answer in the confirm costs: the review has to finish before it lapses.
+ *
+ * The server refuses to publish a report that cites an answer that expired before the last selected
+ * pillar was recorded, and a confirm already written cannot be reopened, so the only remedy then is a
+ * new scan and review. Said before the confirm, where it can still change what somebody does.
+ */
+function dueNotice(dueBy: string | undefined): string {
+  if (dueBy == null) return '';
+  return (
+    ' Some of these answers are due for renewal. Every selected pillar in this review must be completed ' +
+    `before ${onDate(dueBy)}, when the earliest stops counting, or a new scan and review will be required.`
+  );
 }
 
 /**

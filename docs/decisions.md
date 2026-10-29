@@ -15,13 +15,15 @@ Each section records one settled question about how the App works: what was deci
 
 **Decision.** Confirming a pillar accepts every answer that still counts as evidence: a current answer, and an answer that is due for renewal but has not expired. Only an unanswered question or an expired answer has to be dealt with before the pillar can be confirmed.
 
-**Reason.** A due answer has not lapsed. The run scores it and the published report counts it, so refusing it at confirmation would hold a pillar back on evidence the score already rests on. On a 30-day cadence that would block confirmation for the last ten days of every answer. Expiry, the renewal window and the cadence are unchanged, and an expired answer still blocks confirmation.
+**Reason.** A due answer has not lapsed. The run scores it and the published report counts it, so refusing it at confirmation would hold a pillar back on evidence the score already rests on. On a 30-day cadence that would block confirmation for the last ten days of every answer. Expiry, the renewal window and the cadence are unchanged, and an expired answer still blocks confirmation. If a cited due answer expires before every selected pillar in the review is recorded, finalisation refuses, and a new scan and review are required.
 
 **Governs:**
 
 - `app/server/review/review.ts`: `pillarEvidenceManifest`, which accepts an answer when `counts()` says it still counts at the moment the pillar is decided.
 - `app/server/api/review-routes.ts`: pillar confirmation, which refuses with `pillar-needs-attention` only while an unanswered question or an expired answer remains.
 - `app/server/attest/attestation.ts`: `stateOf()` and `counts()`, the one definition of current, due and expired that scoring, confirmation and the published report share.
+- `app/server/review/projection.ts` and `app/server/api/review-routes.ts`: `CitedAnswerLapsedError`, the refusal when a cited answer lapsed before the last pillar was recorded, and its remedy of renewing the answer and starting a new review from a new scan.
+- `app/client/src/pages/review-language.ts`: the confirm notice, which names the earliest renewal date when it cites a due answer.
 
 ## A19: dependency advisories are fixed by upgrading Appkit first
 
@@ -58,7 +60,7 @@ Each section records one settled question about how the App works: what was deci
 
 **Status:** decided 2026-10-29 by the product owner
 
-**Decision.** A change is attributed to the identity the workspace returns for the caller's token: the `userName` from the SCIM current-user answer. A forwarded identity header is never the name a change is recorded under. When the header is present and names someone other than that `userName`, compared without regard to case, the change is refused with `403 identity-mismatch` and the refusal is recorded in the audit trail under the verified name. A request with no header is attributed to the verified `userName`. If the workspace returns no `userName` for a token (for example a minimal stub or a custom principal record), there is nothing to compare, and `verifiedIdentityFrom` falls back to the forwarded header actor. A service principal is recorded under its application id, which is its `userName`, with its display name kept beside it as `actorName`. Read-only routes keep the header shortcut, because they attribute nothing.
+**Decision.** A change is attributed to the identity the workspace returns for the caller's token: the `userName` from the SCIM current-user answer. Whenever SCIM returns a `userName`, a forwarded identity header is never the name a change is recorded under. When the header is present and names someone other than that `userName`, compared without regard to case, the change is refused with `403 identity-mismatch` and the refusal is recorded in the audit trail under the verified name. A request with no header is attributed to the verified `userName`. If the workspace returns no `userName` for a token (for example a token whose directory record omits `userName`), there is nothing to compare, and `verifiedIdentityFrom` falls back to the forwarded header actor. A service principal is recorded under its application id, which is its `userName`, with its display name kept beside it as `actorName`. Read-only routes keep the header shortcut, because they attribute nothing.
 
 **Reason.** Permission to change an assessment is decided on the groups SCIM lists for the token. If the name written beside the act came from somewhere else, a change could be authorised for one person and recorded against another, and the audit trail would stop describing who was permitted. Using the one name that the groups belong to keeps authorisation and attribution on the same principal. A mismatch is refused rather than resolved in favour of either name, because nothing in the request says which one is right. The app does not control the proxy in front of it, so it does not rely on the proxy to have replaced the header.
 

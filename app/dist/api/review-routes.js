@@ -4,7 +4,7 @@ import { projectResultPayload, projectReviewPayload } from "../share/projection.
 import { assessmentOf } from "./assessment-query.js";
 import { InvalidReviewError, answered, confirmed, openedFor, pillarEvidenceManifest, selectedPillarsOf, skipped } from "../review/review.js";
 import { publicationOf } from "../review/final-assessment.js";
-import { FinalAssessmentProjectionError } from "../review/projection.js";
+import { CitedAnswerLapsedError, FinalAssessmentProjectionError } from "../review/projection.js";
 import { eligible, ineligible } from "../shared/api/eligibility.js";
 //#region server/api/review-routes.ts
 const NO_STORE = "This installation is not keeping reviews, so there is nowhere to put one. Bind a database and restart, and a confirm or a skip will survive a deploy.";
@@ -558,7 +558,7 @@ async function refuse(response, act, status, error, message) {
 }
 function respond(response, cause, options, writeStarted) {
 	if (cause instanceof FinalAssessmentProjectionError) {
-		gateFailure(response, 409, ineligible("incomplete", "final-assessment-refused", cause.message, "Correct the named review input and retry this exact pillar decision."));
+		gateFailure(response, 409, ineligible("incomplete", "final-assessment-refused", cause.message, cause instanceof CitedAnswerLapsedError ? "Renew the expired answer, then run a new scan and start a new review from it." : "Correct the named review input and retry this exact pillar decision."));
 		return;
 	}
 	if (cause instanceof InvalidReviewError) {

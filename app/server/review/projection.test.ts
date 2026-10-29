@@ -12,7 +12,7 @@ import { PostgresScanStore } from '../scan/postgres-store.js';
 import { FakePostgres } from '../store/postgres-fake.js';
 import { answered, confirmed, finalised, opened, skipped, type AssessmentResult } from './review.js';
 import { PostgresReviewStore } from './postgres-store.js';
-import { FinalAssessmentProjectionError, finalAssessmentProjector } from './projection.js';
+import { CitedAnswerLapsedError, FinalAssessmentProjectionError, finalAssessmentProjector } from './projection.js';
 
 const AT = new Date('2026-08-19T10:00:00.000Z');
 const FINALISED = new Date('2026-08-19T11:00:00.000Z');
@@ -560,7 +560,13 @@ describe('the final assessment projection', () => {
     };
 
     expect(() => projector({ ...base, attestations: [{ ...old, reviewBy: FINALISED }] })).toThrow(
+      CitedAnswerLapsedError
+    );
+    expect(() => projector({ ...base, attestations: [{ ...old, reviewBy: FINALISED }] })).toThrow(
       FinalAssessmentProjectionError
+    );
+    expect(() => projector({ ...base, attestations: [{ ...old, reviewBy: FINALISED }] })).toThrow(
+      /expired before every selected pillar was recorded/
     );
     expect(() => projector({ ...base, attestations: [{ ...old, definitionId: 'definition-other' }] })).toThrow(
       /different assessment definition/

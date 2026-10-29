@@ -34,7 +34,7 @@ import {
   type ReviewableControl,
 } from '../review/review.js';
 import type { ReviewRecord, ReviewStore } from '../review/store.js';
-import { FinalAssessmentProjectionError } from '../review/projection.js';
+import { CitedAnswerLapsedError, FinalAssessmentProjectionError } from '../review/projection.js';
 import {
   FINAL_ASSESSMENT_SCHEMA_VERSION,
   publicationOf,
@@ -933,7 +933,10 @@ function respond(response: Response, cause: unknown, options: ReviewRouteOptions
         'incomplete',
         'final-assessment-refused',
         cause.message,
-        'Correct the named review input and retry this exact pillar decision.'
+        cause instanceof CitedAnswerLapsedError
+          ? // A confirm is written once, so retrying this decision cannot un-freeze the earlier pillar.
+            'Renew the expired answer, then run a new scan and start a new review from it.'
+          : 'Correct the named review input and retry this exact pillar decision.'
       )
     );
     return;

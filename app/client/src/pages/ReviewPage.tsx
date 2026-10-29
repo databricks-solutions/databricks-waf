@@ -43,7 +43,14 @@ import {
   skipNotice,
   waitingPhrase,
 } from './review-language';
-import { pillarToWrite, resumePillar, skippedUnresolved, summarisePillars, type PillarSummary } from './review-summary';
+import {
+  earliestDueBy,
+  pillarToWrite,
+  resumePillar,
+  skippedUnresolved,
+  summarisePillars,
+  type PillarSummary,
+} from './review-summary';
 import type { AttestableRequirement, ReviewAnswer } from '../api/types';
 
 const EMPTY_REQUIREMENTS: readonly AttestableRequirement[] = [];
@@ -712,7 +719,7 @@ function PillarPane({
             <div className="wa-assess-confirmation">
               <p id={noticeId}>
                 {pending === 'confirm'
-                  ? `${confirmNotice(title, summary.cited)}${finalDecision ? ` ${finalDecisionNotice()}` : ''}`
+                  ? `${confirmNotice(title, summary.cited, earliestDueBy(summary))}${finalDecision ? ` ${finalDecisionNotice()}` : ''}`
                   : `${skipNotice(title, skippedUnresolved(summary))}${finalDecision ? ` ${finalDecisionNotice()}` : ''}`}
               </p>
               <div className="wa-assess-decision-actions">

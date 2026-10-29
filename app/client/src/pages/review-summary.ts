@@ -61,6 +61,19 @@ export function attentionReason(requirement: AttestableRequirement): AttentionRe
 }
 
 /**
+ * The earliest review date among the due answers a confirm of this pillar would cite, if any.
+ *
+ * A due answer counts until that date; a report that cites one after it is refused, so this is the
+ * deadline for recording every selected pillar.
+ */
+export function earliestDueBy(summary: PillarSummary): string | undefined {
+  const dates = summary.reused
+    .filter((one) => stateOf(one) === 'due')
+    .flatMap((one) => (one.attestation != null ? [one.attestation.reviewBy] : []));
+  return dates.sort((left, right) => new Date(left).getTime() - new Date(right).getTime())[0];
+}
+
+/**
  * Whether a requirement calls for work from a person, counting the renewal of a due answer.
  *
  * Wider than `attentionReason`: a review does not wait on a due answer, which still counts, but a
@@ -99,7 +112,6 @@ export function skippedUnresolved(summary: PillarSummary): number {
 export function recordedOf(review: AssessmentReview, pillarId: string): PillarReview | undefined {
   return review.pillars.find((one) => one.pillarId === pillarId);
 }
-
 
 /**
  * The pillar the URL names, or the first one that still has no record.
