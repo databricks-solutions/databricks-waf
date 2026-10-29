@@ -66,7 +66,7 @@ import {
 const TOO_TIGHT = {
   serverless_job_readiness:
     'twenty-seven aggregate columns and two sampled lists, cluster names and runtimes, one row per job — and the only one of the eight already past the cap at target scale',
-  jobs_inventory: 'sixteen columns including a job name, one row per job',
+  jobs_inventory: 'seventeen columns including a job name, one row per job',
   serverless_job_spend: 'eleven columns including a SKU-name list, one row per job',
   compute_cluster_inventory:
     'twenty-two columns including two node types and a cluster name, one row per cluster — and `system.compute.clusters` holds a row per job-cluster definition, so a large account measures 135,177 live ones',

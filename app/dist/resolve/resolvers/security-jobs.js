@@ -11,21 +11,38 @@ const JOBS = "sql:jobs.inventory";
 /** The lead of the detail evidence naming the jobs that run as a user account. */
 const RUN_AS_USER_LEAD = "Running as a user account";
 const DBFS_TABLES = "sql:security.dbfs_tables";
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+/**
+* Classify a run-as name (decision A7 in docs/decisions.md).
+*
+* `run_as_user_name` is the email of a user, the application ID of a service principal, or a group name.
+* An email is a user, and a UUID is a service principal. Anything else, a group name included, cannot be
+* told apart from the others by its shape and is unknown; so is a name that was never recorded. No
+* directory lookup is made to resolve them, because that would add a call and a dependency on an API
+* that not every reader of the estate can use.
+*/
+function runAsKind(name) {
+	const value = name?.trim() ?? "";
+	if (value === "") return "unknown";
+	if (/^[^@\s]+@[^@\s]+$/.test(value)) return "user";
+	if (UUID.test(value)) return "service-principal";
+	return "unknown";
+}
 const SECURITY_JOBS_RESOLVERS = [fromSignal(JOBS, ["SCP-04-22"], (jobs, context) => {
 	if (jobs.length === 0) return notApplicable("There are no jobs in this estate, so there is no run-as identity to assess.");
-	const known = jobs.filter((job) => job.runAs != null && job.runAs !== "");
-	const unknown = jobs.length - known.length;
-	if (known.length === 0) return notApplicable(`All ${jobs.length.toLocaleString("en-US")} job${jobs.length === 1 ? "" : "s"} in this estate have no run_as identity recorded. This column is not populated for job definitions written before early December 2025; once those jobs are edited or replaced the identity will appear.`);
-	const userRunJobs = known.filter((job) => job.runAs.includes("@"));
-	const spCount = known.length - userRunJobs.length;
-	const spShare = share(spCount, known.length);
-	const evidenceSentence = `${spCount.toLocaleString("en-US")} of ${known.length.toLocaleString("en-US")} jobs with a recorded identity run as a service principal (${percent(spShare)})` + (unknown > 0 ? `; ${unknown.toLocaleString("en-US")} job${unknown === 1 ? "" : "s"} have no identity recorded yet` : "");
+	const userRunJobs = jobs.filter((job) => runAsKind(job.runAsName) === "user");
+	const spCount = jobs.filter((job) => runAsKind(job.runAsName) === "service-principal").length;
+	const classified = userRunJobs.length + spCount;
+	const unknown = jobs.length - classified;
+	if (classified === 0) return notApplicable(`None of the ${jobs.length.toLocaleString("en-US")} job${jobs.length === 1 ? "" : "s"} in this estate has a run-as name that can be classified. This column is not populated for job definitions written before early December 2025, so these jobs have no run-as name recorded or one that is not an email address or a service principal ID, such as a group name; once the jobs are edited or replaced the name will appear.`);
+	const spShare = share(spCount, classified);
+	const evidenceSentence = `${spCount.toLocaleString("en-US")} of ${classified.toLocaleString("en-US")} jobs with a recognised identity run as a service principal (${percent(spShare)})` + (unknown > 0 ? `; ${unknown.toLocaleString("en-US")} job${unknown === 1 ? "" : "s"} cannot be classified, with no run-as name recorded or one that is neither an email address nor a service principal ID` : "");
 	return {
 		outcome: bandOutcome(spShare, bandsOf(context.spec, {
 			pass: 1,
 			partial: .8
 		})),
-		evidence: [evidenceFrom(context, JOBS, evidenceSentence, "Every job runs as a service principal, so its permissions are scoped to the workload"), ...offenders(context, JOBS, RUN_AS_USER_LEAD, userRunJobs, asJob, { note: (job) => job.runAs })],
+		evidence: [evidenceFrom(context, JOBS, evidenceSentence, "Every job runs as a service principal, so its permissions are scoped to the workload"), ...offenders(context, JOBS, RUN_AS_USER_LEAD, userRunJobs, asJob, { note: (job) => job.runAsName })],
 		outcomeReason: spShare === 1 ? void 0 : userRunJobs.length === 1 ? "One job runs as a user account. That job inherits its owner’s access, which expands and contracts as their grants change, and becomes a dangling credential if they leave." : `${userRunJobs.length.toLocaleString("en-US")} jobs run as user accounts. Each one inherits its owner’s access, which expands and contracts as their grants change, and becomes a dangling credential if they leave.`
 	};
 }), fromSignal(DBFS_TABLES, ["SCP-04-05"], (audit, context) => {
@@ -41,4 +58,4 @@ const SECURITY_JOBS_RESOLVERS = [fromSignal(JOBS, ["SCP-04-22"], (jobs, context)
 	};
 })];
 //#endregion
-export { JOBS, RUN_AS_USER_LEAD, SECURITY_JOBS_RESOLVERS };
+export { JOBS, RUN_AS_USER_LEAD, SECURITY_JOBS_RESOLVERS, runAsKind };

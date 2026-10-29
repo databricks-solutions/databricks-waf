@@ -268,7 +268,14 @@ export interface JobRow extends InWorkspace {
    * carries a `partial` at worst and never a `fail` — see the IaC resolver.
    */
   readonly deploymentKind?: string;
+  /** The ID of the user or service principal the job runs as. It does not say which of the two it is. */
   readonly runAs?: string;
+  /**
+   * The email of the user, the ID of the service principal, or a group name, from `run_as_user_name`.
+   * This is the field that tells a user from a service principal. Unpopulated on rows written before
+   * early December 2025, so absent here means not recorded, not a user and not a service principal.
+   */
+  readonly runAsName?: string;
 }
 
 /** A job deployed from a bundle, which is the observable half of infrastructure-as-code. */
@@ -1721,6 +1728,7 @@ export const parse = {
       tagCount: count(row, 'tag_count'),
       ...optional('deploymentKind', text(row, 'deployment_kind')),
       ...optional('runAs', text(row, 'run_as')),
+      ...optional('runAsName', text(row, 'run_as_name')),
     }));
   },
 

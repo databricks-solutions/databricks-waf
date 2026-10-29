@@ -41,7 +41,9 @@ export const SAMPLES: Readonly<Record<string, () => readonly SampleRow[]>> = {
       workspaceId(index),
       jobId(index),
       jobName(index),
-      principal(index),
+      // `run_as` is an ID; the name beside it is an email or a service principal's application ID.
+      String(500000000000000 + index),
+      pick(index, [principal(index), applicationId(index)]),
       pick(index, ['PERIODIC', 'ONE_TIME', 'FILE_ARRIVAL', 'CONTINUOUS', null]),
       pick(index, ['true', 'false', 'false', 'false']),
       pick(index, ['true', 'false']),
@@ -363,6 +365,11 @@ function nodeType(index: number): string {
 
 function principal(index: number): string {
   return `${principalLocal(index)}@example-enterprise.com`;
+}
+
+function applicationId(index: number): string {
+  const hex = (width: number, offset: number): string => (index + offset).toString(16).padStart(width, '0').slice(-width);
+  return `${hex(8, 0)}-${hex(4, 1)}-4${hex(3, 2)}-8${hex(3, 3)}-${hex(12, 4)}`;
 }
 
 function principalLocal(index: number): string {

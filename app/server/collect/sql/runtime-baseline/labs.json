@@ -437,11 +437,11 @@
       "statementId": "01f1955e-aa7b-10c8-8cfc-a2034b7b5eab",
       "measuredAt": "2026-08-11T08:28:44.239Z",
       "warehouseId": "0123456789abcdef",
-      "statementSha": "sha256:6a15afa100109201de028dfb155760df701b5cb8f7c262e2a9bab2bf424b3f6a",
+      "statementSha": "sha256:f2b96318ed2cdc68a27a8e0c9cbd207b3f0ba2d08bdc28799558b5eee6bfc100",
       "slicedInRecording": false,
       "sliceColumn": "workspace_id,",
       "rows": 4,
-      "columnCount": 16,
+      "columnCount": 17,
       "serializedBytes": 762,
       "durationMs": 4546,
       "durations": {
