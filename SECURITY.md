@@ -23,7 +23,8 @@ owned by the installing customer.
 - Cloud credentials, when required, are short lived and vended at scan time; they are not persisted.
 - SQL values are parameterised. Identifiers that cannot be parameterised are validated before interpolation.
 - The App requests enumerated API scopes and never requests the blanket `all-apis` scope.
-- Optional AI receives only the current assessment context and cannot alter findings or scores.
+- An optional AI layer is planned and is not yet available. When it exists it will never be able to change a
+  finding or score, and it will receive only the current assessment context.
 
 ## Who can read stored results
 

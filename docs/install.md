@@ -118,9 +118,47 @@ Select **Run assessment** from the header. Choose the saved definition or a one-
 
 The Dashboard shows indicative automated posture as soon as collection completes. Publication waits for the selected pillars to be reviewed.
 
+## Where to install
+
+Install the App once per region, in a governance workspace: a workspace set aside for governance work in that region. One install keeps one set of governance records for the estate it assesses, so avoid running several copies in the same region, which would split those records. See decision A5 in [Product decisions]({{ '/decisions/' | relative_url }}).
+
+## API scopes the App requests
+
+The App acts as the signed-in user with these 8 user API scopes, declared as `user_api_scopes` in `app/databricks.yml`:
+
+| Scope | What it permits |
+| --- | --- |
+| `sql.statement-execution` | Run the assessment's read statements on the bound warehouse. |
+| `sql.warehouses:read` | Read warehouse state and configuration. |
+| `catalog.catalogs:read` | Read Unity Catalog catalogs. |
+| `catalog.schemas:read` | Read Unity Catalog schemas. |
+| `catalog.tables:read` | Read Unity Catalog tables. |
+| `model-serving` | Read served model and endpoint information. |
+| `vector-search` | Read vector search endpoint and index information. |
+| `sql.query-history:read` | Read query history and plans for the workload advisor. |
+
+The App never requests `all-apis`. A scope permits an API family; the signed-in person's own workspace and Unity Catalog grants still decide what can be read.
+
+A workspace admin can restrict the scopes an app may request. If the workspace restricts them below this list, the App cannot act with the full list. Ask the admin to allow all 8 before installing. The lifecycle command checks the effective scopes against the manifests and fails the install when they differ. See decision A2 in [Product decisions]({{ '/decisions/' | relative_url }}).
+
+## Lakebase settings
+
+Set these on the Lakebase project and branch before the first assessment:
+
+- **History window: 30 days.** The documented range is 2 to 30 days and the default is 7. Use 30 so point-in-time restore reaches back a full month.
+- **Protect the production branch**, so it cannot be deleted by mistake.
+- **Take a manual snapshot before each upgrade**, so there is a known restore point that predates the new version.
+- **Keep recovery archives in a governed Unity Catalog Volume.** Archives from `npm run recovery -- backup` contain governance records and must sit under the customer's access, retention and legal-hold controls. See [Operate, upgrade and recover]({{ '/operations/' | relative_url }}).
+
+## Telemetry, budget and warehouse
+
+- **Enable app telemetry export**, so the App's operational telemetry can be watched outside the App.
+- **Put budget policies and tags on the App, Lakebase and the warehouse**, so the cost of the assessment can be reported and capped on its own.
+- **Use a small serverless SQL warehouse with auto-stop.** The App's statements are bounded reads and one scan runs at a time, so a small warehouse is enough, and auto-stop keeps it from running between scans.
+
 ## Running more than one instance
 
-The App can run on two or more instances behind the one URL, and Databricks recommends at least two. Every instance reads and writes the same Lakebase database, so they agree on what is running. At most one assessment run and one advisory run are live at a time across all of them: a second request is refused with a `409` that names the run already going, and no run record is written for the refusal. Progress and status are read from the run record, so any instance reports a scan that another started. A rolling deploy that serves the old and new versions side by side is covered, because the admission rule needs no schema change. See decision A16 in [Product decisions]({{ '/decisions/' | relative_url }}).
+The App can run on two or more instances behind the one URL, and Databricks recommends at least two. Horizontal scaling is supported from this release. Every instance reads and writes the same Lakebase database, so they agree on what is running. At most one assessment run and one advisory run are live at a time across all of them: a second request is refused with a `409` that names the run already going, and no run record is written for the refusal. Progress and status are read from the run record, so any instance reports a scan that another started. A rolling deploy that serves the old and new versions side by side is covered, because the admission rule needs no schema change. See decision A16 in [Product decisions]({{ '/decisions/' | relative_url }}).
 
 ## Optional schedule
 

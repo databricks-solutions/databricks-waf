@@ -118,8 +118,68 @@ databricks current-user me --profile &lt;profile&gt;
 <h2 id="8-run-the-first-assessment">8. Run the first assessment</h2>
 <p>Select <strong>Run assessment</strong> from the header. Choose the saved definition or a one-off custom scope, then choose all included pillars or a subset. Nothing starts until <strong>Start assessment</strong> is selected.</p>
 <p>The Dashboard shows indicative automated posture as soon as collection completes. Publication waits for the selected pillars to be reviewed.</p>
+<h2 id="where-to-install">Where to install</h2>
+<p>Install the App once per region, in a governance workspace: a workspace set aside for governance work in that region. One install keeps one set of governance records for the estate it assesses, so avoid running several copies in the same region, which would split those records. See decision A5 in <a href="/databricks-waf/decisions/">Product decisions</a>.</p>
+<h2 id="api-scopes-the-app-requests">API scopes the App requests</h2>
+<p>The App acts as the signed-in user with these 8 user API scopes, declared as <code>user_api_scopes</code> in <code>app/databricks.yml</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Scope</th>
+<th>What it permits</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>sql.statement-execution</code></td>
+<td>Run the assessment&#39;s read statements on the bound warehouse.</td>
+</tr>
+<tr>
+<td><code>sql.warehouses:read</code></td>
+<td>Read warehouse state and configuration.</td>
+</tr>
+<tr>
+<td><code>catalog.catalogs:read</code></td>
+<td>Read Unity Catalog catalogs.</td>
+</tr>
+<tr>
+<td><code>catalog.schemas:read</code></td>
+<td>Read Unity Catalog schemas.</td>
+</tr>
+<tr>
+<td><code>catalog.tables:read</code></td>
+<td>Read Unity Catalog tables.</td>
+</tr>
+<tr>
+<td><code>model-serving</code></td>
+<td>Read served model and endpoint information.</td>
+</tr>
+<tr>
+<td><code>vector-search</code></td>
+<td>Read vector search endpoint and index information.</td>
+</tr>
+<tr>
+<td><code>sql.query-history:read</code></td>
+<td>Read query history and plans for the workload advisor.</td>
+</tr>
+</tbody></table>
+<p>The App never requests <code>all-apis</code>. A scope permits an API family; the signed-in person&#39;s own workspace and Unity Catalog grants still decide what can be read.</p>
+<p>A workspace admin can restrict the scopes an app may request. If the workspace restricts them below this list, the App cannot act with the full list. Ask the admin to allow all 8 before installing. The lifecycle command checks the effective scopes against the manifests and fails the install when they differ. See decision A2 in <a href="/databricks-waf/decisions/">Product decisions</a>.</p>
+<h2 id="lakebase-settings">Lakebase settings</h2>
+<p>Set these on the Lakebase project and branch before the first assessment:</p>
+<ul>
+<li><strong>History window: 30 days.</strong> The documented range is 2 to 30 days and the default is 7. Use 30 so point-in-time restore reaches back a full month.</li>
+<li><strong>Protect the production branch</strong>, so it cannot be deleted by mistake.</li>
+<li><strong>Take a manual snapshot before each upgrade</strong>, so there is a known restore point that predates the new version.</li>
+<li><strong>Keep recovery archives in a governed Unity Catalog Volume.</strong> Archives from <code>npm run recovery -- backup</code> contain governance records and must sit under the customer&#39;s access, retention and legal-hold controls. See <a href="/databricks-waf/operations/">Operate, upgrade and recover</a>.</li>
+</ul>
+<h2 id="telemetry-budget-and-warehouse">Telemetry, budget and warehouse</h2>
+<ul>
+<li><strong>Enable app telemetry export</strong>, so the App&#39;s operational telemetry can be watched outside the App.</li>
+<li><strong>Put budget policies and tags on the App, Lakebase and the warehouse</strong>, so the cost of the assessment can be reported and capped on its own.</li>
+<li><strong>Use a small serverless SQL warehouse with auto-stop.</strong> The App&#39;s statements are bounded reads and one scan runs at a time, so a small warehouse is enough, and auto-stop keeps it from running between scans.</li>
+</ul>
 <h2 id="running-more-than-one-instance">Running more than one instance</h2>
-<p>The App can run on two or more instances behind the one URL, and Databricks recommends at least two. Every instance reads and writes the same Lakebase database, so they agree on what is running. At most one assessment run and one advisory run are live at a time across all of them: a second request is refused with a <code>409</code> that names the run already going, and no run record is written for the refusal. Progress and status are read from the run record, so any instance reports a scan that another started. A rolling deploy that serves the old and new versions side by side is covered, because the admission rule needs no schema change. See decision A16 in <a href="/databricks-waf/decisions/">Product decisions</a>.</p>
+<p>The App can run on two or more instances behind the one URL, and Databricks recommends at least two. Horizontal scaling is supported from this release. Every instance reads and writes the same Lakebase database, so they agree on what is running. At most one assessment run and one advisory run are live at a time across all of them: a second request is refused with a <code>409</code> that names the run already going, and no run record is written for the refusal. Progress and status are read from the run record, so any instance reports a scan that another started. A rolling deploy that serves the old and new versions side by side is covered, because the admission rule needs no schema change. See decision A16 in <a href="/databricks-waf/decisions/">Product decisions</a>.</p>
 <h2 id="optional-schedule">Optional schedule</h2>
 <p>Finish an interactive run first. Then follow <a href="/databricks-waf/configuration/#scheduled-assessments">Configure scheduled assessments</a>. Deployment never unpauses the schedule for you.</p>
 <h2 id="next">Next</h2>
