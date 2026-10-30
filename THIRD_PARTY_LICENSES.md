@@ -416,7 +416,7 @@ dependency change.
 | lodash.camelcase | 4.3.0 | MIT | [source](https://www.npmjs.com/package/lodash.camelcase/v/4.3.0) |
 | long | 5.3.2 | Apache-2.0 | [source](https://www.npmjs.com/package/long/v/5.3.2) |
 | lucide-react | 0.554.0 | ISC | [source](https://www.npmjs.com/package/lucide-react/v/0.554.0) |
-| lucide-react | 1.34.0 | ISC | [source](https://www.npmjs.com/package/lucide-react/v/1.34.0) |
+| lucide-react | 1.38.0 | ISC | [source](https://www.npmjs.com/package/lucide-react/v/1.38.0) |
 | magic-string | 0.30.21 | MIT | [source](https://www.npmjs.com/package/magic-string/v/0.30.21) |
 | marked | 17.0.3 | MIT | [source](https://www.npmjs.com/package/marked/v/17.0.3) |
 | math-intrinsics | 1.1.0 | MIT | [source](https://www.npmjs.com/package/math-intrinsics/v/1.1.0) |

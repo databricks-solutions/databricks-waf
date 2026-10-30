@@ -242,7 +242,7 @@ production dependency whose licence is absent or outside the reviewed allowlist.
 | embla-carousel-react | 8.6.0 | MIT | [npm](https://www.npmjs.com/package/embla-carousel-react/v/8.6.0) |
 | express | 5.2.1 | MIT | [npm](https://www.npmjs.com/package/express/v/5.2.1) |
 | js-yaml | 5.4.1 | MIT | [npm](https://www.npmjs.com/package/js-yaml/v/5.4.1) |
-| lucide-react | 1.34.0 | ISC | [npm](https://www.npmjs.com/package/lucide-react/v/1.34.0) |
+| lucide-react | 1.38.0 | ISC | [npm](https://www.npmjs.com/package/lucide-react/v/1.38.0) |
 | next-themes | 0.4.6 | MIT | [npm](https://www.npmjs.com/package/next-themes/v/0.4.6) |
 | react | 19.2.8 | MIT | [npm](https://www.npmjs.com/package/react/v/19.2.8) |
 | react-dom | 19.2.8 | MIT | [npm](https://www.npmjs.com/package/react-dom/v/19.2.8) |
