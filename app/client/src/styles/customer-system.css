@@ -10,9 +10,15 @@
     display: grid;
     width: min(100%, 1480px);
     align-content: start;
-    gap: 24px;
+    gap: 28px;
     margin-inline: auto;
-    padding: 32px clamp(20px, 3vw, 48px) 64px;
+    padding: 40px clamp(20px, 3vw, 48px) 72px;
+    /*
+     * The document arrives, once per navigation. Opacity only — no transform — so no bounding box
+     * moves, which keeps this clear of the deep-link pane reveal and of the viewport measurement.
+     * Neutralised under prefers-reduced-motion by the global rule in wa-tailwind.css.
+     */
+    animation: wa-page-in var(--wa-duration-slow, 320ms) var(--wa-ease-out, ease-out) both;
   }
 
   .wa-page-lead {
@@ -20,7 +26,7 @@
     grid-template-columns: minmax(0, 1fr) auto;
     align-items: start;
     gap: 24px;
-    margin-bottom: 28px;
+    margin-bottom: 36px;
   }
 
   .wa-page-lead-copy {
@@ -55,6 +61,92 @@
     justify-content: flex-end;
     gap: 8px;
     padding-top: 22px;
+  }
+
+  /*
+   * The plain-language lead band — the friendly summary that opens a page before any table. The
+   * status is carried by its words; the tone tints one accent edge and nothing else, so a reader who
+   * cannot distinguish the edge colours reads the same thing. Verdict colour here is reserved for the
+   * status meaning, never decoration.
+   */
+  .wa-plain-summary {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px 24px;
+    padding: 16px 20px;
+    border: 1px solid var(--wa-border);
+    border-left: 3px solid var(--wa-border-strong);
+    border-radius: var(--wa-radius-lg);
+    background: var(--wa-surface-subtle);
+  }
+
+  .wa-plain-summary-copy {
+    min-width: 0;
+  }
+
+  .wa-plain-summary-status {
+    margin: 0;
+    color: var(--wa-text);
+    font-size: var(--wa-type-title);
+    line-height: var(--wa-type-title-line);
+    font-weight: 600;
+  }
+
+  .wa-plain-summary-meaning {
+    margin: 6px 0 0;
+    color: var(--wa-text-secondary);
+    font-size: var(--wa-type-body);
+    line-height: var(--wa-type-body-line);
+  }
+
+  .wa-plain-summary-action {
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  .wa-plain-summary[data-tone='neutral'] {
+    border-left-color: var(--wa-border-strong);
+  }
+
+  .wa-plain-summary[data-tone='info'] {
+    border-left-color: var(--wa-info);
+  }
+
+  .wa-plain-summary[data-tone='success'] {
+    border-left-color: var(--wa-success);
+  }
+
+  .wa-plain-summary[data-tone='caution'] {
+    border-left-color: var(--wa-caution);
+  }
+
+  .wa-plain-summary[data-tone='warning'] {
+    border-left-color: var(--wa-warning);
+  }
+
+  .wa-plain-summary[data-tone='danger'] {
+    border-left-color: var(--wa-danger);
+  }
+
+  .wa-plain-summary[data-tone='unmeasured'] {
+    border-left-color: var(--wa-unmeasured);
+  }
+
+  @media (max-width: 599px) {
+    .wa-plain-summary {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .wa-plain-summary-action {
+      justify-content: flex-start;
+    }
+  }
+
+  /* A domain term shown in plain language, its precise form kept on the title for hover. */
+  .wa-term {
+    border-bottom: 1px dotted var(--wa-border-strong);
+    cursor: help;
   }
 
   .wa-type-display,
@@ -143,7 +235,7 @@
     grid-template-columns: minmax(0, 1fr) auto;
     align-items: start;
     gap: 20px;
-    padding: 20px 22px 0;
+    padding: 24px 24px 0;
   }
 
   .wa-customer-surface-header h2,
@@ -165,7 +257,7 @@
   }
 
   .wa-customer-surface-body {
-    padding: 22px;
+    padding: 24px;
   }
 
   .wa-empty-state {

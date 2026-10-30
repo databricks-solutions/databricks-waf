@@ -1,4 +1,4 @@
-import { useId, type ReactNode } from 'react';
+import { useId, type CSSProperties, type ReactNode } from 'react';
 import clsx from 'clsx';
 
 export interface CustomerPageProps {
@@ -55,6 +55,10 @@ export interface SurfaceProps {
   readonly action?: ReactNode;
   readonly label?: string;
   readonly headingLevel?: 2 | 3 | 4;
+  /** Reveal the surface as it mounts (fade and gentle rise). Neutralised under reduced motion. */
+  readonly reveal?: boolean;
+  /** Delay the reveal, in milliseconds. Only meaningful alongside `reveal`. */
+  readonly revealDelay?: number;
 }
 
 /** A role-based region. Tone follows information rank rather than nesting depth. */
@@ -67,14 +71,19 @@ export function Surface({
   action,
   label,
   headingLevel = 2,
+  reveal = false,
+  revealDelay,
 }: SurfaceProps) {
   const generated = useId();
   const headingId = title == null ? undefined : `${generated}-title`;
   const Heading = `h${headingLevel}` as const;
+  const revealStyle =
+    reveal && revealDelay != null ? ({ '--wa-reveal-delay': `${revealDelay}ms` } as CSSProperties) : undefined;
 
   return (
     <section
-      className={clsx('wa-customer-surface', `wa-customer-surface-${tone}`, className)}
+      className={clsx('wa-customer-surface', `wa-customer-surface-${tone}`, reveal && 'wa-reveal', className)}
+      style={revealStyle}
       {...(headingId != null ? { 'aria-labelledby': headingId } : label != null ? { 'aria-label': label } : {})}
     >
       {(title != null || description != null || action != null) && (

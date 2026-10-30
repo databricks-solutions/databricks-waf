@@ -156,8 +156,8 @@ html[data-theme='light'] {
 
   /* Elevation communicates rank; transient layers retain the strongest depth. */
   --wa-overlay: rgba(11, 14, 20, 0.4);
-  --wa-shadow-surface: 0 1px 2px rgba(11, 14, 20, 0.06), 0 8px 24px rgba(11, 14, 20, 0.07);
-  --wa-shadow-surface-hover: 0 2px 4px rgba(11, 14, 20, 0.08), 0 14px 32px rgba(11, 14, 20, 0.1);
+  --wa-shadow-surface: 0 1px 2px rgba(11, 14, 20, 0.04), 0 4px 12px rgba(11, 14, 20, 0.05);
+  --wa-shadow-surface-hover: 0 2px 6px rgba(11, 14, 20, 0.06), 0 8px 20px rgba(11, 14, 20, 0.07);
   --wa-shadow-action: 0 3px 8px rgba(27, 98, 201, 0.18), 0 16px 36px rgba(11, 14, 20, 0.1);
   --wa-shadow-popover: 0 8px 24px rgba(11, 14, 20, 0.12), 0 2px 8px rgba(11, 14, 20, 0.07);
   --wa-shadow-dialog: 0 20px 48px rgba(11, 14, 20, 0.18), 0 4px 12px rgba(11, 14, 20, 0.1);
@@ -170,21 +170,43 @@ html[data-theme='light'] {
   --wa-radius-xl: 16px;
   --wa-radius-pill: 999px;
 
-  /* Type roles. Components consume the role; responsive CSS decides its exact size. */
-  --wa-type-display: 40px;
-  --wa-type-display-line: 46px;
-  --wa-type-page: 28px;
-  --wa-type-page-line: 34px;
+  /*
+   * Type roles. Components consume the role; responsive CSS decides its exact size.
+   *
+   * Family 141b (editorial-minimal) retunes for reading: the two display steps gain size and the
+   * whole ramp gains line-height, so a page reads like a set document rather than a control panel.
+   * Sizes below section are unchanged — only their leading grows — so the retune adds vertical air
+   * without reflowing any fixed-width composition.
+   */
+  --wa-type-display: 44px;
+  --wa-type-display-line: 52px;
+  --wa-type-page: 30px;
+  --wa-type-page-line: 38px;
   --wa-type-section: 20px;
-  --wa-type-section-line: 26px;
+  --wa-type-section-line: 28px;
   --wa-type-title: 16px;
-  --wa-type-title-line: 22px;
+  --wa-type-title-line: 24px;
   --wa-type-body: 14px;
-  --wa-type-body-line: 21px;
+  --wa-type-body-line: 22px;
   --wa-type-compact: 13px;
-  --wa-type-compact-line: 19px;
+  --wa-type-compact-line: 20px;
   --wa-type-label: 12px;
-  --wa-type-label-line: 17px;
+  --wa-type-label-line: 18px;
+
+  /*
+   * Motion tokens, mirrored in components/system/motion.ts so CSS-driven and JS-driven motion stay
+   * in step. Durations are quiet — the 140ms control transition, a 200ms state change, a 320ms
+   * enter — and the easings are real curves rather than a bare `ease`. Every one is switched off
+   * under prefers-reduced-motion by the global rule in wa-tailwind.css. Declared once here on the
+   * light root; they carry no colour and are theme-independent, so both dark blocks inherit them.
+   */
+  --wa-duration-fast: 140ms;
+  --wa-duration-base: 200ms;
+  --wa-duration-slow: 320ms;
+  --wa-ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --wa-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --wa-ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --wa-reveal-rise: 8px;
 
   /*
    * The page measure: the widest the content goes before it centres.
@@ -335,8 +357,8 @@ html[data-theme='dark'] {
   --wa-unmeasured: #757e8b;
   --wa-unmeasured-track: #2c3641;
   --wa-overlay: rgba(0, 0, 0, 0.45);
-  --wa-shadow-surface: 0 1px 0 rgba(255, 255, 255, 0.04), 0 12px 28px rgba(0, 0, 0, 0.24);
-  --wa-shadow-surface-hover: 0 1px 0 rgba(255, 255, 255, 0.06), 0 18px 38px rgba(0, 0, 0, 0.32);
+  --wa-shadow-surface: 0 1px 0 rgba(255, 255, 255, 0.03), 0 8px 20px rgba(0, 0, 0, 0.22);
+  --wa-shadow-surface-hover: 0 1px 0 rgba(255, 255, 255, 0.05), 0 12px 28px rgba(0, 0, 0, 0.28);
   --wa-shadow-action: 0 4px 12px rgba(77, 151, 232, 0.18), 0 20px 42px rgba(0, 0, 0, 0.3);
   --wa-shadow-popover: 0 10px 28px rgba(0, 0, 0, 0.34), 0 2px 8px rgba(0, 0, 0, 0.24);
   --wa-shadow-dialog: 0 24px 56px rgba(0, 0, 0, 0.46), 0 4px 14px rgba(0, 0, 0, 0.3);
@@ -558,8 +580,8 @@ html[data-theme='dark'] {
     --wa-unmeasured: #757e8b;
     --wa-unmeasured-track: #2c3641;
     --wa-overlay: rgba(0, 0, 0, 0.45);
-    --wa-shadow-surface: 0 1px 0 rgba(255, 255, 255, 0.04), 0 12px 28px rgba(0, 0, 0, 0.24);
-    --wa-shadow-surface-hover: 0 1px 0 rgba(255, 255, 255, 0.06), 0 18px 38px rgba(0, 0, 0, 0.32);
+    --wa-shadow-surface: 0 1px 0 rgba(255, 255, 255, 0.03), 0 8px 20px rgba(0, 0, 0, 0.22);
+    --wa-shadow-surface-hover: 0 1px 0 rgba(255, 255, 255, 0.05), 0 12px 28px rgba(0, 0, 0, 0.28);
     --wa-shadow-action: 0 4px 12px rgba(77, 151, 232, 0.18), 0 20px 42px rgba(0, 0, 0, 0.3);
     --wa-shadow-popover: 0 10px 28px rgba(0, 0, 0, 0.34), 0 2px 8px rgba(0, 0, 0, 0.24);
     --wa-shadow-dialog: 0 24px 56px rgba(0, 0, 0, 0.46), 0 4px 14px rgba(0, 0, 0, 0.3);
