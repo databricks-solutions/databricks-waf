@@ -52,6 +52,8 @@ Read the relevant repository standards:
 - `SECURITY.md` for identity, scope and storage boundaries; and
 - this guide's configuration and operating contracts for deployment changes.
 
+Before changing code that a [product decision]({{ '/decisions/' | relative_url }}) governs, read that decision and the reason recorded for it.
+
 ## Fork and create a branch
 
 ```bash

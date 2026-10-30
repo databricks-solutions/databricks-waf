@@ -22,6 +22,7 @@ import { decodeScan } from '../scan/codec.js';
 import { InMemoryApplicabilityStore, type ApplicabilityStore } from '../apply/store.js';
 import type { Finding } from '../resolve/finding.js';
 import type { Scan } from '../scan/scan.js';
+import { DAY_MS, stateOf } from '../attest/attestation.js';
 import { InMemoryAttestationStore, type AttestationStore } from '../attest/store.js';
 import { InMemoryReviewStore, type ReviewStore } from '../review/store.js';
 import { finalAssessmentProjector } from '../review/projection.js';
@@ -238,6 +239,8 @@ interface AppOptions {
   readonly warehouse?: string;
   /** Observe the exact collection question assembled by a route without replacing its collectors. */
   readonly observeCollectorContext?: (context: CollectorFactoryContext) => void;
+  /** The clock reviews are judged by. Absent means the wall clock, as an install runs. */
+  readonly now?: () => Date;
 }
 
 async function startApp(options: AppOptions = {}): Promise<string> {
@@ -281,6 +284,7 @@ async function startApp(options: AppOptions = {}): Promise<string> {
     pillars: measuredPillars,
     ...(options.warehouse != null ? { warehouse: () => options.warehouse } : {}),
     ...(options.verifyRecords != null ? { verifyRecords: options.verifyRecords } : {}),
+    ...(options.now != null ? { now: options.now } : {}),
     ...(options.audit != null
       ? {
           audit: new AuditRecorder(options.audit, {
@@ -1862,7 +1866,9 @@ describe('answering the requirements nothing can measure', () => {
     if (measured == null) throw new Error('The measured scan fixture was not stored.');
     const stored = measured.findings[0];
     if (stored == null) throw new Error('The measured scan fixture has no finding.');
-    const answeredAt = new Date('2026-08-20T10:00:00.000Z');
+    // Dated from the app's clock, which is the one the review judges the answer by.
+    const now = new Date('2026-08-21T10:00:00.000Z');
+    const answeredAt = new Date(now.getTime() - DAY_MS);
     const definitionId = 'definition-inconclusive-review';
     const current = {
       id: 'att-current-inconclusive',
@@ -1872,7 +1878,7 @@ describe('answering the requirements nothing can measure', () => {
       owner: 'platform-team@example.com',
       attestedBy: 'admin@example.com',
       attestedAt: answeredAt,
-      reviewBy: new Date('2026-11-20T10:00:00.000Z'),
+      reviewBy: new Date(answeredAt.getTime() + 90 * DAY_MS),
       definitionId,
     };
     const finding: Finding = {
@@ -1905,7 +1911,7 @@ describe('answering the requirements nothing can measure', () => {
     const store = new InMemoryAttestationStore();
     const reviews = new InMemoryReviewStore({ pillars: ALL_PILLARS });
     await store.record(current);
-    const url = await startApp({ scans, attestations: store, reviews, measuredPillars: ALL_PILLARS });
+    const url = await startApp({ scans, attestations: store, reviews, measuredPillars: ALL_PILLARS, now: () => now });
 
     const scope = `definitionId=${encodeURIComponent(definitionId)}`;
     const response = await fetch(`${url}/api/attestations?runId=measured&${scope}`);
@@ -1952,6 +1958,79 @@ describe('answering the requirements nothing can measure', () => {
     const decision = confirmed.pillars.find((candidate) => candidate.pillarId === control.pillarId);
     expect(decision).toMatchObject({ kind: 'confirmed', pillarId: control.pillarId });
     expect(decision?.attestationIds).toContain(current.id);
+  });
+
+  it('confirms a pillar while its answers are current or due, and asks again once they expire', async () => {
+    const pillarId = 'cost-optimization';
+    const definitionId = 'definition-answer-life';
+    const scope = `definitionId=${encodeURIComponent(definitionId)}`;
+    const scans = await scanSettling(blocked());
+    const measured = await scans.get('measured');
+    if (measured == null) throw new Error('The measured scan fixture was not stored.');
+    const runId = measured.id;
+    await scans.save({
+      ...measured,
+      requestedPillars: [pillarId],
+      stamp: { ...measured.stamp, definition: { id: definitionId, version: 1, fingerprint: 'sha256:answer-life' } },
+    });
+
+    // Every question in the pillar answered on one day for ninety: current for the first sixty, due
+    // for renewal in the last thirty, and expired from then on.
+    const answeredAt = new Date('2026-08-20T10:00:00.000Z');
+    const day = (count: number) => new Date(answeredAt.getTime() + count * DAY_MS);
+    const { url, store } = await withStore(scans);
+    const listed = (await (await fetch(`${url}/api/attestations?runId=${runId}&${scope}`)).json()) as {
+      requirements: { controlId: string }[];
+    };
+    const answers = listed.requirements.map(({ controlId }) => ({
+      id: `att-${controlId}`,
+      controlId,
+      answer: 'met' as const,
+      statement: `The platform team reviewed the recorded practice for ${controlId} this quarter.`,
+      owner: 'platform-team@example.com',
+      attestedBy: 'admin@example.com',
+      attestedAt: answeredAt,
+      reviewBy: day(90),
+      definitionId,
+    }));
+    for (const answer of answers) await store.record(answer);
+    const sample = answers[0];
+    if (sample == null) throw new Error(`The ${pillarId} run asks no question to answer.`);
+    expect([day(10), day(75), day(100)].map((when) => stateOf(sample, when))).toEqual(['current', 'due', 'expired']);
+
+    /** A fresh review of the run, decided by an app whose clock reads `now`. */
+    async function confirmAt(now: Date) {
+      const at = await startApp({
+        scans,
+        attestations: store,
+        reviews: new InMemoryReviewStore({ pillars: ALL_PILLARS }),
+        measuredPillars: ALL_PILLARS,
+        now: () => now,
+      });
+      const headers = { 'content-type': 'application/json', 'x-forwarded-access-token': 'token' };
+      const review = (await (
+        await fetch(`${at}/api/reviews?${scope}`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ runId }),
+        })
+      ).json()) as AssessmentReviewPayload;
+      const response = await fetch(`${at}/api/reviews/${review.id}/pillars/${pillarId}/confirm?${scope}`, {
+        method: 'POST',
+        headers,
+      });
+      const body = (await response.json()) as Partial<AssessmentReviewPayload> & { error?: string };
+      return {
+        status: response.status,
+        error: body.error,
+        cited: body.pillars?.find((one) => one.pillarId === pillarId)?.attestationIds,
+      };
+    }
+
+    const cited = answers.map((one) => one.id);
+    await expect(confirmAt(day(10))).resolves.toMatchObject({ status: 201, cited });
+    await expect(confirmAt(day(75))).resolves.toMatchObject({ status: 201, cited });
+    await expect(confirmAt(day(100))).resolves.toMatchObject({ status: 409, error: 'pillar-needs-attention' });
   });
 
   it('asks a question of every requirement it lists, with none of them the generated placeholder', async () => {

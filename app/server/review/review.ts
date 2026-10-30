@@ -23,7 +23,7 @@
 // attestations the reviewer accepted. The run remains the immutable automated half; the pillar
 // record is the immutable human-evidence manifest joined to it.
 
-import { stateOf, type Attestation } from '../attest/attestation.js';
+import { counts, type Attestation } from '../attest/attestation.js';
 import type { Scan } from '../scan/scan.js';
 
 export class InvalidReviewError extends Error {
@@ -439,7 +439,8 @@ export function pillarEvidenceManifest(
 
   for (const control of manual) {
     const answer = current.get(control.id);
-    if (answer != null && stateOf(answer, now) === 'current') accepted.push(answer.id);
+    // An answer due for renewal still counts here, as it does in the score: decision D6 in docs/decisions.md.
+    if (answer != null && counts(answer, now)) accepted.push(answer.id);
     else attention.push(control.id);
   }
 

@@ -18,6 +18,7 @@ const PAGES = [
   ['operations.md', 'operations/index.html'],
   ['troubleshooting.md', 'troubleshooting/index.html'],
   ['contributing.md', 'contributing/index.html'],
+  ['decisions.md', 'decisions/index.html'],
   ['deployment-lifecycle.md', 'deployment-lifecycle/index.html'],
   ['scheduled-scans.md', 'scheduled-scans/index.html'],
   ['404-source.md', '404.html'],
