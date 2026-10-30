@@ -19,7 +19,7 @@
 //
 // Neither reading moves the score. See the note at the top of `action.ts`, and ADR 0051.
 
-import type { Finding, Outcome } from '../resolve/finding.js';
+import { decidedByAnswer, type Finding, type Outcome } from '../resolve/finding.js';
 import { DAY_MS } from '../attest/attestation.js';
 import type { ActionState, ImprovementAction } from './action.js';
 import type { AdviceProvenance } from './advice.js';
@@ -145,7 +145,8 @@ function met(outcome: Outcome): boolean {
  * AUD-DEC-107 means by refreshed attributed evidence, and it is why this reading and
  * `validate/attempt.ts` share the rule rather than each having their own.
  *
- * Only where the answer *carries* the outcome. An attestation recorded beside a measurement
+ * Only where the answer *carries* the outcome, which includes an answer that lifted a measured cap
+ * (`bearing: 'co-signed'`): the pass would not exist without it. An attestation recorded beside a measurement
  * (`bearing: 'record'`) is a note next to a fact the app established itself, and treating that as
  * stale human evidence would refuse the stronger of the two answers. An absent `attested` is the
  * ordinary case — the app measured it — and says nothing about staleness.
@@ -156,7 +157,7 @@ function met(outcome: Outcome): boolean {
  */
 function refreshed(finding: Pick<Finding, 'attested'>, claimedAt: Date | undefined): boolean {
   const attested = finding.attested;
-  if (attested == null || attested.bearing !== 'outcome') return true;
+  if (attested == null || !decidedByAnswer(attested)) return true;
   if (claimedAt == null) return true;
   return attested.at.getTime() >= claimedAt.getTime();
 }

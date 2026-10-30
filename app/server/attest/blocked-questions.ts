@@ -431,13 +431,6 @@ export const BLOCKED_QUESTIONS: Readonly<Record<string, BlockedQuestion>> = {
   },
 
   // ----------------------------------------------------------------------- identity and jobs
-  'SCP-04-22': {
-    question: 'Do production jobs run as a service principal rather than as a named person?',
-    evidence:
-      'Workflows, the "run as" identity on your production jobs. A job running as a person fails when they change ' +
-      'team, and grants the job everything that person can reach.',
-    cadenceDays: QUARTERLY,
-  },
   'SCP-04-23': {
     question: 'Is CAN MANAGE on production jobs held only by admins and the job owner?',
     evidence:
@@ -453,12 +446,4 @@ export const BLOCKED_QUESTIONS: Readonly<Record<string, BlockedQuestion>> = {
     cadenceDays: QUARTERLY,
   },
 
-  // ------------------------------------------------------------------------------ legacy storage
-  'SCP-04-05': {
-    question: 'Is data still being written to the DBFS root under /user/hive/warehouse?',
-    evidence:
-      'The DBFS root, /user/hive/warehouse. Tables there have no catalogue permissions and sit in a bucket every ' +
-      'workspace user can read, which is what Unity Catalog managed storage replaces.',
-    cadenceDays: QUARTERLY,
-  },
 };

@@ -54,7 +54,7 @@ function registerRunRoutes(app, options) {
 	* Two filters, and both exist because a supervisor has a question the id-addressed route cannot
 	* answer. `?key=` is for the trigger whose response never arrived: the caller chose the key, so it
 	* knows that, and it never saw the id the app minted. `?unfinished=true` is "is anything still going,
-	* anywhere" — which is not what `/api/scan/status` reports, because that is about this process.
+	* anywhere", including a run nobody is working on any more, which `/api/scan/status` does not report.
 	*/
 	app.get("/api/runs", async (request, response) => {
 		const runs = options.runs;

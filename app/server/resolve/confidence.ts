@@ -27,7 +27,7 @@
 
 import type { Coverage, Reach } from '../collect/signal.js';
 import { classOf } from './evidence-class.js';
-import type { Evidence, Finding } from './finding.js';
+import { decidedByAnswer, type Evidence, type Finding } from './finding.js';
 
 /**
  * How firmly the outcome is established.
@@ -121,12 +121,18 @@ function limitationsOf(finding: Finding, circumstances: Circumstances): readonly
   const limitations: Limitation[] = [];
 
   const attested = finding.attested;
-  if (attested != null && attested.bearing === 'outcome') {
+  if (attested != null && decidedByAnswer(attested)) {
     limitations.push({
       kind: 'attested',
       says:
-        `This is ${attested.by}'s answer about the practice, recorded ${on(attested.at)}, not something this app read. ` +
-        `${attested.owner} is accountable for it.`,
+        attested.bearing === 'co-signed'
+          ? // The app did read part of this, and the sentence has to say so: calling it all somebody's
+            // word would understate what was measured, and calling it all measured would overstate it.
+            `This app measured it up to partial, which is as far as the platform can show. ${attested.by} ` +
+            `answered that the rest is met, recorded ${on(attested.at)}, and that answer is what lifts it to a ` +
+            `pass. ${attested.owner} is accountable for it.`
+          : `This is ${attested.by}'s answer about the practice, recorded ${on(attested.at)}, not something this app read. ` +
+            `${attested.owner} is accountable for it.`,
     });
     const days = daysUntil(attested.reviewBy, circumstances.asOf);
     if (days != null && days <= EXPIRING_WITHIN_DAYS) {
@@ -143,7 +149,8 @@ function limitationsOf(finding: Finding, circumstances: Circumstances): readonly
   const sampled = sampling(finding.coverage);
   if (sampled != null) limitations.push(sampled);
 
-  const narrow = narrowReach(finding.coverage.reach);
+  const sources = importedWorkspaces(finding.evidence);
+  const narrow = narrowReach(finding.coverage.reach, sources);
   if (narrow != null) limitations.push(narrow);
 
   const imported = importedAt(finding.evidence);
@@ -151,7 +158,7 @@ function limitationsOf(finding: Finding, circumstances: Circumstances): readonly
     limitations.push({
       kind: 'imported',
       says:
-        `An administrator collected this against an authority this app cannot hold, and imported it. ` +
+        `An administrator collected this ${collectedFrom(sources)}against an authority this app cannot hold, and imported it. ` +
         `It describes the estate as it stood ${on(imported)}, and this app cannot re-read it to check.`,
     });
   }
@@ -187,7 +194,7 @@ function sampling(coverage: Coverage): Limitation | undefined {
  * did not declare what it was a statement about leaves the reader unable to tell a complete account
  * reading from a single-workspace one, and that gap is this app's rather than the estate's.
  */
-function narrowReach(reach: Reach | undefined): Limitation | undefined {
+function narrowReach(reach: Reach | undefined, sources: readonly string[] = []): Limitation | undefined {
   if (reach === 'account') return undefined;
   if (reach === 'metastore') {
     return {
@@ -200,13 +207,48 @@ function narrowReach(reach: Reach | undefined): Limitation | undefined {
   if (reach === 'workspace') {
     return {
       kind: 'reach',
-      says: 'Read from this workspace only. It says nothing about the others in the account.',
+      // An imported reading is of the workspace its file was collected from, which need not be the one
+      // this app is installed in, so "this workspace" would send the reader to the wrong place.
+      says:
+        sources.length === 0
+          ? 'Read from this workspace only. It says nothing about the others in the account.'
+          : `Read from ${workspaces(sources)} only. It says nothing about the others in the account.`,
     };
   }
   return {
     kind: 'reach',
     says: 'The collector did not declare which part of the estate this is a statement about, which is a gap in this app.',
   };
+}
+
+/**
+ * The workspaces the outcome-bearing imported evidence was collected from, sorted and each once.
+ *
+ * Empty when none of it names one: an account-level reading is about the account, and evidence this
+ * app read itself is about the workspace the scan says it is.
+ */
+function importedWorkspaces(evidence: readonly Evidence[]): readonly string[] {
+  const named = evidence
+    .filter((one) => one.bearing !== 'detail' && one.evidenceClass === 'admin-collected')
+    .map((one) => one.provenance?.workspaceId)
+    .filter((id): id is string => id != null);
+  return [...new Set(named)].sort();
+}
+
+/** `workspace 1`, `workspaces 1 and 2`, `workspaces 1, 2 and 3`. */
+function workspaces(ids: readonly string[]): string {
+  if (ids.length === 1) return `workspace ${ids[0] ?? ''}`;
+  return `workspaces ${ids.slice(0, -1).join(', ')} and ${ids[ids.length - 1] ?? ''}`;
+}
+
+/**
+ * Where an administrator's reading was made, with its trailing space, for the sentence that says it was imported.
+ *
+ * Nothing when no workspace is named, rather than a guess: that is an account-level reading, or a scan
+ * stored before the workspace was recorded, and a sentence claiming either would be wrong for the other.
+ */
+function collectedFrom(sources: readonly string[]): string {
+  return sources.length === 0 ? '' : `from ${workspaces(sources)} `;
 }
 
 /** When the outcome-bearing imported evidence was collected, or nothing when none of it was. */

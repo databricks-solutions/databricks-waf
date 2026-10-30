@@ -9,6 +9,8 @@ import {
 } from './record.js';
 import { GENESIS } from './event.js';
 import { InMemoryAuditLog, type AuditLog } from '../store/audit-log.js';
+import { InMemoryAuditGapLog, PostgresAuditGapLog, type AuditGapLog } from '../store/audit-gaps.js';
+import { FakePostgres } from '../store/postgres-fake.js';
 import { NotPermittedError } from '../authorize/group.js';
 
 const WHO = { actor: 'priya@example.com', executionMode: 'on-behalf-of-user' } as const;
@@ -227,6 +229,198 @@ describe('when the log cannot be written to', () => {
 
   it('starts at nothing lost, so the count means what it says', () => {
     expect(recorder(broken).unrecorded).toBe(0);
+  });
+});
+
+/*
+ * A lost event leaves a mark that outlives the process.
+ *
+ * The count is per process and resets on a deploy, so on its own it would be the only evidence of a
+ * gap and it would disappear with the next restart. The marker goes to its own table, so these tests
+ * are about what is still there after the recorder that lost the event is gone, and about what a
+ * second recorder over the same database can see of it.
+ */
+describe('when an event cannot be written and the marker can', () => {
+  const broken: AuditLog = {
+    durable: true,
+    append: () => Promise.reject(new Error('the database is unreachable')),
+    head: () => Promise.reject(new Error('the database is unreachable')),
+    floor: () => Promise.resolve(undefined),
+    search: () => Promise.reject(new Error('the database is unreachable')),
+    verify: () => Promise.reject(new Error('the database is unreachable')),
+  };
+
+  function withGaps(gaps: AuditGapLog, onError?: (operation: string, error: unknown) => void) {
+    let minted = 0;
+    return new AuditRecorder(broken, {
+      gaps,
+      now: () => new Date('2026-08-04T09:00:00.000Z'),
+      newId: () => {
+        minted += 1;
+        return `event-${String(minted)}`;
+      },
+      ...(onError != null ? { onError } : {}),
+    });
+  }
+
+  it('leaves a marker naming the act, who did it, what it was on and the class of failure', async () => {
+    const gaps = new InMemoryAuditGapLog();
+
+    await withGaps(gaps).begin('attestation.record', WHO).performed({ kind: 'control', id: 'OE-02-04' });
+
+    expect((await gaps.unacknowledged()).gaps).toEqual([
+      {
+        id: 'event-1',
+        at: new Date('2026-08-04T09:00:00.000Z'),
+        actor: 'priya@example.com',
+        action: 'attestation.record',
+        outcome: 'performed',
+        target: { kind: 'control', id: 'OE-02-04' },
+        // The class and never the message, which for a driver error carries an address.
+        cause: 'Error',
+      },
+    ]);
+  });
+
+  it('marks a refusal it could not write as well, because those are the events the trail is for', async () => {
+    const gaps = new InMemoryAuditGapLog();
+
+    await withGaps(gaps).refused('decision.record', WHO, 'not-a-member');
+
+    expect((await gaps.unacknowledged()).gaps).toMatchObject([{ action: 'decision.record', outcome: 'refused' }]);
+  });
+
+  it('still counts the loss in memory, and still does not fail the act', async () => {
+    const made = withGaps(new InMemoryAuditGapLog());
+
+    await expect(made.begin('scan.start', WHO).performed()).resolves.toBeUndefined();
+
+    expect(made.unrecorded).toBe(1);
+  });
+
+  it('carries nothing from the failure into the marker but its class', async () => {
+    const gaps = new InMemoryAuditGapLog();
+    const failing: AuditLog = {
+      ...broken,
+      // What a driver puts in a message, without being written as a connection string: the
+      // repository's secret scanner reads a fixture the way it reads a mistake, and it is right to.
+      append: () => Promise.reject(new Error('rejected the write from CONFIDENTIAL@db.internal')),
+    };
+
+    await new AuditRecorder(failing, { gaps }).begin('scan.start', WHO).performed();
+
+    expect(JSON.stringify(await gaps.unacknowledged())).not.toContain('CONFIDENTIAL');
+  });
+
+  it('leaves no marker for an event that was written', async () => {
+    const gaps = new InMemoryAuditGapLog();
+
+    await new AuditRecorder(new InMemoryAuditLog(), { gaps }).begin('scan.start', WHO).performed();
+
+    expect((await gaps.unacknowledged()).gaps).toEqual([]);
+  });
+
+  it('leaves no marker for an acknowledgement it could not write, though it still counts the loss', async () => {
+    const gaps = new InMemoryAuditGapLog();
+    const said: string[] = [];
+    const made = withGaps(gaps, (operation) => said.push(operation));
+
+    await made.begin('gap.acknowledge', WHO).performed({ kind: 'audit-gap', id: 'event-0' });
+
+    // A marker for it would be a new unacknowledged gap, created by dealing with the last one.
+    expect((await gaps.unacknowledged()).gaps).toEqual([]);
+    expect(made.unrecorded).toBe(1);
+    expect(said).toEqual(['record that priya@example.com performed gap.acknowledge']);
+  });
+
+  it('writes no event for an act that found nothing to change, and still refuses a second close', async () => {
+    const log = new InMemoryAuditLog();
+    const made = new AuditRecorder(log);
+    const act = made.begin('gap.acknowledge', WHO);
+
+    act.unchanged();
+    await act.settle(200);
+    await act.performed();
+
+    expect((await log.search()).events).toEqual([]);
+  });
+
+  it('survives a restart: a new recorder over the same database still reports the gap', async () => {
+    const database = new FakePostgres({
+      unique: { audit_gaps: [{ columns: ['gap_id'], name: 'audit_gaps_one_acknowledgement' }] },
+    });
+    await withGaps(new PostgresAuditGapLog(database)).begin('attestation.record', WHO).performed();
+
+    // The process that lost the event is gone, and so is its count.
+    const restarted = withGaps(new PostgresAuditGapLog(database));
+
+    expect(restarted.unrecorded).toBe(0);
+    expect((await restarted.gaps?.unacknowledged())?.gaps).toMatchObject([
+      { action: 'attestation.record', actor: 'priya@example.com' },
+    ]);
+  });
+
+  it('is reported by another instance over the same database, whichever one lost the event', async () => {
+    const database = new FakePostgres({
+      unique: { audit_gaps: [{ columns: ['gap_id'], name: 'audit_gaps_one_acknowledgement' }] },
+    });
+    const first = withGaps(new PostgresAuditGapLog(database));
+    const second = withGaps(new PostgresAuditGapLog(database));
+
+    await first.begin('scan.start', WHO).performed();
+
+    // Counted by the one that lost it, and visible to both.
+    expect(first.unrecorded).toBe(1);
+    expect(second.unrecorded).toBe(0);
+    expect((await second.gaps?.unacknowledged())?.gaps).toHaveLength(1);
+  });
+
+  it('falls back to the count and the console when the marker cannot be written either', async () => {
+    const said: string[] = [];
+    const failing: AuditGapLog = {
+      durable: true,
+      record: () => Promise.reject(new Error('the database is unreachable')),
+      unacknowledged: () => Promise.reject(new Error('the database is unreachable')),
+      acknowledge: () => Promise.reject(new Error('the database is unreachable')),
+    };
+    const made = withGaps(failing, (operation) => said.push(operation));
+
+    await expect(made.begin('scan.start', WHO).performed()).resolves.toBeUndefined();
+
+    // The same as an install with no gap log at all: the count is what there is, and the operator is
+    // told twice — once for the event, once for the marker that would have outlived it.
+    expect(made.unrecorded).toBe(1);
+    expect(said).toEqual([
+      'record that priya@example.com performed scan.start',
+      'leave a marker for the scan.start that could not be recorded',
+    ]);
+  });
+
+  it('writes the marker through its own store after the append has failed, not as a retry on the log', async () => {
+    // The two stores take the same pool, and a pool hands out a connection per statement, so the
+    // marker is not written on a connection the failed append may have left in a bad state. What a
+    // unit test can hold is that it is its own write, made once, after the append gave up.
+    const attempts: string[] = [];
+    const log: AuditLog = {
+      ...broken,
+      append: () => {
+        attempts.push('append');
+        return Promise.reject(new Error('the database is unreachable'));
+      },
+    };
+    const gaps: AuditGapLog = {
+      durable: true,
+      record: () => {
+        attempts.push('marker');
+        return Promise.resolve();
+      },
+      unacknowledged: () => Promise.resolve({ gaps: [], truncated: false }),
+      acknowledge: () => Promise.resolve(undefined),
+    };
+
+    await new AuditRecorder(log, { gaps }).begin('scan.start', WHO).performed();
+
+    expect(attempts).toEqual(['append', 'marker']);
   });
 });
 

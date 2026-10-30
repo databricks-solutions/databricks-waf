@@ -11,7 +11,7 @@
 import { describe, expect, it } from 'vitest';
 import { FakePostgres } from '../store/postgres-fake.js';
 import { envelopeFrom, type Envelope } from './envelope.js';
-import { envelope } from './envelope-fixture.js';
+import { envelope, identity, probe } from './envelope-fixture.js';
 import {
   InMemoryEvidenceImportStore,
   PostgresEvidenceImportStore,
@@ -122,6 +122,32 @@ describe.each(implementations)('an import store %s', (_name, build) => {
     expect(held[0]?.cautions.map((one) => one.reason)).toStrictEqual(['tier-not-run']);
   });
 
+  it('says which workspace the workspace half was collected from', async () => {
+    const store = build();
+    await store.record(imported());
+
+    const [held] = await store.all();
+    expect(held?.workspaceId).toBe('7000000000000001');
+  });
+
+  it('has no workspace for a file whose workspace tier did not run', async () => {
+    const store = build();
+    const accountOnly = sealed({
+      tiers: {
+        workspace: { ran: false, reason: 'Not run.' },
+        account: {
+          ran: true,
+          identity: identity({ username: null, workspace_id: null, host: 'https://accounts.cloud.databricks.com' }),
+        },
+      },
+      probes: [probe({ signals: ['rest:account:network-policies'], tier: 'account' })],
+    });
+    await store.record(imported({ digest: accountOnly.digest, envelope: accountOnly }));
+
+    const [held] = await store.all();
+    expect(held?.workspaceId).toBeUndefined();
+  });
+
   it('shows the collection time the file states, not the one the column round-trips', async () => {
     // The envelope holds `generatedAt` as text because that is what the digest covers. Reading it
     // back off `generated_at` would show a normalised string that no longer matches the file, which
@@ -223,6 +249,35 @@ describe('an import store on Postgres', () => {
     expect(held).toHaveLength(1);
     expect(held[0]?.summary.observed).toBe(1);
     expect(problems).toStrictEqual(['summarise an import written before the summary column']);
+  });
+
+  it('writes the workspace into its own column, so a reading can be found by it', async () => {
+    const db = fake();
+    await new PostgresEvidenceImportStore({ db }).record(imported());
+
+    expect(db.rows('imported_evidence')[0]?.workspace_id).toBe('7000000000000001');
+  });
+
+  it('gives a row written before the column existed the workspace its body names', async () => {
+    // The rows an upgrade inherits have a null `workspace_id` and a body that still says where the
+    // reading came from, so the answer is read out of the body rather than left unknown.
+    const db = fake();
+    const store = new PostgresEvidenceImportStore({ db });
+    await store.record(imported());
+    for (const row of db.rows('imported_evidence')) Object.assign(row, { workspace_id: null });
+
+    const [held] = await store.all();
+    expect(held?.workspaceId).toBe('7000000000000001');
+  });
+
+  it('prefers the column to the body when both are there', async () => {
+    const db = fake();
+    const store = new PostgresEvidenceImportStore({ db });
+    await store.record(imported());
+    for (const row of db.rows('imported_evidence')) Object.assign(row, { workspace_id: '7000000000000002' });
+
+    const [held] = await store.all();
+    expect(held?.workspaceId).toBe('7000000000000002');
   });
 
   it('degrades a failed summary read to nothing held, and says so through onError', async () => {

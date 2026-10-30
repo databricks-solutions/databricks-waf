@@ -11,7 +11,7 @@ import type { Catalogue } from '../catalogue/catalogue.js';
 import { digestOf, hexOf } from '../records/digest.js';
 import { confidenceOf } from '../resolve/confidence.js';
 import type { Finding } from '../resolve/finding.js';
-import { factFromAttestation, findingFromAttestation, type ResolverRegistry } from '../resolve/resolver.js';
+import { findingFromAttestation, withAnswer, withoutAnswer, type ResolverRegistry } from '../resolve/resolver.js';
 import { scoreFindings, type Score } from '../score/score.js';
 import { aliasLookup, type Scan } from '../scan/scan.js';
 import {
@@ -41,6 +41,20 @@ export class FinalAssessmentProjectionError extends Error {
   constructor(message: string) {
     super(message);
     this.name = 'FinalAssessmentProjectionError';
+  }
+}
+
+/**
+ * A cited answer stopped counting between its pillar's confirm and the last selected pillar being
+ * recorded. The confirm that froze it is written once, so nothing in this review can put it right:
+ * the answer has to be renewed and the review started again from a new scan.
+ */
+export class CitedAnswerLapsedError extends FinalAssessmentProjectionError {
+  constructor(attestationId: string) {
+    super(
+      `Attestation ${attestationId} expired before every selected pillar was recorded, so this review can no longer be completed.`
+    );
+    this.name = 'CitedAnswerLapsedError';
   }
 }
 
@@ -125,9 +139,7 @@ export function finalAssessmentProjector(options: {
         );
       }
       if (!counts(attestation, result.finalisedAt)) {
-        throw new FinalAssessmentProjectionError(
-          `Attestation ${id} expired before the review completed, so that pillar must be reviewed again.`
-        );
+        throw new CitedAnswerLapsedError(id);
       }
       if (selectedByControl.has(attestation.controlId)) {
         throw new FinalAssessmentProjectionError(
@@ -156,11 +168,13 @@ export function finalAssessmentProjector(options: {
         }
 
         // A measured result stays measured: an answer may be recorded beside it and may never
-        // overturn it. Human-answerable or previously attested outcomes are re-resolved from the
-        // stored signal statuses and the exact selected answer, with no collector in the path.
+        // overturn it. The one thing it may do is lift a cap the resolver marked, and that is decided
+        // here from the answer the review cited rather than from the one the run saw, so a lift whose
+        // answer was not cited is taken back. Human-answerable or previously attested outcomes are
+        // re-resolved from the stored signal statuses and the exact selected answer, with no collector
+        // in the path.
         if (finding.outcome !== 'unmeasurable' && finding.attested?.bearing !== 'outcome') {
-          const { attested: _was, ...automated } = finding;
-          return selected == null ? automated : { ...automated, attested: factFromAttestation(selected, 'record') };
+          return selected == null ? withoutAnswer(finding) : withAnswer(finding, selected, result.finalisedAt);
         }
 
         // An unmeasurable automated finding is the immutable run's answer. When the review selects

@@ -3140,7 +3140,7 @@ entries:
       another API scope — often model serving — still allows all public addresses.
     references:
       - https://docs.databricks.com/aws/en/security/network/front-end/context-based-ingress
-      - https://docs.databricks.com/aws/en/security/network/front-end/manage-ingress-policies
+      - https://docs.databricks.com/aws/en/security/network/front-end/manage-ingress-workspace
     advice:
       start_from: >-
         A named network policy with public ingress restricted, assigned to the
@@ -5211,21 +5211,24 @@ entries:
         being rebuilt. Failing those, when you next create a workspace.
 
   # Jobs run as service principal
-  # rest-api: run_as_user_name matching an email pattern. Do not say "this is a person".
+  # system-table: run_as_user_name classified as email (user), UUID (service principal) or unknown.
+  # Do not say "this is a person".
   SCP-04-22:
     status: authored
     last_reviewed: '2026-08-18'
     owner_role: Platform administrator, with the job owners
     means: >-
       Production jobs run as a service principal. The collector reads run_as_user_name
-      and, when present, settings.run_as.user_name / service_principal_name. The criterion
-      flags a run_as_user_name that matches an email pattern.
+      from system.lakeflow.jobs (the run_as column holds only an ID and cannot tell a user
+      from a service principal). The criterion classifies the name: an email is a user, a
+      UUID is a service principal, and anything else, including a group name or no recorded
+      name, is unknown and left out of the share.
     matters: >-
       A job whose run_as_user_name looks like an email inherits everything that mailbox
-      can reach, and it stops when that mailbox is disabled. The pattern is a heuristic,
-      not a directory lookup.
+      can reach, and it stops when that mailbox is disabled. The classification reads the
+      shape of the name, not a directory lookup.
     good:
-      - Production jobs show settings.run_as.service_principal_name, or a run_as_user_name that is not email-shaped.
+      - Production jobs show settings.run_as.service_principal_name, or a run_as_user_name that is a UUID.
       - The service principal holds only the grants the job needs, not the owner's leftover access.
       - Job owners are still people; run-as is not.
       - Interactive and personal jobs can stay email-shaped if they are not the production set.
@@ -5248,20 +5251,26 @@ entries:
               partition by workspace_id, job_id order by change_time desc) = 1
           )
           select
-            case when run_as ilike '%@%' then 'email-shaped' else 'not email-shaped' end as name_shape,
+            case
+              when run_as_user_name rlike '^[^@ ]+@[^@ ]+$' then 'user (email)'
+              when run_as_user_name rlike '(?i)^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+                then 'service principal (UUID)'
+              else 'unknown'
+            end as identity_kind,
             count(*) as jobs
           from current_jobs
           where delete_time is null
           group by all
           order by jobs desc
         expect: >-
-          Production scheduled jobs in the not-email-shaped bucket. Email-shaped is the
-          criterion's heuristic, not a proof the identity is a person
+          Production scheduled jobs in the service principal (UUID) bucket. The user (email)
+          bucket is the criterion's classification by name shape, not a proof the identity
+          is a person
         caveat: >-
-          run_as can be a user email, a group, or a service-principal application id.
-          The REST criterion flags the email pattern only. A UUID is not classified as
-          a service principal by this query — it is only "not email-shaped". The qualify
-          is required: this table keeps a row per edit.
+          run_as holds an ID for users and service principals alike, so this reads
+          run_as_user_name: an email, a service principal's application ID, or a group name.
+          Unknown holds group names, other shapes, and rows before early December 2025 where
+          the name is not populated. The qualify is required: this table keeps a row per edit.
       - how: cli
         where: databricks jobs list --expand-tasks false
         expect: >-
@@ -5269,7 +5278,7 @@ entries:
           run_as_user_name that does not match an email
         caveat: >-
           The listing may be truncated. A missing settings.run_as object with an
-          email-shaped run_as_user_name is still the email pattern. Do not say the
+          email-shaped run_as_user_name is still classified as a user. Do not say the
           identity is a person — say the name matches the pattern.
       - how: ui
         where: Workflows > a production job > the Run as field
@@ -5279,8 +5288,8 @@ entries:
         Changing run-as to a service principal that was granted the owner's role. The
         job still reaches everything the person could.
       - >-
-        Reading a not-email-shaped run_as as a service principal. It may be a group or
-        an application id; the field is the name.
+        Reading a not-email-shaped run_as_user_name as a service principal. Only a UUID
+        is classified as one; a group name or any other value is unknown.
       - >-
         Fixing the listing's first page and leaving the truncated remainder on emails.
     partial_when: >-
@@ -5305,7 +5314,7 @@ entries:
           exception, with a named owner, until it can take a principal.
       path:
         - >-
-          List jobs and keep those whose run_as_user_name matches *@*. Start with the
+          List jobs and keep those whose run_as_user_name is an email. Start with the
           scheduled ones.
         - >-
           Stand up the principal and its grants, set run-as, run once by hand.

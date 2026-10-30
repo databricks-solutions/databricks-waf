@@ -23,6 +23,7 @@ import type { Catalogue, CatalogueControl } from '../catalogue/catalogue.js';
 import type { Coverage } from '../collect/signal.js';
 import type { Provenance } from '../collect/provenance.js';
 import { classOf } from '../resolve/evidence-class.js';
+import { withheldOf } from '../share/projection.js';
 import type { Evidence, Finding } from '../resolve/finding.js';
 import { describeItem } from '../resolve/finding.js';
 import type { Axis } from '../scan/identity.js';
@@ -427,18 +428,27 @@ const CELL: Readonly<Record<ExportColumn, (row: Row) => string>> = {
   applicability_id: (row) => row.applied?.decisionId ?? '',
   applicability_owner: (row) => row.applied?.owner ?? '',
   applicability_reason: (row) => row.applied?.reason ?? '',
-  read_as: (row) => attributionCell(row.first?.provenance),
+  // A withheld imported reading has no attribution left to print, and a blank here reads as "same as the
+  // others". The placeholder's sentence stands in, so the cell says what is missing and who can see it.
+  read_as: (row) => {
+    const withheld = row.first == null ? undefined : withheldOf(row.first);
+    return withheld != null && row.first?.provenance == null ? withheld.reason : attributionCell(row.first?.provenance);
+  },
   collected_at: (row) => row.first?.collectedAt.toISOString() ?? '',
   documentation: (row) => row.control?.remediation?.docUrl ?? row.control?.sourceRef ?? '',
   // The pages that fix it, one URL per named resource. This is the column that makes a row handed
   // to an owner actionable without them going looking: it is why the export is worth sending.
   // Empty for a requirement with nothing addressable behind it, or where the workspace directory
   // could not be read.
-  where: (row) =>
-    row.finding.evidence
+  where: (row) => {
+    const links = row.finding.evidence
       .flatMap((one) => one.at?.items ?? [])
-      .flatMap((item) => (item.url != null ? [`${describeItem(item)}: ${item.url}`] : []))
-      .join(' '),
+      .flatMap((item) => (item.url != null ? [`${describeItem(item)}: ${item.url}`] : []));
+    // Where evidence was withheld its resources went with it, so the cell says so once rather than
+    // reading as a finding with nowhere to go.
+    const withheld = row.finding.evidence.map(withheldOf).find((one) => one != null);
+    return (withheld == null ? links : [...links, withheld.reason]).join(' ');
+  },
 };
 
 /**
@@ -662,6 +672,10 @@ export function assessmentDocument(options: ExportOptions): Record<string, unkno
                 evidenceClass: one.evidenceClass ?? 'observed',
                 coverage: one.coverage,
                 collectedAt: one.collectedAt.toISOString(),
+                // Present only on the copy a reader outside the assessor group is sent, so an assessor's
+                // file, and its digest, carry nothing new. `observed` above is then the placeholder's
+                // sentence, and this says what kind of field was withheld and who can see it.
+                ...(withheldOf(one) != null ? { withheld: withheldOf(one) } : {}),
                 // Who took the reading and from where, for the two files whose reader is establishing
                 // whether it can be relied on. Somebody working through a queue of fixes is not, and a
                 // `readBy` on every reading in a file of two hundred is two hundred lines they scroll.

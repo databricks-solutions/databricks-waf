@@ -405,11 +405,16 @@ export const ENRICHMENT = {
     severity: 'critical',
     alias_group: 'unity-catalog-governed',
     criteria:
-      'The tables, catalogs and schemas this Unity Catalog metastore holds. The census cannot see a ' +
-      'legacy metastore, so the finding is a count of what is governed and not a share of an estate — a ' +
-      'pass says how many, and does not claim that it is everything.',
+      'How this Unity Catalog metastore is organised, scored on the census. Every table in one catalog fails: ' +
+      'there is no boundary to grant, own or separate environments along. More than one catalog with a single ' +
+      'owner across the estate is partial, because governance is one administrator rather than distributed. ' +
+      'More than one catalog and more than one owner passes. Description coverage is not scored here; DG-01-05 ' +
+      'scores it. The census cannot see a legacy metastore, so a pass says how what is governed is organised ' +
+      'and does not claim that it is everything.',
     remediation: {
-      summary: 'Migrate remaining Hive metastore tables to Unity Catalog.',
+      summary:
+        'Divide the estate into catalogs along a deliberate boundary and give each catalog, and the schemas in ' +
+        'it, its own owner. Migrate any remaining Hive metastore tables to Unity Catalog.',
       // DRY RUN first, always. SYNC reports per table what it would do and why it would refuse —
       // an unsupported format, a location already claimed — and running it blind on a schema of a
       // few hundred tables produces a wall of errors with no order to work through them in.
@@ -429,8 +434,13 @@ export const ENRICHMENT = {
     severity: 'critical',
     alias_group: 'unity-catalog-governed',
     criteria:
-      'Same measurement as DG-01-02, read as the single-place-for-metadata requirement. Scored once through ' +
-      'the alias group. The count is of what this metastore holds, not of whether anything sits beside it.',
+      'Data and AI assets in one place. The first half is DG-01-02: how the estate is organised across ' +
+      'catalogs and owners. The second is the share of served custom models registered in Unity Catalog ' +
+      'rather than the workspace model registry, read from the serving inventory: pass at 80% or more, ' +
+      'partial at 40% or more, otherwise fail, and not applicable when no custom model is served. A missing ' +
+      'serving inventory leaves the first half standing. The worse half decides, and the alias group scores ' +
+      'the worse of this and DG-01-02.',
+    thresholds: bands(0.8, 0.4),
   },
   'DG-01-04': {
     measurability: 'system-table',
@@ -1088,9 +1098,9 @@ export const ENRICHMENT = {
     collector: 'sql:uc.census',
     severity: 'medium',
     criteria:
-      'Assets are spread across more than one catalog rather than piled into a single one. Caps at partial: ' +
-      'the metastore shows that a boundary exists but not whether it is the environment, domain or team ' +
-      'boundary you intended.',
+      'Assets are spread across more than one catalog rather than piled into a single one. One catalog fails. ' +
+      'More than one is partial, which is a cap: the metastore shows that a boundary exists but not whether it ' +
+      'is the environment, domain or team boundary you intended, so a current "met" answer lifts it to a pass.',
     remediation: {
       summary: 'Choose a catalog boundary — environment, domain or team — and organise catalogs along it.',
       sql:
@@ -1117,8 +1127,8 @@ export const ENRICHMENT = {
     alias_group: 'infrastructure-as-code',
     criteria:
       'Same measurement as OE-02-01, read as the source-control requirement. Scored once. Caps at partial ' +
-      'for the same reason: a Terraform-managed estate carries no marker and cannot be told from a ' +
-      'hand-built one, so the absence of bundles asks rather than fails.',
+      'for the same reason, and a current "met" answer lifts it to a pass: a Terraform-managed estate carries ' +
+      'no marker and cannot be told from a hand-built one, so the absence of bundles asks rather than fails.',
   },
   'OE-02-01': {
     measurability: 'system-table',
@@ -1128,7 +1138,8 @@ export const ENRICHMENT = {
     criteria:
       'Jobs carry a bundle deployment marker. Caps at partial and never fails: the Terraform provider ' +
       'writes jobs through the same API a person uses and leaves no marker, so an unmarked estate is ' +
-      'either Terraform-managed or hand-built and this signal cannot tell them apart.',
+      'either Terraform-managed or hand-built and this signal cannot tell them apart. A current "met" answer ' +
+      'lifts the partial to a pass, and settles an estate with no marker at all.',
     remediation: {
       summary: 'Define jobs and pipelines in a Databricks Asset Bundle and deploy them from CI.',
       // `generate` rather than `init` for an estate that already has jobs: it writes the YAML for
@@ -1305,6 +1316,69 @@ export const ENRICHMENT = {
       'External monitoring built on the audit logs is invisible here, which is what the attestation asks about.',
     thresholds: bands(0.8, 0.3),
   },
+  // Converted from attestation: system.query.history records waiting_at_capacity_duration_ms per
+  // statement, so capacity limits actually biting are measurable after the fact. More than 1% of
+  // statements waiting fails. Zero waiting caps at partial, because whether monitoring is proactive —
+  // watching headroom before a limit bites — is an account-plane question with no workspace source, and
+  // a current "met" answer supplies it. The band is over the share that did not wait.
+  'OE-03-01': {
+    measurability: 'system-table',
+    collector: 'sql:query.capacity',
+    severity: 'medium',
+    criteria:
+      'Statements with waiting_at_capacity_duration_ms > 0 prove a service limit was reached. ' +
+      'More than 1% of statements waiting → fail (limits are biting at a scale an answer does not explain away). ' +
+      'Some waiting, up to 1% → partial, a measured shortfall. ' +
+      'None waiting → partial as a cap: no events detected, but proactive monitoring is beyond telemetry, so a ' +
+      'current "met" answer lifts it to a pass. ' +
+      'No queries at all → not-applicable. The band is read over the share of statements that did not wait.',
+    thresholds: bands(1, 0.99),
+    remediation: {
+      summary:
+        'Review your account service limits and quotas in the admin console. If statements are regularly ' +
+        'waiting at capacity, raise a support ticket to increase the relevant quota, or reduce peak ' +
+        'concurrency by staggering scheduled jobs.',
+      cli:
+        '# Query capacity events from the last 30 days\n' +
+        'databricks statement-execution execute --warehouse-id <id> \\\n' +
+        '  --statement "SELECT workspace_id, COUNT(*) as events, SUM(waiting_at_capacity_duration_ms) ' +
+        'as total_wait_ms FROM system.query.history WHERE start_time >= current_timestamp() - ' +
+        'make_dt_interval(30) AND waiting_at_capacity_duration_ms > 0 GROUP BY 1 ORDER BY 2 DESC"',
+      doc_url: 'https://docs.databricks.com/aws/en/admin/account-settings/service-quotas.html',
+      caveat:
+        'Account-level quota headroom is visible in the account console under Settings → Quotas, not in ' +
+        'a workspace system table. Set up a Databricks alert on waiting_at_capacity_duration_ms from ' +
+        'system.query.history if sustained capacity pressure is observed.',
+    },
+  },
+  // Converted from attestation: custom models on managed serving endpoints and job-sourced MLflow runs
+  // together evidence that MLOps tooling is in use. Caps at partial — the presence of the right platform
+  // features does not prove the process is documented or enforced. Empty on both signals → unmeasurable,
+  // following the same asymmetry as PE-02-02.
+  'OE-01-04': {
+    measurability: 'system-table',
+    collector: 'sql:serving.model_entities',
+    severity: 'medium',
+    criteria:
+      'Custom models on managed serving endpoints and job-sourced MLflow runs together evidence that ' +
+      'MLOps tooling is in use. Caps at partial, and a current "met" answer lifts it to a pass: the presence ' +
+      'of the right platform features does not prove the process is documented, gated or reproducible. ' +
+      'Empty on both signals → unmeasurable, ' +
+      'following the same asymmetry as PE-02-02: a workspace serving models from its own service or ' +
+      'training on a separate platform leaves nothing here to read.',
+    remediation: {
+      summary:
+        'Define the end-to-end path a model takes from experiment to production: training run tracked in ' +
+        'MLflow, model registered in Unity Catalog with a version, served through a managed endpoint ' +
+        'pinned to that version.',
+      sql:
+        '-- Register the model from a tracked run\n' +
+        'CREATE MODEL IF NOT EXISTS prod.models.fraud_scoring;\n' +
+        '-- Tag the experiment for auditability\n' +
+        "ALTER EXPERIMENT 'fraud/experiments/v3' SET TAGS ('team' = 'data-science', 'env' = 'prod');",
+      doc_url: 'https://docs.databricks.com/aws/en/machine-learning/manage-model-lifecycle/',
+    },
+  },
   // Also a question until ADR 0071. "Is job duration tracked over time, so a job that has doubled is
   // visible" is what a `RUN_DURATION_SECONDS` health rule is for, and the group already counts them —
   // so this was asking a person to confirm a column the scan had already read. It joins rather than
@@ -1469,8 +1543,10 @@ export const ENRICHMENT = {
     severity: 'medium',
     alias_group: 'data-products',
     criteria:
-      'Published assets carry tags, so a consumer can tell a product from a working table. Caps at partial: ' +
-      'whether the business trusts them is not something the metastore records.',
+      'Published assets carry tags, so a consumer can tell a product from a working table. Tagged tables cap at ' +
+      'partial, and a current "met" answer lifts that to a pass: whether the business trusts them is not ' +
+      'something the metastore records. No tags is a measured shortfall an answer does not lift: partial where ' +
+      'at least 80% of tables are described, fail below that.',
     remediation: {
       summary: 'Tag published tables with their status and owner so consumers can tell what to build on.',
       sql:
@@ -1564,4 +1640,30 @@ export const IMPLEMENTED_DELEGATED = [
   'SCP-03-07',
   // Vector search, the second and last grantable control-plane scope in this pillar.
   'SCP-02-09',
+  // System-table re-targets (Task B): these carried their own criteria and remediation from the
+  // security guide; only the evaluator_status flip is managed here. Measurability and collector
+  // are updated directly in the YAML because the enrichment table would otherwise overwrite the
+  // delegated criteria with a paraphrase of the same text.
+  'SCP-04-05',
+  'SCP-04-22',
+  // Admin-evidence controls (Task C): registered resolvers read imported admin signals.
+  // All carry their criteria, severity and collector from the security guide; only the
+  // evaluator_status flip is managed here. Remediation by_hand is written directly in the
+  // YAML because the enrichment table would replace the delegated remediation fields.
+  'SCP-01-06',
+  'SCP-02-01',
+  'SCP-02-02',
+  'SCP-02-10',
+  'SCP-02-11',
+  'SCP-03-05',
+  'SCP-03-08',
+  'SCP-03-12',
+  'SCP-04-02',
+  'SCP-04-03',
+  'SCP-04-19',
+  'SCP-04-20',
+  'SCP-04-21',
+  'SCP-05-11',
+  'SCP-05-13',
+  'SCP-05-14',
 ];

@@ -9,7 +9,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { MemoryRouter } from 'react-router';
 import type { MonthContent, MonthPreview, PublishedMonth } from '../api/types';
 import { MonthFigures, PublishedHeader, PublishAction } from './MonthView';
-import { viewedPublicationId } from './MonthsPage';
+import { MonthDetail, viewedPublicationId } from './MonthsPage';
 import { PREVIEW_NOTE } from './month-language';
 
 const DIGEST = 'sha256:0f4a1e2b3c4d5e6f70819293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7';
@@ -243,6 +243,49 @@ describe('published', () => {
   });
 });
 
+describe('a published month on the page', () => {
+  it('shows the closing reading and the movement note the frozen document carries', () => {
+    const closing = {
+      kind: 'latest-scan' as const,
+      statement: 'No scheduled run finished in July 2026, so the month closes on its latest scan.',
+    };
+    const movementNote = 'Movement is not shown: no earlier scan can be compared with the run that closed the month.';
+    const markup = renderToStaticMarkup(
+      <MemoryRouter>
+        <MonthDetail
+          month="2026-07"
+          label="July 2026"
+          preview={preview()}
+          publications={[publication()]}
+          standingIds={['pub-1']}
+          selected={publication()}
+          document={{
+            documentKind: 'databricks-waf-month',
+            documentVersion: 1,
+            publication: {
+              id: 'pub-1',
+              month: '2026-07',
+              monthLabel: 'July 2026',
+              publishedAt: '2026-09-01T09:00:00.000Z',
+              publishedBy: 'priya@example.com',
+            },
+            ...content(),
+            movement: [],
+            findingDeltas: [],
+            closing,
+            movementNote,
+          }}
+          onSelectPublication={() => undefined}
+          onChanged={() => undefined}
+        />
+      </MemoryRouter>
+    );
+
+    expect(markup).toContain(closing.statement);
+    expect(markup).toContain(movementNote);
+  });
+});
+
 describe('which copy the page shows', () => {
   it('keeps a requested id that is still in the month, even after a later copy exists', () => {
     const publications = [{ id: 'pub-1' }, { id: 'pub-2' }];
@@ -279,5 +322,54 @@ describe('figures', () => {
 
     expect(markup).toContain('<h2 class="wa-label-eyebrow text-wa-text">Run health</h2>');
     expect(markup).not.toMatch(/<h[3456]/);
+  });
+});
+
+describe('a month whose movement was not published', () => {
+  const NOTE =
+    'Movement and finding changes are not shown: no earlier scan can be compared with the run that closed the month. These scans ran as different identities (ana@example.com and sp-schedule), whose visible estates may differ.';
+  const CLOSING = {
+    kind: 'latest-scan' as const,
+    statement:
+      'No scheduled run finished in July 2026, so the month closes on its latest scan, which was started by hand.',
+  };
+
+  it('says why the movement is empty, in the document’s words, rather than that nothing moved', () => {
+    const markup = renderToStaticMarkup(
+      <MonthFigures content={content({ movement: [], findingDeltas: [], movementNote: NOTE })} />
+    );
+
+    expect(markup.split(NOTE.replace(/'/g, '&#x27;')).length - 1).toBe(2);
+    expect(markup).not.toContain('so nothing moved');
+    expect(markup).not.toContain('No finding changed between the opening and closing readings');
+  });
+
+  it('says which reading closed the month', () => {
+    const markup = renderToStaticMarkup(<MonthFigures content={content({ closing: CLOSING })} />);
+
+    expect(markup).toContain(CLOSING.statement);
+  });
+
+  it('shows a scheduled close the same way', () => {
+    const statement = 'The month closes on its latest scheduled run, the system of record.';
+    const markup = renderToStaticMarkup(
+      <MonthFigures content={content({ closing: { kind: 'scheduled', statement } })} />
+    );
+
+    expect(markup).toContain(statement);
+  });
+
+  it('keeps the earlier wording for a stored month that carries neither field', () => {
+    const markup = renderToStaticMarkup(<MonthFigures content={content({ movement: [], findingDeltas: [] })} />);
+
+    expect(markup).toContain('so nothing moved');
+    expect(markup).toContain('No finding changed between the opening and closing readings');
+  });
+
+  it('draws a measured movement as a table and shows no note', () => {
+    const markup = renderToStaticMarkup(<MonthFigures content={content()} />);
+
+    expect(markup).toContain('Opened at');
+    expect(markup).not.toContain('are not shown');
   });
 });

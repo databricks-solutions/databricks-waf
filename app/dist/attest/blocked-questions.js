@@ -277,11 +277,6 @@ const BLOCKED_QUESTIONS = {
 		evidence: "Catalog → the metastore's permissions, CREATE SHARE and CREATE RECIPIENT. Together these two allow data to be sent outside the account without any other approval.",
 		cadenceDays: QUARTERLY
 	},
-	"SCP-04-22": {
-		question: "Do production jobs run as a service principal rather than as a named person?",
-		evidence: "Workflows, the \"run as\" identity on your production jobs. A job running as a person fails when they change team, and grants the job everything that person can reach.",
-		cadenceDays: QUARTERLY
-	},
 	"SCP-04-23": {
 		question: "Is CAN MANAGE on production jobs held only by admins and the job owner?",
 		evidence: "The permissions on a sample of production jobs. CAN MANAGE allows editing the task, so it is the authority to change what runs, not just to run it.",
@@ -290,11 +285,6 @@ const BLOCKED_QUESTIONS = {
 	"SCP-05-03": {
 		question: "Is the workspace admin group small enough that you can name everyone in it?",
 		evidence: "Settings → Identity and access → Groups → admins, and its membership. Report the count and whether each member still needs it.",
-		cadenceDays: QUARTERLY
-	},
-	"SCP-04-05": {
-		question: "Is data still being written to the DBFS root under /user/hive/warehouse?",
-		evidence: "The DBFS root, /user/hive/warehouse. Tables there have no catalogue permissions and sit in a bucket every workspace user can read, which is what Unity Catalog managed storage replaces.",
 		cadenceDays: QUARTERLY
 	}
 };

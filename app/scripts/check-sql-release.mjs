@@ -293,7 +293,13 @@ const AUDIT_FINDINGS = [
     id: 'lakebase-access-paths',
     phase: 'Q1g',
     what: 'Lakebase reads project and paginate in SQL rather than reducing full histories in TypeScript',
-    test: null,
+    test: 'server/store/latest-revision-reads.test.ts',
+    case: [
+      'reads accepted risks at their newest revision in SQL, and answers as the in-memory store does',
+      'reads applicability decisions at their newest revision in SQL, and answers as the in-memory store does',
+      'reads the newest event of each requirement in SQL, settling a same-millisecond supersession as the in-memory store does',
+      'reads one assessment definition by its id, and answers as the in-memory store and the full read do',
+    ],
   },
 ];
 
@@ -578,6 +584,11 @@ for (const file of files) {
     // budget beside it is therefore the cost of a form the app never runs, and this table is where that
     // has to be said, because this table is where the number gets read as a budget.
     unslicedForm: recorded?.sliceColumn != null && recorded.slicedInRecording !== true,
+    // A reading taken on an earlier text of the statement, kept after the text changed. Its numbers
+    // are the earlier text's, so the table says so beside them rather than leaving them to read as a
+    // measurement of what ships.
+    carriedForward: recorded?.carriedFromStatementSha != null,
+    carriedNote: recorded?.carriedForwardNote ?? null,
   });
 }
 
@@ -631,7 +642,7 @@ for (const row of statementResults) {
   process.stdout.write(
     `  ${row.name.padEnd(nameWidth)}  ${row.bound.padEnd(boundWidth)}  ${row.class.padEnd(10)}  ` +
       `${budget.padStart(6)}  ${acceptedShown.padStart(8)}  ${regression.padStart(6)}  ${labs.padStart(6)}  ` +
-      `${samples.padStart(1)}  ${spread.padStart(6)}  ${result}${row.unslicedForm ? '  unsliced form' : ''}\n`
+      `${samples.padStart(1)}  ${spread.padStart(6)}  ${result}${row.unslicedForm ? '  unsliced form' : ''}${row.carriedForward ? '  carried forward' : ''}\n`
   );
 }
 process.stdout.write(
@@ -650,6 +661,12 @@ if (unsliced.length > 0) {
       '  re-executes truncating slices as hash buckets. Their durations bound a form of the statement the\n' +
       '  app does not run, and 39r records that rather than the harness having been taught to slice.\n'
   );
+}
+
+const carried = statementResults.filter((row) => row.carriedForward);
+if (carried.length > 0) {
+  process.stdout.write(`\n  ${String(carried.length)} of these carry a reading from an earlier statement text:\n`);
+  for (const row of carried) process.stdout.write(`    ${row.name} — ${String(row.carriedNote ?? 'no note recorded')}\n`);
 }
 
 const unreadEntries = Object.entries(awaiting);
@@ -768,7 +785,13 @@ const SUITES = [
   },
   {
     name: 'Lakebase access-path (shipped)',
-    run: ['npx', 'vitest', 'run', 'server/admin/retention-store.test.ts'],
+    run: [
+      'npx',
+      'vitest',
+      'run',
+      'server/admin/retention-store.test.ts',
+      'server/store/latest-revision-reads.test.ts',
+    ],
   },
   {
     name: "Q1a performance budgets (recording)",
@@ -805,7 +828,10 @@ const statementsOk = statementResults.every((row) => row.ok);
 // every shipped statement is inside a budget somebody measured, and that claim is false while any of
 // them has no numbers — so the list unsets it, and the gate still passes, which is the distinction
 // between "this build is broken" and "this build ships something nobody has measured yet".
-const q1Complete = outstanding === 0 && statementsOk && unreadEntries.length === 0 && problems.length === 0;
+// A reading carried forward from an earlier statement text is the same kind of owed thing: the gate
+// passes, and Q1 is not complete until the statement has been read again as it now stands.
+const q1Complete =
+  outstanding === 0 && statementsOk && unreadEntries.length === 0 && carried.length === 0 && problems.length === 0;
 
 process.stdout.write('\n');
 if (q1Complete) {
@@ -815,7 +841,8 @@ if (q1Complete) {
   );
 } else if (outstanding === 0 && statementsOk && problems.length === 0) {
   process.stdout.write(
-    `Q1 incomplete: ${String(unreadEntries.length)} statement(s) ship with no reading, listed above.\n` +
+    `Q1 incomplete: ${String(unreadEntries.length)} statement(s) ship with no reading and ` +
+      `${String(carried.length)} carry a reading from an earlier statement text, listed above.\n` +
       'Nothing here failed — this gate cannot say every statement meets a budget while some have none.\n'
   );
 } else {

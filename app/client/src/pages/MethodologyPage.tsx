@@ -8,7 +8,7 @@
 //
 // So the page answers three questions, and they are the reason for its three regions.
 //
-// **What am I measured against?** The one public Version 1 candidate or release and its requirement
+// **What am I measured against?** The one public methodology candidate or release and its requirement
 // list. The list is the recorded scoring shape rather than the loaded catalogue — the technical
 // fingerprint covers the record by construction. It is not the whole catalogue: prose, remediation and
 // references stay on the pillars and findings pages, where a reader acts on them.
@@ -45,6 +45,9 @@ import {
   creditSentence,
   fieldsPhrase,
   shapeSentence,
+  releaseNotice,
+  releaseSummary,
+  releaseTitle,
   standingSentence,
   revisionSentence,
   weightPhrase,
@@ -116,7 +119,7 @@ export function MethodologyPage() {
           <EmptyState
             reason="not-yet-collected"
             heading="Loading"
-            detail="Reading Methodology Version 1 and the technical provenance behind it."
+            detail="Reading the methodology and the technical provenance behind it."
           />
         </Surface>
       </CustomerPage>
@@ -128,12 +131,12 @@ export function MethodologyPage() {
       <PageLead
         eyebrow="Utility"
         headingLevel={2}
-        title="Methodology Version 1"
-        summary="The released customer standard, scoring method, and exact requirements used by this build."
+        title={releaseTitle(data.release)}
+        summary={releaseSummary(data.release)}
       />
       <TaskWorkspace
         queueLabel="Methodology identity and scoring"
-        taskLabel="Requirements in Methodology Version 1"
+        taskLabel={`Requirements in ${releaseTitle(data.release)}`}
         queue={
           <div className="flex min-w-0 flex-col gap-4">
             <CurrentVersion methodology={data} scan={scan} />
@@ -196,7 +199,7 @@ export function MethodologyPage() {
                     }
                   : {
                       heading: 'Nothing matches',
-                      detail: 'No requirement in Methodology Version 1 matches the filters above.',
+                      detail: `No requirement in ${releaseTitle(data.release)} matches the filters above.`,
                     })}
               />
             ) : (
@@ -245,11 +248,12 @@ function CurrentVersion({
   };
   const standing = scan == null ? undefined : standingSentence(methodology.release, stamp.publicMethodology);
   const released = methodology.release.state === 'released';
+  const notice = releaseNotice(methodology.release);
 
   return (
     <Surface
       tone="raised"
-      label="Methodology Version 1"
+      label={releaseTitle(methodology.release)}
       title="The methodology"
       action={<IdentifierBadge>{`Version ${String(methodology.release.publicVersion)}`}</IdentifierBadge>}
     >
@@ -269,11 +273,14 @@ function CurrentVersion({
           )}
           .
         </p>
+        {notice != null && <p className="wa-caption">{notice}</p>}
         {standing != null && <p className="wa-caption">{standing}</p>}
         <Disclosure summary="Exact release and technical provenance">
           <div className="space-y-2">
             <p className="wa-caption break-all">
-              <span className="text-wa-text-secondary">Version 1 manifest</span>{' '}
+              <span className="text-wa-text-secondary">
+                Version {String(methodology.release.publicVersion)} manifest
+              </span>{' '}
               <span className="wa-code">{methodology.release.manifestDigest}</span>
             </p>
             {methodology.release.releaseCommit != null && (
@@ -358,7 +365,7 @@ function ScoringMethod({ methodology }: { methodology: Methodology }) {
  * Development catalogue history, kept out of the customer release model.
  *
  * Folded because it is forensic provenance rather than a release selector. A customer arrives here
- * to understand Version 1; support can still identify exactly which development scoring shape an old
+ * to understand the current methodology; support can still identify exactly which development scoring shape an old
  * scan carried without calling ten internal checkpoints ten customer releases.
  */
 function TechnicalHistory({ revisions }: { readonly revisions: readonly CatalogueRevision[] }) {

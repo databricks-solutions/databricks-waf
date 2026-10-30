@@ -36,8 +36,13 @@ import { monthLabel, type MonthId, type PublicationIdentity } from './publicatio
  * than it does for a live export, because no schema change can reach a published month: every future
  * renderer either handles every historical shape or names the one it cannot. Bump on a removal or a
  * meaning change; adding a section is not a break.
+ *
+ * Version 2 changed what the movement and finding-change sections mean: they are published only
+ * between readings that pass the comparability rule, and the month closes on its latest scheduled run
+ * (decision A9 in docs/decisions.md). A version 1 month may carry a movement across two identities or
+ * two lookbacks, and stays a valid record of its own version.
  */
-export const MONTH_DOCUMENT_VERSION = 1;
+export const MONTH_DOCUMENT_VERSION = 2;
 
 export const MONTH_DOCUMENT_KIND = 'databricks-waf-month';
 
@@ -52,6 +57,13 @@ export interface Movement {
   readonly label: string;
   readonly from: string;
   readonly to: string;
+}
+
+/** Which reading closed the month, and the sentence that says so. */
+export interface ClosingReading {
+  /** `scheduled` is the system of record; `latest-scan` is the fallback for a month with no scheduled run. */
+  readonly kind: 'scheduled' | 'latest-scan';
+  readonly statement: string;
 }
 
 /** A requirement whose finding changed, denormalised: its own words, its pillar, and the two readings. */
@@ -112,9 +124,17 @@ export interface MonthContent {
     readonly finalResultId: string;
     readonly definition?: { readonly id: string; readonly version: number; readonly fingerprint: string };
   };
+  /** Absent where no run closed the month. */
+  readonly closing?: ClosingReading;
   readonly runHealth: readonly Fact[];
   readonly findingDeltas: readonly DeltaRow[];
   readonly movement: readonly Movement[];
+  /**
+   * Why `movement` and `findingDeltas` are empty, where the month had a closing run and nothing it could
+   * be compared with: the comparability rule's reason, or that no earlier scan exists. Absent where the
+   * two sections were measured, and where no run closed the month.
+   */
+  readonly movementNote?: string;
   readonly actions: readonly Fact[];
   readonly exceptions: readonly ExceptionRow[];
   readonly outcomes: readonly Fact[];
@@ -148,9 +168,11 @@ export interface MonthDocument {
   readonly documentVersion: typeof MONTH_DOCUMENT_VERSION;
   readonly publication: DocumentIdentity;
   readonly assessment?: MonthContent['assessment'];
+  readonly closing?: ClosingReading;
   readonly runHealth: readonly Fact[];
   readonly findingDeltas: readonly DeltaRow[];
   readonly movement: readonly Movement[];
+  readonly movementNote?: string;
   readonly actions: readonly Fact[];
   readonly exceptions: readonly ExceptionRow[];
   readonly outcomes: readonly Fact[];
@@ -181,9 +203,11 @@ export function monthDocument(identity: PublicationIdentity, content: MonthConte
       ...(identity.reason != null ? { reason: identity.reason } : {}),
     },
     ...(content.assessment != null ? { assessment: content.assessment } : {}),
+    ...(content.closing != null ? { closing: content.closing } : {}),
     runHealth: content.runHealth,
     findingDeltas: content.findingDeltas,
     movement: content.movement,
+    ...(content.movementNote != null ? { movementNote: content.movementNote } : {}),
     actions: content.actions,
     exceptions: content.exceptions,
     outcomes: content.outcomes,
@@ -225,8 +249,12 @@ export function monthCsv(document: MonthDocument): string {
   const lead = [month, id, publishedAt] as const;
   const rows: string[][] = [[...CSV_HEADER]];
 
+  if (document.closing != null) {
+    rows.push([...lead, 'closing', 'Closing reading', document.closing.kind, '', document.closing.statement]);
+  }
   for (const fact of document.runHealth) rows.push([...lead, 'run health', fact.label, fact.value, '', '']);
   for (const move of document.movement) rows.push([...lead, 'movement', move.label, move.from, move.to, '']);
+  if (document.movementNote != null) rows.push([...lead, 'movement', 'Not shown', '', '', document.movementNote]);
   for (const delta of document.findingDeltas) {
     rows.push([
       ...lead,

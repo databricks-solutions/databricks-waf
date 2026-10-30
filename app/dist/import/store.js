@@ -1,3 +1,4 @@
+import { workspaceOf } from "./envelope.js";
 import { summarise, summaryFrom } from "./summary.js";
 //#region server/import/store.ts
 /** Raised when the same probe set is imported twice, whether caught by the check or by the index. */
@@ -44,7 +45,11 @@ var InMemoryEvidenceImportStore = class {
 	}
 	record(imported) {
 		if (this.held.some((held) => held.digest === imported.digest)) return Promise.reject(new ReplayedImportError(imported.digest));
-		this.held.push(imported);
+		const workspaceId = imported.workspaceId ?? workspaceOf(imported.envelope);
+		this.held.push({
+			...imported,
+			...workspaceId != null ? { workspaceId } : {}
+		});
 		return Promise.resolve();
 	}
 };
@@ -59,7 +64,7 @@ var PostgresEvidenceImportStore = class {
 	async all() {
 		const { db } = this.options;
 		try {
-			const { rows } = await db.query(`select digest, generated_at, imported_at, imported_by, body, cautions
+			const { rows } = await db.query(`select digest, generated_at, imported_at, imported_by, body, cautions, workspace_id
            from ${db.schema}.imported_evidence
           order by imported_at desc`);
 			return rows.map(revive).filter((one) => one != null);
@@ -97,7 +102,7 @@ var PostgresEvidenceImportStore = class {
 	*/
 	async repair(digests) {
 		const { db } = this.options;
-		const { rows } = await db.query(`select digest, generated_at, imported_at, imported_by, body, cautions
+		const { rows } = await db.query(`select digest, generated_at, imported_at, imported_by, body, cautions, workspace_id
          from ${db.schema}.imported_evidence
         where digest = any($1::text[])`, [digests]);
 		const repaired = [];
@@ -128,15 +133,16 @@ var PostgresEvidenceImportStore = class {
 		const { db } = this.options;
 		try {
 			await db.query(`insert into ${db.schema}.imported_evidence
-           (digest, generated_at, imported_at, imported_by, body, cautions, summary)
-         values ($1, $2, $3, $4, $5::jsonb, $6::jsonb, $7::jsonb)`, [
+           (digest, generated_at, imported_at, imported_by, body, cautions, summary, workspace_id)
+         values ($1, $2, $3, $4, $5::jsonb, $6::jsonb, $7::jsonb, $8)`, [
 				imported.digest,
 				imported.generatedAt.toISOString(),
 				imported.importedAt.toISOString(),
 				imported.importedBy,
 				JSON.stringify(imported.envelope),
 				JSON.stringify(imported.cautions),
-				JSON.stringify(summarise(imported.envelope))
+				JSON.stringify(summarise(imported.envelope)),
+				imported.workspaceId ?? workspaceOf(imported.envelope) ?? null
 			]);
 		} catch (cause) {
 			if (isUniqueViolation(cause)) throw new ReplayedImportError(imported.digest);
@@ -158,14 +164,22 @@ function revive(row) {
 	const importedAt = new Date(row.imported_at);
 	if (Number.isNaN(generatedAt.getTime()) || Number.isNaN(importedAt.getTime())) return void 0;
 	if (row.body == null || typeof row.body !== "object") return void 0;
+	const envelope = row.body;
+	const workspaceId = (typeof row.workspace_id === "string" && row.workspace_id !== "" ? row.workspace_id : void 0) ?? bodyWorkspace(envelope);
 	return {
 		digest: row.digest,
 		generatedAt,
 		importedAt,
 		importedBy: row.imported_by,
-		envelope: row.body,
+		envelope,
+		...workspaceId != null ? { workspaceId } : {},
 		cautions: Array.isArray(row.cautions) ? row.cautions : []
 	};
+}
+/** The workspace a stored body names, tolerating a body that is not the shape it was written in. */
+function bodyWorkspace(envelope) {
+	const tier = envelope.tiers?.workspace;
+	return tier != null && typeof tier === "object" ? workspaceOf(envelope) : void 0;
 }
 /**
 * A stored row into a summary, or nothing when the summary column cannot be read.

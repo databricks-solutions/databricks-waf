@@ -137,6 +137,9 @@ function detail(run: ScanStatus | undefined, previous: Scan | undefined, now: nu
  */
 function work(run?: ScanStatus): string {
   const calls = run?.callsMade;
+  // A run another instance is collecting carries no count: the count belongs to the process doing the
+  // work, and nothing durable holds it. Said as such rather than as planning, which would never end.
+  if (run?.running === true && calls == null) return 'Collecting on another instance';
   if (calls == null || calls === 0) return 'Planning the queries it will run';
   if (calls === 1) return '1 query so far';
   return `${calls.toLocaleString()} queries and API calls so far`;

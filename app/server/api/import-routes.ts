@@ -30,7 +30,7 @@ import type {
 } from '../../shared/api/contract.js';
 import { UnreadableBodyError, readUploaded } from '../import/read.js';
 import { UnsafeJsonError, parseUntrusted } from '../import/parse.js';
-import { MalformedEnvelopeError, envelopeFrom, type Envelope } from '../import/envelope.js';
+import { MalformedEnvelopeError, accountOf, envelopeFrom, type Envelope } from '../import/envelope.js';
 import { MAX_AGE_DAYS, REPLAYED, assess, type Note, type Target, type TrustVerdict } from '../import/trust.js';
 import {
   ReplayedImportError,
@@ -41,6 +41,7 @@ import {
 } from '../import/store.js';
 import type { ScanStore } from '../scan/store.js';
 import type { Act } from '../audit/record.js';
+import { projectImportPayload, type Reader } from '../share/projection.js';
 import type { AuditAction, AuditTarget } from '../audit/event.js';
 
 export interface ImportRouteOptions {
@@ -54,6 +55,11 @@ export interface ImportRouteOptions {
    * is held against, and the newer answer is the right one.
    */
   readonly store: ScanStore;
+  /**
+   * Who is reading, so the name of whoever collected a file is shown only to the assessor group's
+   * direct members. Required for the reason `ReviewRouteOptions.reader` gives.
+   */
+  readonly reader: (request: Request) => Promise<Reader>;
   /** Establishes that the caller may change something, or throws, and opens the act for the log. */
   readonly permitted: (
     request: Request,
@@ -104,7 +110,7 @@ export function presentImport(imported: ImportedEvidenceSummary): EvidenceImport
 }
 
 /**
- * What the app believes it is assessing, from the last scan.
+ * What the app believes it is assessing, from the last scan and the files already held.
  *
  * Absent workspace ids rather than an empty list when no scan has run, because the two mean opposite
  * things to `trust.ts`: an empty list is "this assessment covers no workspaces", which would refuse
@@ -115,15 +121,41 @@ export function presentImport(imported: ImportedEvidenceSummary): EvidenceImport
  * a reason to refuse evidence; it is a reason to be unable to confirm the file is about this estate,
  * which is exactly what the unverified caution says.
  */
-async function targetFrom(store: ScanStore): Promise<Target> {
+async function targetFrom(store: ScanStore, imports: EvidenceImportStore): Promise<Target> {
+  const [workspaceIds, accountId] = await Promise.all([assessedWorkspaces(store), heldAccount(imports)]);
+  return {
+    ...(accountId != null ? { accountId } : {}),
+    ...(workspaceIds != null ? { workspaceIds } : {}),
+  };
+}
+
+async function assessedWorkspaces(store: ScanStore): Promise<readonly string[] | undefined> {
   try {
     const latest = await store.latest();
     const assessed = latest?.estate?.assessed ?? [];
-    if (assessed.length === 0) return {};
-    return { workspaceIds: assessed.map((workspace) => workspace.id) };
+    return assessed.length === 0 ? undefined : assessed.map((workspace) => workspace.id);
   } catch {
-    return {};
+    return undefined;
   }
+}
+
+/**
+ * The account the newest held file names, which is what a later file is held to.
+ *
+ * Nothing else in this app knows the account, so the first import establishes it and every later one
+ * is checked against it. Absent when nothing is held or no held file names one, and an unreadable
+ * store is treated the same way for the reason the workspaces are.
+ */
+async function heldAccount(imports: EvidenceImportStore): Promise<string | undefined> {
+  try {
+    for (const one of await imports.all()) {
+      const named = accountOf(one.envelope);
+      if (named != null) return named;
+    }
+  } catch {
+    // Not knowing the account is a caution, not a reason to refuse evidence.
+  }
+  return undefined;
 }
 
 function verdictOf(verdict: TrustVerdict, imported?: ImportedEvidence): EvidenceImportVerdictPayload {
@@ -138,7 +170,7 @@ function verdictOf(verdict: TrustVerdict, imported?: ImportedEvidence): Evidence
 export function registerImportRoutes(app: Application, options: ImportRouteOptions): void {
   const now = options.now ?? ((): Date => new Date());
 
-  app.get('/api/evidence/imports', async (_request, response) => {
+  app.get('/api/evidence/imports', async (request, response) => {
     const store = options.imports;
     if (store == null) {
       // 200 rather than 503, because "nowhere to keep one" is a true and complete answer to "what do
@@ -149,12 +181,14 @@ export function registerImportRoutes(app: Application, options: ImportRouteOptio
       return;
     }
 
+    const reader = await options.reader(request);
+
     // `summaries` rather than `all`: this page shows what is held and never a probe, and the envelopes
     // are the one thing in this table stored out of line. Row 85 measured the difference.
     const held = await store.summaries();
     const payload: EvidenceImportsPayload = {
       durable: store.durable,
-      imports: held.map(presentImport),
+      imports: held.map((one) => projectImportPayload(presentImport(one), reader)),
       acceptedForDays: MAX_AGE_DAYS,
     };
     response.json(payload);
@@ -218,7 +252,7 @@ export function registerImportRoutes(app: Application, options: ImportRouteOptio
 
     const verdict = assess({
       envelope,
-      target: await targetFrom(options.store),
+      target: await targetFrom(options.store, store),
       imported: await store.digests(),
       ...(options.publishedScriptDigest?.() != null ? { publishedScriptDigest: options.publishedScriptDigest() } : {}),
       now: now(),

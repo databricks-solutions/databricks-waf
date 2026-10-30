@@ -1,5 +1,5 @@
-import { factFromAttestation, findingFromAttestation } from "../resolve/resolver.js";
 import { counts } from "../attest/attestation.js";
+import { findingFromAttestation, withAnswer, withoutAnswer } from "../resolve/resolver.js";
 import { scoreFindings } from "../score/score.js";
 import { digestOf, hexOf } from "../records/digest.js";
 import { selectedPillarsOf } from "./review.js";
@@ -11,6 +11,17 @@ var FinalAssessmentProjectionError = class extends Error {
 	constructor(message) {
 		super(message);
 		this.name = "FinalAssessmentProjectionError";
+	}
+};
+/**
+* A cited answer stopped counting between its pillar's confirm and the last selected pillar being
+* recorded. The confirm that froze it is written once, so nothing in this review can put it right:
+* the answer has to be renewed and the review started again from a new scan.
+*/
+var CitedAnswerLapsedError = class extends FinalAssessmentProjectionError {
+	constructor(attestationId) {
+		super(`Attestation ${attestationId} expired before every selected pillar was recorded, so this review can no longer be completed.`);
+		this.name = "CitedAnswerLapsedError";
 	}
 };
 function finalAssessmentProjector(options) {
@@ -46,7 +57,7 @@ function finalAssessmentProjector(options) {
 			const decision = decisionByPillar.get(finding.pillarId);
 			if (decision?.kind !== "confirmed" || !decision.attestationIds?.includes(id)) throw new FinalAssessmentProjectionError(`Attestation ${id} is not cited by the confirmed ${finding.pillarId} decision.`);
 			if (attestation.definitionId !== definition.id) throw new FinalAssessmentProjectionError(`Attestation ${id} belongs to a different assessment definition from the reviewed run.`);
-			if (!counts(attestation, result.finalisedAt)) throw new FinalAssessmentProjectionError(`Attestation ${id} expired before the review completed, so that pillar must be reviewed again.`);
+			if (!counts(attestation, result.finalisedAt)) throw new CitedAnswerLapsedError(id);
 			if (selectedByControl.has(attestation.controlId)) throw new FinalAssessmentProjectionError(`The completed review cites more than one answer for ${attestation.controlId}.`);
 			selectedByControl.set(attestation.controlId, attestation);
 			humanEvidence.push({
@@ -60,13 +71,7 @@ function finalAssessmentProjector(options) {
 			const selected = decisionByPillar.get(finding.pillarId)?.kind === "confirmed" ? selectedByControl.get(finding.controlId) : void 0;
 			const control = controls.get(finding.controlId);
 			if (control == null) throw new FinalAssessmentProjectionError(`The reviewed run contains ${finding.controlId}, which this build cannot place in the catalogue.`);
-			if (finding.outcome !== "unmeasurable" && finding.attested?.bearing !== "outcome") {
-				const { attested: _was, ...automated } = finding;
-				return selected == null ? automated : {
-					...automated,
-					attested: factFromAttestation(selected, "record")
-				};
-			}
+			if (finding.outcome !== "unmeasurable" && finding.attested?.bearing !== "outcome") return selected == null ? withoutAnswer(finding) : withAnswer(finding, selected, result.finalisedAt);
 			if (selected != null) return {
 				...findingFromAttestation(control, selected),
 				evidence: finding.evidence
@@ -154,4 +159,4 @@ function unique(ids, message) {
 	return [...ids];
 }
 //#endregion
-export { FinalAssessmentProjectionError, finalAssessmentProjector };
+export { CitedAnswerLapsedError, FinalAssessmentProjectionError, finalAssessmentProjector };

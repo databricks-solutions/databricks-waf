@@ -37,6 +37,23 @@ function selectedScope(scope, workspaceIds) {
 		description: `Assessed across the ${count(selected.length, "workspace")} this assessment names, of those the scanning identity can see. Unity Catalog and per-table findings cover the metastore attached to this workspace, and workspace settings cover this workspace alone — each finding states which.`
 	};
 }
+/**
+* The one workspace the REST surface describes on this scope, when it is known and assessed.
+*
+* Every REST probe is workspace-reach (ADR 0015): it answers for the workspace the app is installed in,
+* or for the one the scan was narrowed to, and for no other. That is also the only workspace a reading
+* of settings can be about, so it is what an imported workspace-level reading is held against.
+*
+* Absent when the scan does not know it, and when a selection of workspaces leaves it out: in the first
+* case there is nothing to hold a reading against, and in the second the workspace is not part of what
+* the assessment asked about.
+*/
+function restWorkspace(scope) {
+	const described = scope.narrowedTo ?? scope.hostWorkspaceId;
+	if (described == null || described === "") return void 0;
+	if (scope.selected != null && !scope.selected.includes(described)) return void 0;
+	return described;
+}
 function count(n, noun) {
 	return `${String(n)} ${noun}${n === 1 ? "" : "s"}`;
 }
@@ -82,4 +99,4 @@ function scopeFromProbe(user, env) {
 	return accountScope(hostWorkspaceFromEnvironment(env) ?? user.workspaceId);
 }
 //#endregion
-export { EstateScopeError, accountScope, hostWorkspaceFromEnvironment, probeCurrentUser, scopeFromProbe, selectedScope };
+export { EstateScopeError, accountScope, hostWorkspaceFromEnvironment, probeCurrentUser, restWorkspace, scopeFromProbe, selectedScope };

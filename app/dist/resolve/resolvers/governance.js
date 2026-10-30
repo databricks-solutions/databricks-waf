@@ -1,5 +1,5 @@
 import { share } from "../../collect/sql/rows.js";
-import { bandOutcome, bandsOf, detailFrom, enrichedBy, evidenceFrom, fromSignal, notApplicable, observedValue, percent, threshold, unmeasured } from "./helpers.js";
+import { agreeing, bandOutcome, bandsOf, detailFrom, enrichedBy, evidenceFrom, fromSignal, notApplicable, observedValue, percent, threshold, unmeasured } from "./helpers.js";
 import { SCHEMA_CENSUS, estateExclusion, whereTheGapIs } from "./segments.js";
 import { unestablishedEmptiness } from "./visibility.js";
 //#region server/resolve/resolvers/governance.ts
@@ -8,34 +8,115 @@ const LINEAGE = "sql:uc.lineage_coverage";
 const AUDIT = "sql:governance.audit_coverage";
 const DISCOVERY = "sql:uc.discovery";
 const DISCOVERY_COLUMNS = "sql:uc.discovery_columns";
+const SERVING_ENTITIES = "sql:serving.model_entities";
 /**
-* DG-01-02 and DG-01-03: one governed metadata plane.
+* DG-01-02 and DG-01-03: how the governed metadata plane is organised.
 *
-* This used to measure tables remaining in `hive_metastore`, and that measurement was not
-* merely unreliable — it was structurally always zero, because `system.information_schema`
-* covers the Unity Catalog metastore and the legacy catalog is outside it. So the pass
-* branch below read "All N tables are in Unity Catalog" on an estate with 1,101 tables
-* that were not, and a customer could have quoted that sentence into a steering paper.
+* These used to measure tables remaining in `hive_metastore`, and that measurement was not merely
+* unreliable — it was structurally always zero, because `system.information_schema` covers the Unity
+* Catalog metastore and the legacy catalog is outside it. So the pass branch read "All N tables are in
+* Unity Catalog" on an estate with 1,101 tables that were not, and a customer could have quoted that
+* sentence into a steering paper. What replaced it was a count and no claim, and a count with no gap
+* to measure passed whenever the metastore held a table, which left a critical control the app could
+* not fail.
 *
-* What replaces it is a count and no claim. The app measures Unity Catalog; a legacy
-* metastore is out of scope rather than unmeasured within scope, because the advice for
-* anything living there is to migrate and that needs no count to give. So the sentence
-* says how much this metastore governs and says nothing about what sits beside it — the
-* word "all" is what made the old one false, and it is not a word this resolver can earn
-* from the census.
+* What the census does show is how the estate is organised, and that is what these score. Whether the
+* estate was divided into catalogs, and whether ownership is spread across more than one owner, are
+* the observable halves of "governed by design" rather than "governed by accident". Description
+* coverage is deliberately not scored here: DG-01-05 scores it in the same pillar, and counting it
+* twice would let one gap move two requirements.
 *
-* The consequence to be honest about: with no measurable gap, these two controls pass
-* whenever the metastore holds tables. That is an *honest* unconditional pass where the
-* old one was a false conditional pass, and it is a smaller claim rather than a better
-* measurement. Whether a critical control the app cannot fail should stay
-* `measurability: system-table` is recorded for review in `docs/plan/e1-populations.md`.
+* - One catalog holds every table: `fail`. Environment separation, per-domain ownership and
+*   catalog-level grants all have to be done at the schema level or not at all.
+* - More than one catalog and at most one owner across the estate: `partial`. The estate is divided
+*   and governance is not distributed.
+* - More than one catalog and more than one owner: `pass`.
+*
+* The sentence still says how much this metastore governs and says nothing about what sits beside it.
+* The word "all" is what made the old one false, and it is not a word this resolver can earn from the
+* census. Decision D4, revised by A8, in docs/decisions.md.
+*
+* DG-01-03 reads "data and AI assets in one place", so it also scores where the models the estate
+* serves are registered. See `registeredInUnityCatalog`.
 */
-const unityCatalogAdoption = enrichedBy([SCHEMA_CENSUS, LINEAGE], fromSignal(CENSUS, ["DG-01-02", "DG-01-03"], (census, context) => {
-	if (census.tableCount === 0) return unestablishedEmptiness(context) ?? notApplicable("This metastore contains no tables, so there is no asset estate to govern yet.");
+function organisation(context, census) {
+	const owners = agreeing(census.distinctOwners, "distinct owner");
+	const expectation = "Assets are divided into catalogs along a deliberate boundary, and owned by more than one person";
+	if (census.catalogCount <= 1) return {
+		outcome: "fail",
+		evidence: [evidenceFrom(context, CENSUS, `All ${census.tableCount} tables are in a single catalog, across ${census.schemaCount} schemas`, expectation), ...excluded(context, census)],
+		outcomeReason: "One catalog for the whole estate is the shape an estate takes when nobody chose how to divide it. Environment separation, per-domain ownership and catalog-level grants all have to be done at the schema level or not at all. This is measured within the Unity Catalog metastore, which is the scope of every count here."
+	};
+	const observed = `${census.tableCount} tables across ${census.catalogCount} catalogs and ${census.schemaCount} schemas, with ${owners.noun}`;
+	if (census.distinctOwners <= 1) return {
+		outcome: "partial",
+		evidence: [evidenceFrom(context, CENSUS, observed, expectation), ...excluded(context, census)],
+		outcomeReason: "The estate is divided into catalogs, but one owner holds all of it, or none is recorded. That is a metastore administrator doing everything rather than ownership distributed to the teams that know the data. This is measured within the Unity Catalog metastore, which is the scope of every count here."
+	};
 	return {
 		outcome: "pass",
-		evidence: [evidenceFrom(context, CENSUS, `${census.tableCount} tables are governed by Unity Catalog, across ${census.catalogCount} catalogs and ${census.schemaCount} schemas`, "Assets are registered in Unity Catalog rather than a workspace-local Hive metastore"), ...excluded(context, census)],
-		outcomeReason: "Measured within the Unity Catalog metastore, which is the scope of every count here. Anything still held in a legacy Hive metastore is outside that scope and outside this measurement: it sits outside Unity Catalog access control, lineage and audit, and the remedy for it is migration rather than configuration. So this finding says what is governed and does not claim that it is everything."
+		evidence: [evidenceFrom(context, CENSUS, observed, expectation), ...excluded(context, census)],
+		outcomeReason: "Assets are divided into catalogs and ownership is spread across more than one owner. This is measured within the Unity Catalog metastore, which is the scope of every count here. Anything still held in a legacy Hive metastore is outside that scope and outside this measurement: it sits outside Unity Catalog access control, lineage and audit, and the remedy for it is migration rather than configuration. So this finding says how what is governed is organised and does not claim that it is everything."
+	};
+}
+const NO_TABLES = "This metastore contains no tables, so there is no asset estate to govern yet.";
+const unityCatalogAdoption = enrichedBy([SCHEMA_CENSUS, LINEAGE], fromSignal(CENSUS, ["DG-01-02"], (census, context) => {
+	if (census.tableCount === 0) return unestablishedEmptiness(context) ?? notApplicable(NO_TABLES);
+	return organisation(context, census);
+}));
+/**
+* The AI half of DG-01-03: the share of served custom models registered in Unity Catalog.
+*
+* Read from the same serving inventory `model-lifecycle.ts` reads for OE-02-08, where a three-part
+* model name is a Unity Catalog model and a bare one is the workspace registry. Custom models only,
+* because a foundation or external model has no registry entry to be in one place or another.
+*
+* Not applicable when no custom model is served, which is a different statement from none being
+* registered: with nothing served there is no AI asset to put anywhere, and the first half stands
+* alone. A missing inventory is the same, because the reading is an enrichment and a statement that
+* failed must not take a requirement the census settled with it.
+*/
+function registeredInUnityCatalog(context, totals, bands) {
+	if (totals == null || totals.customModels === 0) return void 0;
+	const registered = totals.customModelsNamedInUc;
+	const models = agreeing(totals.customModels, "served custom model");
+	const registeredShare = share(registered, totals.customModels);
+	const outcome = bandOutcome(registeredShare, bands);
+	return {
+		outcome,
+		evidence: [evidenceFrom(context, SERVING_ENTITIES, `${registered.toLocaleString("en-US")} of ${models.noun} are registered in Unity Catalog (${percent(registeredShare)}), ${(totals.customModels - registered).toLocaleString("en-US")} in the workspace model registry`, "Models are registered in Unity Catalog beside the data they were trained on, so one plane governs both")],
+		outcomeReason: outcome === "pass" ? "Most served custom models are registered in Unity Catalog, so the same access control, lineage and audit cover the models and the data." : "Served custom models registered in the workspace model registry sit outside Unity Catalog access control, lineage and audit, so the data and the AI assets are governed in two places. Registering them in Unity Catalog is configuration rather than migration of data."
+	};
+}
+const AI_RANK = {
+	fail: 0,
+	partial: 1,
+	pass: 2
+};
+/**
+* DG-01-03: both halves, and the worse one decides.
+*
+* "Data and AI assets in one place" fails at its weakest link: an estate with a well-divided data
+* plane and its models in the workspace registry has two places, and averaging the halves would let
+* the good one pay for the other. The alias group scores the worse of DG-01-02 and this one, so the
+* unit takes the worse half as well.
+*/
+const dataAndAiInOnePlace = enrichedBy([
+	SCHEMA_CENSUS,
+	LINEAGE,
+	SERVING_ENTITIES
+], fromSignal(CENSUS, ["DG-01-03"], (census, context) => {
+	if (census.tableCount === 0) return unestablishedEmptiness(context) ?? notApplicable(NO_TABLES);
+	const first = organisation(context, census);
+	const second = registeredInUnityCatalog(context, observedValue(context, SERVING_ENTITIES)?.[0], bandsOf(context.spec, {
+		pass: .8,
+		partial: .4
+	}));
+	if (second == null) return first;
+	return {
+		outcome: ((AI_RANK[second.outcome] ?? 0) < (AI_RANK[first.outcome] ?? 0) ? second : first).outcome,
+		evidence: [...first.evidence, ...second.evidence],
+		outcomeReason: `${first.outcomeReason ?? ""} ${second.outcomeReason ?? ""} The weaker half decides.`.trim()
 	};
 }));
 /**
@@ -117,6 +198,7 @@ function excluded(context, census) {
 }
 const GOVERNANCE_RESOLVERS = [
 	unityCatalogAdoption,
+	dataAndAiInOnePlace,
 	descriptions,
 	discoverability,
 	fromSignal(LINEAGE, ["DG-01-04"], (coverage, context) => {

@@ -1,8 +1,9 @@
 import { UnreadableBodyError, readUploaded } from "../import/read.js";
 import { UnsafeJsonError, parseUntrusted } from "../import/parse.js";
-import { MalformedEnvelopeError, envelopeFrom } from "../import/envelope.js";
+import { MalformedEnvelopeError, accountOf, envelopeFrom } from "../import/envelope.js";
 import { REPLAYED, assess } from "../import/trust.js";
 import { ReplayedImportError, summaryOf } from "../import/store.js";
+import { projectImportPayload } from "../share/projection.js";
 //#region server/api/import-routes.ts
 const NO_STORE = "This install has nowhere to keep imported evidence, so a file cannot be accepted: it would answer requirements on this page and be gone on the next restart, which is worse than not having answered them. Bind a Lakebase instance to the app and the import becomes available.";
 function noteOf(note) {
@@ -29,7 +30,7 @@ function presentImport(imported) {
 	};
 }
 /**
-* What the app believes it is assessing, from the last scan.
+* What the app believes it is assessing, from the last scan and the files already held.
 *
 * Absent workspace ids rather than an empty list when no scan has run, because the two mean opposite
 * things to `trust.ts`: an empty list is "this assessment covers no workspaces", which would refuse
@@ -40,14 +41,35 @@ function presentImport(imported) {
 * a reason to refuse evidence; it is a reason to be unable to confirm the file is about this estate,
 * which is exactly what the unverified caution says.
 */
-async function targetFrom(store) {
+async function targetFrom(store, imports) {
+	const [workspaceIds, accountId] = await Promise.all([assessedWorkspaces(store), heldAccount(imports)]);
+	return {
+		...accountId != null ? { accountId } : {},
+		...workspaceIds != null ? { workspaceIds } : {}
+	};
+}
+async function assessedWorkspaces(store) {
 	try {
 		const assessed = (await store.latest())?.estate?.assessed ?? [];
-		if (assessed.length === 0) return {};
-		return { workspaceIds: assessed.map((workspace) => workspace.id) };
+		return assessed.length === 0 ? void 0 : assessed.map((workspace) => workspace.id);
 	} catch {
-		return {};
+		return;
 	}
+}
+/**
+* The account the newest held file names, which is what a later file is held to.
+*
+* Nothing else in this app knows the account, so the first import establishes it and every later one
+* is checked against it. Absent when nothing is held or no held file names one, and an unreadable
+* store is treated the same way for the reason the workspaces are.
+*/
+async function heldAccount(imports) {
+	try {
+		for (const one of await imports.all()) {
+			const named = accountOf(one.envelope);
+			if (named != null) return named;
+		}
+	} catch {}
 }
 function verdictOf(verdict, imported) {
 	return {
@@ -59,7 +81,7 @@ function verdictOf(verdict, imported) {
 }
 function registerImportRoutes(app, options) {
 	const now = options.now ?? (() => /* @__PURE__ */ new Date());
-	app.get("/api/evidence/imports", async (_request, response) => {
+	app.get("/api/evidence/imports", async (request, response) => {
 		const store = options.imports;
 		if (store == null) {
 			response.json({
@@ -69,10 +91,11 @@ function registerImportRoutes(app, options) {
 			});
 			return;
 		}
+		const reader = await options.reader(request);
 		const held = await store.summaries();
 		const payload = {
 			durable: store.durable,
-			imports: held.map(presentImport),
+			imports: held.map((one) => projectImportPayload(presentImport(one), reader)),
 			acceptedForDays: 30
 		};
 		response.json(payload);
@@ -127,7 +150,7 @@ function registerImportRoutes(app, options) {
 		}
 		const verdict = assess({
 			envelope,
-			target: await targetFrom(options.store),
+			target: await targetFrom(options.store, store),
 			imported: await store.digests(),
 			...options.publishedScriptDigest?.() != null ? { publishedScriptDigest: options.publishedScriptDigest() } : {},
 			now: now()

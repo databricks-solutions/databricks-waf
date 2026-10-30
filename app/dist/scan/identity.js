@@ -101,7 +101,7 @@ function runIdentity(signals, options = {}) {
 	return {
 		build: options.moduleUrl == null ? buildIdentity() : buildIdentity(options.moduleUrl),
 		methodology: { id: METHODOLOGY },
-		record: { id: `codec-${String(4)}` },
+		record: { id: `codec-${String(5)}` },
 		sources: sourcesOf(signals),
 		exclusions: [...options.exclusions ?? []].sort()
 	};

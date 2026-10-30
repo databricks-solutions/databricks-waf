@@ -22,6 +22,7 @@ import { decodeScan } from '../scan/codec.js';
 import { InMemoryApplicabilityStore, type ApplicabilityStore } from '../apply/store.js';
 import type { Finding } from '../resolve/finding.js';
 import type { Scan } from '../scan/scan.js';
+import { DAY_MS, stateOf } from '../attest/attestation.js';
 import { InMemoryAttestationStore, type AttestationStore } from '../attest/store.js';
 import { InMemoryReviewStore, type ReviewStore } from '../review/store.js';
 import { finalAssessmentProjector } from '../review/projection.js';
@@ -32,10 +33,13 @@ import { define, revise } from '../define/definition.js';
 import { InMemoryDefinitionStore, type DefinitionStore } from '../define/store.js';
 import { AuditRecorder, type AuditPosture } from '../audit/record.js';
 import { InMemoryAuditLog, type AuditLog } from '../store/audit-log.js';
+import { InMemoryAuditGapLog, type AuditGapLog } from '../store/audit-gaps.js';
 import { FakePostgres } from '../store/postgres-fake.js';
 import { PostgresRunStore } from '../run/run-store.js';
+import { accountScope } from '../collect/estate-scope.js';
+import type { CredentialProvider } from '../collect/credentials.js';
 import { Runs } from '../run/runs.js';
-import { registerApi, type CollectorFactoryContext } from './routes.js';
+import { registerApi, scanStatus, type CollectorFactoryContext } from './routes.js';
 import { explain } from './fallback.js';
 import type {
   AssessmentResultPayload,
@@ -177,13 +181,18 @@ const ASSESSORS = 'waf-assessors';
  */
 let scimGroups: readonly string[] | undefined = [ASSESSORS];
 
+/** What SCIM calls the caller, and what it says the caller is named when that is not the same. */
+let scimUserName: string | undefined = 'admin@example.com';
+let scimDisplayName: string | undefined;
+
 /** Stands in for the workspace: answers the SCIM current-user call, header and all. */
 const workspace: RequestListener = (request, response) => {
   if (request.url === '/api/2.0/preview/scim/v2/Me') {
     response.writeHead(200, { 'content-type': 'application/json', 'x-databricks-org-id': '1234567890' });
     response.end(
       JSON.stringify({
-        userName: 'admin@example.com',
+        ...(scimUserName != null ? { userName: scimUserName } : {}),
+        ...(scimDisplayName != null ? { displayName: scimDisplayName } : {}),
         ...(scimGroups == null
           ? {}
           : { groups: scimGroups.map((display, at) => ({ display, type: 'direct', value: String(at) })) }),
@@ -225,6 +234,8 @@ interface AppOptions {
    * no-op act in `begin` to actually being a no-op rather than a crash.
    */
   readonly audit?: AuditLog;
+  /** Where the markers for events the trail lost go, when a test is about those. */
+  readonly gaps?: AuditGapLog;
   /** What this install does about an act it cannot record. Defaults to what a real install defaults to. */
   readonly auditPosture?: AuditPosture;
   /**
@@ -234,10 +245,25 @@ interface AppOptions {
    * takes — which is a real configuration and the one where a route has to work without a coordinator.
    */
   readonly durableRuns?: boolean;
+  /**
+   * The database the run record lives in, so that two apps started here are two instances of one install.
+   * Implies `durableRuns`.
+   */
+  readonly runsDatabase?: FakePostgres;
   /** The warehouse binding, as a resource-bound install reports it. Absent means nothing is bound. */
   readonly warehouse?: string;
   /** Observe the exact collection question assembled by a route without replacing its collectors. */
   readonly observeCollectorContext?: (context: CollectorFactoryContext) => void;
+  /** The clock reviews are judged by. Absent means the wall clock, as an install runs. */
+  readonly now?: () => Date;
+}
+
+/** A database for the run record, empty. Shared between two `startApp`s it is one install on two instances. */
+function runsDatabase(): FakePostgres {
+  return new FakePostgres({
+    keys: { run_checkpoints: ['run_id', 'signal_id'] },
+    unique: { runs: ['idempotency_key'] },
+  });
 }
 
 async function startApp(options: AppOptions = {}): Promise<string> {
@@ -252,15 +278,10 @@ async function startApp(options: AppOptions = {}): Promise<string> {
     ...(attestations != null ? { attestations } : {}),
   });
   const runs =
-    options.durableRuns !== true
+    options.durableRuns !== true && options.runsDatabase == null
       ? undefined
       : new Runs({
-          store: new PostgresRunStore(
-            new FakePostgres({
-              keys: { run_checkpoints: ['run_id', 'signal_id'] },
-              unique: { runs: ['idempotency_key'] },
-            })
-          ),
+          store: new PostgresRunStore(options.runsDatabase ?? runsDatabase()),
           runner,
         });
   const routes = express();
@@ -281,10 +302,12 @@ async function startApp(options: AppOptions = {}): Promise<string> {
     pillars: measuredPillars,
     ...(options.warehouse != null ? { warehouse: () => options.warehouse } : {}),
     ...(options.verifyRecords != null ? { verifyRecords: options.verifyRecords } : {}),
+    ...(options.now != null ? { now: options.now } : {}),
     ...(options.audit != null
       ? {
           audit: new AuditRecorder(options.audit, {
             ...(options.auditPosture != null ? { posture: options.auditPosture } : {}),
+            ...(options.gaps != null ? { gaps: options.gaps } : {}),
           }),
         }
       : {}),
@@ -307,6 +330,8 @@ afterAll(() => closeServed(servers));
 // So that a test which makes the caller a stranger cannot leave every test after it refused.
 afterEach(() => {
   scimGroups = [ASSESSORS];
+  scimUserName = 'admin@example.com';
+  scimDisplayName = undefined;
 });
 
 async function post(path: string, headers: Record<string, string> = {}, url = appUrl) {
@@ -684,6 +709,127 @@ describe('starting a scan on an install that records runs', () => {
     const after = (await (await fetch(`${url}/api/scan/status`)).json()) as { running: boolean; run?: string };
     expect(after.running).toBe(false);
     expect(after.run).toBeUndefined();
+  });
+
+  it('reports a scan another instance started, read from the record rather than from this process', async () => {
+    const shared = runsDatabase();
+    const instanceA = await startApp({ runsDatabase: shared, collectorDelayMs: 200 });
+    const instanceB = await startApp({ runsDatabase: shared });
+    const scanning = post('/api/scan', { 'x-forwarded-access-token': 'token' }, instanceA);
+
+    await new Promise((resolve) => setTimeout(resolve, 60));
+    const here = (await (await fetch(`${instanceA}/api/scan/status`)).json()) as { run?: string };
+    const there = (await (await fetch(`${instanceB}/api/scan/status`)).json()) as {
+      running: boolean;
+      run?: string;
+      actor?: string;
+      startedAt?: string;
+      trigger?: string;
+    };
+
+    expect(there.running).toBe(true);
+    expect(there.run).toBe(here.run);
+    expect(there.actor).toBe('admin@example.com');
+    expect(there.trigger).toBe('interactive');
+    expect(typeof there.startedAt).toBe('string');
+
+    await scanning;
+    const after = (await (await fetch(`${instanceB}/api/scan/status`)).json()) as { running: boolean; run?: string };
+    expect(after.running).toBe(false);
+    expect(after.run).toBeUndefined();
+  });
+
+  it('refuses a scan another instance is running with a conflict that names the run, and writes no run', async () => {
+    const shared = runsDatabase();
+    const instanceA = await startApp({ runsDatabase: shared, collectorDelayMs: 200 });
+    const instanceB = await startApp({ runsDatabase: shared });
+    const scanning = post('/api/scan', { 'x-forwarded-access-token': 'token' }, instanceA);
+
+    await new Promise((resolve) => setTimeout(resolve, 60));
+    const refused = await post('/api/scan', { 'x-forwarded-access-token': 'token' }, instanceB);
+    const live = (await (await fetch(`${instanceA}/api/scan/status`)).json()) as { run?: string };
+
+    expect(refused.status).toBe(409);
+    expect(refused.body.error).toBe('scan-in-progress');
+    expect(refused.body.run).toBe(live.run);
+    expect(refused.body.running).toMatchObject({ actor: 'admin@example.com' });
+    expect(shared.rows('runs')).toHaveLength(1);
+
+    expect((await scanning).status).toBe(200);
+    expect(shared.rows('runs')).toHaveLength(1);
+  });
+
+  it('keeps naming the run on a refused attempt\u2019s own instance, and writes no failed run for it', async () => {
+    const shared = runsDatabase();
+    const url = await startApp({ runsDatabase: shared, collectorDelayMs: 200 });
+    const scanning = post('/api/scan', { 'x-forwarded-access-token': 'token' }, url);
+
+    await new Promise((resolve) => setTimeout(resolve, 60));
+    const refused = await post('/api/scan', { 'x-forwarded-access-token': 'token' }, url);
+    const status = (await (await fetch(`${url}/api/scan/status`)).json()) as { run?: string };
+
+    expect(refused.status).toBe(409);
+    expect(status.run).toBe(refused.body.run);
+    expect(typeof status.run).toBe('string');
+    expect((await scanning).status).toBe(200);
+    expect(shared.rows('runs').map((row) => row.state)).toEqual(['complete']);
+  });
+
+  /** A runner that has not yet reported what it is collecting, as in the moment after a run is admitted. */
+  class Unreported extends ScanRunner {
+    override running(): undefined {
+      return undefined;
+    }
+  }
+
+  async function admitted(runs: Runs) {
+    const credentials: CredentialProvider = {
+      mode: 'on-behalf-of-user',
+      databricks: () =>
+        Promise.resolve({
+          mode: 'on-behalf-of-user',
+          actor: 'admin@example.com',
+          host: 'https://example.cloud.databricks.com',
+          token: () => Promise.resolve('t'),
+        }),
+      cloud: () => Promise.resolve(null),
+    };
+    return runs.trigger(
+      { credentials, scope: accountScope(), collectors: [collector(20)] },
+      { actor: 'admin@example.com' }
+    );
+  }
+
+  it('calls a run this instance has admitted its own, with no calls counted, before the runner reports it', async () => {
+    const store = new PostgresRunStore(runsDatabase());
+    const runner = new Unreported({
+      catalogue,
+      registry,
+      store: new InMemoryScanStore(),
+      measuredPillars: MEASURED,
+    });
+    const runs = new Runs({ store, runner });
+    const { run, scan } = await admitted(runs);
+
+    const status = await scanStatus(runner.running(), runs);
+
+    // Not "collecting on another instance", which is what a missing count reads as on the page.
+    expect(status).toMatchObject({ running: true, run: run.id, callsMade: 0, actor: 'admin@example.com' });
+    await scan;
+  });
+
+  it('still reads a run nobody here is holding as another instance\u2019s, with no count', async () => {
+    const store = new PostgresRunStore(runsDatabase());
+    const config = { catalogue, registry, store: new InMemoryScanStore(), measuredPillars: MEASURED };
+    const there = new Runs({ store, runner: new Unreported(config) });
+    const here = new Runs({ store, runner: new Unreported(config) });
+    const { run, scan } = await admitted(there);
+
+    const status = await scanStatus(undefined, here);
+
+    expect(status).toMatchObject({ running: true, run: run.id });
+    expect(status).not.toHaveProperty('callsMade');
+    await scan;
   });
 
   it('says nothing is recorded where no database is bound, rather than reporting an empty history', async () => {
@@ -1807,6 +1953,41 @@ describe('answering the requirements nothing can measure', () => {
     expect(reviewed.requirements.map((one) => one.controlId)).toContain(controlId);
   });
 
+  it('asks only the selected pillars when continuing a specific targeted run', async () => {
+    const scans = await scanSettling(blocked());
+    const source = await scans.get('measured');
+    if (source == null) throw new Error('The run under test was not stored.');
+    await scans.save({ ...source, id: 'targeted', requestedPillars: ['cost-optimization'] });
+    const { url } = await withStore(scans);
+
+    const targeted = (await (await fetch(`${url}/api/attestations?runId=targeted`)).json()) as {
+      requirements: { pillarId: string }[];
+    };
+    const unscoped = (await (await fetch(`${url}/api/attestations`)).json()) as {
+      requirements: { pillarId: string }[];
+    };
+
+    expect(targeted.requirements.length).toBeGreaterThan(0);
+    expect(targeted.requirements.every((one) => one.pillarId === 'cost-optimization')).toBe(true);
+    expect(unscoped.requirements.some((one) => one.pillarId !== 'cost-optimization')).toBe(true);
+  });
+
+  it('scopes questions for an older full run using the pillars it actually scored', async () => {
+    const store = new InMemoryAttestationStore();
+    const scans = new InMemoryScanStore();
+    const url = await startApp({ attestations: store, scans, measuredPillars: ['cost-optimization', 'reliability'] });
+    const started = await post('/api/scan', { 'x-forwarded-access-token': 'token' }, url);
+    const runId = String(started.body.id);
+    expect((await scans.get(runId))?.requestedPillars).toBeUndefined();
+
+    const response = await fetch(`${url}/api/attestations?runId=${encodeURIComponent(runId)}`);
+    const body = (await response.json()) as { requirements: { pillarId: string }[] };
+    expect(body.requirements.length).toBeGreaterThan(0);
+    expect(new Set(body.requirements.map((one) => one.pillarId))).toEqual(
+      new Set(['cost-optimization', 'reliability'])
+    );
+  });
+
   it('keeps asking about a practice a scan settled, because only an answer could have settled it', async () => {
     // An attestation-class requirement with an outcome has one because somebody answered it. Taking
     // it off this page on that basis would leave the answer nowhere to be renewed, so it would
@@ -1827,7 +2008,9 @@ describe('answering the requirements nothing can measure', () => {
     if (measured == null) throw new Error('The measured scan fixture was not stored.');
     const stored = measured.findings[0];
     if (stored == null) throw new Error('The measured scan fixture has no finding.');
-    const answeredAt = new Date('2026-08-20T10:00:00.000Z');
+    // Dated from the app's clock, which is the one the review judges the answer by.
+    const now = new Date('2026-08-21T10:00:00.000Z');
+    const answeredAt = new Date(now.getTime() - DAY_MS);
     const definitionId = 'definition-inconclusive-review';
     const current = {
       id: 'att-current-inconclusive',
@@ -1837,7 +2020,7 @@ describe('answering the requirements nothing can measure', () => {
       owner: 'platform-team@example.com',
       attestedBy: 'admin@example.com',
       attestedAt: answeredAt,
-      reviewBy: new Date('2026-11-20T10:00:00.000Z'),
+      reviewBy: new Date(answeredAt.getTime() + 90 * DAY_MS),
       definitionId,
     };
     const finding: Finding = {
@@ -1870,7 +2053,7 @@ describe('answering the requirements nothing can measure', () => {
     const store = new InMemoryAttestationStore();
     const reviews = new InMemoryReviewStore({ pillars: ALL_PILLARS });
     await store.record(current);
-    const url = await startApp({ scans, attestations: store, reviews, measuredPillars: ALL_PILLARS });
+    const url = await startApp({ scans, attestations: store, reviews, measuredPillars: ALL_PILLARS, now: () => now });
 
     const scope = `definitionId=${encodeURIComponent(definitionId)}`;
     const response = await fetch(`${url}/api/attestations?runId=measured&${scope}`);
@@ -1917,6 +2100,79 @@ describe('answering the requirements nothing can measure', () => {
     const decision = confirmed.pillars.find((candidate) => candidate.pillarId === control.pillarId);
     expect(decision).toMatchObject({ kind: 'confirmed', pillarId: control.pillarId });
     expect(decision?.attestationIds).toContain(current.id);
+  });
+
+  it('confirms a pillar while its answers are current or due, and asks again once they expire', async () => {
+    const pillarId = 'cost-optimization';
+    const definitionId = 'definition-answer-life';
+    const scope = `definitionId=${encodeURIComponent(definitionId)}`;
+    const scans = await scanSettling(blocked());
+    const measured = await scans.get('measured');
+    if (measured == null) throw new Error('The measured scan fixture was not stored.');
+    const runId = measured.id;
+    await scans.save({
+      ...measured,
+      requestedPillars: [pillarId],
+      stamp: { ...measured.stamp, definition: { id: definitionId, version: 1, fingerprint: 'sha256:answer-life' } },
+    });
+
+    // Every question in the pillar answered on one day for ninety: current for the first sixty, due
+    // for renewal in the last thirty, and expired from then on.
+    const answeredAt = new Date('2026-08-20T10:00:00.000Z');
+    const day = (count: number) => new Date(answeredAt.getTime() + count * DAY_MS);
+    const { url, store } = await withStore(scans);
+    const listed = (await (await fetch(`${url}/api/attestations?runId=${runId}&${scope}`)).json()) as {
+      requirements: { controlId: string }[];
+    };
+    const answers = listed.requirements.map(({ controlId }) => ({
+      id: `att-${controlId}`,
+      controlId,
+      answer: 'met' as const,
+      statement: `The platform team reviewed the recorded practice for ${controlId} this quarter.`,
+      owner: 'platform-team@example.com',
+      attestedBy: 'admin@example.com',
+      attestedAt: answeredAt,
+      reviewBy: day(90),
+      definitionId,
+    }));
+    for (const answer of answers) await store.record(answer);
+    const sample = answers[0];
+    if (sample == null) throw new Error(`The ${pillarId} run asks no question to answer.`);
+    expect([day(10), day(75), day(100)].map((when) => stateOf(sample, when))).toEqual(['current', 'due', 'expired']);
+
+    /** A fresh review of the run, decided by an app whose clock reads `now`. */
+    async function confirmAt(now: Date) {
+      const at = await startApp({
+        scans,
+        attestations: store,
+        reviews: new InMemoryReviewStore({ pillars: ALL_PILLARS }),
+        measuredPillars: ALL_PILLARS,
+        now: () => now,
+      });
+      const headers = { 'content-type': 'application/json', 'x-forwarded-access-token': 'token' };
+      const review = (await (
+        await fetch(`${at}/api/reviews?${scope}`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ runId }),
+        })
+      ).json()) as AssessmentReviewPayload;
+      const response = await fetch(`${at}/api/reviews/${review.id}/pillars/${pillarId}/confirm?${scope}`, {
+        method: 'POST',
+        headers,
+      });
+      const body = (await response.json()) as Partial<AssessmentReviewPayload> & { error?: string };
+      return {
+        status: response.status,
+        error: body.error,
+        cited: body.pillars?.find((one) => one.pillarId === pillarId)?.attestationIds,
+      };
+    }
+
+    const cited = answers.map((one) => one.id);
+    await expect(confirmAt(day(10))).resolves.toMatchObject({ status: 201, cited });
+    await expect(confirmAt(day(75))).resolves.toMatchObject({ status: 201, cited });
+    await expect(confirmAt(day(100))).resolves.toMatchObject({ status: 409, error: 'pillar-needs-attention' });
   });
 
   it('asks a question of every requirement it lists, with none of them the generated placeholder', async () => {
@@ -2198,7 +2454,7 @@ describe('excluding a requirement the last run did not cover', () => {
     lever,
     reason: 'This estate runs no external sharing, so the requirement is about a thing it does not have.',
     owner: 'platform-engineering',
-    expiresAt: '2026-09-01T00:00:00.000Z',
+    expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
   });
 
   async function exclude(url: string, controlId: string, lever?: string) {
@@ -2802,6 +3058,116 @@ describe('whether the stored records are still what was written', () => {
 });
 
 /*
+ * Who a change is recorded against.
+ *
+ * Permission is decided on the groups SCIM returns for the forwarded token, so the name written
+ * beside the act has to be the one SCIM returned for that same token. A forwarded header is a claim
+ * about the caller, and a request whose header names somebody else is refused rather than recorded
+ * under either name. Decision A1 in docs/decisions.md.
+ */
+describe('who a change is attributed to', () => {
+  const SERVICE_PRINCIPAL = '5af463d1-8cb9-4417-b2a5-725cea64cce5';
+
+  async function start(url: string, headers: Record<string, string> = {}) {
+    const response = await fetch(`${url}/api/scan`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-forwarded-access-token': 'token', ...headers },
+      body: '{}',
+    });
+    return { status: response.status, body: (await response.json()) as Record<string, unknown> };
+  }
+
+  it('refuses a request whose forwarded identity disagrees with the one SCIM returned, and records the refusal', async () => {
+    const audit = new InMemoryAuditLog();
+    const url = await startApp({ audit });
+
+    const { status, body } = await start(url, { 'x-forwarded-email': 'someone.else@example.com' });
+
+    expect(status).toBe(403);
+    expect(body.error).toBe('identity-mismatch');
+    const events = (await audit.search()).events;
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({
+      action: 'scan.start',
+      outcome: 'refused',
+      reason: 'identity-mismatch',
+      actor: 'admin@example.com',
+    });
+  });
+
+  it.each([
+    ['a header that matches exactly', 'admin@example.com'],
+    ['a header that differs only in case', 'Admin@Example.COM'],
+  ])('allows %s', async (_what, header) => {
+    const audit = new InMemoryAuditLog();
+    const url = await startApp({ audit });
+
+    const { status, body } = await start(url, { 'x-forwarded-email': header });
+
+    expect(status).toBe(200);
+    // The verified spelling is what is recorded, not the one the header happened to use.
+    expect((body.stamp as { actor: string }).actor).toBe('admin@example.com');
+  });
+
+  it('attributes to the SCIM identity when there is no forwarded header', async () => {
+    const url = await startApp({});
+
+    const { status, body } = await start(url);
+
+    expect(status).toBe(200);
+    expect((body.stamp as { actor: string }).actor).toBe('admin@example.com');
+  });
+
+  it('falls back to the forwarded header actor when SCIM returns no userName', async () => {
+    // A minimal stub or a custom principal record can answer without a userName. There is nothing to
+    // compare the header against, so it is the only name there is.
+    scimUserName = undefined;
+    const url = await startApp({});
+
+    const { status, body } = await start(url, { 'x-forwarded-email': 'forwarded@example.com' });
+
+    expect(status).toBe(200);
+    expect((body.stamp as { actor: string }).actor).toBe('forwarded@example.com');
+  });
+
+  it('records a service principal under its application id, with its name beside it', async () => {
+    scimUserName = SERVICE_PRINCIPAL;
+    scimDisplayName = 'waf-schedule-probe';
+    const url = await startApp({});
+
+    const { status, body } = await start(url, { 'x-forwarded-email': SERVICE_PRINCIPAL });
+
+    expect(status).toBe(200);
+    expect(body.stamp).toMatchObject({ actor: SERVICE_PRINCIPAL, actorName: 'waf-schedule-probe' });
+  });
+
+  it('names the mismatch ahead of membership, whatever the permission would have been', async () => {
+    // A caller who is both a stranger and mismatched is told about the identity, because the groups
+    // SCIM listed are only meaningful for the name it returned.
+    const audit = new InMemoryAuditLog();
+    const url = await startApp({ audit });
+    scimGroups = ['users'];
+
+    const { status, body } = await start(url, { 'x-forwarded-email': 'someone.else@example.com' });
+
+    expect(status).toBe(403);
+    expect(body.error).toBe('identity-mismatch');
+    expect((await audit.search()).events).toMatchObject([{ reason: 'identity-mismatch' }]);
+  });
+
+  it('tells the readiness read a mismatched header may not start a scan, as the start itself would refuse', async () => {
+    const response = await fetch(`${appUrl}/api/scan/readiness`, {
+      headers: { 'x-forwarded-access-token': 'token', 'x-forwarded-email': 'someone.else@example.com' },
+    });
+
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as ReadinessPayload;
+    expect(body.may).toMatchObject({ start: false, refusal: 'identity-mismatch' });
+    expect(body.may.start ? '' : body.may.message).toContain('verified');
+  });
+});
+
+/*
  * What reaches the log, through the real gate.
  *
  * The definition and import suites inject their own gate, which is right for testing those routes and
@@ -2896,6 +3262,148 @@ describe('the acts the gate and the scan routes record', () => {
 
     expect(await second.text()).toBe(await first.text());
     expect(second.headers.get('x-export-digest')).toBe(first.headers.get('x-export-digest'));
+  });
+});
+
+/*
+ * A lost audit event, from the append that fails to the diagnostics page and the person who clears it.
+ *
+ * Through the real gate and the real recorder, because the properties that matter live between them:
+ * the marker is written by the recorder when the trail refuses an act, and acknowledging it is an act
+ * the gate permits, so a caller outside the assessor group is turned away and the refusal is recorded.
+ */
+describe('a lost audit event and what is done about it', () => {
+  /** A trail that takes nothing, with the refusal it would give a database that is down. */
+  const refusing: AuditLog = {
+    durable: true,
+    append: () => Promise.reject(new Error('the database is unreachable')),
+    head: () => Promise.reject(new Error('the database is unreachable')),
+    floor: () => Promise.resolve(undefined),
+    search: () => Promise.resolve({ events: [] }),
+    verify: () => Promise.reject(new Error('the database is unreachable')),
+  };
+
+  /** Records a requirement being answered, which is an act the trail then cannot take. */
+  async function decideWhileTrailIsDown(url: string): Promise<void> {
+    const response = await fetch(`${url}/api/decisions`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-forwarded-access-token': 'token' },
+      body: JSON.stringify({
+        controlId: 'DG-02-01',
+        disposition: 'accepted',
+        reason: 'Two clusters in a lab account with no customer data; the account closes in November.',
+        owner: 'platform-team@example.com',
+        until: new Date(Date.now() + 60 * 86_400_000).toISOString(),
+      }),
+    });
+    expect(response.status).toBe(201);
+  }
+
+  async function diagnostics(url: string) {
+    return (await (await fetch(`${url}/api/diagnostics`)).json()) as {
+      well: boolean;
+      unrecorded: number;
+      auditGaps?: { gaps: { id: string; action: string; actor: string }[] };
+    };
+  }
+
+  async function acknowledge(url: string, id: string, headers: Record<string, string> = {}) {
+    const response = await fetch(`${url}/api/diagnostics/audit-gaps/${id}/acknowledge`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-forwarded-access-token': 'token', ...headers },
+      body: '{}',
+    });
+    return { status: response.status, body: (await response.json()) as Record<string, unknown> };
+  }
+
+  it('shows on the diagnostics an act the trail could not take, with who did it', async () => {
+    const gaps = new InMemoryAuditGapLog();
+    const url = await startApp({ audit: refusing, gaps, decisions: new InMemoryDecisionStore() });
+
+    await decideWhileTrailIsDown(url);
+
+    const found = await diagnostics(url);
+    expect(found.unrecorded).toBe(1);
+    expect(found.auditGaps?.gaps).toMatchObject([{ action: 'decision.record', actor: 'admin@example.com' }]);
+    expect(found.well).toBe(false);
+  });
+
+  it('is still shown by an instance that did not lose it, and after the one that did is gone', async () => {
+    const gaps = new InMemoryAuditGapLog();
+    const lost = await startApp({ audit: refusing, gaps, decisions: new InMemoryDecisionStore() });
+    await decideWhileTrailIsDown(lost);
+
+    // Another replica, or the same one after a deploy: a recorder with nothing in its count, over the
+    // same markers, whose own trail is working.
+    const other = await startApp({ audit: new InMemoryAuditLog(), gaps });
+
+    const found = await diagnostics(other);
+    expect(found.unrecorded).toBe(0);
+    expect(found.auditGaps?.gaps).toHaveLength(1);
+    expect(found.well).toBe(false);
+  });
+
+  it('is acknowledged by an assessor, and the acknowledgement is itself in the trail', async () => {
+    const gaps = new InMemoryAuditGapLog();
+    const lost = await startApp({ audit: refusing, gaps, decisions: new InMemoryDecisionStore() });
+    await decideWhileTrailIsDown(lost);
+    const [gap] = (await gaps.unacknowledged()).gaps;
+    const trail = new InMemoryAuditLog();
+    const url = await startApp({ audit: trail, gaps });
+
+    const { status, body } = await acknowledge(url, gap?.id ?? 'missing');
+
+    expect(status).toBe(200);
+    expect(body).toMatchObject({ id: gap?.id, acknowledgedBy: 'admin@example.com', already: false });
+    expect((await diagnostics(url)).auditGaps?.gaps).toEqual([]);
+    expect((await trail.search()).events).toMatchObject([
+      {
+        action: 'gap.acknowledge',
+        outcome: 'performed',
+        actor: 'admin@example.com',
+        target: { kind: 'audit-gap', id: gap?.id },
+      },
+    ]);
+  });
+
+  it('is refused for a caller outside the assessor group, who leaves the gap standing and a refusal behind', async () => {
+    const gaps = new InMemoryAuditGapLog();
+    const lost = await startApp({ audit: refusing, gaps, decisions: new InMemoryDecisionStore() });
+    await decideWhileTrailIsDown(lost);
+    const [gap] = (await gaps.unacknowledged()).gaps;
+    const trail = new InMemoryAuditLog();
+    const url = await startApp({ audit: trail, gaps });
+    scimGroups = ['users'];
+
+    const { status, body } = await acknowledge(url, gap?.id ?? 'missing');
+
+    expect(status).toBe(403);
+    expect(body.error).toBe('not-a-member');
+    expect((await gaps.unacknowledged()).gaps).toHaveLength(1);
+    expect((await trail.search()).events).toMatchObject([
+      { action: 'gap.acknowledge', outcome: 'refused', reason: 'not-a-member' },
+    ]);
+  });
+
+  it('is refused without a forwarded token, like every other change', async () => {
+    const url = await startApp({ audit: new InMemoryAuditLog(), gaps: new InMemoryAuditGapLog() });
+
+    const response = await fetch(`${url}/api/diagnostics/audit-gaps/event-1/acknowledge`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: '{}',
+    });
+
+    expect(response.status).toBe(401);
+  });
+
+  it('leaves reading the diagnostics open to anyone who can open the app', async () => {
+    const gaps = new InMemoryAuditGapLog();
+    const url = await startApp({ audit: refusing, gaps, decisions: new InMemoryDecisionStore() });
+    await decideWhileTrailIsDown(url);
+    scimGroups = ['users'];
+
+    expect((await diagnostics(url)).auditGaps?.gaps).toHaveLength(1);
   });
 });
 

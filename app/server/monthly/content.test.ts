@@ -5,7 +5,14 @@ import type { ImprovementAction } from '../improve/action.js';
 import type { Run } from '../run/run.js';
 import type { OutcomeCounts, ScanSummary } from '../scan/store.js';
 import type { ScanStamp } from '../scan/scan.js';
-import { monthContent, type MonthPoint, type MonthSources, type MonthWindow } from './content.js';
+import {
+  closingScan,
+  monthContent,
+  openingReading,
+  type MonthPoint,
+  type MonthSources,
+  type MonthWindow,
+} from './content.js';
 import { parseMonth, type MonthId } from './publication.js';
 
 function month(value: string): MonthId {
@@ -157,6 +164,9 @@ describe('monthContent', () => {
       counts: counts({ pass: 5, fail: 5, unmeasurable: 2, notApplicable: 1 }),
       measuredPillars: ['a', 'b'],
       outcomes: { C1: 'pass', C2: 'pass', C3: 'fail' },
+      // Both readings carry the basis they were measured on: a movement is published only between two
+      // that `comparable` admits, and a reading with no stamp cannot be shown to be one.
+      stamp: stamp(),
     });
     const closing = scan({
       id: 'closing',
@@ -165,6 +175,7 @@ describe('monthContent', () => {
       counts: counts({ pass: 8, fail: 2, partial: 1, notApplicable: 1 }),
       measuredPillars: ['a', 'b', 'c'],
       outcomes: { C1: 'fail', C2: 'pass', C4: 'pass' },
+      stamp: stamp(),
     });
     const earlier = scan({ id: 'earlier', finishedAt: new Date('2026-08-10T10:00:00Z') });
 
@@ -276,17 +287,11 @@ describe('monthContent', () => {
       { label: 'Actions cancelled', value: '1' },
     ]);
 
-    // No prior published series and no stamp on the closing scan. Being the only point does not invent
-    // the missing basis: the same rule that refuses an older unreadable point refuses the base.
+    // No prior published series, so the month is the only point, on a basis the rule admits.
     expect(content.trend).toEqual([
-      {
-        month: month('2026-08'),
-        label: 'August 2026',
-        score: '60',
-        comparability: 'refused',
-        note: 'The run that closed August 2026 did not record how it was measured, so it cannot be placed on the same line as the others.',
-      },
+      { month: month('2026-08'), label: 'August 2026', score: '60', comparability: 'permitted' },
     ]);
+    expect(content.movementNote).toBeUndefined();
   });
 
   it('records what the review of the closing run was made of, naming the skipped pillars in words', () => {
@@ -675,5 +680,247 @@ describe('a month published again after its exceptions ended', () => {
     };
 
     expect(monthContent(august([during])).exceptions).toEqual([]);
+  });
+});
+
+// The month's movement is a claim about the estate, frozen on publication. It is made only between
+// two readings of the same question, and the month closes on the scheduled run — the system of record —
+// so an assessor's spot-check cannot replace it, or be compared against it.
+describe('what a month opens and closes at', () => {
+  const SERVICE = { executionMode: 'service-principal' as const, actor: 'sp-schedule' };
+
+  /** An earlier scan on the default basis, with an outcome the closing scan can be read against. */
+  function earlier(over: Partial<ScanSummary> = {}): ScanSummary {
+    return scan({
+      id: 'prior',
+      finishedAt: new Date('2026-07-31T12:00:00Z'),
+      overall: 50,
+      counts: counts({ pass: 5, fail: 5 }),
+      outcomes: { C1: 'pass' },
+      stamp: stamp(),
+      ...over,
+    });
+  }
+
+  function closes(over: Partial<ScanSummary> = {}): ScanSummary {
+    return scan({
+      id: 'closing',
+      finishedAt: new Date('2026-08-25T10:00:00Z'),
+      overall: 60,
+      counts: counts({ pass: 6, fail: 4 }),
+      outcomes: { C1: 'fail' },
+      stamp: stamp(),
+      ...over,
+    });
+  }
+
+  function august(scans: readonly ScanSummary[], priorScan?: ScanSummary, priorRefusal?: string): MonthSources {
+    return {
+      month: month('2026-08'),
+      window: WINDOW,
+      runs: [],
+      scans,
+      ...(priorScan != null ? { priorScan } : {}),
+      ...(priorRefusal != null ? { priorRefusal } : {}),
+      risks: [],
+      actions: [],
+      label,
+    };
+  }
+
+  it('publishes no movement across an opening by one identity and a closing by another', () => {
+    const opening = earlier({ stamp: stamp({ actor: 'analyst@example.com' }) });
+    const closing = closes({
+      trigger: 'scheduled',
+      ...SERVICE,
+      stamp: stamp({ ...SERVICE, trigger: 'scheduled' }),
+    });
+
+    const content = monthContent(august([closing], opening));
+
+    expect(content.movement).toEqual([]);
+    expect(content.findingDeltas).toEqual([]);
+    // The reason is the comparability rule's own, which names the two identities.
+    expect(content.movementNote).toContain('Movement and finding changes are not shown');
+    expect(content.movementNote).toContain('as the identity that started it and the other as a service principal');
+  });
+
+  it('publishes no movement between two identities of one execution mode, and says which', () => {
+    const opening = earlier({ stamp: stamp({ actor: 'ana@example.com' }) });
+    const closing = closes({ stamp: stamp({ actor: 'raj@example.com' }) });
+
+    const note = monthContent(august([closing], opening)).movementNote;
+
+    expect(note).toContain('ana@example.com');
+    expect(note).toContain('raj@example.com');
+  });
+
+  it('publishes no movement across the Version 1 to Version 2 methodology transition', () => {
+    const released = (publicVersion: number) => ({
+      publicMethodology: {
+        publicVersion,
+        manifestDigest: `sha256:manifest-${String(publicVersion)}`,
+        state: 'released' as const,
+      },
+    });
+    const opening = earlier({ stamp: stamp(released(1)) });
+    const closing = closes({ stamp: stamp(released(2)) });
+
+    const content = monthContent(august([closing], opening));
+
+    expect(content.movement).toEqual([]);
+    expect(content.findingDeltas).toEqual([]);
+    expect(content.movementNote).toContain('different public methodology versions (2 and 1)');
+  });
+
+  it('publishes no movement from an opening that did not record how it was measured', () => {
+    const opening = earlier({ stamp: undefined });
+
+    const content = monthContent(august([closes()], opening));
+
+    expect(content.movement).toEqual([]);
+    expect(content.findingDeltas).toEqual([]);
+    expect(content.movementNote).toContain('did not record how it was measured');
+  });
+
+  it('carries the refusal the endpoint recorded when it found no comparable opening', () => {
+    const content = monthContent(
+      august([closes()], undefined, 'These scans looked back over different windows (30 and 90 days).')
+    );
+
+    expect(content.movement).toEqual([]);
+    expect(content.movementNote).toContain('different windows (30 and 90 days)');
+  });
+
+  it('says there was nothing to measure from when no scan came before the month', () => {
+    const content = monthContent(august([closes()]));
+
+    expect(content.movement).toEqual([]);
+    expect(content.movementNote).toContain('no scan finished before August 2026');
+  });
+
+  it('has no movement note for a month no run closed', () => {
+    expect(monthContent(august([])).movementNote).toBeUndefined();
+  });
+
+  it('measures a comparable pair exactly as before, with no note', () => {
+    const content = monthContent(august([closes()], earlier()));
+
+    expect(content.movement).toEqual([
+      { label: 'Overall score', from: '50', to: '60' },
+      { label: 'Requirements answered', from: '10 of 10', to: '10 of 10' },
+      { label: 'Pillars measured', from: '1', to: '1' },
+    ]);
+    expect(content.findingDeltas).toEqual([
+      { control: 'C1', requirement: 'Encrypt data at rest', pillar: 'Security', from: 'pass', to: 'fail' },
+    ]);
+    expect(content.movementNote).toBeUndefined();
+  });
+
+  describe('closingScan', () => {
+    it('closes the month on the scheduled run even when an interactive one finished later', () => {
+      const scheduled = closes({ id: 'scheduled', trigger: 'scheduled', finishedAt: new Date('2026-08-20T02:00:00Z') });
+      const interactive = closes({
+        id: 'by-hand',
+        trigger: 'interactive',
+        finishedAt: new Date('2026-08-28T15:00:00Z'),
+      });
+
+      expect(closingScan([interactive, scheduled], WINDOW)?.id).toBe('scheduled');
+      expect(closingScan([scheduled, interactive], WINDOW)?.id).toBe('scheduled');
+    });
+
+    it('takes the latest of several scheduled runs', () => {
+      const first = closes({ id: 'first', trigger: 'scheduled', finishedAt: new Date('2026-08-06T02:00:00Z') });
+      const second = closes({ id: 'second', trigger: 'scheduled', finishedAt: new Date('2026-08-13T02:00:00Z') });
+
+      expect(closingScan([second, first], WINDOW)?.id).toBe('second');
+    });
+
+    it('falls back to the latest scan of any kind where the month has no scheduled run', () => {
+      const early = closes({ id: 'early', trigger: 'interactive', finishedAt: new Date('2026-08-04T10:00:00Z') });
+      const late = closes({ id: 'late', trigger: 'interactive', finishedAt: new Date('2026-08-27T10:00:00Z') });
+
+      expect(closingScan([early, late], WINDOW)?.id).toBe('late');
+    });
+
+    it('does not treat a run that recorded no trigger as scheduled', () => {
+      const unrecorded = closes({ id: 'unrecorded', finishedAt: new Date('2026-08-28T10:00:00Z') });
+      const scheduled = closes({ id: 'scheduled', trigger: 'scheduled', finishedAt: new Date('2026-08-02T02:00:00Z') });
+
+      expect(closingScan([unrecorded, scheduled], WINDOW)?.id).toBe('scheduled');
+    });
+
+    it('ignores a scheduled run outside the month', () => {
+      const outside = closes({ id: 'outside', trigger: 'scheduled', finishedAt: new Date('2026-09-02T02:00:00Z') });
+      const inside = closes({ id: 'inside', trigger: 'interactive' });
+
+      expect(closingScan([outside, inside], WINDOW)?.id).toBe('inside');
+    });
+  });
+
+  describe('the closing statement', () => {
+    it('says the scheduled run closed the month', () => {
+      const closing = closes({ trigger: 'scheduled' });
+
+      expect(monthContent(august([closing])).closing).toEqual({
+        kind: 'scheduled',
+        statement: 'The month closes on its latest scheduled run, the system of record.',
+      });
+    });
+
+    it('says so when a month with no scheduled run closes on a scan started by hand', () => {
+      const closing = closes({ trigger: 'interactive' });
+
+      expect(monthContent(august([closing])).closing).toEqual({
+        kind: 'latest-scan',
+        statement:
+          'No scheduled run finished in August 2026, so the month closes on its latest scan, which was started by hand.',
+      });
+    });
+
+    it('does not claim a hand start for a scan that recorded no trigger', () => {
+      expect(monthContent(august([closes()])).closing?.statement).toContain(
+        'did not record whether it was scheduled or started by hand'
+      );
+    });
+
+    it('is absent where no run closed the month', () => {
+      expect(monthContent(august([])).closing).toBeUndefined();
+    });
+  });
+
+  describe('openingReading', () => {
+    it('passes over a newer earlier scan that cannot be compared for an older one that can', () => {
+      const closing = closes();
+      const otherLookback = earlier({
+        id: 'newer',
+        finishedAt: new Date('2026-07-30T12:00:00Z'),
+        stamp: stamp({ lookbackDays: 90 }),
+      });
+      const comparablePrior = earlier({ id: 'older', finishedAt: new Date('2026-07-20T12:00:00Z') });
+
+      expect(openingReading([comparablePrior, otherLookback], closing).scan?.id).toBe('older');
+    });
+
+    it('refuses with the nearest scan’s reason when none can be compared', () => {
+      const closing = closes();
+      const near = earlier({
+        id: 'near',
+        finishedAt: new Date('2026-07-30T12:00:00Z'),
+        stamp: stamp({ lookbackDays: 90 }),
+      });
+      const far = earlier({ id: 'far', finishedAt: new Date('2026-07-01T12:00:00Z'), stamp: undefined });
+
+      const opening = openingReading([far, near], closing);
+
+      expect(opening.scan).toBeUndefined();
+      expect(opening.refusal).toContain('different windows (30 and 90 days)');
+    });
+
+    it('has nothing to open without a closing run, or without an earlier scan', () => {
+      expect(openingReading([earlier()], undefined)).toEqual({});
+      expect(openingReading([], closes())).toEqual({});
+    });
   });
 });

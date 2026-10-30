@@ -42,11 +42,16 @@ import { usePaged } from '../components/ui/paging';
 import { CustomerPage, Surface } from '../components/system';
 import { duration, identity, measured, requestSentence, startedBy, whoRan } from './run-language';
 import {
+  filterScans,
   inZone,
   JOB_RUNS_CAPTION,
   REPEATED,
   RUN_STATE_LABEL,
   RUNS_VIEWS,
+  SCAN_FILTERS,
+  scanFilterCounts,
+  scanFilterFrom,
+  type ScanFilter,
   took,
   triggerCaption,
   withoutRepeats,
@@ -55,6 +60,12 @@ import {
 } from './schedule-language';
 import type { ScanSummary, Schedule, ScheduleRun } from '../api/types';
 import { methodologyLabel } from '../methodology-identity';
+import { resultReportPath } from '../assessment-continuation';
+
+function scanLink(scan: ScanSummary): string {
+  const scope = encodeURIComponent(scan.stamp?.definition?.id ?? '');
+  return `/history/${encodeURIComponent(scan.id)}?definitionId=${scope}`;
+}
 
 /**
  * @param notes How many notes each run carries, so a reader can see which were written about.
@@ -78,7 +89,7 @@ export function columns(
               cell in the row — posture, results, pillars, identity — is a fact about the run whose
               record the reader wants, and aiming at the date to get there is the layout's job being
               done by the reader. See `.wa-table tbody tr:has(.wa-row-link)`. */}
-          <Link to={`/history/${scan.id}`} className="wa-row-link wa-numeric text-wa-text">
+          <Link to={scanLink(scan)} className="wa-row-link wa-numeric text-wa-text">
             {new Date(scan.finishedAt).toLocaleString()}
           </Link>
           <span className="wa-caption">
@@ -93,11 +104,14 @@ export function columns(
       header: 'Report',
       cell: (scan) =>
         scan.resultId == null ? (
-          <Link to={`/history/${scan.id}`} className="wa-caption wa-aside-link wa-row-inset">
-            Awaiting review
+          <Link to={scanLink(scan)} className="wa-caption wa-aside-link wa-row-inset">
+            {scan.stamp?.definition == null ? 'Indicative only' : 'Awaiting review'}
           </Link>
         ) : (
-          <Link to={`/report/${scan.resultId}`} className="wa-body-compact wa-aside-link wa-row-inset">
+          <Link
+            to={resultReportPath(scan.resultId, scan.stamp?.definition?.id ?? null)}
+            className="wa-body-compact wa-aside-link wa-row-inset"
+          >
             Open report
           </Link>
         ),
@@ -283,7 +297,17 @@ export function HistoryPage() {
   // honest: there is nothing to know yet.
   const assessesAsName = data?.scans.find((scan) => scan.actor === schedule.data?.assessesAs)?.actorName;
 
-  const paged = usePaged(data?.scans ?? [], 10);
+  // The scheduled runs unless the reader asks for another kind, carried in the URL like the view above.
+  const filter: ScanFilter = scanFilterFrom(params.get('scans'));
+  const filterTo = (next: ScanFilter) => {
+    const to = new URLSearchParams(params);
+    if (next === 'scheduled') to.delete('scans');
+    else to.set('scans', next);
+    setParams(to, { replace: true });
+  };
+  const counts = scanFilterCounts(data?.scans ?? []);
+
+  const paged = usePaged(filterScans(data?.scans ?? [], filter), 10);
   const pagedJobs = usePaged(jobRuns, 10);
 
   return (
@@ -341,6 +365,22 @@ export function HistoryPage() {
                 </button>
               ))}
             </span>
+            {view === 'scans' && (
+              <span className="wa-segmented" role="group" aria-label="Which scans to list">
+                {(Object.keys(SCAN_FILTERS) as readonly ScanFilter[]).map((one) => (
+                  <button
+                    key={one}
+                    type="button"
+                    aria-pressed={one === filter}
+                    onClick={() => {
+                      filterTo(one);
+                    }}
+                  >
+                    {SCAN_FILTERS[one]} ({counts[one]})
+                  </button>
+                ))}
+              </span>
+            )}
           </>
         }
       >
@@ -353,15 +393,20 @@ export function HistoryPage() {
             <div>
               {view === 'scans' ? (
                 <DataTable
-                  caption="Previous scans of this workspace, newest first"
+                  caption={`Previous ${filter === 'all' ? '' : `${SCAN_FILTERS[filter].toLowerCase()} `}scans of this workspace, newest first`}
                   columns={columns(pillarTitle, notes.data?.counts)}
                   rows={paged.rows}
                   rowKey={(scan) => scan.id}
                   empty={{
                     reason: 'not-yet-collected',
-                    heading: 'No scans recorded',
+                    heading:
+                      filter === 'all'
+                        ? 'No scans recorded'
+                        : `No ${SCAN_FILTERS[filter].toLowerCase()} scans recorded`,
                     detail:
-                      'Run an assessment from the Dashboard. Once two runs have been recorded on the same basis, this page can compare them.',
+                      filter === 'all'
+                        ? 'Run an assessment from the Dashboard. Once two runs have been recorded on the same basis, this page can compare them.'
+                        : `${filter === 'scheduled' ? 'The scheduled job has not recorded a scan yet.' : 'Nobody has started a scan by hand.'} The other filters list the rest of the record.`,
                   }}
                 />
               ) : (
@@ -391,6 +436,11 @@ export function HistoryPage() {
               <p>
                 A run that carried pillars forward includes scores it did not measure itself; the Pillars column
                 identifies them.
+              </p>
+              <p>
+                The scheduled runs are listed first because the scheduled service principal is the system of record: a
+                month closes on its latest scheduled run, and its trend is drawn from those. A run started by hand is
+                one filter away, and runs recorded before the trigger was kept appear under All.
               </p>
             </Disclosure>
           ) : (

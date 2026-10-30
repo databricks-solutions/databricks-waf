@@ -7,6 +7,7 @@
 
 import type { RunDefinitionPayload, RunIdentityPayload, StampPayload } from './contract.js';
 import internalDeliveryPatterns from './internal-delivery-patterns.json';
+import { INTERIM_VERSION_1_LABEL, isInterimVersionOne, methodologyVersionName } from './methodology-interim.js';
 
 const INTERNAL_DELIVERY_NAMES = internalDeliveryPatterns.map((pattern) => new RegExp(pattern, 'iu'));
 
@@ -115,7 +116,9 @@ export function comparable(
         'One scan read the estate as the identity that started it and the other as a service principal. The two see different parts of the estate, so a change between them is not a change in the estate.',
     };
   }
-  if (a.actor !== b.actor) {
+  // Without regard to case, as the gate compares a caller's name: one person is not two identities
+  // because a proxy and the workspace spell their address differently.
+  if (a.actor.trim().toLowerCase() !== b.actor.trim().toLowerCase()) {
     return {
       ok: false,
       reason: `These scans ran as different identities (${a.actor} and ${b.actor}), whose visible estates may differ.`,
@@ -168,6 +171,9 @@ export function comparable(
  * ships Version 1. Candidate runs carry their candidate state and exact manifest, so two matching
  * candidate records can be compared without either being presented as released. Publication remains
  * a separate, stricter gate.
+ *
+ * Different public versions are refused whatever the catalogue span between them: a version is a
+ * different standard, and describing what separates two of them would make a trend of what is not one.
  */
 function methodologyBarrier(a: StampPayload, b: StampPayload): string | undefined {
   const one = a.publicMethodology;
@@ -184,13 +190,20 @@ function methodologyBarrier(a: StampPayload, b: StampPayload): string | undefine
       'They do not belong to one customer methodology trend.'
     );
   }
+  const interim = isInterimVersionOne(one) || isInterimVersionOne(two);
   if (one.publicVersion !== two.publicVersion) {
-    return `These scans belong to different public methodology versions (${String(one.publicVersion)} and ${String(two.publicVersion)}).`;
+    // The interim variant is named rather than numbered: "1" would read as the released Version 1, which
+    // it is not, and the reader comparing against it is owed that distinction.
+    const [first, second] = interim
+      ? [methodologyVersionName(one), methodologyVersionName(two)]
+      : [String(one.publicVersion), String(two.publicVersion)];
+    return `These scans belong to different public methodology versions (${first} and ${second}).`;
   }
   if (one.manifestDigest !== two.manifestDigest) {
     return (
-      `These scans name Methodology Version ${String(one.publicVersion)} with different manifest digests, ` +
-      'so they do not describe the same released standard.'
+      `These scans name Methodology Version ${String(one.publicVersion)} with different manifest digests` +
+      (interim ? `, and one of them is the ${INTERIM_VERSION_1_LABEL}, which was never released` : '') +
+      ', so they do not describe the same released standard.'
     );
   }
   return undefined;

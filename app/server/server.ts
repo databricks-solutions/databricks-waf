@@ -103,6 +103,7 @@ async function main(): Promise<void> {
     drafts,
     imports,
     audit: auditLog,
+    auditGaps,
     improvements,
     improvementExplanation: improvementStorage,
     notes,
@@ -159,6 +160,9 @@ async function main(): Promise<void> {
   // rather than resetting per request. `onError` goes to the console for the reason the refusal line
   // does: the one place a failure to record can be reported is somewhere other than the log.
   const audit = new AuditRecorder(auditLog, {
+    // Where a lost event leaves a mark, so a restart does not erase the only evidence that the trail
+    // is missing something and every instance reports the same gaps. Decision D7 in docs/decisions.md.
+    gaps: auditGaps,
     onError: (operation, error) => {
       console.error(`[audit] could not ${operation}:`, error);
     },

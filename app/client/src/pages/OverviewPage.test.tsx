@@ -95,13 +95,13 @@ describe('the Dashboard hierarchy', () => {
   });
 
   it('leads with measured coverage and subordinates a directional score', () => {
-    const markup = render(<DashboardPosture scan={SCAN} resultId="result-1" />);
+    const markup = render(<DashboardPosture scan={SCAN} resultId="result-1" definitionId="assessment-a" />);
 
     expect(markup).toContain('42%');
     expect(markup).toContain('68 of 162 applicable requirements');
     expect(markup).toContain('Directional—close evidence gaps first');
     expect(markup).toContain('Application-defined');
-    expect(markup).toContain('href="/report/result-1"');
+    expect(markup).toContain('href="/report/result-1?definitionId=assessment-a"');
   });
 
   it('makes evidence closure the first action when the score is too directional', () => {

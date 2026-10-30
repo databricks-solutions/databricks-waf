@@ -280,6 +280,30 @@ describe('a run that contradicts the claim', () => {
     expect(await stateOf(held.improvements)).toBe('ready-for-validation');
   });
 
+  it('does not verify on a lifting answer that predates the claim, because the pass rests on it', async () => {
+    const held = await harness({
+      attempts: [{ ...attempt(), checks: [{ controlId: 'DG-01-01', method: 'attested' }] }],
+    });
+
+    const resolution = await resolveValidations(
+      scan({
+        attested: {
+          'DG-01-01': {
+            bearing: 'co-signed',
+            by: 'sam@example.com',
+            at: new Date(CLAIMED.getTime() - DAY_MS),
+            statement: 'Ownership is reviewed quarterly by the platform team.',
+            owner: 'sam@example.com',
+            reviewBy: new Date(MEASURED.getTime() + 90 * DAY_MS),
+          },
+        },
+      }),
+      held.options
+    );
+
+    expect(resolution).toMatchObject({ answered: 1, incomplete: 1, verified: 0 });
+  });
+
   it('verifies on human evidence given after the claim', async () => {
     const held = await harness({ attempts: [{ ...attempt(), checks: [{ controlId: 'DG-01-01', method: 'attested' }] }] });
 

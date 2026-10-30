@@ -62,7 +62,6 @@ describe('attention labels', () => {
   it('names the four reasons the fields support, and not changed or event-triggered', () => {
     expect(ATTENTION_LABEL.unanswered).toBe('Not yet answered');
     expect(ATTENTION_LABEL.expired).toBe('Lapsed');
-    expect(ATTENTION_LABEL.due).toBe('Due for review');
     expect(ATTENTION_LABEL.inconclusive).toBe('Scan could not tell');
     expect(Object.keys(ATTENTION_LABEL)).not.toContain('changed');
     expect(Object.keys(ATTENTION_LABEL)).not.toContain('event-triggered');
@@ -128,12 +127,21 @@ describe('waiting', () => {
 });
 
 describe('notices', () => {
-  it('names the pillar on confirm and counts the exact current answers it freezes', () => {
+  it('names the pillar on confirm and counts the exact answers that still count it freezes', () => {
     const sentence = confirmNotice('Reliability', 3);
     expect(sentence).toContain('Confirm Reliability?');
-    expect(sentence).toContain('exact 3 current answers shown here');
+    expect(sentence).toContain('exact 3 answers that still count shown here');
+    expect(sentence).not.toContain('renewal');
     expect(sentence.toLowerCase()).not.toContain('still current in the live');
     expect(sentence.toLowerCase()).not.toContain('reviewed');
+  });
+
+  it('warns with the earliest renewal date when the confirm cites a due answer', () => {
+    const sentence = confirmNotice('Reliability', 3, '2026-09-01T00:00:00.000Z');
+    expect(sentence).toContain('due for renewal');
+    expect(sentence).toMatch(/Every selected pillar in this review must be completed before .*2026/);
+    expect(sentence).toContain('new scan and review');
+    expect(sentence).toContain('A confirm is written once.');
   });
 
   it('says a confirm records nothing when the run named no answer, rather than omitting the count', () => {
@@ -199,8 +207,9 @@ describe('counts', () => {
     expect(attentionCountPhrase(0)).toBe('None need attention');
   });
 
-  it('says the confirm freezes exact current evidence', () => {
-    expect(citedPhrase(2)).toContain('exact 2 current answers');
-    expect(citedPhrase(0)).toContain('no current human answer');
+  it('says the confirm freezes exact evidence that still counts', () => {
+    expect(citedPhrase(2)).toContain('exact 2 answers that still count');
+    expect(citedPhrase(1)).toContain('exact 1 answer that still counts');
+    expect(citedPhrase(0)).toContain('no answer that still counts');
   });
 });

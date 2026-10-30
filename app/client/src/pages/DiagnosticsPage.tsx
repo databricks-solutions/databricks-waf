@@ -18,16 +18,19 @@
 
 import { RotateCw } from 'lucide-react';
 import { Link } from 'react-router';
-import { useDiagnostics } from '../api/hooks';
+import { useAcknowledgeAuditGap, useDiagnostics } from '../api/hooks';
+import { AuditGapList } from '../components/AuditGapList';
 import { HealthReadings } from '../components/HealthReadings';
 import { DeploymentGuideLink } from '../components/DeploymentGuideLink';
 import { EmptyState } from '../components/ui/EmptyState';
 import { CustomerPage, PageLead, Surface } from '../components/system';
 import { Badge } from '../components/ui/StatusBadge';
-import { healthSentence, standingPresentation, unrecordedSentence } from './diagnostics-language';
+import { gapsSentence, healthSentence, standingPresentation, unrecordedSentence } from './diagnostics-language';
 
 export function DiagnosticsPage() {
   const diagnostics = useDiagnostics();
+  // Reloads on success, so what the page shows afterwards is the list the server now holds.
+  const acknowledgement = useAcknowledgeAuditGap(diagnostics.reload);
 
   if (diagnostics.error != null) {
     return (
@@ -63,6 +66,7 @@ export function DiagnosticsPage() {
 
   const health = diagnostics.data;
   const missed = unrecordedSentence(health.unrecorded);
+  const gapNote = gapsSentence(health.auditGaps);
 
   return (
     <CustomerPage>
@@ -114,10 +118,30 @@ export function DiagnosticsPage() {
               </Link>
             </p>
           )}
+          {gapNote != null && (
+            <p className="wa-body-compact text-wa-warning" role="status">
+              {gapNote}
+            </p>
+          )}
         </div>
 
         <HealthReadings readings={health.readings} at={health.at} />
       </Surface>
+      {/* Its own surface because it is a list somebody acts on, where the readings above are things to
+          fix elsewhere. Absent when nothing is waiting, so a clean install shows no empty panel. */}
+      {health.auditGaps != null && (health.auditGaps.unreadable != null || health.auditGaps.gaps.length > 0) && (
+        <Surface tone="raised" label="Lost audit events" title="Audit events that could not be written">
+          <AuditGapList
+            gaps={health.auditGaps}
+            at={health.at}
+            onAcknowledge={(gapId) => {
+              void acknowledgement.acknowledge(gapId);
+            }}
+            acknowledging={acknowledgement.acknowledging}
+            error={acknowledgement.error}
+          />
+        </Surface>
+      )}
     </CustomerPage>
   );
 }

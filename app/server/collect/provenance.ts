@@ -60,6 +60,20 @@ export interface Provenance {
    * value of the field is that it can be checked.
    */
   readonly from?: string;
+  /**
+   * The workspace the reading describes, when the reading was made somewhere that is one.
+   *
+   * Set on imported workspace-level readings, where the host in `from` names a URL and a finding has
+   * to say which workspace of the account it is a statement about. Absent for everything else: an
+   * account-level reading is about no one workspace, and a reading this app made itself takes its
+   * workspace from the scan.
+   *
+   * Optional and absent from every scan stored before it was added, and nothing requires it to be
+   * there: a reader that does not find it simply does not name a workspace. That is why the stored
+   * scan's codec version is unchanged, and why a build that predates the field reads a scan written
+   * with it.
+   */
+  readonly workspaceId?: string;
 }
 
 /**

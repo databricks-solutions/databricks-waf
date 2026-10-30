@@ -176,3 +176,40 @@ describe('an envelope that is well-formed and contradicts itself', () => {
     expect(read.tiers.account.identity?.accountId).toBe('00000000-1111-2222-3333-444444444444');
   });
 });
+
+describe('the host a tier names', () => {
+  /** An envelope whose workspace tier names this host, or the refusal it drew. */
+  function withHost(host: string): { reason: string; at?: string } | 'accepted' {
+    const held = envelope({ tiers: { workspace: { ran: true, identity: identity({ host }) }, account: { ran: false } } });
+    try {
+      envelopeFrom(held);
+      return 'accepted';
+    } catch (error) {
+      if (error instanceof MalformedEnvelopeError) return { reason: error.reason, at: error.at };
+      throw error;
+    }
+  }
+
+  it.each([
+    'https://dbc-00000000-0000.cloud.databricks.com',
+    'https://dbc-00000000-0000.cloud.databricks.com/',
+    'https://adb-1234567890123456.7.azuredatabricks.net',
+    'https://example.cloud.databricks.com:443',
+  ])('accepts %s, an https origin', (host) => {
+    expect(withHost(host)).toBe('accepted');
+  });
+
+  it.each([
+    ['javascript:alert(1)', 'a script URL'],
+    ['http://dbc-00000000-0000.cloud.databricks.com', 'a plain http origin'],
+    ['https://admin:secret@dbc-00000000-0000.cloud.databricks.com/x', 'credentials in the URL'],
+    ['https://admin@dbc-00000000-0000.cloud.databricks.com', 'a username in the URL'],
+    ['https://dbc-00000000-0000.cloud.databricks.com/api/2.0', 'a path'],
+    ['https://dbc-00000000-0000.cloud.databricks.com?o=1', 'a query'],
+    ['https://dbc-00000000-0000.cloud.databricks.com/#frag', 'a fragment'],
+    ['dbc-00000000-0000.cloud.databricks.com', 'no scheme'],
+    ['not a url', 'text that is not a URL'],
+  ])('refuses %s, %s', (host) => {
+    expect(withHost(host)).toStrictEqual({ reason: 'bad-field', at: 'tiers.workspace.identity.host' });
+  });
+});

@@ -185,7 +185,8 @@ const parse = {
 			hasStreamBacklogRule: bool(row, "has_stream_backlog_rule") ?? false,
 			tagCount: count(row, "tag_count"),
 			...optional("deploymentKind", text(row, "deployment_kind")),
-			...optional("runAs", text(row, "run_as"))
+			...optional("runAs", text(row, "run_as")),
+			...optional("runAsName", text(row, "run_as_name"))
 		}));
 	},
 	jobReadiness: (rows) => {
@@ -770,6 +771,21 @@ const parse = {
 				...optional("tablesTouched", num(row, "tables_touched"))
 			};
 		}) };
+	},
+	queryCapacity: (rows) => {
+		const row = rows[0] ?? {};
+		return {
+			totalStatements: count(row, "total_statements"),
+			waitingAtCapacity: count(row, "waiting_at_capacity"),
+			totalWaitMs: count(row, "total_wait_ms")
+		};
+	},
+	dbfsTableAudit: (rows) => {
+		const row = rows[0] ?? {};
+		return {
+			totalManagedTables: count(row, "total_managed_tables"),
+			dbfsRootTables: count(row, "dbfs_root_tables")
+		};
 	}
 };
 /**

@@ -47,7 +47,7 @@
   "reads": [
     {
       "file": "server/accept/postgres-store.ts",
-      "line": 36,
+      "line": 37,
       "table": "accepted_risks",
       "class": "scoped",
       "shape": "predicate",
@@ -57,13 +57,23 @@
     },
     {
       "file": "server/accept/postgres-store.ts",
-      "line": 47,
+      "line": 60,
       "table": "accepted_risks",
       "class": "scoped",
       "shape": "predicate",
       "alreadyFiltersDefinition": false,
       "reason": null,
-      "sql": "select body from ${}.accepted_risks ${}"
+      "sql": "select distinct on (id) id, body from ${}.accepted_risks ${}"
+    },
+    {
+      "file": "server/accept/postgres-store.ts",
+      "line": 68,
+      "table": "accepted_risks",
+      "class": "scoped",
+      "shape": "predicate",
+      "alreadyFiltersDefinition": false,
+      "reason": null,
+      "sql": "select id, body from ${}.accepted_risks ${}"
     },
     {
       "file": "server/admin/retention-store.ts",
@@ -217,7 +227,7 @@
     },
     {
       "file": "server/apply/postgres-store.ts",
-      "line": 42,
+      "line": 43,
       "table": "applicability_decisions",
       "class": "scoped",
       "shape": "predicate",
@@ -227,13 +237,23 @@
     },
     {
       "file": "server/apply/postgres-store.ts",
-      "line": 53,
+      "line": 64,
       "table": "applicability_decisions",
       "class": "scoped",
       "shape": "predicate",
       "alreadyFiltersDefinition": false,
       "reason": null,
-      "sql": "select body from ${}.applicability_decisions ${}"
+      "sql": "select distinct on (id) id, body from ${}.applicability_decisions ${}"
+    },
+    {
+      "file": "server/apply/postgres-store.ts",
+      "line": 72,
+      "table": "applicability_decisions",
+      "class": "scoped",
+      "shape": "predicate",
+      "alreadyFiltersDefinition": false,
+      "reason": null,
+      "sql": "select id, body from ${}.applicability_decisions ${}"
     },
     {
       "file": "server/define/preflight.ts",
@@ -457,27 +477,7 @@
     },
     {
       "file": "server/run/run-store.ts",
-      "line": 196,
-      "table": "runs",
-      "class": "scoped",
-      "shape": "predicate",
-      "alreadyFiltersDefinition": false,
-      "reason": null,
-      "sql": "select ${} from ${}.runs ${}"
-    },
-    {
-      "file": "server/run/run-store.ts",
-      "line": 205,
-      "table": "runs",
-      "class": "scoped",
-      "shape": "predicate",
-      "alreadyFiltersDefinition": false,
-      "reason": null,
-      "sql": "select ${} from ${}.runs where idempotency_key = $1"
-    },
-    {
-      "file": "server/run/run-store.ts",
-      "line": 214,
+      "line": 195,
       "table": "runs",
       "class": "scoped",
       "shape": "predicate",
@@ -487,7 +487,37 @@
     },
     {
       "file": "server/run/run-store.ts",
-      "line": 222,
+      "line": 251,
+      "table": "runs",
+      "class": "scoped",
+      "shape": "predicate",
+      "alreadyFiltersDefinition": false,
+      "reason": null,
+      "sql": "select ${} from ${}.runs ${}"
+    },
+    {
+      "file": "server/run/run-store.ts",
+      "line": 260,
+      "table": "runs",
+      "class": "scoped",
+      "shape": "predicate",
+      "alreadyFiltersDefinition": false,
+      "reason": null,
+      "sql": "select ${} from ${}.runs where idempotency_key = $1"
+    },
+    {
+      "file": "server/run/run-store.ts",
+      "line": 269,
+      "table": "runs",
+      "class": "scoped",
+      "shape": "predicate",
+      "alreadyFiltersDefinition": false,
+      "reason": null,
+      "sql": "select ${} from ${}.runs where finished_at is null order by requested_at desc"
+    },
+    {
+      "file": "server/run/run-store.ts",
+      "line": 277,
       "table": "runs",
       "class": "scoped",
       "shape": "predicate",
@@ -497,7 +527,7 @@
     },
     {
       "file": "server/run/run-store.ts",
-      "line": 321,
+      "line": 376,
       "table": "runs",
       "class": "scoped",
       "shape": "predicate",
@@ -507,7 +537,7 @@
     },
     {
       "file": "server/run/run-store.ts",
-      "line": 347,
+      "line": 402,
       "table": "run_checkpoints",
       "class": "by-parent",
       "shape": "join",
@@ -517,7 +547,7 @@
     },
     {
       "file": "server/run/run-store.ts",
-      "line": 436,
+      "line": 491,
       "table": "run_attempts",
       "class": "by-parent",
       "shape": "join",
@@ -527,7 +557,7 @@
     },
     {
       "file": "server/scan/postgres-store.ts",
-      "line": 85,
+      "line": 92,
       "table": "scans",
       "class": "scoped",
       "shape": "predicate",
@@ -537,7 +567,7 @@
     },
     {
       "file": "server/scan/postgres-store.ts",
-      "line": 121,
+      "line": 128,
       "table": "scans",
       "class": "scoped",
       "shape": "predicate",
@@ -547,7 +577,7 @@
     },
     {
       "file": "server/scan/postgres-store.ts",
-      "line": 141,
+      "line": 148,
       "table": "scans",
       "class": "scoped",
       "shape": "predicate",
@@ -557,7 +587,17 @@
     },
     {
       "file": "server/store/event-log.ts",
-      "line": 98,
+      "line": 81,
+      "table": null,
+      "class": null,
+      "shape": "unclassified",
+      "alreadyFiltersDefinition": false,
+      "reason": "dynamic table interpolation",
+      "sql": "select control_id, body from ${}.${} where (control_id, ${}) in (select control_id, max(${}) from ${}.${}${} group by control_id)${}"
+    },
+    {
+      "file": "server/store/event-log.ts",
+      "line": 149,
       "table": null,
       "class": null,
       "shape": "unclassified",
@@ -567,7 +607,7 @@
     },
     {
       "file": "server/store/postgres.ts",
-      "line": 1227,
+      "line": 1292,
       "table": null,
       "class": null,
       "shape": "unclassified",
@@ -597,15 +637,15 @@
     }
   ],
   "totals": {
-    "reads": 55,
-    "predicate": 31,
+    "reads": 59,
+    "predicate": 34,
     "join": 7,
-    "unclassified": 17,
+    "unclassified": 18,
     "alreadyFiltersDefinition": 1,
     "byTable": {
-      "accepted_risks": 2,
+      "accepted_risks": 3,
       "advisories": 4,
-      "applicability_decisions": 2,
+      "applicability_decisions": 3,
       "assessment_results": 3,
       "assessment_reviews": 3,
       "assessment_setup_drafts": 2,
@@ -617,11 +657,11 @@
       "review_answers": 1,
       "run_attempts": 1,
       "run_checkpoints": 1,
-      "runs": 5,
+      "runs": 6,
       "scans": 4,
       "serving_declarations": 1,
       "validation_attempts": 2
     }
   },
-  "measuredAt": "2026-08-28T05:49:44.836Z"
+  "measuredAt": "2026-10-29T14:26:36.030Z"
 }

@@ -15,6 +15,7 @@ import { useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
 import { Alert, AlertDescription, AlertTitle, Spinner } from '@databricks/appkit-ui/react';
 import { useAssessment } from '../api/assessment-context';
+import { answerWalkPath, continuationPath } from '../assessment-continuation';
 import { customerResult } from '../api/final-result';
 import { useOpenReview, useResult, useResultExports, useReviewForRun, useRunChanges, useScan } from '../api/hooks';
 import { AssessmentJourney } from '../components/AssessmentJourney';
@@ -151,8 +152,15 @@ export function RunPage() {
         }
         actions={
           <>
-            {reviewId != null ? (
-              <Link className={scoreReleased ? 'wa-button-secondary' : 'wa-button-primary'} to={`/review/${reviewId}`}>
+            {scan.stamp.definition == null ? (
+              <Link className="wa-button-primary" to={answerWalkPath(scan.id)}>
+                Answer human questions
+              </Link>
+            ) : reviewId != null ? (
+              <Link
+                className={scoreReleased ? 'wa-button-secondary' : 'wa-button-primary'}
+                to={continuationPath(scan, reviewId)}
+              >
                 {scoreReleased ? 'Open completed review' : 'Continue review'}
               </Link>
             ) : (
@@ -182,17 +190,19 @@ export function RunPage() {
           </>
         }
       />
-      <AssessmentJourney
-        current={scoreReleased ? 'publish' : 'review'}
-        published={scoreReleased}
-        detail={
-          scoreReleased
-            ? 'This run is included in its published report.'
-            : reviewId != null
-              ? 'Indicative pillar scores are available on the Dashboard. Continue this run’s review to publish the report and its files.'
-              : 'Indicative pillar scores are available on the Dashboard. Open a review to decide the selected pillars and publish the report.'
-        }
-      />
+      {scan.stamp.definition != null && (
+        <AssessmentJourney
+          current={scoreReleased ? 'publish' : 'review'}
+          published={scoreReleased}
+          detail={
+            scoreReleased
+              ? 'This run is included in its published report.'
+              : reviewId != null
+                ? 'Indicative pillar scores are available on the Dashboard. Continue this run’s review to publish the report and its files.'
+                : 'Indicative pillar scores are available on the Dashboard. Open a review to decide the selected pillars and publish the report.'
+          }
+        />
+      )}
       {opening.error != null && (
         <Alert variant="destructive">
           <AlertTitle>The review could not be opened</AlertTitle>
@@ -287,24 +297,31 @@ export function ReviewGate({
         <Surface tone="raised" label="Review before results" title="Review before results">
           <div className="space-y-3 p-3">
             <p className="wa-body-compact">
-              This run is evidence, not the published report. Its indicative pillar scores are available on the
-              Dashboard. Final posture and report files publish after its selected pillars are reviewed.
+              {scan.stamp.definition == null
+                ? 'This custom run is indicative evidence. You can answer its human questions, but it cannot publish a report because it has no saved assessment.'
+                : 'This run is evidence, not the published report. Its indicative pillar scores are available on the Dashboard. Final posture and report files publish after its selected pillars are reviewed.'}
             </p>
             <dl className="space-y-3">
               <Field label="Evidence sources returned">{returned.toLocaleString()}</Field>
               <Field label="Sources without evidence">{missed.toLocaleString()}</Field>
               <Field label="Pillars in this run">{scan.measurement.length.toLocaleString()}</Field>
-              <Field label="Review progress">
-                {standing == null
-                  ? 'Waiting for its review record'
-                  : `${standing.recorded.toLocaleString()} of ${standing.expected.toLocaleString()} pillars recorded`}
+              <Field label="Review status">
+                {scan.stamp.definition == null
+                  ? 'Custom run; no report can be published'
+                  : standing == null
+                    ? 'Waiting for its review record'
+                    : `${standing.recorded.toLocaleString()} of ${standing.expected.toLocaleString()} pillars recorded`}
               </Field>
             </dl>
-            {reviewId != null && (
-              <Link className="wa-button-primary" to={`/review/${reviewId}`}>
+            {scan.stamp.definition == null ? (
+              <Link className="wa-button-primary" to={answerWalkPath(scan.id)}>
+                Answer human questions
+              </Link>
+            ) : reviewId != null ? (
+              <Link className="wa-button-primary" to={continuationPath(scan, reviewId)}>
                 Continue this review
               </Link>
-            )}
+            ) : null}
           </div>
         </Surface>
       }

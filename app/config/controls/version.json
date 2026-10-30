@@ -1,6 +1,6 @@
 {
-  "version": 18,
-  "fingerprint": "sha256:755d42025cf0f621c064089147c00748165277afd338986f2392edbb9cd36193",
+  "version": 21,
+  "fingerprint": "sha256:fefd02c559ae6664774564100072097edc4e6f4fa8fb10d45cfb00d739ba84a5",
   "scored_units": 165,
   "controls": {
     "CO-01-01": {
@@ -522,7 +522,10 @@
         "azure",
         "gcp"
       ],
-      "thresholds": null,
+      "thresholds": {
+        "pass_share": 0.8,
+        "partial_share": 0.4
+      },
       "preconditions": []
     },
     "DG-01-04": {
@@ -1043,7 +1046,7 @@
       "title": "Standardize MLOps processes",
       "provenance": "waf-docs",
       "severity": "medium",
-      "measurability": "attestation",
+      "measurability": "system-table",
       "coverage_mode": "complete",
       "alias_group": null,
       "clouds": [
@@ -1304,7 +1307,7 @@
       "title": "Manage service limits and quotas",
       "provenance": "waf-docs",
       "severity": "medium",
-      "measurability": "attestation",
+      "measurability": "system-table",
       "coverage_mode": "complete",
       "alias_group": null,
       "clouds": [
@@ -1312,7 +1315,10 @@
         "azure",
         "gcp"
       ],
-      "thresholds": null,
+      "thresholds": {
+        "pass_share": 1,
+        "partial_share": 0.99
+      },
       "preconditions": []
     },
     "OE-03-02": {
@@ -2796,7 +2802,7 @@
       "title": "Managed tables in DBFS root",
       "provenance": "security-guide",
       "severity": "low",
-      "measurability": "rest-api",
+      "measurability": "system-table",
       "coverage_mode": "complete",
       "alias_group": null,
       "clouds": [
@@ -3104,7 +3110,7 @@
       "title": "Jobs run as service principal",
       "provenance": "security-guide",
       "severity": "medium",
-      "measurability": "rest-api",
+      "measurability": "system-table",
       "coverage_mode": "complete",
       "alias_group": null,
       "clouds": [
@@ -3112,7 +3118,10 @@
         "azure",
         "gcp"
       ],
-      "thresholds": null,
+      "thresholds": {
+        "pass_share": 1,
+        "partial_share": 0.8
+      },
       "preconditions": []
     },
     "SCP-04-23": {

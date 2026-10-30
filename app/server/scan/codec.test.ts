@@ -150,6 +150,43 @@ describe('the scan codec', () => {
     ]);
   });
 
+  it('reads a version 4 scan, which cannot carry a cap or a lifting answer, as the measurement it was', () => {
+    // Version 5 added `capped` on a finding and the `co-signed` bearing on an answer. Neither can be
+    // in a document written before them, and a requirement that has neither is exactly what a
+    // version 4 build recorded, so no upgrade is owed and the absence is the fact.
+    const text = JSON.stringify({ codecVersion: 4, scan: scan() });
+
+    const decoded = decodeScan('version-4', text);
+
+    expect(decoded.findings.every((finding) => finding.capped === undefined)).toBe(true);
+    expect(CODEC_VERSION).toBeGreaterThan(4);
+  });
+
+  it('keeps a lifting answer and the cap it lifted through a round trip', () => {
+    const original = scan();
+    const [first] = original.findings;
+    if (first == null) throw new Error('The fixture has no finding.');
+    const lifted = {
+      ...first,
+      outcome: 'pass' as const,
+      capped: true as const,
+      attested: {
+        bearing: 'co-signed' as const,
+        by: 'admin@example.com',
+        at: new Date('2026-06-01T00:00:00.000Z'),
+        statement: 'Every change is reviewed and deployed from the platform repository.',
+        owner: 'platform@example.com',
+        reviewBy: new Date('2026-12-01T00:00:00.000Z'),
+      },
+    };
+
+    const decoded = decodeScan('x', encodeScan({ ...original, findings: [lifted] }));
+
+    expect(decoded.findings[0]?.capped).toBe(true);
+    expect(decoded.findings[0]?.attested?.bearing).toBe('co-signed');
+    expect(decoded.findings[0]?.attested?.reviewBy).toBeInstanceOf(Date);
+  });
+
   it('reads a version 3 scan without inventing a public methodology release', () => {
     // Version 4 added the optional public-methodology identity. A version 3 run cannot have carried
     // it, and catalogue revision 3 is technical provenance rather than evidence that the customer

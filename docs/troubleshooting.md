@@ -84,6 +84,14 @@ The guided answer requires a complete outcome record. Select an outcome and prov
 
 Mutations require direct membership in `assessor_group`. Nested group membership is not accepted because the identity API reports direct memberships for this gate. Add the user directly to the configured group or change the DAB variable through a reviewed upgrade.
 
+## A page says a field is withheld
+
+Statement text in advisories, the principal identifiers in a finding's evidence and an administrator's imported readings are shown only to direct members of `assessor_group`. Everyone else sees a placeholder that names the group. If you are in the group and still see one, the App could not establish the membership for that request: it received no forwarded token, the identity lookup failed, or the lookup did not list the group. Nested group membership does not count. Add the user directly to the group and reload. Exports follow the same rule, so a file downloaded by a reader outside the group carries the placeholders too.
+
+## Diagnostics lists audit events that could not be written
+
+Each entry is an action the App took whose audit event could not be written, usually because the database did not answer at that moment. The action happened; the trail has no record of it. The entry names the actor, the action, what it was on and the class of the failure, and it stays after a restart and on every instance until an assessor acknowledges it. Check the database reading on the same page, and take what happened during the gap from elsewhere, such as the record the action itself changed. Acknowledging an entry records that somebody has looked, under that person's name. It does not recover the event or change the audit trail's verification. See [What happens when an audit event cannot be written](configuration.md#what-happens-when-an-audit-event-cannot-be-written).
+
 ## The wrong workspace appears in validation
 
 Run:

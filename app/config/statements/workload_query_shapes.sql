@@ -147,11 +147,13 @@
 -- three storage modes the advisor document specifies at line 1398, arrived at by accident — and also
 -- useless, because `118d86d07db5ece6` is not something anybody can go and change.
 --
--- Not redacted, and that is a decision rather than an oversight. This app runs inside the customer's
--- own environment, against their own workspace, and shows them their own queries; redacting text back
--- from somebody who can already read `system.query.history` is theatre that costs the surface its
--- point. The redaction list in that document stays relevant for the day any of those three stops being
--- true — an export leaving the environment, a hosted variant, or text handed to a model.
+-- Returned in full and stored in full, but shown in full only to direct members of the assessor group.
+-- The run that executes this statement reads `system.query.history` as whoever started it, so the text
+-- is whatever that identity could read, and the stored advisory outlives the run and is opened by people
+-- whose own grants may stop short of it. Every other reader is sent a placeholder that names the group
+-- (decision D1 in docs/decisions.md, applied in `server/share/projection.ts`). The redaction list in the
+-- advisor document stays relevant for the day the text leaves the environment, in a hosted variant or
+-- handed to a model, which D1 does not settle.
 --
 -- ## The representative is one execution, chosen by the document's own rule
 --

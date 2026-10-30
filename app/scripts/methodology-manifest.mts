@@ -11,15 +11,21 @@
 // Usage:
 //   npm run methodology:manifest             # write the candidate
 //   npm run check:methodology-manifest        # refuse drift
+//
+// Several public versions may be present. Only the highest-numbered one is current: it is generated from
+// the code and stamped on new records. Every older version is a released artefact and is only checked
+// against the digest pinned for it in `methodology-release-policy.ts`; it is never regenerated, because
+// the code that produced it no longer exists in this tree.
 
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadCatalogue, type CatalogueControl } from '../server/catalogue/catalogue.js';
 import { ANSWERS, DUE_WINDOW_DAYS, cadenceDaysFor } from '../server/attest/attestation.js';
 import { BLOCKED_QUESTIONS } from '../server/attest/blocked-questions.js';
+import { CAPPED_QUESTIONS } from '../server/attest/capped-questions.js';
 import { INCONCLUSIVE_QUESTIONS } from '../server/attest/inconclusive-questions.js';
 import { judgmentRoutes } from '../server/judge/route.js';
 import { beyondAnyInstall, descriptorsById } from '../server/plan/plan.js';
@@ -28,6 +34,8 @@ import { buildRegistry } from '../server/resolve/resolvers/index.js';
 import { METHODOLOGY } from '../server/scan/identity.js';
 import { CREDIT, SEVERITY_WEIGHT } from '../server/score/score.js';
 import {
+  assertFrozenAgainstPin,
+  assertPinnedVersionsShip,
   assertReleasedMetadata,
   assertReleaseTransition,
   releasedMethodologyChanged,
@@ -36,8 +44,7 @@ import {
 const HERE = dirname(fileURLToPath(import.meta.url));
 const APP = join(HERE, '..');
 const ROOT = join(APP, '..');
-const RELEASE = join(APP, 'config', 'methodology', 'version-1.release.json');
-const OUTPUT = join(APP, 'config', 'methodology', 'version-1.manifest.json');
+const METHODOLOGY_DIRECTORY = join(APP, 'config', 'methodology');
 const COVERAGE_LEDGER = join(ROOT, 'docs', 'coverage-ledger.md');
 const EVIDENCE_SCRIPT = join(APP, 'config', 'evidence', 'collect-evidence.py');
 
@@ -75,6 +82,26 @@ function canonical(value: unknown): string {
   return JSON.stringify(value ?? null);
 }
 
+function manifestPath(version: number): string {
+  return join(METHODOLOGY_DIRECTORY, `version-${String(version)}.manifest.json`);
+}
+
+function releasePath(version: number): string {
+  return join(METHODOLOGY_DIRECTORY, `version-${String(version)}.release.json`);
+}
+
+const methodologyFiles = readdirSync(METHODOLOGY_DIRECTORY);
+assertPinnedVersionsShip(methodologyFiles);
+const versions = methodologyFiles
+  .map((name) => /^version-(\d+)\.release\.json$/.exec(name)?.[1])
+  .filter((digits): digits is string => digits != null)
+  .map(Number)
+  .sort((left, right) => left - right);
+const currentVersion = versions.at(-1);
+if (currentVersion == null) throw new Error('No methodology release record was found.');
+const RELEASE = releasePath(currentVersion);
+const OUTPUT = manifestPath(currentVersion);
+
 function digest(value: unknown): string {
   return `sha256:${createHash('sha256').update(canonical(value)).digest('hex')}`;
 }
@@ -84,6 +111,25 @@ function sorted<T>(values: readonly T[], key: (value: T) => string = (value) => 
 }
 
 const release = JSON.parse(readFileSync(RELEASE, 'utf8')) as ReleaseSource;
+if (release.public_version !== currentVersion) {
+  throw new Error(
+    `version-${String(currentVersion)}.release.json names public version ${String(release.public_version)}.`
+  );
+}
+const label = `Methodology Version ${String(currentVersion)}`;
+
+// A superseded version has to be a released artefact that still matches its pin. The generator cannot
+// reproduce it, so the pin is the only thing standing between a released methodology and an edit.
+function checkSupersededVersions(): void {
+  for (const version of versions.slice(0, -1)) {
+    const record = JSON.parse(readFileSync(releasePath(version), 'utf8')) as ReleaseSource;
+    if (record.public_version !== version) {
+      throw new Error(`version-${String(version)}.release.json names public version ${String(record.public_version)}.`);
+    }
+    assertReleasedMetadata(record);
+    assertFrozenAgainstPin(version, record.state, JSON.parse(readFileSync(manifestPath(version), 'utf8')));
+  }
+}
 const catalogue = loadCatalogue();
 const registry = buildRegistry();
 const descriptors = descriptorsById();
@@ -134,6 +180,17 @@ function questionContracts(control: CatalogueControl): readonly Record<string, u
       cadence_days: inconclusive.cadenceDays,
     });
   }
+
+  const capped = CAPPED_QUESTIONS[control.id];
+  if (capped != null) {
+    questions.push({
+      trigger: 'measurement-stops-at-its-cap',
+      question: capped.question,
+      evidence_guidance: capped.evidence,
+      why_asked: capped.whyAsked,
+      cadence_days: capped.cadenceDays,
+    });
+  }
   return questions;
 }
 
@@ -141,7 +198,7 @@ function answerPath(control: CatalogueControl): string {
   if (control.measurability === 'attestation') return 'question-practice';
   if (beyondAnyInstall(control, registry, descriptors)) return 'question-setting';
   if (registry.get(control.id) != null) return 'measured';
-  throw new Error(`${control.id} has no answer path, so Methodology Version 1 cannot be generated.`);
+  throw new Error(`${control.id} has no answer path, so ${label} cannot be generated.`);
 }
 
 const requirements = sorted(
@@ -224,14 +281,17 @@ const scoreContract = {
   alias_groups:
     'one requirement is scored once per pillar at the group worst outcome and reported in every pillar that expresses it',
   evidence_precedence:
-    'applicability is evaluated before evidence; a measurement overrides an attestation and an attestation decides only an unmeasurable reading',
+    'applicability is evaluated before evidence; a measurement overrides an attestation and an attestation decides only an unmeasurable reading, with one exception: a partial a resolver marks as the ceiling of what the platform can show is lifted to pass by a current or due "met" answer, and nothing lifts a fail or a measured shortfall',
 };
 
 const questionContract = {
   answers: ANSWERS,
   outcome_of_answer: OUTCOME_OF_ANSWER,
   due_window_days: DUE_WINDOW_DAYS,
-  expiry: 'an answer stops counting at reviewBy and the requirement returns to unmeasured',
+  expiry:
+    'an answer stops counting at reviewBy; a requirement it decided returns to unmeasured, and one it lifted returns to its measured partial',
+  cap_lift:
+    'a capped partial is lifted to pass only by a current or due "met" answer, recorded with the bearing co-signed; "partially-met", "not-met" and "not-applicable" are recorded and never counted, and no answer lowers a measurement',
   attribution:
     'owner and recording identity are required; a later answer supersedes rather than rewrites the earlier record',
 };
@@ -313,15 +373,26 @@ try {
   // The mode-specific error below explains whether generation or restoring Version 1 is the remedy.
 }
 
+function parseCurrent(): unknown {
+  try {
+    return JSON.parse(current) as unknown;
+  } catch {
+    throw new Error(`The ${label} manifest is missing or is not valid JSON. Restore it.`);
+  }
+}
+
 const releasing = process.argv.includes('--release');
 const writing = process.argv.includes('--write');
 
 if (releasing && writing) throw new Error('Use either --release or --write, not both.');
 if (release.state === 'released') assertReleasedMetadata(release);
+checkSupersededVersions();
 
 if (releasing) {
   if (release.state !== 'released') {
-    throw new Error('Set the complete released facts in version-1.release.json before running --release.');
+    throw new Error(
+      `Set the complete released facts in version-${String(currentVersion)}.release.json before running --release.`
+    );
   }
   let currentValue: unknown;
   try {
@@ -332,11 +403,17 @@ if (releasing) {
   assertReleaseTransition(currentValue, manifest);
   writeFileSync(OUTPUT, expected);
   console.log(
+    `Pin ${String(manifest.manifest_digest)} for Methodology Version ${String(currentVersion)} in RELEASED_MANIFEST_DIGESTS before committing.`
+  );
+  console.log(
     `Methodology Version ${String(release.public_version)} released: ` +
       `${String(requirements.length)} entries, ${String(questions.length)} question contracts, ${manifest.manifest_digest}.`
   );
 } else if (writing) {
-  if (release.state === 'released' && current !== expected) throw releasedMethodologyChanged();
+  if (release.state === 'released') {
+    assertFrozenAgainstPin(currentVersion, release.state, parseCurrent());
+    if (current !== expected) throw releasedMethodologyChanged(currentVersion);
+  }
   if (current === expected) {
     console.log(`Methodology Version ${String(release.public_version)} ${release.state} is already current.`);
     process.exit(0);
@@ -347,10 +424,11 @@ if (releasing) {
       `${String(requirements.length)} entries, ${String(questions.length)} question contracts, ${manifest.manifest_digest}.`
   );
 } else {
+  if (release.state === 'released') assertFrozenAgainstPin(currentVersion, release.state, parseCurrent());
   if (current !== expected) {
-    if (release.state === 'released') throw releasedMethodologyChanged();
+    if (release.state === 'released') throw releasedMethodologyChanged(currentVersion);
     console.error(
-      'The Methodology Version 1 manifest does not match the executable catalogue, scoring, evidence or question contracts.\n' +
+      `The ${label} manifest does not match the executable catalogue, scoring, evidence or question contracts.\n` +
         'Run `npm run methodology:manifest`, inspect the semantic change and commit the regenerated manifest.'
     );
     process.exit(1);

@@ -1,15 +1,23 @@
+import { accountOf, workspaceOf } from "../import/envelope.js";
 import { newestFirst } from "../apply/applicability.js";
 import { CollectionScheduler } from "./scheduler.js";
 import { readingsFrom } from "../import/signals.js";
 import { aliasLookup, runScan } from "./scan.js";
+import { restWorkspace } from "../collect/estate-scope.js";
 import { effective } from "../attest/store.js";
 import { carryForward } from "./carry-forward.js";
 //#region server/scan/runner.ts
 var ScanInProgressError = class extends Error {
 	running;
-	constructor(running) {
-		super(`A scan started by ${running.actor} at ${running.startedAt.toISOString()} is already running. Only one scan runs at a time so two admins cannot double the load on the warehouse for the same answer. Wait for it to finish; its results will be the latest scan.`);
+	run;
+	/**
+	* `run` names the record behind the scan that is running, where there is one, so a refused caller
+	* can follow it. Absent for a scan started outside the coordinator, which has no record to name.
+	*/
+	constructor(running, run) {
+		super(`A scan started by ${running.actor} at ${running.startedAt.toISOString()} is already running${run == null ? "" : ` as run ${run}`}. Only one scan runs at a time so two admins cannot double the load on the warehouse for the same answer. Wait for it to finish; its results will be the latest scan.`);
 		this.running = running;
+		this.run = run;
 		this.name = "ScanInProgressError";
 	}
 };
@@ -90,7 +98,7 @@ var ScanRunner = class {
 		const evaluate = request.pillars ?? this.options.measuredPillars;
 		const scope = request.definition?.id ?? null;
 		const attestations = await this.answers(scope);
-		const imported = await this.importedReadings();
+		const imported = await this.importedReadings(request.scope);
 		const decisions = await this.decisions(scope);
 		const fresh = await runScan({
 			catalogue: this.options.catalogue,
@@ -148,23 +156,47 @@ var ScanRunner = class {
 		}
 	}
 	/**
-	* The readings imported administrators collected, newest collection winning.
+	* The readings imported administrators collected that are about what this scan assesses, newest
+	* collection winning.
 	*
 	* Read here for the same reasons the answers are: one read at the start of the run, so every
 	* finding reflects the same set of imports, and a store that cannot be read yields none rather
 	* than failing the scan — an unreachable table should cost the imported requirements, which then
 	* report as unmeasured with a reason, not the pillars that never depended on it.
 	*
-	* Oldest applied first so that a newer collection of the same signal overwrites an older one. That
-	* ordering is this method's business and not `merged`'s, which is deliberately ignorant of dates:
-	* it enforces the class rule between observed and imported, and both of these are imported.
+	* Scoped, because an account install holds files from several workspaces and a setting is a fact
+	* about one of them. The workspace half of a file applies only when it was collected from the
+	* workspace the REST surface describes — the one this app is installed in, or the one the scan was
+	* narrowed to — and never to a scan whose workspace is not known, since a reading that cannot be
+	* attributed cannot be shown to be about anything. The account half describes the account, so it
+	* applies to every scan but only from files of the scan's account: the one the newest file for the
+	* scanned workspace names, or failing that the newest file that names one at all. When no file
+	* names an account there is nothing to hold them to and they all apply, and a file that names none
+	* is never held to one: only a file naming a different account is left out. The import-time check
+	* refuses a file for a different account than the one already held, so this is the second of two.
+	*
+	* Oldest applied first so that a newer collection of the same signal overwrites an older one, which
+	* makes the winner the newest import for each signal and workspace: only one workspace's files get
+	* this far. That ordering is this method's business and not `merged`'s, which is deliberately
+	* ignorant of dates: it enforces the class rule between observed and imported, and both of these
+	* are imported.
 	*/
-	async importedReadings() {
+	async importedReadings(scope) {
 		if (this.options.imports == null) return /* @__PURE__ */ new Map();
 		try {
 			const held = await this.options.imports.all();
+			const describes = restWorkspace(scope);
+			const newest = [...held].sort((a, b) => b.generatedAt.getTime() - a.generatedAt.getTime());
+			const account = [...newest.filter((one) => describes != null && (one.workspaceId ?? workspaceOf(one.envelope)) === describes), ...newest].map((one) => accountOf(one.envelope)).find((id) => id != null);
 			const applied = /* @__PURE__ */ new Map();
-			for (const one of [...held].sort((a, b) => a.generatedAt.getTime() - b.generatedAt.getTime())) for (const [id, reading] of readingsFrom(one).signals) applied.set(id, reading);
+			for (const one of [...newest].reverse()) {
+				const workspaceId = one.workspaceId ?? workspaceOf(one.envelope);
+				const tiers = [];
+				const named = accountOf(one.envelope);
+				if (account == null || named == null || named === account) tiers.push("account");
+				if (describes != null && workspaceId === describes) tiers.push("workspace");
+				for (const [id, reading] of readingsFrom(one, tiers).signals) applied.set(id, reading);
+			}
 			return applied;
 		} catch {
 			return /* @__PURE__ */ new Map();

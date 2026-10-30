@@ -14,6 +14,7 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { Link, useParams } from 'react-router';
 import { useAssessment } from '../api/assessment-context';
+import { continuationPath } from '../assessment-continuation';
 import { useResultHistory } from '../api/hooks';
 import { CommitmentFor, Commitments } from '../components/Commitments';
 import { MeasuredWhen } from '../components/MeasuredWhen';
@@ -48,14 +49,19 @@ export function PillarsPage() {
 
   if (scan == null && latestRun != null) {
     const reviewId = latestRun.finalisation?.reviewId;
+    const saved = latestRun.stamp.definition != null;
     return (
       <PageEmpty
         reason="not-yet-collected"
         heading="No published report yet"
-        detail="The latest run is waiting for review. Pillar posture appears here after every selected pillar is confirmed or explicitly skipped and the report is published."
+        detail={
+          saved
+            ? 'The latest run is waiting for review. Pillar posture appears here after every selected pillar is confirmed or explicitly skipped and the report is published.'
+            : 'This custom run has indicative results on the Dashboard. You can answer its human questions, but a published pillar report needs a saved assessment.'
+        }
         action={
-          <Link className="wa-button-primary" to={reviewId == null ? '/review' : `/review/${reviewId}`}>
-            Continue review
+          <Link className="wa-button-primary" to={continuationPath(latestRun, reviewId)}>
+            {saved ? 'Continue review' : 'Answer human questions'}
           </Link>
         }
       />
@@ -393,6 +399,7 @@ export function PillarDetailPage() {
 
   if (scan == null) {
     const reviewId = latestRun?.finalisation?.reviewId;
+    const saved = latestRun?.stamp.definition != null;
     return (
       <PageEmpty
         reason="not-yet-collected"
@@ -400,14 +407,16 @@ export function PillarDetailPage() {
         detail={
           latestRun == null
             ? 'Nothing has been measured in this workspace, so this pillar has no results to show. Run an assessment from the header to assess it.'
-            : 'The latest run is waiting for review. This pillar appears here after the report is published.'
+            : saved
+              ? 'The latest run is waiting for review. This pillar appears here after the report is published.'
+              : 'This custom run has indicative results on the Dashboard. You can answer its human questions, but it cannot publish a report.'
         }
         {...(latestRun == null
           ? {}
           : {
               action: (
-                <Link className="wa-button-primary" to={reviewId == null ? '/review' : `/review/${reviewId}`}>
-                  Continue review
+                <Link className="wa-button-primary" to={continuationPath(latestRun, reviewId, pillarId)}>
+                  {saved ? 'Continue review' : 'Answer pillar questions'}
                 </Link>
               ),
             })}

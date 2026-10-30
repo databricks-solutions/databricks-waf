@@ -99,6 +99,7 @@
 <li><code>SECURITY.md</code> for identity, scope and storage boundaries; and</li>
 <li>this guide&#39;s configuration and operating contracts for deployment changes.</li>
 </ul>
+<p>Before changing code that a <a href="/databricks-waf/decisions/">product decision</a> governs, read that decision and the reason recorded for it.</p>
 <h2 id="fork-and-create-a-branch">Fork and create a branch</h2>
 <pre><code class="language-bash">git clone https://github.com/&lt;your-user&gt;/databricks-waf.git
 cd databricks-waf
@@ -128,7 +129,7 @@ npm run check:drill
 </code></pre>
 <p>Update visual baselines only after reviewing the rendered change. Tablet and mobile support is outside the product scope.</p>
 <h3 id="catalogue-scoring-or-sql-changes">Catalogue, scoring or SQL changes</h3>
-<p>Every control must declare provenance, applicability, measurability and evidence path. AI may explain or prioritise but may not determine a finding or score. Run:</p>
+<p>Every control must declare provenance, applicability, measurability and evidence path. An optional AI layer is planned and not yet available; when it exists it must never determine a finding or score. Run:</p>
 <pre><code class="language-bash">npm run validate:catalogue
 npm run check:sql-release
 npm run check:guidance
@@ -141,6 +142,7 @@ LAKEBASE_ENDPOINT=projects/&lt;project&gt;/branches/&lt;branch&gt;/endpoints/&lt
 npm run test:live
 </code></pre>
 <p>The live suite creates and removes only its own test schema. Review the target first.</p>
+<p>Schema migrations must stay additive and backward compatible: new tables, columns and indexes only, with no drop, rename or type change. A rolling deploy runs the old and the new version side by side against one database, so the older version must keep working on the schema the newer one has already migrated. See decision A17 in <a href="/databricks-waf/decisions/">Product decisions</a>.</p>
 <h3 id="dab-changes">DAB changes</h3>
 <p>Use the supported wrapper and an explicit profile and target:</p>
 <pre><code class="language-bash">npm run lifecycle -- validate --profile &lt;profile&gt; --target customer

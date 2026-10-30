@@ -94,6 +94,17 @@ describe('stampFacts', () => {
     expect(value('Requirements', facts)).toBeUndefined();
   });
 
+  it('labels the interim Version 1 digest on the report stamp and keeps the stored digest', () => {
+    const interim = 'sha256:3ffb685e36d092c91f52a93a172c1db7e32a2ec5f88f3efdab361390eb0dd71f';
+    const facts = stampFacts({
+      ...run,
+      stamp: { ...stamp, publicMethodology: { publicVersion: 1, manifestDigest: interim, state: 'released' } },
+    });
+
+    expect(value('Methodology', facts)).toContain('unreleased interim variant of Version 1');
+    expect(value('Methodology manifest', facts)).toBe(interim);
+  });
+
   it('classifies an old run as pre-release without inventing a Version 1 manifest', () => {
     const { publicMethodology: _dropped, ...development } = stamp;
     const facts = stampFacts({ ...run, stamp: development });

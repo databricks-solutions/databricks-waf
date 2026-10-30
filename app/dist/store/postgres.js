@@ -152,6 +152,8 @@ async function ensureSchema(sql, schema) {
   `);
 	await sql.query(`create index if not exists imported_evidence_newest_first on ${schema}.imported_evidence (imported_at desc)`);
 	await sql.query(`alter table ${schema}.imported_evidence add column if not exists summary jsonb`);
+	await sql.query(`alter table ${schema}.imported_evidence add column if not exists workspace_id text`);
+	await sql.query(`create index if not exists imported_evidence_workspace on ${schema}.imported_evidence (workspace_id, imported_at desc)`);
 	await sql.query(`
     create table if not exists ${schema}.audit_events (
       sequence    bigint      primary key,
@@ -183,6 +185,26 @@ async function ensureSchema(sql, schema) {
       trimmed_by text        not null
     )
   `);
+	await sql.query(`
+    create table if not exists ${schema}.audit_gaps (
+      id          text        primary key,
+      kind        text        not null,
+      at          timestamptz not null,
+      actor       text        not null,
+      action      text,
+      outcome     text,
+      target_kind text,
+      target_id   text,
+      cause       text,
+      gap_id      text,
+      written_at  timestamptz not null default now(),
+      check (
+        (kind = 'gap' and action is not null and outcome is not null and cause is not null and gap_id is null)
+        or (kind = 'acknowledgement' and gap_id is not null)
+      )
+    )
+  `);
+	await sql.query(`create unique index if not exists audit_gaps_one_acknowledgement on ${schema}.audit_gaps (gap_id) where gap_id is not null`);
 	for (const [table, extra] of [["improvement_plans", ""], ["improvement_actions", "plan_id text not null, plan_created_at timestamptz not null,"]]) await sql.query(`
       create table if not exists ${schema}.${table} (
         id         text        not null,
@@ -244,6 +266,7 @@ async function ensureSchema(sql, schema) {
 	await sql.query(`create index if not exists accepted_risks_by_expiry on ${schema}.accepted_risks (expires_at asc, revoked)`);
 	await sql.query(`create index if not exists accepted_risks_by_owner on ${schema}.accepted_risks (owner)`);
 	await sql.query(`create index if not exists accepted_risks_by_sweep on ${schema}.accepted_risks (recorded_at asc)`);
+	await sql.query(`create index if not exists accepted_risks_newest_revision on ${schema}.accepted_risks (id, revision desc)`);
 	await sql.query(`
     create table if not exists ${schema}.applicability_decisions (
       id             text        not null,
@@ -268,6 +291,7 @@ async function ensureSchema(sql, schema) {
 	await sql.query(`create index if not exists applicability_by_expiry on ${schema}.applicability_decisions (expires_at asc, revoked)`);
 	await sql.query(`create index if not exists applicability_by_owner on ${schema}.applicability_decisions (owner)`);
 	await sql.query(`create index if not exists applicability_by_sweep on ${schema}.applicability_decisions (recorded_at asc)`);
+	await sql.query(`create index if not exists applicability_newest_revision on ${schema}.applicability_decisions (id, revision desc)`);
 	await sql.query(`
     create table if not exists ${schema}.notes (
       id           text        primary key,

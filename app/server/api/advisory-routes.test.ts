@@ -184,6 +184,9 @@ async function serve(
   const app = express();
   app.use(express.json());
   registerAdvisoryRoutes(app, {
+    // These tests are about the route's own decisions, and read as an assessor so every field is in
+    // the body; what a reader outside the group is shown is held by `sharing-routes.test.ts`.
+    reader: () => Promise.resolve({ assessor: true, group: 'waf-assessors' }),
     ...(options.noAdvisor === true ? {} : { advisories, runs }),
     asking: (_request: Request, _actor: string, granted: EstateScope): Promise<AdvisoryRunRequest> =>
       Promise.resolve({
@@ -211,6 +214,7 @@ async function serve(
           recorded.outcome = 'failed';
           return Promise.resolve();
         },
+        unchanged: () => undefined,
         settle: () => Promise.resolve(),
       };
       return Promise.resolve({ actor: 'priya@example.com', scope: accountScope(), act });
@@ -353,6 +357,38 @@ describe('starting an advisory run', () => {
     // Refused before the gate, so nothing is recorded: there was no act to permit or refuse, and a
     // trail line saying somebody was allowed to do a thing this build cannot do is noise.
     expect(acts).toEqual([]);
+  });
+});
+
+describe('a second advisory run while one is going', () => {
+  /** One that takes long enough for a second request to arrive while it is still reading. */
+  function slow(): Collector {
+    return {
+      surface: 'sql',
+      name: 'sql',
+      signals: [...ADVISORY_SIGNALS],
+      collect: async (ids): Promise<SignalResult[]> => {
+        await new Promise((resolve) => setTimeout(resolve, 120));
+        return ids.map((id) => unmeasurable(id, 'The warehouse refused the statement.'));
+      },
+    };
+  }
+
+  it('is a conflict naming the run that is going, rather than a server error', async () => {
+    const { base } = await serve({ collector: slow() });
+
+    const first = fetch(`${base}/api/advisory`, { method: 'POST' });
+    await new Promise((resolve) => setTimeout(resolve, 40));
+    const second = await fetch(`${base}/api/advisory`, { method: 'POST' });
+    const refused = (await second.json()) as { error: string; message: string; run?: string };
+
+    expect(second.status).toBe(409);
+    expect(refused.error).toBe('advisory-in-progress');
+    expect(typeof refused.run).toBe('string');
+    expect(refused.message).toContain('already running');
+
+    const finished = (await (await first).json()) as { runId: string };
+    expect(finished.runId).toBe(refused.run);
   });
 });
 

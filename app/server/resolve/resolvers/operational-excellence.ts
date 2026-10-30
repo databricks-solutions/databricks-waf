@@ -14,13 +14,19 @@
 // Where the artefact evidences the practice only partly, the outcome caps at `partial` and
 // says why. A resolver that claimed a pass for "standardize DevOps processes" on the
 // strength of a bundle marker would be overreading its own evidence.
+//
+// A cap is marked `capped: true` on the resolution, which is what lets a current "met" from the
+// person accountable for the practice lift it to `pass` (`liftCap`, decision D2 in
+// docs/decisions.md). Only the `partial`s that are ceilings are marked: a `fail`, and a `partial`
+// the app measured as a shortfall, stay where they are whatever anyone answers.
 
 import type { ControlResolver } from '../resolver.js';
 import { asCluster, asJob } from '../locate.js';
-import type { AssetCensus, ClusterRow, JobRow, PipelineRow } from '../../collect/sql/shapes.js';
+import type { AssetCensus, ClusterRow, JobRow, MlflowRunTracking, PipelineRow, QueryCapacity, ServingModelEntity } from '../../collect/sql/shapes.js';
 import { fromBundle, hasRun, isAllPurpose } from '../../collect/sql/shapes.js';
 import { share } from '../../collect/sql/rows.js';
 import {
+  agreeing,
   bandOutcome,
   bandsOf,
   enrichedBy,
@@ -44,6 +50,9 @@ const CENSUS = 'sql:uc.census';
 const CLUSTERS = 'sql:compute.clusters';
 const JOBS = 'sql:jobs.inventory';
 const PIPELINES = 'sql:pipelines.inventory';
+const CAPACITY = 'sql:query.capacity';
+const SERVING_ENTITIES = 'sql:serving.model_entities';
+const RUN_TRACKING = 'sql:mlflow.run_tracking';
 
 /**
  * OE-02-03: Unity Catalog managed tables.
@@ -263,7 +272,7 @@ const declarativePipelines = sourcedFrom(
 );
 
 /**
- * OE-02-01 and IU-01-05: infrastructure as code.
+ * OE-01-02, OE-02-01 and IU-01-05: infrastructure as code.
  *
  * Capped at `partial` on purpose, and this is the most important judgement in the file.
  * A job carrying `deployment.kind = BUNDLE` was deployed by a Databricks Asset Bundle,
@@ -275,6 +284,11 @@ const declarativePipelines = sourcedFrom(
  * A resolver that failed an estate for that would be reporting the limits of its own
  * evidence as a defect in the customer's practice. So the two outcomes here are `partial`
  * with bundles found, and `unmeasurable` without — never `fail`.
+ *
+ * The `partial` is a cap, so a current "met" lifts it. That is the whole of what an answer
+ * does here: with no marker at all the answer decides the outcome as it always did, and with
+ * markers it settles the part the marker could not, so more adoption never scores lower than
+ * less on the same answer.
  */
 const infrastructureAsCode = sourcedFrom(
   [PIPELINES],
@@ -303,8 +317,21 @@ const infrastructureAsCode = sourcedFrom(
       );
     }
 
+    // Said differently when nothing is left over, because "the remaining jobs" is a claim about jobs
+    // that do not exist. The cap is still real: the marker is on jobs, and the practice also governs
+    // what sits beside them.
+    const rest =
+      bundled.length === jobs.length
+        ? `Every one of the ${jobs.length} jobs carries the marker, so the deployment pipeline reaches every ` +
+          'job the inventory lists. The inventory lists jobs and nothing beside them: the pipelines, ' +
+          'clusters, warehouses and policies defined by the same practice leave no marker here, so this ' +
+          'cannot show that all of the infrastructure is defined in code.'
+        : 'The jobs without the marker cannot be told apart: Terraform-managed jobs carry no marker, so ' +
+          'the unmarked ones are either Terraform-managed or hand-built and this signal cannot say which.';
+
     return {
       outcome: 'partial',
+      capped: true,
       evidence: [
         evidenceFrom(
           context,
@@ -314,10 +341,9 @@ const infrastructureAsCode = sourcedFrom(
         ),
       ],
       outcomeReason:
-        'Asset bundles are in use, so a deployment pipeline exists. This caps at partial rather than ' +
-        'passing because the remaining jobs cannot be told apart: Terraform-managed jobs carry no ' +
-        'marker, so the unmarked ones are either Terraform-managed or hand-built and this signal ' +
-        'cannot say which.',
+        `Asset bundles are in use, so a deployment pipeline exists. ${rest} This stays partial unless the ` +
+        'person accountable for the practice answers that the rest is covered; a current answer of "met" ' +
+        'lifts it to a pass.',
     };
   })
 );
@@ -366,7 +392,7 @@ const standardizedCompute = fromSignal<ClusterRow[]>(CLUSTERS, ['OE-02-02', 'IU-
  * The observable half of a strategy is that assets are organised into more than one
  * catalog and that catalogs have owners. What the strategy *is* — per environment, per
  * domain, per team — is not readable, and this resolver does not pretend otherwise: it
- * caps at partial and names the question the attestation should answer.
+ * caps at partial, and a current "met" from the person who owns the layout lifts the cap.
  *
  * One catalog holding everything is the failure case worth catching, because it is the
  * shape an estate takes when nobody decided.
@@ -403,6 +429,7 @@ const catalogStrategy = enrichedBy(
 
     return {
       outcome: 'partial',
+      capped: true,
       evidence: [
         evidenceFrom(
           context,
@@ -416,8 +443,9 @@ const catalogStrategy = enrichedBy(
       outcomeReason:
         'The estate is spread across catalogs rather than piled into one, which is the observable half of a ' +
         'catalog strategy. Whether the boundary is environment, domain or team — and whether it is the one ' +
-        'you intended — is not readable from the metastore, so this caps at partial and the attestation ' +
-        'records which it is.',
+        'you intended — is not readable from the metastore, so this stays partial unless the person ' +
+        'accountable for the catalog layout answers that it is deliberate; a current answer of "met" lifts ' +
+        'it to a pass.',
     };
   })
 );
@@ -478,6 +506,172 @@ const monitoring = fromSignals([JOBS], ['OE-04-01', 'OE-04-02', 'PE-05-04'], (co
   };
 });
 
+/**
+ * OE-03-01: service limits and quotas.
+ *
+ * `waiting_at_capacity_duration_ms > 0` on a query history row means the statement was
+ * delayed by a service limit or quota. That is the post-fact half of the control: limits
+ * actually biting are measurable after the event. The proactive half — whether someone
+ * watches headroom before a limit bites — is not recorded anywhere in the workspace.
+ *
+ * So the measurement is one-way at the top and a real one below it. More than 1% of statements
+ * waiting is a `fail`: limits are reaching users on a scale no monitoring practice explains away,
+ * and the share is the thing the band reads. Some waiting, up to that share, is `partial` and
+ * measured as a shortfall. None at all is `partial` as a cap, because zero is a quiet period or a
+ * workspace far enough below quota that nothing has happened yet, and a pass needs evidence that
+ * someone is watching headroom, which is not here to read. A current "met" supplies it and lifts
+ * that cap; it lifts neither of the others.
+ *
+ * The band is over the share of statements that did *not* wait, so it reads in the direction every
+ * other band does — more is better — and 1 and 0.99 are the edges of "none" and "1%".
+ */
+const serviceUsageLimits = fromSignal<QueryCapacity>(CAPACITY, ['OE-03-01'], (capacity, context) => {
+  if (capacity.totalStatements === 0) {
+    return notApplicable(
+      'No query history found for this workspace in the window, so there is no evidence of capacity ' +
+        'limits being reached or not reached.'
+    );
+  }
+
+  const total = capacity.totalStatements;
+  const { noun: totalNoun } = agreeing(total, 'statement');
+  const waitShare = capacity.waitingAtCapacity / total;
+  const unwaited = share(total - capacity.waitingAtCapacity, total);
+  const banded = bandOutcome(unwaited, bandsOf(context.spec, { pass: 1, partial: 0.99 }));
+
+  if (capacity.waitingAtCapacity === 0) {
+    return {
+      // The band's `pass` is the edge of "no statement waited", and what the platform can show of it
+      // is a cap: see above.
+      outcome: banded === 'pass' ? 'partial' : banded,
+      capped: true,
+      evidence: [
+        evidenceFrom(
+          context,
+          CAPACITY,
+          `${totalNoun} in the window, none waited at a capacity limit`,
+          'No queries are delayed by a service limit or quota'
+        ),
+      ],
+      outcomeReason:
+        'No capacity-limit delays were recorded in this window, which is the measurable half of this ' +
+        'control. Whether proactive monitoring exists — watching headroom before a limit bites — is not ' +
+        'recorded in the workspace. The absence of events confirms limits are not currently biting; it ' +
+        'does not confirm someone is watching them, so this stays partial unless the person accountable ' +
+        'for capacity answers that they are; a current answer of "met" lifts it to a pass.',
+    };
+  }
+
+  const { noun: waitNoun } = agreeing(capacity.waitingAtCapacity, 'statement');
+
+  return {
+    outcome: banded,
+    evidence: [
+      evidenceFrom(
+        context,
+        CAPACITY,
+        `${waitNoun} of ${totalNoun} waited at a capacity limit (${percent(waitShare)})`,
+        'No queries are delayed by a service limit or quota'
+      ),
+    ],
+    outcomeReason:
+      `Statements ${banded === 'fail' ? 'regularly' : 'occasionally'} waited at a capacity limit during ` +
+      'this window, which means a service quota was reached' +
+      (banded === 'fail'
+        ? ', on more than 1% of statements. That is a measured shortfall, and no answer changes it. '
+        : '. ') +
+      'The workspace does not record whether it was noticed and managed proactively.',
+  };
+});
+
+/**
+ * OE-01-04: standardized MLOps processes.
+ *
+ * The control asks whether models reach production through a defined, reproducible process.
+ * The observable proxy: custom models are being served through managed serving endpoints
+ * (registered, versioned, and deployed) AND automated tracking exists in MLflow (training
+ * runs sourced from jobs rather than only from notebooks).
+ *
+ * Both signals together show that the infrastructure for a standardized MLOps lifecycle
+ * exists. Neither alone, and not together, prove that the process is documented or enforced
+ * — the resolver caps at `partial` in all non-empty cases for that reason, and a current
+ * "met" from the person accountable for the process lifts the cap.
+ *
+ * Where neither signal has any reading, the absence cannot be told from an estate with no
+ * ML workload, and the finding is `unmeasurable` rather than not-applicable: an estate
+ * serving models from a custom Flask app carries nothing here.
+ */
+const mlopsProcesses = fromSignals([SERVING_ENTITIES, RUN_TRACKING], ['OE-01-04'], (context) => {
+  const entities = valueOf<readonly ServingModelEntity[]>(context, SERVING_ENTITIES);
+  const tracking = valueOf<MlflowRunTracking>(context, RUN_TRACKING);
+
+  const totals = entities[0];
+  const customModels = totals?.customModels ?? 0;
+  const customWithVersion = totals?.customModelsWithAVersion ?? 0;
+  const jobRuns = tracking.runsFromAJob;
+  const totalRuns = tracking.runs - tracking.runsWithoutASource;
+
+  if (customModels === 0 && jobRuns === 0) {
+    return unmeasured(
+      'No custom model serving endpoints or job-sourced MLflow runs found in this workspace. ' +
+        'That is not evidence of a failed MLOps practice: an estate that serves models from its own service ' +
+        'or trains on a separate platform leaves nothing here to measure.',
+      'unreadable'
+    );
+  }
+
+  const evidences = [];
+
+  if (customModels > 0) {
+    const { noun: modelNoun } = agreeing(customModels, 'custom model');
+    evidences.push(
+      evidenceFrom(
+        context,
+        SERVING_ENTITIES,
+        `${modelNoun} on managed serving endpoints` +
+          (customWithVersion > 0
+            ? `, ${customWithVersion.toLocaleString('en-US')} referencing a registered version`
+            : ', none referencing a registered version'),
+        'Models are deployed through managed serving endpoints with a registered version'
+      )
+    );
+  }
+
+  if (totalRuns > 0) {
+    const automatedShare = share(jobRuns, totalRuns);
+    const { noun: runNoun } = agreeing(jobRuns, 'MLflow run');
+    evidences.push(
+      evidenceFrom(
+        context,
+        RUN_TRACKING,
+        `${runNoun} of ${totalRuns.toLocaleString('en-US')} sourced from a job (${percent(automatedShare)})`,
+        'Training runs are started by the platform rather than by hand in a notebook'
+      )
+    );
+  } else if (tracking.runs > 0) {
+    evidences.push(
+      evidenceFrom(
+        context,
+        RUN_TRACKING,
+        `${tracking.runs.toLocaleString('en-US')} MLflow runs recorded, none sourced from a job`,
+        'Training runs are started by the platform rather than by hand in a notebook'
+      )
+    );
+  }
+
+  return {
+    outcome: 'partial',
+    capped: true,
+    evidence: evidences,
+    outcomeReason:
+      'MLOps tooling is in use — model serving and/or experiment tracking are active in this workspace. ' +
+        'Whether the process is standardized, documented and enforced — with defined evaluation gates, ' +
+        'a promotion path and review steps — is not recorded in any system table. This stays partial ' +
+        'unless the person accountable for the process answers that it is; a current answer of "met" ' +
+        'lifts it to a pass.',
+  };
+});
+
 export const OPERATIONAL_EXCELLENCE_RESOLVERS: readonly ControlResolver[] = [
   managedTables,
   automatedJobs,
@@ -486,6 +680,8 @@ export const OPERATIONAL_EXCELLENCE_RESOLVERS: readonly ControlResolver[] = [
   standardizedCompute,
   catalogStrategy,
   monitoring,
+  serviceUsageLimits,
+  mlopsProcesses,
 ];
 
 /** Re-exported so the interoperability resolvers can share the observation helper type. */

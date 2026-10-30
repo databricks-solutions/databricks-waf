@@ -1,4 +1,5 @@
 import { applyScope } from "../store/assessment-scope.js";
+import { RunAdmissionRefused, live } from "./run.js";
 //#region server/run/run-store.ts
 const COLUMNS = "id, kind, requested_at, actor, trigger, idempotency_key, request, state, attempts, lease_holder, lease_until, cancel_requested_at, scan_id, advisory_id, finished_at, why";
 var PostgresRunStore = class {
@@ -8,34 +9,60 @@ var PostgresRunStore = class {
 		this.db = db;
 	}
 	/**
-	* Starts a run, letting the database refuse a duplicate key.
+	* Starts a run, unless another of its kind is live, and lets the database refuse a duplicate key.
 	*
-	* `on conflict do nothing` and then a read, rather than reading first: the read-then-insert version
-	* has both of two simultaneous retries see no run and both insert, and one of them raises. Doing it
-	* this way, the second insert is a no-op and the read that follows finds the run the first created,
-	* which is the answer the caller wanted anyway.
+	* **Admission.** An install may be served by several instances, and the in-process lock in
+	* `ScanRunner` cannot see the others, so whether a run may start is decided here, where they meet. One
+	* transaction takes an advisory lock named for the kind, reads the unfinished runs, and inserts only if
+	* none of that kind is live — see `live`. The lock is what makes the read mean something: without it two
+	* instances both read nothing live and both insert. It is `xact` rather than session-scoped so that it
+	* is released by the commit or rollback and a connection returned to the pool cannot keep it, and it is
+	* keyed on the kind so that an advisory run does not wait for an assessment.
+	*
+	* A live run with the same key is not a refusal. That is a retry, and the insert below turns it into
+	* the existing run, which `joinable` then judges with a reason the caller can act on. A live run with
+	* any other key — including none, since two people pressing scan are two intentions — is refused, and
+	* the refusal is thrown after the transaction has ended with nothing written. A lapsed lease is not
+	* live, so a run whose holder died does not block the install; it is taken back up by its own key.
+	*
+	* Refuses outright where the handle cannot give it a transaction, as the reset does: admitting without
+	* one would work whenever nothing else was happening and fail the one time it mattered.
+	*
+	* **Duplicate keys.** `on conflict do nothing` and then a read, rather than reading first: the
+	* read-then-insert version has both of two simultaneous retries see no run and both insert, and one of
+	* them raises. Doing it this way, the second insert is a no-op and the read that follows finds the run
+	* the first created, which is the answer the caller wanted anyway.
 	*
 	* The generated id is discarded in that case. That is fine and worth being explicit about: an id is
 	* cheap, and the alternative — asking the caller to check first — is the race this avoids.
 	*/
 	async open(opening) {
 		const key = opening.idempotencyKey;
-		await this.db.query(`insert into ${this.db.schema}.runs
-         (id, kind, requested_at, actor, trigger, idempotency_key, request, state, attempts, lease_until,
-          definition_id)
-         values ($1, $9, $2, $3, $4, $5, $6::jsonb, $7, $8, $2, $10)
-         on conflict (idempotency_key) do nothing`, [
-			opening.id,
-			opening.requestedAt,
-			opening.actor,
-			opening.trigger,
-			key ?? null,
-			JSON.stringify(opening.request),
-			"running",
-			0,
-			opening.kind,
-			opening.request.definition?.id ?? null
-		]);
+		const db = this.db;
+		if (db.session == null) throw new Error("This database handle cannot open a transaction, and a run admitted outside one can start beside another instance’s. Nothing was written.");
+		const lost = await db.session(async (sql) => {
+			await sql.query(`select pg_advisory_xact_lock(hashtext('waf.run-admission.' || $1::text))`, [opening.kind]);
+			const { rows } = await sql.query(`select ${COLUMNS} from ${db.schema}.runs where finished_at is null order by requested_at desc`);
+			const blocking = rows.map(reviveRun).find((run) => run.kind === opening.kind && live(run, opening.requestedAt) && (key == null || run.idempotencyKey !== key));
+			if (blocking != null) return blocking;
+			await sql.query(`insert into ${db.schema}.runs
+           (id, kind, requested_at, actor, trigger, idempotency_key, request, state, attempts, lease_until,
+            definition_id)
+           values ($1, $9, $2, $3, $4, $5, $6::jsonb, $7, $8, $2, $10)
+           on conflict (idempotency_key) do nothing`, [
+				opening.id,
+				opening.requestedAt,
+				opening.actor,
+				opening.trigger,
+				key ?? null,
+				JSON.stringify(opening.request),
+				"running",
+				0,
+				opening.kind,
+				opening.request.definition?.id ?? null
+			]);
+		});
+		if (lost != null) throw new RunAdmissionRefused(lost);
 		const mine = await this.get(opening.id);
 		if (mine != null) return {
 			run: mine,

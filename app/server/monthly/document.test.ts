@@ -116,6 +116,85 @@ describe('the frozen document', () => {
   });
 });
 
+describe('the document version', () => {
+  it('is 2, the version whose movement sections are published only between comparable readings', () => {
+    expect(MONTH_DOCUMENT_VERSION).toBe(2);
+    expect(monthDocument(identity(), content()).documentVersion).toBe(2);
+  });
+
+  it('carries which reading closed the month, and why a movement is not shown', () => {
+    const document = monthDocument(
+      identity(),
+      content({
+        closing: {
+          kind: 'latest-scan',
+          statement:
+            'No scheduled run finished in August 2026, so the month closes on its latest scan, which was started by hand.',
+        },
+        movement: [],
+        findingDeltas: [],
+        movementNote:
+          'Movement and finding changes are not shown: no earlier scan can be compared with the run that closed the month.',
+      })
+    );
+
+    expect(document.closing?.kind).toBe('latest-scan');
+    expect(document.movementNote).toContain('not shown');
+  });
+
+  it('writes neither key where the content has neither', () => {
+    const bytes = monthJson(monthDocument(identity(), content()));
+
+    expect(bytes).not.toContain('"closing"');
+    expect(bytes).not.toContain('"movementNote"');
+  });
+
+  it('writes the closing statement and the movement note into the CSV', () => {
+    const csv = monthCsv(
+      monthDocument(
+        identity(),
+        content({
+          closing: {
+            kind: 'scheduled',
+            statement: 'The month closes on its latest scheduled run, the system of record.',
+          },
+          movement: [],
+          movementNote: 'Movement and finding changes are not shown: nothing to compare.',
+        })
+      )
+    );
+
+    expect(csv).toContain(
+      'closing,Closing reading,scheduled,,"The month closes on its latest scheduled run, the system of record."'
+    );
+    expect(csv).toContain('movement,Not shown,,,Movement and finding changes are not shown: nothing to compare.');
+  });
+});
+
+describe('the bytes of a version 2 document', () => {
+  // Pinned so that a change to the canonical form, the key set or the wording of a section shows up here
+  // as a change to the bytes, and with them every digest a publication records.
+  it('are exactly these', () => {
+    const document = monthDocument(
+      identity(),
+      content({
+        closing: {
+          kind: 'scheduled',
+          statement: 'The month closes on its latest scheduled run, the system of record.',
+        },
+        movement: [],
+        findingDeltas: [],
+        movementNote:
+          'Movement and finding changes are not shown: no earlier scan can be compared with the run that closed the month. These scans ran as different identities (sp-schedule and ana@example.com), whose visible estates may differ.',
+      })
+    );
+
+    expect(monthJson(document)).toMatchInlineSnapshot(
+      `"{"actions":[{"label":"Opened","value":"3"}],"assessment":{"definition":{"fingerprint":"sha256:definition-1-v2","id":"definition-1","version":2},"finalResultId":"result-1","reviewId":"review-1","runId":"run-1"},"closing":{"kind":"scheduled","statement":"The month closes on its latest scheduled run, the system of record."},"documentKind":"databricks-waf-month","documentVersion":2,"exceptions":[{"control":"REL-02-04","owner":"priya@example.com","requirement":"Multi-region","residual":"single region for now","until":"2026-12-01"}],"findingDeltas":[],"movement":[],"movementNote":"Movement and finding changes are not shown: no earlier scan can be compared with the run that closed the month. These scans ran as different identities (sp-schedule and ana@example.com), whose visible estates may differ.","outcomes":[{"label":"Fixed","value":"2"}],"publication":{"id":"pub-1","month":"2026-08","monthLabel":"August 2026","publishedAt":"2026-09-01T09:00:00.000Z","publishedBy":"ana@example.com"},"review":[{"label":"Review","value":"Finalised by ana@example.com"}],"runHealth":[{"label":"Scheduled runs","value":"4 of 4 succeeded"}],"trend":[{"comparability":"permitted","label":"August 2026","month":"2026-08","score":"74"}]}"`
+    );
+  });
+});
+
 describe('the CSV rendering', () => {
   it('has the header, and a row per datum carrying the month and publication id', () => {
     const csv = monthCsv(monthDocument(identity(), content()));

@@ -108,12 +108,15 @@ export type ContextClass = TableContext['kind'];
  * two sets differ. So adding a table without deciding what a reset does with it is a failing test
  * rather than data that quietly survives being emptied.
  *
- * # Why the two audit tables are last, in that order
+ * # Why the audit tables are last, in that order
  *
  * Last for the reason the sweep gives: the log is where a reset that throws partway through gets
  * recorded, so it has to be the last thing such a reset has touched. Removing scans and then failing
  * on notes leaves an install whose account of the failure is intact; doing it the other way round
  * leaves a half-emptied install with nothing saying what happened.
+ *
+ * `audit_gaps` leads the three, because a marker is about the log and has to go no later than the log
+ * does.
  *
  * `audit_events` before `audit_floor` is the less obvious half. A crash between the two leaves an empty
  * log with a floor still declaring where the last sweep cut: `head()` continues from that floor, the
@@ -353,6 +356,16 @@ export const RESET_TABLES: readonly Emptied[] = [
     holds: 'Holds placed and lifted, including the record of what a released hold once preserved',
     swept: false,
     context: { kind: 'installation-wide', because: 'A hold stops a sweep, and a sweep is the install’s' },
+  },
+  {
+    // Before the log it describes gaps in, so a reset that fails between the two leaves the trail intact
+    // rather than markers for a trail that is gone. Emptied with it because they say events are missing
+    // from a chain this act ends: the new log starts at its own genesis event, and a marker beside it
+    // would be about a trail that no longer exists.
+    table: 'audit_gaps',
+    holds: 'Marks left by audit events that could not be written, and who acknowledged each',
+    swept: false,
+    context: { kind: 'installation-wide', because: 'About the one install-wide trail, which belongs to no assessment' },
   },
   {
     table: 'audit_events',

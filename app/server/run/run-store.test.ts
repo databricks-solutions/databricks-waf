@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { observed, type SignalId, type SignalResult } from '../collect/signal.js';
 import { FakePostgres } from '../store/postgres-fake.js';
-import { LEASE_SECONDS, resumeFrom, type RunRequest } from './run.js';
+import { LEASE_SECONDS, RunAdmissionRefused, resumeFrom, type RunRequest } from './run.js';
 import { PostgresRunStore, type Opening } from './run-store.js';
 
 const REQUEST: RunRequest = { scope: { description: 'the whole account' }, lookbackDays: 30 };
@@ -45,7 +45,7 @@ describe('opening a run', () => {
     // difference. Null here means not stated, never the install's.
     const { store: runs, db } = store();
     await runs.open(opening({ request: { ...REQUEST, definition: { id: 'def-1', version: 2, fingerprint: 'f' } } }));
-    await runs.open(opening({ id: 'run-2', idempotencyKey: 'key-2' }));
+    await runs.open(opening({ id: 'run-2', idempotencyKey: 'key-2', requestedAt: new Date(AT.getTime() + 61_000) }));
 
     const keyed = new Map(db.rows('runs').map((row) => [row.id, row.definition_id]));
     expect(keyed.get('run-1')).toBe('def-1');
@@ -75,9 +75,19 @@ describe('opening a run', () => {
   });
 
   it('lets two runs with no key both exist, since a person pressing scan twice means it twice', async () => {
+    // One after the other: a second while the first is live is refused, and that is held under admission.
     const { store: runs } = store();
     const first = await runs.open(opening({ id: 'run-1', idempotencyKey: undefined, trigger: 'interactive' }));
-    const second = await runs.open(opening({ id: 'run-2', idempotencyKey: undefined, trigger: 'interactive' }));
+    const attempt = await runs.claim('run-1', 'a', AT);
+    await runs.finish(attempt!, { state: 'complete', at: AT, scanId: 'scan-1' });
+    const second = await runs.open(
+      opening({
+        id: 'run-2',
+        idempotencyKey: undefined,
+        trigger: 'interactive',
+        requestedAt: new Date(AT.getTime() + 1000),
+      })
+    );
 
     expect([first.created, second.created]).toEqual([true, true]);
     expect((await runs.recent(10)).length).toBe(2);
@@ -89,6 +99,153 @@ describe('opening a run', () => {
     await runs.open(opening({ request: asked }));
 
     expect((await runs.get('run-1'))?.request).toEqual(asked);
+  });
+});
+
+describe('admitting a run', () => {
+  const LOCK = "select pg_advisory_xact_lock(hashtext('waf.run-admission.' || $1::text))";
+  const later = (seconds: number): Date => new Date(AT.getTime() + seconds * 1000);
+
+  it('takes the admission lock for the kind in the transaction that opens the run', async () => {
+    const { store: runs, db } = store();
+    await runs.open(opening());
+
+    const taken = db.statements.filter((statement) => statement.includes('pg_advisory_xact_lock'));
+    expect(taken).toEqual([LOCK]);
+    // Before the read of what is live and before the insert, which is the order that makes the read
+    // mean anything: a lock taken after the check admits both of two callers that passed it.
+    const order = db.statements.map((statement) =>
+      statement === LOCK ? 'lock' : statement.startsWith('insert into waf.runs') ? 'insert' : statement.slice(0, 6)
+    );
+    expect(order.indexOf('lock')).toBeLessThan(order.indexOf('insert'));
+  });
+
+  it('refuses a second run of the kind while the first is claimed, naming the first', async () => {
+    const { store: runs, db } = store();
+    await runs.open(opening());
+    await runs.claim('run-1', 'process-a', AT);
+
+    const refused = await runs
+      .open(opening({ id: 'run-2', idempotencyKey: 'key-2', requestedAt: later(5) }))
+      .catch((cause: unknown) => cause);
+
+    expect(refused).toBeInstanceOf(RunAdmissionRefused);
+    expect((refused as RunAdmissionRefused).run.id).toBe('run-1');
+    expect(db.rows('runs').map((row) => row.id)).toEqual(['run-1']);
+  });
+
+  it('refuses one asked for without a key as well, since a person pressing scan has none', async () => {
+    const { store: runs } = store();
+    await runs.open(opening({ idempotencyKey: undefined, trigger: 'interactive' }));
+
+    await expect(
+      runs.open(opening({ id: 'run-2', idempotencyKey: undefined, trigger: 'interactive', requestedAt: later(1) }))
+    ).rejects.toBeInstanceOf(RunAdmissionRefused);
+  });
+
+  it('refuses a run that is asked for but not yet claimed, so the gap between the two is not a way in', async () => {
+    const { store: runs } = store();
+    await runs.open(opening());
+
+    await expect(
+      runs.open(opening({ id: 'run-2', idempotencyKey: 'key-2', requestedAt: later(2) }))
+    ).rejects.toBeInstanceOf(RunAdmissionRefused);
+  });
+
+  it('lets the same key through to the existing path, which says what it was joining', async () => {
+    const { store: runs } = store();
+    await runs.open(opening());
+    await runs.claim('run-1', 'process-a', AT);
+
+    const again = await runs.open(opening({ id: 'run-2', requestedAt: later(5) }));
+
+    expect(again.created).toBe(false);
+    expect(again.run.id).toBe('run-1');
+  });
+
+  it('admits a run of the other kind, since the two are separate cycles', async () => {
+    const { store: runs } = store();
+    await runs.open(opening());
+    await runs.claim('run-1', 'process-a', AT);
+
+    const advisory = await runs.open(opening({ id: 'run-2', kind: 'advisory', idempotencyKey: 'key-2' }));
+
+    expect(advisory.created).toBe(true);
+  });
+
+  it('admits another once the holder stopped renewing, leaving the old run for its own key to resume', async () => {
+    const { store: runs } = store();
+    await runs.open(opening());
+    await runs.claim('run-1', 'killed', AT);
+
+    const next = await runs.open(
+      opening({ id: 'run-2', idempotencyKey: 'key-2', requestedAt: later(LEASE_SECONDS + 1) })
+    );
+
+    expect(next.created).toBe(true);
+    expect((await runs.get('run-1'))?.state).toBe('running');
+  });
+
+  it('admits another once the first has finished', async () => {
+    const { store: runs } = store();
+    await runs.open(opening());
+    const attempt = await runs.claim('run-1', 'a', AT);
+    await runs.finish(attempt!, { state: 'complete', at: later(10), scanId: 'scan-1' });
+
+    const next = await runs.open(opening({ id: 'run-2', idempotencyKey: 'key-2', requestedAt: later(11) }));
+
+    expect(next.created).toBe(true);
+  });
+
+  it('counts a failed run as finished, so a failure does not hold the install', async () => {
+    const { store: runs } = store();
+    await runs.open(opening());
+    const attempt = await runs.claim('run-1', 'a', AT);
+    await runs.finish(attempt!, { state: 'failed', at: later(10), why: 'the store is unreachable' });
+
+    expect((await runs.open(opening({ id: 'run-2', idempotencyKey: 'key-2', requestedAt: later(11) }))).created).toBe(
+      true
+    );
+  });
+
+  it('reads a run written before the kind column as an assessment', async () => {
+    const { store: runs, db } = store();
+    db.seed('runs', {
+      id: 'old',
+      kind: null,
+      requested_at: AT,
+      actor: 'ada@example.com',
+      trigger: 'scheduled',
+      idempotency_key: null,
+      request: REQUEST,
+      state: 'running',
+      attempts: 1,
+      lease_holder: 'p',
+      lease_until: later(30),
+    });
+
+    await expect(runs.open(opening({ requestedAt: later(1) }))).rejects.toBeInstanceOf(RunAdmissionRefused);
+    expect((await runs.open(opening({ id: 'run-2', kind: 'advisory', idempotencyKey: 'key-2' }))).created).toBe(true);
+  });
+
+  it('lets exactly one of two opens issued together through, and refuses the other', async () => {
+    const { store: runs, db } = store();
+
+    const outcomes = await Promise.allSettled([
+      runs.open(opening({ id: 'run-1', idempotencyKey: 'key-1' })),
+      runs.open(opening({ id: 'run-2', idempotencyKey: 'key-2' })),
+    ]);
+
+    expect(outcomes.map((outcome) => outcome.status).sort()).toEqual(['fulfilled', 'rejected']);
+    expect(db.rows('runs')).toHaveLength(1);
+  });
+
+  it('refuses outright where the handle cannot open a transaction, rather than admitting unprotected', async () => {
+    const { db } = store();
+    const without = new PostgresRunStore({ schema: 'waf', query: (text, values) => db.query(text, values) });
+
+    await expect(without.open(opening())).rejects.toThrow(/cannot open a transaction/);
+    expect(db.rows('runs')).toEqual([]);
   });
 });
 
@@ -371,9 +528,9 @@ describe('listing', () => {
   it('separates what is still going from what is over', async () => {
     const { store: runs } = store();
     await runs.open(opening({ id: 'done', idempotencyKey: 'k1' }));
-    await runs.open(opening({ id: 'going', idempotencyKey: 'k2', requestedAt: new Date(AT.getTime() + 1000) }));
     const attempt = await runs.claim('done', 'a', AT);
     await runs.finish(attempt!, { state: 'complete', at: AT, scanId: 'scan-1' });
+    await runs.open(opening({ id: 'going', idempotencyKey: 'k2', requestedAt: new Date(AT.getTime() + 1000) }));
 
     expect((await runs.unfinished()).map((one) => one.id)).toEqual(['going']);
     expect((await runs.recent(10)).map((one) => one.id)).toEqual(['going', 'done']);

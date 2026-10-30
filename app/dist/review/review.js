@@ -1,4 +1,4 @@
-import { stateOf } from "../attest/attestation.js";
+import { counts } from "../attest/attestation.js";
 //#region server/review/review.ts
 var InvalidReviewError = class extends Error {
 	constructor(message) {
@@ -167,13 +167,13 @@ function pillarEvidenceManifest(controls, attestations, pillarId, now = /* @__PU
 	const attention = [];
 	for (const control of manual) {
 		const answer = current.get(control.id);
-		if (answer != null && stateOf(answer, now) === "current") accepted.push(answer.id);
-		else attention.push(control.id);
+		if (answer != null && counts(answer, now)) accepted.push(answer.id);
+		else if (control.optional !== true) attention.push(control.id);
 	}
 	return {
 		attestationIds: accepted,
 		attentionControlIds: attention,
-		unresolvedControlIds: manual.map((one) => one.id)
+		unresolvedControlIds: manual.filter((one) => one.optional !== true).map((one) => one.id)
 	};
 }
 //#endregion

@@ -13,6 +13,9 @@ import { CheckCircle2, CircleHelp, CircleSlash, PlugZap, TriangleAlert, type Luc
 import type { Tone } from '../components/ui/StatusBadge';
 import type { Diagnostics, HealthReading } from '../api/types';
 
+type AuditGaps = NonNullable<Diagnostics['auditGaps']>;
+type AuditGap = AuditGaps['gaps'][number];
+
 type Standing = HealthReading['standing'];
 type Dependency = HealthReading['dependency'];
 
@@ -147,7 +150,38 @@ function listOf(parts: readonly string[]): string {
  */
 export function unrecordedSentence(unrecorded: number): string | undefined {
   if (unrecorded <= 0) return undefined;
-  return `${String(unrecorded)} ${unrecorded === 1 ? 'action' : 'actions'} performed since this app last started ${
+  return `${String(unrecorded)} ${unrecorded === 1 ? 'action' : 'actions'} performed since this instance last started ${
     unrecorded === 1 ? 'was' : 'were'
-  } not written to the trail. They happened; the record of them did not, and it cannot be recovered.`;
+  } not written to the trail. They happened; the record of them did not, and it cannot be recovered. This count is held in memory by this instance, so it starts again at zero on a restart and another instance has its own.`;
+}
+
+/**
+ * The lost events a restart did not erase, where there are any waiting.
+ *
+ * Apart from the sentence above because the two are different kinds of claim. That one is a count held
+ * by one instance, true of now. This is read from the database, so it is the same whichever instance
+ * serves the page and however long ago the event was lost, and it stays until somebody acknowledges it.
+ * Undefined when there is nothing to acknowledge — and also when the list could not be read, which the
+ * page says in its own words rather than by omission.
+ */
+export function gapsSentence(gaps: AuditGaps | undefined): string | undefined {
+  if (gaps == null || gaps.unreadable != null || gaps.gaps.length === 0) return undefined;
+
+  const count = gaps.gaps.length;
+  return (
+    `${gaps.truncated ? 'At least ' : ''}${String(count)} lost audit ${count === 1 ? 'event is' : 'events are'} ` +
+    'recorded below. They are held in the database, so any instance reports them and a restart does not ' +
+    'clear them, and they stay until somebody acknowledges them.'
+  );
+}
+
+/**
+ * How a lost event ended, in words, so a lost refusal is not read as a lost change.
+ *
+ * The three outcomes the trail uses, because a marker stands for a row of it and means the same by them.
+ */
+export function gapOutcomePhrase(outcome: AuditGap['outcome']): string {
+  if (outcome === 'performed') return 'went ahead';
+  if (outcome === 'refused') return 'was refused';
+  return 'did not complete';
 }

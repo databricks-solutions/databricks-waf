@@ -3,7 +3,7 @@
 **Find architecture gaps, trace them to evidence, and turn them into owned improvement work.**
 
 [Get started](#get-started) · [Read the guide](https://databricks-solutions.github.io/databricks-waf/) ·
-[View v0.1.0 Alpha](https://github.com/databricks-solutions/databricks-waf/releases/tag/v0.1.0) ·
+[View v0.2.0 Beta](https://github.com/databricks-solutions/databricks-waf/releases/tag/v0.2.0) ·
 [Report an issue](https://github.com/databricks-solutions/databricks-waf/issues)
 
 ![A Databricks estate being assessed, connected to evidence and converted into verified improvement work](docs/assets/images/readme-evidence-to-action.jpg)
@@ -18,7 +18,7 @@ It assesses a workspace or account against the seven pillars of the
 Automated evidence provides an indicative posture immediately. Human review fills only the gaps that
 platform data cannot answer. Publication creates an immutable report for governance and comparison.
 
-> **Alpha release:** v0.1.0 is ready for evaluation and field feedback. The supported experience is a
+> **Beta release:** v0.2.0 is ready for customer pilots and field evaluation. The supported experience is a
 > current desktop or laptop Chrome browser installed through the Databricks Asset Bundle path below.
 
 ## What teams get
@@ -96,7 +96,7 @@ You need:
 ```bash
 git clone https://github.com/databricks-solutions/databricks-waf.git
 cd databricks-waf
-git checkout v0.1.0
+git checkout v0.2.0
 cd app
 npm ci
 databricks auth profiles
@@ -147,7 +147,7 @@ permissions, upgrades, scheduling, backup, recovery, rollback, and uninstall.
 
 <!-- catalogue-counts:start -->
 
-**165 scored controls** across 7 pillars and 31 principles, of which 115 are automatable.
+**165 scored controls** across 7 pillars and 31 principles, of which 117 are automatable.
 
 Every control declares where it came from, so the app can answer "is this the actual
 Well-Architected Framework?" without hedging:
@@ -161,7 +161,7 @@ Well-Architected Framework?" without hedging:
 The table counts 184 catalogue entries against 165 scored controls. The difference is requirements that belong to more than one pillar — Delta history
  retention is both a cost concern and a recovery concern — which appear in each and are
  scored once, so overlap cannot inflate the total. The automatable figure above is counted
- the same way; over all 184 entries it is 134.
+ the same way; over all 184 entries it is 136.
 
 <!-- catalogue-counts:end -->
 
@@ -170,9 +170,13 @@ The table counts 184 catalogue entries against 165 scored controls. The differen
 - Assessment reads run on behalf of the signed-in user; collectors use parameterised SQL and read-only
   API routes.
 - Mutations require direct membership in the configured assessor group.
+- Stored results are readable by everyone who can open the App, except statement text, principal
+  identifiers in findings evidence and imported admin readings, which only direct members of the assessor
+  group see. Everyone else gets a placeholder, in pages and exports alike.
 - Customer records remain in customer-owned Lakebase. The App never asks for or stores personal access
   tokens.
-- The optional AI layer can explain and prioritise findings. It cannot change a finding or score.
+- An optional AI layer is planned and is not yet available. When it exists it will never be able to change a
+  finding or score.
 
 Read [the complete security model](SECURITY.md), including the declared API scopes and vulnerability
 reporting process.
@@ -218,7 +222,7 @@ docs/design/            Customer experience and guidance authoring standards
 the [Databricks License](https://databricks.com/db-license-source). See [LICENSE.md](LICENSE.md) for
 details. Every included third-party package remains subject to its own licence.
 
-The complete production lockfile contains 518 third-party package/version pairs across every optional
+The complete production lockfile contains 516 third-party package/version pairs across every optional
 runtime platform. All are listed in [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md), and CI refuses a
 production dependency whose licence is absent or outside the reviewed allowlist.
 
@@ -228,8 +232,8 @@ production dependency whose licence is absent or outside the reviewed allowlist.
 
 | Licence | Resolved production packages |
 | --- | ---: |
-| MIT | 362 |
-| Apache-2.0 | 97 |
+| MIT | 357 |
+| Apache-2.0 | 100 |
 | ISC | 27 |
 | BSD-3-Clause | 15 |
 | MPL-2.0 | 12 |
@@ -240,21 +244,21 @@ production dependency whose licence is absent or outside the reviewed allowlist.
 
 | Direct third-party library | Version | Licence | Source |
 | --- | --- | --- | --- |
-| @xyflow/react | 12.11.3 | MIT | [npm](https://www.npmjs.com/package/@xyflow/react/v/12.11.3) |
+| @xyflow/react | 12.11.5 | MIT | [npm](https://www.npmjs.com/package/@xyflow/react/v/12.11.5) |
 | clsx | 2.1.1 | MIT | [npm](https://www.npmjs.com/package/clsx/v/2.1.1) |
 | embla-carousel-react | 8.6.0 | MIT | [npm](https://www.npmjs.com/package/embla-carousel-react/v/8.6.0) |
 | express | 5.2.1 | MIT | [npm](https://www.npmjs.com/package/express/v/5.2.1) |
-| js-yaml | 5.4.0 | MIT | [npm](https://www.npmjs.com/package/js-yaml/v/5.4.0) |
-| lucide-react | 1.34.0 | ISC | [npm](https://www.npmjs.com/package/lucide-react/v/1.34.0) |
+| js-yaml | 5.4.1 | MIT | [npm](https://www.npmjs.com/package/js-yaml/v/5.4.1) |
+| lucide-react | 1.38.0 | ISC | [npm](https://www.npmjs.com/package/lucide-react/v/1.38.0) |
 | next-themes | 0.4.6 | MIT | [npm](https://www.npmjs.com/package/next-themes/v/0.4.6) |
 | react | 19.2.8 | MIT | [npm](https://www.npmjs.com/package/react/v/19.2.8) |
 | react-dom | 19.2.8 | MIT | [npm](https://www.npmjs.com/package/react-dom/v/19.2.8) |
 | react-resizable-panels | 4.12.3 | MIT | [npm](https://www.npmjs.com/package/react-resizable-panels/v/4.12.3) |
-| react-router | 8.3.0 | MIT | [npm](https://www.npmjs.com/package/react-router/v/8.3.0) |
+| react-router | 8.3.1 | MIT | [npm](https://www.npmjs.com/package/react-router/v/8.3.1) |
 | tailwind-merge | 3.6.0 | MIT | [npm](https://www.npmjs.com/package/tailwind-merge/v/3.6.0) |
 | tailwindcss-animate | 1.0.7 | MIT | [npm](https://www.npmjs.com/package/tailwindcss-animate/v/1.0.7) |
 | tw-animate-css | 1.4.0 | MIT | [npm](https://www.npmjs.com/package/tw-animate-css/v/1.4.0) |
-| zod | 4.4.3 | MIT | [npm](https://www.npmjs.com/package/zod/v/4.4.3) |
+| zod | 4.6.6 | MIT | [npm](https://www.npmjs.com/package/zod/v/4.6.6) |
 
 First-party `@databricks/*` packages are governed separately by their published Apache-2.0 terms.
 

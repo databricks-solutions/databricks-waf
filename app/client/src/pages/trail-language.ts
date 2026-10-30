@@ -80,6 +80,9 @@ const TARGET_LABEL: Readonly<Record<string, string>> = {
   // Only ever a target because a note can be written about a pillar. A note's own act names what the
   // note is about, so this is the reader seeing "Pillar — Data and AI governance" beside "wrote a note".
   pillar: 'Pillar',
+  // The id is the id of the event that could not be written, so a reader of the acknowledgement is
+  // looking at a reference to something missing from the trail rather than at a record of its own.
+  'audit-gap': 'Lost audit event',
 };
 
 export function targetLabel(kind: string): string {

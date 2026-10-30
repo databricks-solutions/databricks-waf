@@ -53,7 +53,7 @@ needs live workspace data. Never write them to a file or recording.
 ## Catalogue and SQL changes
 
 - Every control must declare its provenance, measurability, applicability and evidence path.
-- AI output may explain or prioritise; it must never determine a finding or score.
+- AI output, once an optional AI layer exists, must never determine a finding or score. No AI layer ships today.
 - SQL values are parameters. Validate any identifier that cannot be parameterised.
 - A query over a history or timeline source must explicitly reduce to the intended grain.
 - A result set must declare and enforce a safe bound.
@@ -81,6 +81,11 @@ npm run test:live
 ```
 
 The live suite creates and removes only its own test schema. Review the target before running it.
+
+Schema migrations must stay additive and backward compatible: new tables, columns and indexes only, with no
+drop, rename or type change. A rolling deploy runs the old and the new version side by side against one
+database, so the older version must keep working on the schema the newer one has already migrated (decision A17
+in [docs/decisions.md](docs/decisions.md)).
 
 ## DAB changes
 

@@ -54,7 +54,10 @@ function importedFrom(source, from) {
     const target = moduleFile(dirname(from), match[2]);
     if (target == null) continue;
     for (const clause of match[1].split(',')) {
-      const name = clause.trim().split(/\s+as\s+/u).pop();
+      const name = clause
+        .trim()
+        .split(/\s+as\s+/u)
+        .pop();
       if (name != null && name !== '') files.set(name, target);
     }
   }
@@ -107,7 +110,11 @@ function linkTargets(line, firstSegments) {
   if (!isComment(line)) {
     for (const match of line.matchAll(/(['"`])(\/[^'"`\s]*)\1/g)) {
       const path = normalise(match[2]);
-      const first = path.split('?')[0]?.split('/').filter((part) => part !== '')[0] ?? '';
+      const first =
+        path
+          .split('?')[0]
+          ?.split('/')
+          .filter((part) => part !== '')[0] ?? '';
       if (firstSegments.has(first)) targets.add(path);
     }
   }
@@ -159,7 +166,7 @@ function filters(destination) {
 
   return query
     .split('&')
-    .filter((pair) => pair !== '')
+    .filter((pair) => pair !== '' && !(pair.split('=')[0] ?? '').includes(DYNAMIC))
     .map((pair) => {
       const [name, ...rest] = pair.split('=');
       const value = rest.join('=');
@@ -184,7 +191,8 @@ function sourceFiles(root) {
       out.push(...sourceFiles(full));
       continue;
     }
-    if (/\.tsx?$/u.test(entry)) out.push(full);
+    // Test assertions contain rendered HTML (`&amp;`) rather than navigable source links.
+    if (/\.tsx?$/u.test(entry) && !/\.test\.tsx?$/u.test(entry)) out.push(full);
   }
   return out;
 }
@@ -236,7 +244,8 @@ for (const file of sourceFiles(CLIENT)) {
 
       for (const { name, value } of filters(destination)) {
         checked += 1;
-        if (!readsParam(source, name)) {
+        // The assessment scope is restored by the shared route wrapper before any page mounts.
+        if (!readsParam(source, name) && !(name === 'definitionId' && readsParam(routerSource, name))) {
           ignored.push({ where, destination, detail: `${route.component} never reads the \`${name}\` parameter` });
           continue;
         }

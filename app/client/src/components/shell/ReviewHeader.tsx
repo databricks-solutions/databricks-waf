@@ -35,6 +35,7 @@ import { CheckCircle2, ChevronRight, CircleDashed, CircleSlash } from 'lucide-re
 import { useAdvisor } from '../../api/advisor-context';
 import { useAssessment } from '../../api/assessment-context';
 import { customerResult } from '../../api/final-result';
+import { resultReportPath } from '../../assessment-continuation';
 import { useResult, useReviewForRun, useScan } from '../../api/hooks';
 import { ExportMenu } from '../ExportMenu';
 import { RunAdvisoryControl } from '../RunAdvisoryControl';
@@ -57,7 +58,7 @@ export function ReviewHeader({ menu }: ReviewHeaderProps) {
   const canonicalPath = canonicalCustomerPath(pathname);
   const preview = isCustomerPreview(pathname);
   const { pillarId, scanId, resultId } = useParams<{ pillarId: string; scanId: string; resultId: string }>();
-  const { scan, result, latestRun, scanning, loading: readingScan, pillarTitle } = useAssessment();
+  const { scan, result, latestRun, scanning, loading: readingScan, pillarTitle, definitionId } = useAssessment();
   const { advisory, advising, loading: readingAdvisory } = useAdvisor();
   const addressedResult = useResult(resultId ?? '');
   const addressedRun = useScan(addressedResult.data?.runId ?? '');
@@ -188,7 +189,7 @@ export function ReviewHeader({ menu }: ReviewHeaderProps) {
             <ExportMenu
               {...(resultExportable != null ? { resultId: resultExportable } : {})}
               {...(exportRun != null ? { runId: exportRun } : {})}
-              reportTo={resultExportable != null ? `/report/${resultExportable}` : '/report'}
+              reportTo={resultExportable != null ? resultReportPath(resultExportable, definitionId ?? null) : '/report'}
             />
           )}
           {/* Whichever run this page is about. The scan control names the assessment the run answers

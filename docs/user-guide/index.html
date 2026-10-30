@@ -55,7 +55,7 @@
 <h2 id="2-collect-automated-evidence">2. Collect automated evidence</h2>
 <p>Select <strong>Run assessment</strong> in the header. The scope dialog starts with the current saved definition and lets you narrow pillars or choose a custom workspace scope. Check the summary at the bottom before selecting <strong>Start assessment</strong>.</p>
 <p>Collection reads only what the scanning identity is allowed to read. A missing grant, absent system table or unreadable API becomes a visible measurement gap attached to the affected requirements.</p>
-<p>Only one scan runs at a time. You may move around the App while it runs; the header preserves progress and routes you into review when collection completes.</p>
+<p>Only one scan runs at a time, however many instances of the App are serving it. If somebody else has started one, <strong>Run assessment</strong> tells you which run is going rather than starting a second. You may move around the App while it runs; the header preserves progress and routes you into review when collection completes.</p>
 <h2 id="3-read-the-indicative-result">3. Read the indicative result</h2>
 <p>The Dashboard remains the permanent state-of-the-estate entry point. After automated collection it shows:</p>
 <ul>
@@ -136,6 +136,7 @@
 <li>Confidence follows from coverage and evidence quality.</li>
 <li>Human answers are labelled as stated, not read.</li>
 <li>Cross-run movement is shown only where scope and methodology are comparable.</li>
+<li>A monthly publication closes on the month&#39;s latest scheduled run and opens on the newest earlier scan comparable with it; where none is, its movement sections are empty and say why. See decision A9 in <a href="/databricks-waf/decisions/">Decisions</a>.</li>
 <li>Improvement actions and risk decisions never silently change the score.</li>
 </ul>
 <h2 id="next">Next</h2>

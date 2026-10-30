@@ -3,9 +3,9 @@
 // These sit beside `/api/scan/status`, which they do not replace and are not a better version of. The
 // two answer different questions and both are needed:
 //
-//   * `/api/scan/status` says what *this process* is doing right now. It is what the page polls to
-//     show a progress count, and it goes back to "nothing running" when the process restarts, because
-//     that is the truth about the process.
+//   * `/api/scan/status` says whether an assessment is running *now*, on any instance, and is what the
+//     page polls. Where the run is on another instance it is read from the record; the progress count
+//     is only the instance doing the work's to give.
 //   * `/api/runs/:id` says what became of a run somebody asked for. It is read from the database, so it
 //     survives the restart, the retry and the cancel — which is the question a supervisor has, and the
 //     one the app could not answer at all before runs were records.
@@ -126,7 +126,7 @@ export function registerRunRoutes(app: Application, options: RunRouteOptions): v
    * Two filters, and both exist because a supervisor has a question the id-addressed route cannot
    * answer. `?key=` is for the trigger whose response never arrived: the caller chose the key, so it
    * knows that, and it never saw the id the app minted. `?unfinished=true` is "is anything still going,
-   * anywhere" — which is not what `/api/scan/status` reports, because that is about this process.
+   * anywhere", including a run nobody is working on any more, which `/api/scan/status` does not report.
    */
   app.get('/api/runs', async (request, response) => {
     const runs = options.runs;

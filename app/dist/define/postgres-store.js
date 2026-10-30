@@ -11,38 +11,51 @@ var PostgresDefinitionStore = class {
 	}
 	async all() {
 		const { db } = this.options;
+		const operation = "read every assessment definition";
 		try {
 			const [definitions, versions] = await Promise.all([db.query(`select id, archived_at from ${db.schema}.assessment_definitions`), db.query(`select definition_id, body from ${db.schema}.assessment_definition_versions`)]);
-			const byDefinition = /* @__PURE__ */ new Map();
-			let unreadable = 0;
-			for (const row of versions.rows) {
-				const version = revive(row.body);
-				if (version == null) {
-					unreadable += 1;
-					continue;
-				}
-				byDefinition.set(row.definition_id, [...byDefinition.get(row.definition_id) ?? [], version]);
-			}
-			if (unreadable > 0) this.options.onError?.("read every assessment definition", /* @__PURE__ */ new Error(`${String(unreadable)} stored definition versions could not be read and were skipped.`));
-			const assembled = [];
-			for (const row of definitions.rows) {
-				const stored = byDefinition.get(row.id)?.sort((a, b) => a.version - b.version);
-				if (stored == null || stored.length === 0) continue;
-				const archivedAt = row.archived_at == null ? void 0 : new Date(row.archived_at);
-				assembled.push({
-					id: row.id,
-					versions: stored,
-					...archivedAt != null && !Number.isNaN(archivedAt.getTime()) ? { archivedAt } : {}
-				});
-			}
-			return newestFirst(assembled);
+			return newestFirst(this.assemble(definitions.rows, versions.rows, operation));
 		} catch (error) {
-			this.options.onError?.("read every assessment definition", error);
+			this.options.onError?.(operation, error);
 			throw error;
 		}
 	}
 	async get(id) {
-		return (await this.all()).find((definition) => definition.id === id);
+		const { db } = this.options;
+		const operation = `read assessment definition ${id}`;
+		try {
+			const [definitions, versions] = await Promise.all([db.query(`select id, archived_at from ${db.schema}.assessment_definitions where id = $1`, [id]), db.query(`select definition_id, body from ${db.schema}.assessment_definition_versions where definition_id = $1`, [id])]);
+			return this.assemble(definitions.rows, versions.rows, operation)[0];
+		} catch (error) {
+			this.options.onError?.(operation, error);
+			throw error;
+		}
+	}
+	/** Definition rows and their version rows as definitions, skipping what cannot be read. */
+	assemble(definitions, versions, operation) {
+		const byDefinition = /* @__PURE__ */ new Map();
+		let unreadable = 0;
+		for (const row of versions) {
+			const version = revive(row.body);
+			if (version == null) {
+				unreadable += 1;
+				continue;
+			}
+			byDefinition.set(row.definition_id, [...byDefinition.get(row.definition_id) ?? [], version]);
+		}
+		if (unreadable > 0) this.options.onError?.(operation, /* @__PURE__ */ new Error(`${String(unreadable)} stored definition versions could not be read and were skipped.`));
+		const assembled = [];
+		for (const row of definitions) {
+			const stored = byDefinition.get(row.id)?.sort((a, b) => a.version - b.version);
+			if (stored == null || stored.length === 0) continue;
+			const archivedAt = row.archived_at == null ? void 0 : new Date(row.archived_at);
+			assembled.push({
+				id: row.id,
+				versions: stored,
+				...archivedAt != null && !Number.isNaN(archivedAt.getTime()) ? { archivedAt } : {}
+			});
+		}
+		return assembled;
 	}
 	async create(definition) {
 		const { db } = this.options;

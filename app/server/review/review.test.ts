@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { Attestation } from '../attest/attestation.js';
+import { stateOf, type Attestation } from '../attest/attestation.js';
 import { digestOf } from '../records/digest.js';
 import type { Scan } from '../scan/scan.js';
 import { CollectionScheduler } from '../scan/scheduler.js';
@@ -163,9 +163,12 @@ describe('a skip is a record', () => {
 });
 
 describe('a pillar evidence manifest', () => {
+  const PILLAR = 'security-compliance-and-privacy';
   const controls = [
-    { id: 'SCP-01-01', pillarId: 'security-compliance-and-privacy' },
-    { id: 'SCP-01-02', pillarId: 'security-compliance-and-privacy' },
+    { id: 'SCP-01-01', pillarId: PILLAR },
+    { id: 'SCP-01-02', pillarId: PILLAR },
+    { id: 'SCP-01-03', pillarId: PILLAR },
+    { id: 'SCP-01-04', pillarId: PILLAR },
     { id: 'RE-01-01', pillarId: 'reliability' },
   ];
 
@@ -182,24 +185,75 @@ describe('a pillar evidence manifest', () => {
     };
   }
 
-  it('accepts current ids, keeps due work in attention, and freezes the complete skip set', () => {
-    const manifest = pillarEvidenceManifest(
-      controls,
-      [
-        answer('att-current', 'SCP-01-01', new Date('2027-08-13T09:00:00.000Z')),
-        {
-          ...answer('att-due', 'SCP-01-02', new Date('2026-08-20T09:00:00.000Z')),
-          attestedAt: new Date('2026-07-21T09:00:00.000Z'),
-        },
-        answer('att-other', 'RE-01-01', new Date('2027-08-13T09:00:00.000Z')),
-      ],
-      'security-compliance-and-privacy',
-      NOW
-    );
+  /** Given for thirty days on 21 July, so inside its renewal window at NOW and expired on 20 August. */
+  const due: Attestation = {
+    ...answer('att-due', 'SCP-01-02', new Date('2026-08-20T09:00:00.000Z')),
+    attestedAt: new Date('2026-07-21T09:00:00.000Z'),
+  };
 
-    expect(manifest.attestationIds).toEqual(['att-current']);
-    expect(manifest.attentionControlIds).toEqual(['SCP-01-02']);
-    expect(manifest.unresolvedControlIds).toEqual(['SCP-01-01', 'SCP-01-02']);
+  it('accepts current and due ids, keeps expired and unanswered work in attention, and freezes the skip set', () => {
+    const answers = [
+      answer('att-current', 'SCP-01-01', new Date('2027-08-13T09:00:00.000Z')),
+      due,
+      {
+        ...answer('att-expired', 'SCP-01-03', new Date('2026-08-12T09:00:00.000Z')),
+        attestedAt: new Date('2026-05-14T09:00:00.000Z'),
+      },
+      answer('att-other', 'RE-01-01', new Date('2027-08-13T09:00:00.000Z')),
+    ];
+    expect(answers.map((one) => stateOf(one, NOW))).toEqual(['current', 'due', 'expired', 'current']);
+
+    const manifest = pillarEvidenceManifest(controls, answers, PILLAR, NOW);
+
+    expect(manifest.attestationIds).toEqual(['att-current', 'att-due']);
+    expect(manifest.attentionControlIds).toEqual(['SCP-01-03', 'SCP-01-04']);
+    expect(manifest.unresolvedControlIds).toEqual(['SCP-01-01', 'SCP-01-02', 'SCP-01-03', 'SCP-01-04']);
+  });
+
+  describe('a requirement the measurement already settled up to a cap', () => {
+    // An answer lifts the cap and nothing else needs one, so the pillar can be confirmed without it:
+    // the measured outcome stands. A counting answer is still cited, because the lift in the
+    // published report is only as good as the answer the review froze.
+    const optional = [
+      { id: 'OE-01-06', pillarId: PILLAR, optional: true },
+      { id: 'OE-03-01', pillarId: PILLAR, optional: true },
+    ];
+
+    it('does not ask for an answer that was never given, and does not leave the pillar unresolved by it', () => {
+      const manifest = pillarEvidenceManifest([...controls, ...optional], [], PILLAR, NOW);
+
+      expect(manifest.attentionControlIds).not.toContain('OE-01-06');
+      expect(manifest.unresolvedControlIds).not.toContain('OE-01-06');
+      expect(manifest.attentionControlIds).toContain('SCP-01-01');
+    });
+
+    it('cites an answer that counts', () => {
+      const given = answer('att-cap', 'OE-01-06', new Date('2027-08-13T09:00:00.000Z'));
+      const manifest = pillarEvidenceManifest([...controls, ...optional], [given], PILLAR, NOW);
+
+      expect(manifest.attestationIds).toEqual(['att-cap']);
+      expect(manifest.attentionControlIds).not.toContain('OE-01-06');
+    });
+
+    it('does not ask for one that has lapsed, since the cap simply stands again', () => {
+      const lapsed = {
+        ...answer('att-lapsed', 'OE-03-01', new Date('2026-08-12T09:00:00.000Z')),
+        attestedAt: new Date('2026-05-14T09:00:00.000Z'),
+      };
+      const manifest = pillarEvidenceManifest([...controls, ...optional], [lapsed], PILLAR, NOW);
+
+      expect(manifest.attestationIds).toEqual([]);
+      expect(manifest.attentionControlIds).not.toContain('OE-03-01');
+    });
+  });
+
+  it('accepts a due answer until the instant it expires', () => {
+    const before = pillarEvidenceManifest(controls, [due], PILLAR, new Date(due.reviewBy.getTime() - 1));
+    const at = pillarEvidenceManifest(controls, [due], PILLAR, due.reviewBy);
+
+    expect(before.attestationIds).toEqual(['att-due']);
+    expect(at.attestationIds).toEqual([]);
+    expect(at.attentionControlIds).toContain('SCP-01-02');
   });
 });
 

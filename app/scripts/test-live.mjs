@@ -90,7 +90,13 @@ function sha() {
   return head.status === 0 ? head.stdout.trim() : 'unknown';
 }
 
-/** The kind, not the host: which of the two Lakebase shapes it was, without naming a workspace. */
+/**
+ * The kind, not the host: which of the two Lakebase shapes it was, without naming a workspace.
+ *
+ * `local` when the suite was pointed at a Postgres by role and password (`PGUSER`) or at this machine,
+ * so a recording of a run against a throwaway cluster does not claim to be a Lakebase one.
+ */
 function kind(endpoint) {
+  if (process.env.PGUSER != null || endpoint === '127.0.0.1' || endpoint === 'localhost') return 'local';
   return endpoint.startsWith('projects/') ? 'autoscaling' : 'provisioned';
 }

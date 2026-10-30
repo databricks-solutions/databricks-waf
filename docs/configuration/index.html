@@ -73,7 +73,7 @@
 <td><code>assessor_group</code></td>
 <td>Strongly recommended</td>
 <td><code>admins</code></td>
-<td>Group whose direct members may mutate assessment records. Use a dedicated group so assessors do not need workspace-admin rights.</td>
+<td>Group whose direct members may mutate assessment records and read the detail behind stored results (see <a href="#who-can-read-stored-results">Who can read stored results</a>). Use a dedicated group so assessors do not need workspace-admin rights.</td>
 </tr>
 <tr>
 <td><code>app_url</code></td>
@@ -136,15 +136,44 @@
 <tr>
 <td><code>WAF_ASSESSOR_GROUP</code></td>
 <td><code>assessor_group</code></td>
-<td>Direct-membership mutation gate.</td>
+<td>Direct-membership mutation gate, and the group whose direct members are shown restricted detail in stored results.</td>
 </tr>
 <tr>
 <td><code>WAF_AUDIT_STRICT</code></td>
 <td>Manifest value <code>0</code></td>
-<td>Allows the App to start while reporting audit-health faults in Diagnostics; record mutations still fail if their audit event cannot be written.</td>
+<td>What the App does when an action cannot be written to the audit trail. <code>0</code> performs the action and records the loss. <code>1</code> refuses the action when the trail does not answer, and records the loss when a write fails after it did. See <a href="#what-happens-when-an-audit-event-cannot-be-written">What happens when an audit event cannot be written</a>.</td>
 </tr>
 </tbody></table>
 <p>Do not set these by hand in the deployed App. Change the DAB override and use the supported upgrade command so bundle state and runtime state stay aligned.</p>
+<h3 id="what-happens-when-an-audit-event-cannot-be-written">What happens when an audit event cannot be written</h3>
+<p>The two values of <code>WAF_AUDIT_STRICT</code> differ in when the App checks the audit trail, and neither makes the action and its audit event one transaction.</p>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Before the action</th>
+<th>If the audit event cannot be written</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>0</code> (default)</td>
+<td>Nothing is checked.</td>
+<td>The action stands. The App counts the loss and leaves a durable marker, so a database blip does not stop somebody answering a requirement.</td>
+</tr>
+<tr>
+<td><code>1</code></td>
+<td>The App reads the end of the trail. If the trail does not answer, the action is refused and nothing happens.</td>
+<td>If the trail answered and the write then failed, the action has already happened and stands. The App counts the loss and leaves the same marker.</td>
+</tr>
+</tbody></table>
+<p>At <code>1</code> the check narrows the window and does not close it. An audit event that fails to write after the trail answered cannot be prevented, only recorded. A refusal the gate makes before that check can be lost the same way. The reasoning is in <a href="/databricks-waf/decisions/#d7-no-transactional-strict-audit-mode-a-lost-audit-event-is-recorded-durably">decision D7</a>.</p>
+<p>A marker holds the time, the action, the actor, what the action was on and the class of the failure. It holds nothing of the action&#39;s content. Markers are kept in the database beside the trail, so:</p>
+<ul>
+<li>they survive a restart, which the in-memory count does not;</li>
+<li>every instance of the App reports the same ones, whichever instance lost the event and whichever serves the request;</li>
+<li>Diagnostics lists each one until a member of <code>assessor_group</code> acknowledges it. The acknowledgement is itself recorded in the audit trail under that person&#39;s name.</li>
+</ul>
+<p>Acknowledging says that somebody has looked. It does not recover the event, and the audit trail&#39;s verification reads the same chain it did before. The count on the Diagnostics page is labelled as this instance&#39;s because it is held in memory: it starts again at zero on a restart and another instance has its own. If the database refuses the marker as well, only that count and the App log remain.</p>
 <h2 id="interactive-identity-and-permissions">Interactive identity and permissions</h2>
 <p>The Databricks Apps proxy provides a short-lived on-behalf-of token for the signed-in user. The App requests only these functional scopes:</p>
 <ul>
@@ -155,6 +184,29 @@
 </ul>
 <p>The App does not request <code>all-apis</code>, authentication-management, secret-management or cluster-management authority. A scope permits the API family; the caller&#39;s workspace and Unity Catalog grants still decide what can be read.</p>
 <p>Read-only pages are available to people who can open the App. Starting scans or changing records additionally requires direct membership in <code>assessor_group</code>.</p>
+<h3 id="who-can-read-stored-results">Who can read stored results</h3>
+<p>Published results, scores, finding outcomes and summaries are readable by everyone who can open the App. The detail behind them is shown only to direct members of <code>assessor_group</code>, because a stored run holds what the identity that ran it could read, which can be more than a reader&#39;s own grants reach:</p>
+<table>
+<thead>
+<tr>
+<th>Shown only to assessors</th>
+<th>What everyone else sees</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>The text of a statement, in advisories</td>
+<td>A placeholder naming the group</td>
+</tr>
+<tr>
+<td>The principal identifiers in a finding&#39;s evidence: token holders, and the accounts jobs run as</td>
+<td>A placeholder naming the group</td>
+</tr>
+<tr>
+<td>An administrator&#39;s imported readings, and who collected them</td>
+<td>A placeholder naming the group</td>
+</tr>
+</tbody></table>
+<p>The placeholder applies in the pages, the API and the CSV and JSON exports alike. A file exported by a reader outside the group therefore differs from the assessor&#39;s file, and the digest listed beside each file is the digest of the file that reader downloads. A request with no forwarded token, or one whose identity lookup fails or lists no groups, is treated as outside the group: the summaries are still served and the detail is withheld. Nested group membership does not count, for the reason it does not count for changes. Nothing about collection or storage changes, and the policy is applied when a record is read, so it covers results stored earlier. The reasoning is in <a href="/databricks-waf/decisions/#d1-stored-results-are-shared-in-full-and-the-detail-behind-them-only-with-assessors">decision D1</a>.</p>
 <h2 id="assessment-definition-settings">Assessment definition settings</h2>
 <p>An assessment definition records the question a run is expected to answer:</p>
 <table>

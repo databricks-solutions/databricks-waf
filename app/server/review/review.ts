@@ -23,7 +23,7 @@
 // attestations the reviewer accepted. The run remains the immutable automated half; the pillar
 // record is the immutable human-evidence manifest joined to it.
 
-import { stateOf, type Attestation } from '../attest/attestation.js';
+import { counts, type Attestation } from '../attest/attestation.js';
 import type { Scan } from '../scan/scan.js';
 
 export class InvalidReviewError extends Error {
@@ -417,6 +417,15 @@ export function finalised(draft: FinalisedDraft, known: readonly string[]): Asse
 export interface ReviewableControl {
   readonly id: string;
   readonly pillarId: string;
+  /**
+   * The measurement already settles this requirement, and an answer only lifts a cap on it.
+   *
+   * A counting answer is still cited, because the lift in the published report is only as good as the
+   * answer the review froze. Without one it is not unresolved: the measured outcome stands, and a
+   * review that refused to confirm a pillar for want of an optional answer would turn a lift into a
+   * toll. Decision D2 in docs/decisions.md.
+   */
+  readonly optional?: boolean;
 }
 
 export interface PillarEvidenceManifest {
@@ -439,13 +448,14 @@ export function pillarEvidenceManifest(
 
   for (const control of manual) {
     const answer = current.get(control.id);
-    if (answer != null && stateOf(answer, now) === 'current') accepted.push(answer.id);
-    else attention.push(control.id);
+    // An answer due for renewal still counts here, as it does in the score: decision D6 in docs/decisions.md.
+    if (answer != null && counts(answer, now)) accepted.push(answer.id);
+    else if (control.optional !== true) attention.push(control.id);
   }
 
   return {
     attestationIds: accepted,
     attentionControlIds: attention,
-    unresolvedControlIds: manual.map((one) => one.id),
+    unresolvedControlIds: manual.filter((one) => one.optional !== true).map((one) => one.id),
   };
 }

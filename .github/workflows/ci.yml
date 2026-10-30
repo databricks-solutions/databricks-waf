@@ -56,7 +56,7 @@ jobs:
       # it is an ancestor of the candidate. A depth-one pull-request checkout contains only GitHub's
       # synthetic merge commit, so Git cannot establish that relationship even when the recorded
       # commit is the candidate's direct ancestor. Keep the history the release check reads.
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
 
@@ -140,7 +140,7 @@ jobs:
           fi
           echo "Scope declarations agree."
 
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
           cache: npm
@@ -177,7 +177,7 @@ jobs:
     name: Committed bundle runs without a build step
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       # Pinned to the exact version the Apps runtime reports, not the 22 line. This started as `22`,
       # which resolves to the newest 22.x and is far ahead of the runtime: the bundler needs ^22.18,
@@ -185,7 +185,7 @@ jobs:
       # minor hid the one difference that mattered.
       #
       # Read from a deployment log rather than documentation, so re-check it when the runtime moves.
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22.16.0
           cache: npm

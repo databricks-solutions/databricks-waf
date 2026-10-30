@@ -578,7 +578,7 @@ describe('publishing a month', () => {
       month: '2026-07',
       publishedAt: NOW.toISOString(),
       publishedBy: 'priya@example.com',
-      documentVersion: 1,
+      documentVersion: 2,
     });
     expect((body as { digest: string }).digest).toMatch(/^sha256:[0-9a-f]{64}$/);
     await expect(harness.publications.ofMonth(month('2026-07'))).resolves.toHaveLength(1);
@@ -624,6 +624,25 @@ describe('publishing a month', () => {
     expect(status).toBe(409);
     expect(body).toMatchObject({ error: 'methodology-not-released' });
     expect((body as { message: string }).message).toContain('pre-release development evidence');
+    await expect(harness.publications.ofMonth(month('2026-07'))).resolves.toEqual([]);
+  });
+
+  it('refuses the unreleased interim variant of Version 1, whichever state its stamp recorded', async () => {
+    const interim = {
+      ...BASIS,
+      publicMethodology: {
+        publicVersion: 1,
+        manifestDigest: 'sha256:3ffb685e36d092c91f52a93a172c1db7e32a2ec5f88f3efdab361390eb0dd71f',
+        state: 'released' as const,
+      },
+    };
+    const harness = await serve({ scans: [closedIn('2026-07', 100, interim)] });
+
+    const { status, body } = await send(harness.base, '/api/months/2026-07/publish');
+
+    expect(status).toBe(409);
+    expect(body).toMatchObject({ error: 'methodology-not-released' });
+    expect((body as { message: string }).message).toContain('unreleased interim variant of Version 1');
     await expect(harness.publications.ofMonth(month('2026-07'))).resolves.toEqual([]);
   });
 
@@ -863,6 +882,124 @@ describe('a prior month in the frozen trend', () => {
     const { body } = await send(harness.base, '/api/months/2026-07/publish');
 
     expect((await trendOf(harness, (body as { id: string }).id))[0]?.score).toBe('42');
+  });
+});
+
+describe('which readings a published month compares', () => {
+  /*
+   * A month publishes the change between where it opened and where it closed, and the document is
+   * frozen. The scheduled service principal's run closes the month; the opening is the newest earlier
+   * scan that `comparable` admits against it, so a hand-run scan by another identity is neither the
+   * close nor the start of a movement.
+   */
+  const SERVICE: ScanStamp = { ...BASIS, executionMode: 'service-principal', actor: 'sp-schedule' };
+
+  function scanAt(
+    id: string,
+    finishedAt: string,
+    over: Partial<ScanSummary> = {},
+    stamp: ScanStamp | null = BASIS
+  ): ScanSummary {
+    const at = new Date(finishedAt);
+    return { ...closedIn('2026-07', 70, stamp), id, startedAt: at, finishedAt: at, ...over };
+  }
+
+  interface Frozen {
+    readonly assessment?: { readonly runId: string };
+    readonly closing?: { readonly kind: string };
+    readonly movement: readonly { readonly label: string; readonly from: string; readonly to: string }[];
+    readonly findingDeltas: readonly unknown[];
+    readonly movementNote?: string;
+  }
+
+  async function publishedJuly(harness: Harness): Promise<Frozen> {
+    const { status, body } = await send(harness.base, '/api/months/2026-07/publish');
+    expect(status).toBe(201);
+    const stored = await harness.publications.byId((body as { id: string }).id);
+    return JSON.parse(stored?.json ?? '{}') as Frozen;
+  }
+
+  it('closes the month on the scheduled run although an interactive one finished after it', async () => {
+    const harness = await serve({
+      scans: [
+        scanAt('by-hand', '2026-07-30T15:00:00.000Z', { trigger: 'interactive' }, { ...BASIS, trigger: 'interactive' }),
+        scanAt('nightly', '2026-07-20T02:00:00.000Z', { trigger: 'scheduled' }, { ...BASIS, trigger: 'scheduled' }),
+      ],
+    });
+
+    const frozen = await publishedJuly(harness);
+
+    expect(frozen.assessment?.runId).toBe('nightly');
+    expect(frozen.closing?.kind).toBe('scheduled');
+  });
+
+  it('opens the month on the newest earlier scan that is comparable, passing over one that is not', async () => {
+    const harness = await serve({
+      scans: [
+        scanAt(
+          'closing',
+          '2026-07-28T02:00:00.000Z',
+          { overall: 80, trigger: 'scheduled' },
+          { ...BASIS, trigger: 'scheduled' }
+        ),
+        scanAt(
+          'spot-check',
+          '2026-06-30T12:00:00.000Z',
+          { overall: 10, actor: 'raj@example.com' },
+          { ...BASIS, actor: 'raj@example.com' }
+        ),
+        scanAt('june-close', '2026-06-20T02:00:00.000Z', { overall: 60 }),
+      ],
+    });
+
+    const frozen = await publishedJuly(harness);
+
+    expect(frozen.movement[0]).toEqual({ label: 'Overall score', from: '60', to: '80' });
+    expect(frozen.movementNote).toBeUndefined();
+  });
+
+  it('publishes no movement where the only earlier scan was run by another identity, and says why', async () => {
+    const harness = await serve({
+      scans: [
+        scanAt(
+          'closing',
+          '2026-07-28T02:00:00.000Z',
+          { overall: 80, actor: 'sp-schedule', executionMode: 'service-principal', trigger: 'scheduled' },
+          { ...SERVICE, trigger: 'scheduled' }
+        ),
+        scanAt('assessor', '2026-06-30T12:00:00.000Z', { overall: 40 }),
+      ],
+    });
+
+    const frozen = await publishedJuly(harness);
+
+    expect(frozen.movement).toEqual([]);
+    expect(frozen.findingDeltas).toEqual([]);
+    expect(frozen.movementNote).toContain('as the identity that started it and the other as a service principal');
+  });
+
+  it('records the document version that carries these rules', async () => {
+    const harness = await serve({ scans: [closedIn('2026-07')] });
+    const { body } = await send(harness.base, '/api/months/2026-07/publish');
+
+    const stored = await harness.publications.byId((body as { id: string }).id);
+    expect(stored?.documentVersion).toBe(2);
+    expect((JSON.parse(stored?.json ?? '{}') as { documentVersion: number }).documentVersion).toBe(2);
+  });
+
+  it('closes a month on its scheduled run whatever the order the scans were read in', async () => {
+    const harness = await serve({
+      scans: [
+        scanAt('july', '2026-07-28T02:00:00.000Z', { overall: 61 }),
+        scanAt('june-by-hand', '2026-06-29T15:00:00.000Z', { overall: 99, trigger: 'interactive' }),
+        scanAt('june-nightly', '2026-06-22T02:00:00.000Z', { overall: 42, trigger: 'scheduled' }),
+      ],
+    });
+    await send(harness.base, '/api/months/2026-06/publish');
+    const june = await harness.publications.ofMonth(month('2026-06'));
+    const published = JSON.parse(june[0]?.json ?? '{}') as Frozen;
+
+    expect(published.assessment?.runId).toBe('june-nightly');
   });
 });
 

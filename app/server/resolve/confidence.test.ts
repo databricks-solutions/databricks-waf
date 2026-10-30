@@ -108,6 +108,72 @@ describe('how firmly a finding is established', () => {
     expect(confidence.limitations[0].says).toContain('2026-07-04');
   });
 
+  it('names the workspace an imported reading was collected from', () => {
+    const confidence = confidenceOf(
+      finding({
+        evidence: [
+          evidence({
+            evidenceClass: 'admin-collected',
+            provenance: {
+              surface: 'rest',
+              collector: 'admin-script:workspace-conf',
+              authority: 'admin-cli',
+              actor: 'admin@example.com',
+              workspaceId: '7000000000000001',
+            },
+          }),
+        ],
+      })
+    );
+
+    expect(confidence.limitations.find((one) => one.kind === 'imported')?.says).toContain('workspace 7000000000000001');
+  });
+
+  it('names every workspace when the imported readings came from more than one', () => {
+    const from = (workspaceId: string): Evidence =>
+      evidence({
+        evidenceClass: 'admin-collected',
+        provenance: { surface: 'rest', collector: 'admin-script:x', authority: 'admin-cli', actor: 'a', workspaceId },
+      });
+    const confidence = confidenceOf(finding({ evidence: [from('7000000000000002'), from('7000000000000001')] }));
+
+    expect(confidence.limitations.find((one) => one.kind === 'imported')?.says).toContain(
+      'workspaces 7000000000000001 and 7000000000000002'
+    );
+  });
+
+  it('claims no workspace when none is named, as for an account-level reading', () => {
+    const confidence = confidenceOf(finding({ evidence: [evidence({ evidenceClass: 'admin-collected' })] }));
+
+    const says = confidence.limitations.find((one) => one.kind === 'imported')?.says;
+    expect(says).toContain('An administrator collected this against an authority');
+    expect(says).not.toContain('workspace');
+  });
+
+  it('names the source workspace in the reach limitation of an imported workspace reading', () => {
+    const confidence = confidenceOf(
+      finding({
+        coverage: { mode: 'complete', reach: 'workspace' },
+        evidence: [
+          evidence({
+            evidenceClass: 'admin-collected',
+            provenance: {
+              surface: 'rest',
+              collector: 'admin-script:workspace-conf',
+              authority: 'admin-cli',
+              actor: 'admin@example.com',
+              workspaceId: '7000000000000001',
+            },
+          }),
+        ],
+      })
+    );
+
+    const reach = confidence.limitations.find((one) => one.kind === 'reach');
+    expect(reach?.says).toContain('Read from workspace 7000000000000001 only');
+    expect(reach?.says).toContain('says nothing about the others');
+  });
+
   it('dates an import by its stalest bearing part, not its freshest', () => {
     const confidence = confidenceOf(
       finding({
@@ -139,6 +205,30 @@ describe('how firmly a finding is established', () => {
     expect(confidence.limitations[0].kind).toBe('attested');
     expect(confidence.limitations[0].says).toContain('Dana Okafor');
     expect(confidence.limitations[0].says).toContain('Platform Engineering');
+  });
+
+  it('calls a pass an answer lifted from a measured partial stated, and says what was measured and what was said', () => {
+    // The measurement alone would have been partial. The answer is why it is not, so the standing is
+    // the answer's, and the limitation has to say that the app read part of it.
+    const confidence = confidenceOf(finding({ capped: true, attested: answer({ bearing: 'co-signed' }) }));
+
+    expect(confidence.standing).toBe('stated');
+    expect(confidence.limitations[0].kind).toBe('attested');
+    expect(confidence.limitations[0].says).toContain('Dana Okafor');
+    expect(confidence.limitations[0].says).toContain('partial');
+    expect(confidence.limitations[0].says).toContain('Platform Engineering');
+  });
+
+  it('warns that a lifting answer is about to stop counting, because the lift goes with it', () => {
+    const confidence = confidenceOf(
+      finding({
+        capped: true,
+        attested: answer({ bearing: 'co-signed', reviewBy: new Date('2026-08-20T00:00:00.000Z') }),
+      }),
+      { asOf: new Date('2026-08-03T00:00:00.000Z') }
+    );
+
+    expect(confidence.limitations.map((one) => one.kind)).toEqual(['attested', 'expiring']);
   });
 
   it('leaves an answer recorded beside a measurement out of the standing', () => {

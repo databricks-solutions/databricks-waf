@@ -1,6 +1,6 @@
 // Publishing the admin evidence script, and the checksum that makes the download checkable.
 //
-// Fifty-five security requirements name a control-plane endpoint no app install can reach (ADR
+// Fifty-three security requirements name a control-plane endpoint no app install can reach (ADR
 // 0016), and the answer to most of them is a script an admin runs under their own authority. That
 // script lives in `config/evidence` and ships with the app for one reason worth being explicit
 // about: the fields it collects are the fields this build's resolvers consume, so a copy from a

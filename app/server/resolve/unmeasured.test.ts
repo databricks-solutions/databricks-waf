@@ -292,8 +292,9 @@ describe('the reason and the advice, which render on the same pane', () => {
         // "the rest:workspace:preview.workspace-conf signal reported no reason" — and that is one
         // fact referred to twice by its name, not one thought written twice. Left in, punctuation
         // stripping turns each into five words and every such pair reads as a restatement. The
-        // pattern covers both three-part ids (`rest:workspace:…`) and two-part ones (`sql:…`).
-        .replace(/\b[a-z]+:(?:[a-z-]+:)?[\w.-]+/gu, ' ')
+        // pattern covers both three-part ids (`rest:workspace:…`) and two-part ones (`sql:…`),
+        // including ids that contain `{placeholder}` template fragments in the path segment.
+        .replace(/\b[a-z]+:(?:[a-z-]+:)?[\w.{}-]+/gu, ' ')
         .replace(/[^a-z0-9\s]/gu, ' ')
         .split(/\s+/u)
         .filter(Boolean);

@@ -1,4 +1,4 @@
-import { NotPermittedError, recordRefusal, requirePermission } from "../authorize/group.js";
+import { NotPermittedError, recordRefusal, requirePermission, requireVerifiedIdentity } from "../authorize/group.js";
 import { NO_CHANGELOG, spanBetween } from "../catalogue/changelog.js";
 import { authoredGuidance } from "../guidance/guidance.js";
 import { DIRECTORY_SIGNAL } from "../collect/sql/collector.js";
@@ -6,9 +6,11 @@ import { clientFor } from "../collect/rest/client.js";
 import { MissingUserTokenError, USER_TOKEN_HEADER, actorFromHeaders, fromRequest } from "../collect/credentials.js";
 import { declaredScopes } from "../collect/rest/declared-scopes.js";
 import { StatementExecutor } from "../collect/sql/statements.js";
+import { decidedByAnswer } from "../resolve/finding.js";
 import { probeReach } from "../collect/rest/reach.js";
 import { InvalidAttestationError, cadenceDaysFor, draftFrom, stateOf } from "../attest/attestation.js";
 import { BLOCKED_QUESTIONS } from "../attest/blocked-questions.js";
+import { CAPPED_QUESTIONS } from "../attest/capped-questions.js";
 import { INCONCLUSIVE_QUESTIONS } from "../attest/inconclusive-questions.js";
 import { registerAttestation } from "../attest/register.js";
 import { InvalidDecisionError, draftFrom as draftFrom$1, parkDays } from "../decide/decision.js";
@@ -19,6 +21,7 @@ import { contained } from "./contain.js";
 import { currentVersion } from "../define/definition.js";
 import { probeStatement, sourcesFor } from "../define/preflight.js";
 import { registerDefinitionRoutes } from "./definition-routes.js";
+import { projectScan, projectScanPayload } from "../share/projection.js";
 import { registerImportRoutes } from "./import-routes.js";
 import { AUDIT_PHRASES } from "../audit/event.js";
 import { registerAuditRoutes } from "./audit-routes.js";
@@ -49,6 +52,7 @@ import { registerApplicabilityRoutes } from "./applicability-routes.js";
 import { readTargets } from "../programme/targets.js";
 import { signalDescriptors } from "../plan/descriptors.js";
 import { EstateScopeError, accountScope, hostWorkspaceFromEnvironment, probeCurrentUser, scopeFromProbe, selectedScope } from "../collect/estate-scope.js";
+import { assessorCheck } from "../share/reader.js";
 import { TrailUnwritableError, closedWhenAnswered } from "../audit/record.js";
 import { MEANS, describeVerification } from "../records/verify.js";
 import { ScanInProgressError } from "../scan/runner.js";
@@ -86,6 +90,21 @@ function registerApi(served, options) {
 	app.use("/api", (_request, response, next) => {
 		response.setHeader("X-Content-Type-Options", "nosniff");
 		next();
+	});
+	/**
+	* Who is reading, for the routes that serve what a run stored.
+	*
+	* Asked of the request rather than of the route, so every read that can carry a restricted field
+	* answers the same question the same way, and cached for that request alone by `assessorCheck`.
+	* Decision D1 in docs/decisions.md.
+	*/
+	const isAssessor = assessorCheck({
+		host: options.host,
+		assessorGroup: options.assessorGroup
+	});
+	const readerOf = async (request) => ({
+		assessor: await isAssessor(request),
+		group: options.assessorGroup
 	});
 	/**
 	* Where a run stands with its review, for the payload that carries its score.
@@ -267,7 +286,7 @@ function registerApi(served, options) {
 			});
 			return;
 		}
-		response.json(present(scan, await historyFor(options.store, assessmentOf(request)), options.catalogue.changelog, await targetsFor(scan, options.definitions, /* @__PURE__ */ new Date()), await standingOf(scan.id, assessmentOf(request))));
+		response.json(projectScanPayload(present(scan, await historyFor(options.store, assessmentOf(request)), options.catalogue.changelog, await targetsFor(scan, options.definitions, /* @__PURE__ */ new Date()), await standingOf(scan.id, assessmentOf(request))), await readerOf(request)));
 	});
 	app.get("/api/scans/:id", async (request, response) => {
 		const scan = await options.store.get(request.params.id, assessmentOf(request));
@@ -278,7 +297,7 @@ function registerApi(served, options) {
 			});
 			return;
 		}
-		response.json(present(scan, await historyFor(options.store, assessmentOf(request)), options.catalogue.changelog, await targetsFor(scan, options.definitions, /* @__PURE__ */ new Date()), await standingOf(scan.id, assessmentOf(request))));
+		response.json(projectScanPayload(present(scan, await historyFor(options.store, assessmentOf(request)), options.catalogue.changelog, await targetsFor(scan, options.definitions, /* @__PURE__ */ new Date()), await standingOf(scan.id, assessmentOf(request))), await readerOf(request)));
 	});
 	app.get("/api/scans/:id/comparison/:otherId", async (request, response) => {
 		const scope = assessmentOf(request);
@@ -397,7 +416,7 @@ function registerApi(served, options) {
 		}
 		const scan = scanFromFinalResult(result, source);
 		if (scan == null) {
-			resultGateFailure(response, 409, ineligible("incomplete", "legacy-result", `Published report ${result.id} predates the Version 2 outcome and cannot produce a report file.`, "Complete a new assessment and review under Methodology Version 1, then use that report."));
+			resultGateFailure(response, 409, ineligible("incomplete", "legacy-result", `Published report ${result.id} predates the Version 2 outcome and cannot produce a report file.`, "Complete a new assessment and review under the current methodology, then use that report."));
 			return;
 		}
 		return {
@@ -438,7 +457,7 @@ function registerApi(served, options) {
 		const decided = await exportDecisions(scan);
 		const reviewed = await standingOf(scan.id, scan.stamp.definition?.id ?? null);
 		const file = seal({
-			scan,
+			scan: projectScan(scan, await readerOf(request)),
 			catalogue: options.catalogue,
 			decisions: decided,
 			format,
@@ -529,12 +548,13 @@ function registerApi(served, options) {
 			}];
 		});
 	};
-	const listExports = async (scan, identity) => {
+	const listExports = async (scan, identity, reader) => {
 		const decided = await exportDecisions(scan);
+		const shown = projectScan(scan, reader);
 		const reviewed = await standingOf(scan.id, scan.stamp.definition?.id ?? null);
 		const fileOf = (variant, format) => {
 			const file = seal({
-				scan,
+				scan: shown,
 				catalogue: options.catalogue,
 				decisions: decided,
 				format,
@@ -571,7 +591,7 @@ function registerApi(served, options) {
 	app.get("/api/scans/:id/exports", async (request, response) => {
 		const scan = await exportSubject(request, response);
 		if (scan == null) return;
-		response.json(await listExports(scan, { correlation: scan.id }));
+		response.json(await listExports(scan, { correlation: scan.id }, await readerOf(request)));
 	});
 	app.get("/api/results/:id/exports", async (request, response) => {
 		const result = await finalResultSubject(request, response);
@@ -579,7 +599,7 @@ function registerApi(served, options) {
 		response.json(await listExports(result.scan, {
 			correlation: result.resultId,
 			resultId: result.resultId
-		}));
+		}, await readerOf(request)));
 	});
 	/**
 	* What a run changed against the run before it.
@@ -621,18 +641,17 @@ function registerApi(served, options) {
 			resultGateFailure(response, 503, ineligible("unreadable", "result-history-unreadable", `The comparison history for published report ${result.id} could not be read.`, "Restore the database connection and retry this comparison."));
 		}
 	});
-	app.get("/api/scan/status", (_request, response) => {
-		const running = options.runner.running();
-		const run = options.runs?.holding();
-		const payload = running == null ? { running: false } : {
-			running: true,
-			startedAt: running.startedAt,
-			actor: running.actor,
-			scope: running.scope,
-			callsMade: running.callsMade,
-			...running.trigger != null && { trigger: running.trigger },
-			...run != null && { run }
-		};
+	/**
+	* What is running now, for a reader who did not start it.
+	*
+	* Read from the run record where there is one, so every instance of a scaled install says the same
+	* thing: a page served by a different instance from the one that started the scan is still told it is
+	* going, and by whom. Where this process is the one collecting, its own runner supplies the progress
+	* count, which nothing durable holds. Where nothing durable is bound, or the record cannot be read,
+	* what this process knows is all there is, and it is reported as such.
+	*/
+	app.get("/api/scan/status", async (_request, response) => {
+		const payload = await scanStatus(options.runner.running(), options.runs);
 		response.json(payload);
 	});
 	/**
@@ -768,12 +787,15 @@ function registerApi(served, options) {
 	app.get("/api/scan/readiness", async (request, response) => {
 		try {
 			const token = userToken(request);
-			const identity = identityFrom(actorFromHeaders(request), await probeCurrentUser({
+			const headerActor = actorFromHeaders(request);
+			const user = await probeCurrentUser({
 				host: options.host,
 				token
-			}));
+			});
+			const identity = verifiedIdentityFrom(headerActor, user);
 			let may;
 			try {
+				requireVerifiedIdentity(headerActor, user.userName);
 				requirePermission(options.assessorGroup, identity);
 				may = { start: true };
 			} catch (cause) {
@@ -862,11 +884,16 @@ function registerApi(served, options) {
 		} : {},
 		respondToFailure
 	});
+	const gapLog = options.audit?.gaps;
 	registerHealthRoutes(app, {
 		respondToFailure,
+		...gapLog != null ? { gaps: gapLog } : {},
+		permitted: (request, response, action, context) => permitted(request, response, options, action, context),
+		...options.now != null ? { now: options.now } : {},
 		sourcesFor: async (request) => {
 			const token = forwardedToken(request);
 			return {
+				...gapLog != null ? await readGaps(gapLog) : {},
 				...options.pingDatabase != null ? { pingDatabase: options.pingDatabase } : {},
 				...options.storage != null ? { storage: options.storage } : {},
 				durable: options.store.durable,
@@ -997,14 +1024,23 @@ function registerApi(served, options) {
 		respondToFailure
 	});
 	registerReviewRoutes(app, {
+		reader: readerOf,
 		...options.reviews != null ? { reviews: options.reviews } : {},
 		...options.reviewStorage != null ? { reviewStorage: options.reviewStorage } : {},
+		...options.now != null ? { now: options.now } : {},
 		scans: options.store,
 		pillars: options.catalogue.pillars.map((pillar) => pillar.id),
 		...options.attestations != null ? { attestations: options.attestations } : {},
 		control: (id) => controlIndex(options.catalogue).get(id),
 		cadenceDays: (spec) => asked(spec).cadenceDays,
-		requirementsFor: (scan) => attestable(options.catalogue, options.registry, settledByMeasurement(scan), inconclusiveMeasurements(scan), unreachableMeasurements(scan)),
+		requirementsFor: (scan) => {
+			const capped = cappedMeasurements(scan);
+			return attestable(options.catalogue, options.registry, settledByMeasurement(scan), inconclusiveMeasurements(scan), unreachableMeasurements(scan), capped).map((control) => ({
+				id: control.id,
+				pillarId: control.pillarId,
+				...capped.has(control.id) ? { optional: true } : {}
+			}));
+		},
 		permitted: (request, response, action, context) => permitted(request, response, options, action, context),
 		respondToFailure
 	});
@@ -1065,6 +1101,7 @@ function registerApi(served, options) {
 		respondToFailure
 	});
 	registerAdvisoryRoutes(app, {
+		reader: readerOf,
 		...options.advisories != null ? { advisories: options.advisories } : {},
 		...options.runs != null ? { runs: options.runs } : {},
 		asking: (request, actor, granted) => advisoryRequest(request, actor, granted, options),
@@ -1073,6 +1110,7 @@ function registerApi(served, options) {
 		idempotencyKey
 	});
 	registerImportRoutes(app, {
+		reader: readerOf,
 		...options.imports != null ? { imports: options.imports } : {},
 		store: options.store,
 		permitted: (request, response, action, context) => permitted(request, response, options, action, context),
@@ -1138,17 +1176,19 @@ function registerApi(served, options) {
 			const measured = settledByMeasurement(reference);
 			const inconclusive = inconclusiveMeasurements(reference);
 			const unreachable = unreachableMeasurements(reference);
+			const capped = cappedMeasurements(reference);
+			const runPillars = reference?.requestedPillars ?? (reference?.score.pillars.length ? reference.score.pillars.map((pillar) => pillar.pillarId) : void 0);
 			const payload = {
 				durable: store.durable,
 				...store.durable ? {} : { durabilityNote: options.attestationStorage ?? NO_ATTESTATION_STORE },
-				requirements: attestable(options.catalogue, options.registry, measured, inconclusive, unreachable).map((control) => ({
+				requirements: attestable(options.catalogue, options.registry, measured, inconclusive, unreachable, capped).filter((control) => requestedRunId === "" || runPillars == null || runPillars.includes(control.pillarId)).map((control) => ({
 					controlId: control.id,
 					pillarId: control.pillarId,
 					principleId: control.principleId,
 					title: control.title,
 					severity: control.severity,
-					askedBecause: askedBecause(control, inconclusive),
-					...asked(control),
+					askedBecause: askedBecause(control, inconclusive, capped),
+					...asked(control, capped.has(control.id)),
 					...withAnswer(recorded.get(control.id))
 				}))
 			};
@@ -1453,17 +1493,21 @@ const NO_ATTESTATION_STORE = "Answers to the requirements that cannot be measure
 * the app has just measured is asking them to duplicate a reading — and if their report disagreed
 * with the measurement, the app would show a contradiction it already knows the answer to.
 *
+* A third group joins them: requirements the app measured up to a cap, where an answer is what lifts
+* it. They are offered because the scan reached the cap, not because anything was unreadable.
+*
 * The first kind is never removed, however a scan turned out. Their only route to an outcome is an
 * answer, so a settled one is settled *by* an answer, and dropping it from this page would leave no
 * way to renew it before it lapses.
 */
-function attestable(catalogue, registry, measured = /* @__PURE__ */ new Set(), inconclusive = /* @__PURE__ */ new Set(), unreachable = /* @__PURE__ */ new Set()) {
+function attestable(catalogue, registry, measured = /* @__PURE__ */ new Set(), inconclusive = /* @__PURE__ */ new Set(), unreachable = /* @__PURE__ */ new Set(), capped = /* @__PURE__ */ new Set()) {
 	const byId = descriptorsById();
 	return catalogue.controls.filter((control) => {
 		if (control.measurability === "attestation") return true;
 		if (beyondAnyInstall(control, registry, byId) && !measured.has(control.id)) return true;
 		if (inconclusive.has(control.id) && INCONCLUSIVE_QUESTIONS[control.id] != null) return true;
-		return unreachable.has(control.id);
+		if (unreachable.has(control.id)) return true;
+		return capped.has(control.id);
 	});
 }
 /**
@@ -1511,7 +1555,18 @@ function unreachableMeasurements(scan) {
 */
 function settledByMeasurement(scan) {
 	if (scan == null) return /* @__PURE__ */ new Set();
-	return new Set(scan.findings.filter((finding) => finding.outcome !== "unmeasurable" && finding.attested?.bearing !== "outcome").map((finding) => finding.controlId));
+	return new Set(scan.findings.filter((finding) => finding.outcome !== "unmeasurable" && !decidedByAnswer(finding.attested) && finding.capped !== true).map((finding) => finding.controlId));
+}
+/**
+* Requirements the last scan measured as far as the platform shows, where an answer lifts the cap.
+*
+* Read off the finding rather than derived from the catalogue, because a cap is a property of a
+* measurement and not of a requirement: the same control is capped on an estate with more than one
+* catalog and `fail` on one with a single catalog, and only the first has a question to ask.
+*/
+function cappedMeasurements(scan) {
+	if (scan == null) return /* @__PURE__ */ new Set();
+	return new Set(scan.findings.filter((finding) => finding.capped === true).map((finding) => finding.controlId));
 }
 /**
 * The last scan, or nothing if it cannot be read.
@@ -1542,27 +1597,33 @@ async function latestOrNothing(store, scope) {
 * judgement is at least honest about what is being requested, and CI fails on the gap so this
 * branch stays unreached.
 */
-function asked(control) {
+function asked(control, cappedHere = false) {
 	const blocked = BLOCKED_QUESTIONS[control.id];
-	const unsettled = INCONCLUSIVE_QUESTIONS[control.id];
-	const question = control.attestation?.question ?? blocked?.question ?? unsettled?.question;
-	const guidance = control.attestation?.evidenceGuidance ?? blocked?.evidence ?? unsettled?.evidence;
+	const capped = CAPPED_QUESTIONS[control.id];
+	const unsettled = cappedHere ? void 0 : INCONCLUSIVE_QUESTIONS[control.id];
+	const asking = cappedHere ? capped : void 0;
+	const question = control.attestation?.question ?? blocked?.question ?? unsettled?.question ?? asking?.question;
+	const guidance = control.attestation?.evidenceGuidance ?? blocked?.evidence ?? unsettled?.evidence ?? asking?.evidence;
+	const why = unsettled?.whyAsked ?? asking?.whyAsked;
 	return {
 		question: question ?? `${control.title}. How well does this describe your estate?`,
-		...guidance != null || unsettled != null ? { evidenceGuidance: [unsettled?.whyAsked, guidance].filter((part) => part != null).join("\n\n") } : {},
-		cadenceDays: cadenceDaysFor(control.severity, control.attestation?.cadenceDays ?? blocked?.cadenceDays ?? unsettled?.cadenceDays)
+		...guidance != null || why != null ? { evidenceGuidance: [why, guidance].filter((part) => part != null).join("\n\n") } : {},
+		cadenceDays: cadenceDaysFor(control.severity, control.attestation?.cadenceDays ?? blocked?.cadenceDays ?? INCONCLUSIVE_QUESTIONS[control.id]?.cadenceDays ?? capped?.cadenceDays)
 	};
 }
 /**
-* Which of the three reasons this requirement is being put to a person.
+* Which of the reasons this requirement is being put to a person.
 *
 * Order matters. A practice requirement is `no-telemetry` however a scan turned out, because no
-* scan was ever going to settle it. An inconclusive reading is checked before the authorisation
+* scan was ever going to settle it. A measurement at its cap is next, because it is the more specific
+* of the two scan-dependent reasons: the app read the requirement and an answer lifts what it read.
+* An inconclusive reading is checked before the authorisation
 * case so that a control which is both — written, unauthorised, and inconclusive this time —
 * reports the reason the reader can act on.
 */
-function askedBecause(control, inconclusive) {
+function askedBecause(control, inconclusive, capped = /* @__PURE__ */ new Set()) {
 	if (control.measurability === "attestation") return "no-telemetry";
+	if (capped.has(control.id)) return "capped";
 	if (inconclusive.has(control.id)) return "inconclusive";
 	return "not-authorised";
 }
@@ -2042,9 +2103,29 @@ async function identify(request, host) {
 		token
 	}));
 }
+/**
+* The identity a read attributes, which is the proxy's header when there is one.
+*
+* A read records nothing against a person, so the header is allowed to stand in for SCIM's answer
+* here. The gate does not take this shortcut: see `verifiedIdentityFrom`.
+*/
 function identityFrom(headerActor, user) {
+	return identityOf(headerActor ?? user.userName, user);
+}
+/**
+* The identity a change is attributed to: what SCIM returned for the token, never the header.
+*
+* The header is only the fallback for a SCIM answer that carries no `userName`. Where both are
+* present the caller checks them against each other with `requireVerifiedIdentity`, so by the time
+* a change is recorded the two agree. A service principal's `userName` is its application id and
+* its display name is kept in `actorName`, as for any other caller. Decision A1 in docs/decisions.md.
+*/
+function verifiedIdentityFrom(headerActor, user) {
+	return identityOf(user.userName ?? headerActor, user);
+}
+function identityOf(actor, user) {
 	return {
-		actor: headerActor ?? user.userName ?? "unknown",
+		actor: actor ?? "unknown",
 		...user.displayName != null ? { actorName: user.displayName } : {},
 		scope: scopeFromProbe(user),
 		...user.groups != null ? { groups: user.groups } : {}
@@ -2065,15 +2146,18 @@ function identityFrom(headerActor, user) {
 */
 async function permitted(request, response, options, action, context = {}) {
 	const token = userToken(request);
-	const identity = identityFrom(actorFromHeaders(request), await probeCurrentUser({
+	const forwarded = actorFromHeaders(request);
+	const user = await probeCurrentUser({
 		host: options.host,
 		token
-	}));
+	});
+	const identity = verifiedIdentityFrom(forwarded, user);
 	const who = {
 		actor: identity.actor,
 		executionMode: "on-behalf-of-user"
 	};
 	try {
+		requireVerifiedIdentity(forwarded, user.userName);
 		requirePermission(options.assessorGroup, identity);
 	} catch (cause) {
 		if (cause instanceof NotPermittedError) {
@@ -2131,6 +2215,7 @@ function begin(recorder, response, action, who, context) {
 	if (recorder == null) return {
 		performed: () => Promise.resolve(),
 		failed: () => Promise.resolve(),
+		unchanged: () => void 0,
 		settle: () => Promise.resolve()
 	};
 	return closedWhenAnswered(recorder.begin(action, who, context), response);
@@ -2155,6 +2240,21 @@ function forwardedToken(request) {
 	const raw = request.headers[USER_TOKEN_HEADER];
 	const token = Array.isArray(raw) ? raw[0] : raw;
 	return token == null || token === "" ? void 0 : token;
+}
+/**
+* The lost-event markers for the diagnostics, or the reason they could not be read.
+*
+* Caught into the sources rather than thrown, because a markers table that cannot be read is a thing
+* the page has to say and not a reason for it to fail — and it must not read as none, which is what
+* `auditGapsUnreadable` is for. The cause is the first line of the message, as every other reading
+* here gives it.
+*/
+async function readGaps(gaps) {
+	try {
+		return { auditGaps: await gaps.unacknowledged() };
+	} catch (cause) {
+		return { auditGapsUnreadable: ((cause instanceof Error ? cause.message : String(cause)).split("\n")[0] ?? "").trim() || "no reason given" };
+	}
 }
 /**
 * What the last run did with the warehouse, for the reading that is observed rather than probed.
@@ -2261,12 +2361,63 @@ function resultGateFailure(response, status, eligibility) {
 		eligibility
 	});
 }
+/**
+* The scan status, from the run record where one is bound.
+*
+* The record is asked first and decides *whether* a scan is running; this process's runner only enriches
+* the answer when the run is its own. Where the record names a run this process is not collecting — it is
+* on another instance — the answer is what the record holds, without a call count, because that count is
+* the other process's and is not written anywhere.
+*
+* Falls back to the local runner, with no run named, when nothing durable is bound or the read fails. A
+* status that errors would show the page nothing at all, and the local answer is true as far as it goes.
+*/
+async function scanStatus(local, runs) {
+	const onThisProcess = (run) => local == null ? { running: false } : {
+		running: true,
+		startedAt: local.startedAt,
+		actor: local.actor,
+		scope: local.scope,
+		callsMade: local.callsMade,
+		...local.trigger != null && { trigger: local.trigger },
+		...run != null && { run }
+	};
+	if (runs == null) return onThisProcess();
+	let live;
+	try {
+		live = await runs.live("assessment");
+	} catch {
+		return onThisProcess(runs.holding());
+	}
+	if (live == null) return onThisProcess(runs.holding());
+	if (runs.holding() === live.id || runs.owns?.(live) === true) {
+		if (local != null) return onThisProcess(live.id);
+		return {
+			running: true,
+			startedAt: live.requestedAt,
+			actor: live.actor,
+			scope: live.request.scope,
+			trigger: live.trigger,
+			callsMade: 0,
+			run: live.id
+		};
+	}
+	return {
+		running: true,
+		startedAt: live.requestedAt,
+		actor: live.actor,
+		scope: live.request.scope,
+		trigger: live.trigger,
+		run: live.id
+	};
+}
 function respondToFailure(response, cause) {
 	if (cause instanceof ScanInProgressError) {
 		response.status(409).json({
 			error: "scan-in-progress",
 			message: cause.message,
-			running: cause.running
+			running: cause.running,
+			...cause.run != null && { run: cause.run }
 		});
 		return;
 	}
@@ -2304,4 +2455,4 @@ function respondToFailure(response, cause) {
 	});
 }
 //#endregion
-export { registerApi };
+export { registerApi, scanStatus };

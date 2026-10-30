@@ -268,7 +268,14 @@ export interface JobRow extends InWorkspace {
    * carries a `partial` at worst and never a `fail` — see the IaC resolver.
    */
   readonly deploymentKind?: string;
+  /** The ID of the user or service principal the job runs as. It does not say which of the two it is. */
   readonly runAs?: string;
+  /**
+   * The email of the user, the ID of the service principal, or a group name, from `run_as_user_name`.
+   * This is the field that tells a user from a service principal. Unpopulated on rows written before
+   * early December 2025, so absent here means not recorded, not a user and not a service principal.
+   */
+  readonly runAsName?: string;
 }
 
 /** A job deployed from a bundle, which is the observable half of infrastructure-as-code. */
@@ -486,6 +493,34 @@ export interface MlflowRunTracking {
   readonly runsThatFinished: number;
   readonly experiments: number;
   readonly liveExperiments: number;
+}
+
+/**
+ * How many statements in the window hit a capacity limit, and how long they waited.
+ *
+ * A positive `waitingAtCapacity` count proves that a service limit was reached in the
+ * window. Zero proves limits were not reached in this period — not that proactive
+ * monitoring exists or that headroom is known. The resolver caps at `partial` for that
+ * reason.
+ */
+export interface QueryCapacity {
+  readonly totalStatements: number;
+  readonly waitingAtCapacity: number;
+  readonly totalWaitMs: number;
+}
+
+/**
+ * Unity Catalog managed tables and how many of them are on DBFS root storage.
+ *
+ * One aggregate row from `system.information_schema.tables`. A non-zero `dbfsRootTables`
+ * count means Unity Catalog managed tables have their data on workspace DBFS root,
+ * which carries no access-control enforcement at the file level. The check reads only
+ * customer-owned catalogs; Databricks-owned catalogs (`system`, `samples`, internal
+ * tiles) are excluded because they are read-only and not something the customer can move.
+ */
+export interface DbfsTableAudit {
+  readonly totalManagedTables: number;
+  readonly dbfsRootTables: number;
 }
 
 /**
@@ -1693,6 +1728,7 @@ export const parse = {
       tagCount: count(row, 'tag_count'),
       ...optional('deploymentKind', text(row, 'deployment_kind')),
       ...optional('runAs', text(row, 'run_as')),
+      ...optional('runAsName', text(row, 'run_as_name')),
     }));
   },
 
@@ -2390,6 +2426,23 @@ export const parse = {
           ...optional('tablesTouched', num(row, 'tables_touched')),
         };
       }),
+    };
+  },
+
+  queryCapacity: (rows: readonly Row[]): QueryCapacity => {
+    const row = rows[0] ?? {};
+    return {
+      totalStatements: count(row, 'total_statements'),
+      waitingAtCapacity: count(row, 'waiting_at_capacity'),
+      totalWaitMs: count(row, 'total_wait_ms'),
+    };
+  },
+
+  dbfsTableAudit: (rows: readonly Row[]): DbfsTableAudit => {
+    const row = rows[0] ?? {};
+    return {
+      totalManagedTables: count(row, 'total_managed_tables'),
+      dbfsRootTables: count(row, 'dbfs_root_tables'),
     };
   },
 };

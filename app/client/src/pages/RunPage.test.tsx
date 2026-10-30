@@ -23,6 +23,7 @@ function unfinishedRun(): Scan {
       executionMode: 'on-behalf-of-user',
       scope: { description: 'the account' },
       lookbackDays: 30,
+      definition: { id: 'assessment-a', version: 1, fingerprint: 'scope-a' },
     },
     measurement: [
       {
@@ -123,9 +124,27 @@ describe('an unfinished run', () => {
     expect(markup).toContain('Review before results');
     expect(markup).toContain('1</dd>');
     expect(markup).toContain('2 of 7 pillars recorded');
-    expect(markup).toContain('href="/review/review-exact-107c"');
+    expect(markup).toContain('href="/review/review-exact-107c?definitionId=assessment-a"');
     expect(markup).not.toContain('12.345');
     expect(markup).not.toContain('98.765');
     expect(markup).not.toContain('/ 100');
+  });
+
+  it('opens questions rather than promising publication for a custom run', () => {
+    const run = unfinishedRun();
+    const markup = renderToStaticMarkup(
+      <MemoryRouter>
+        <ReviewGate
+          scan={{ ...run, stamp: { ...run.stamp, definition: undefined } }}
+          pillarTitle={() => 'Reliability'}
+          reviewId="review-exact-107c"
+        />
+      </MemoryRouter>
+    );
+
+    expect(markup).toContain('href="/answers/walk?runId=run-exact-107c&amp;definitionId="');
+    expect(markup).toContain('Answer human questions');
+    expect(markup).toContain('cannot publish a report');
+    expect(markup).not.toContain('href="/review/review-exact-107c"');
   });
 });

@@ -146,6 +146,7 @@ describe('opening the connection', () => {
         'assessment_results',
         'audit_events',
         'audit_floor',
+        'audit_gaps',
         'retention_periods',
         'legal_holds',
         'runs',
@@ -182,6 +183,22 @@ describe('opening the connection', () => {
     // requests: a retry of an answer whose response was lost writes the same attestation id again.
     expect(unique.some((sql) => /review_answers \(attestation_id\)/.test(sql))).toBe(true);
     expect(unique.some((sql) => /assessment_results \(review_id\)/.test(sql))).toBe(true);
+    // One acknowledgement per lost audit event, which is what keeps two people clicking the same button
+    // from rewriting who dealt with it and when.
+    expect(unique.some((sql) => /audit_gaps \(gap_id\)/.test(sql))).toBe(true);
+  });
+
+  it('keeps the lost-event markers append-only, with a row to acknowledge rather than a column to update', async () => {
+    const fake = new FakePostgres();
+    await openPostgres({ env: { [ENDPOINT_ENV]: ENDPOINT }, connect: () => Promise.resolve(fake) });
+
+    const table = fake.statements.find((sql) => sql.startsWith('create table if not exists waf.audit_gaps'));
+
+    expect(table).toBeDefined();
+    // No acknowledgement columns on the marker: acknowledging adds a row that names it.
+    expect(table).not.toMatch(/acknowledged/);
+    expect(table).toMatch(/kind\s+text\s+not null/);
+    expect(table).toMatch(/gap_id\s+text/);
   });
 
   it('adds nullable Version 2 result handles without rewriting legacy rows', async () => {
@@ -209,6 +226,20 @@ describe('opening the connection', () => {
           'create index if not exists assessment_results_current_final on waf.assessment_results (definition_id, finalised_at desc) where eligible is true'
       )
     ).toBe(true);
+  });
+
+  it('indexes the revision tables by id and descending revision, which is the order the newest-revision read asks for', async () => {
+    // The primary key is (id, revision) ascending, and Postgres can read it backwards but not with one
+    // column each way, so without these a read of the newest revision of every record sorts the table.
+    const fake = new FakePostgres();
+    await ensureSchema(fake, 'waf');
+
+    expect(fake.statements).toEqual(
+      expect.arrayContaining([
+        'create index if not exists accepted_risks_newest_revision on waf.accepted_risks (id, revision desc)',
+        'create index if not exists applicability_newest_revision on waf.applicability_decisions (id, revision desc)',
+      ])
+    );
   });
 
   /*
@@ -394,6 +425,63 @@ describe('a transaction on the handle', () => {
     const fake = new FakePostgres();
     const nested = fake.session(() => fake.session(() => Promise.resolve(undefined)));
     await expect(nested).rejects.toThrow('nested transactions');
+  });
+
+  /*
+   * Two sessions are two connections. The second waits for the first to end rather than interleaving
+   * with it, which is the only part of an advisory lock the fake can honestly model: a store that takes
+   * the lock and then reads is serialised against another doing the same.
+   */
+  it('makes a second session wait for the first rather than interleaving with it', async () => {
+    const fake = new FakePostgres();
+    const order: string[] = [];
+    let release = (): void => undefined;
+    const held = new Promise<void>((resolve) => (release = resolve));
+
+    const first = fake.session(async () => {
+      order.push('first begins');
+      await held;
+      order.push('first ends');
+    });
+    const second = fake.session(() => {
+      order.push('second begins');
+      return Promise.resolve();
+    });
+
+    await Promise.resolve();
+    expect(order).toEqual(['first begins']);
+    release();
+    await Promise.all([first, second]);
+    expect(order).toEqual(['first begins', 'first ends', 'second begins']);
+  });
+
+  it('keeps one session\u2019s rollback from undoing what another committed', async () => {
+    const fake = new FakePostgres();
+    const first = fake.session(async (sql) => {
+      await sql.query('insert into waf.scans (id) values ($1)', ['one']);
+      throw new Error('and then the connection went');
+    });
+    const second = fake.session((sql) => sql.query('insert into waf.scans (id) values ($1)', ['two']));
+
+    await expect(first).rejects.toThrow('and then the connection went');
+    await second;
+    expect(fake.rows('scans')).toEqual([{ id: 'two' }]);
+  });
+
+  it('accepts an advisory transaction lock inside a session, and records it', async () => {
+    const fake = new FakePostgres();
+    await fake.session((sql) =>
+      sql.query("select pg_advisory_xact_lock(hashtext('waf.run-admission.' || $1::text))", ['assessment'])
+    );
+
+    expect(fake.statements).toEqual(["select pg_advisory_xact_lock(hashtext('waf.run-admission.' || $1::text))"]);
+  });
+
+  it('refuses an advisory transaction lock outside one, which a real database would release at once', async () => {
+    const fake = new FakePostgres();
+    await expect(
+      fake.query("select pg_advisory_xact_lock(hashtext('waf.run-admission.' || $1::text))", ['assessment'])
+    ).rejects.toThrow(/outside a transaction/);
   });
 
   it('refuses transaction statements issued through query, since those would not nest either', async () => {

@@ -387,6 +387,15 @@ const DEFINITIONS = {
     params: ['lookback_days', 'workspace_id', 'live_workspace_ids'],
     reach: 'metastore',
   },
+  // system.information_schema.tables — the DBFS-root managed table count. Metastore reach:
+  // information_schema covers the current metastore only, and no workspace_id filter applies
+  // because the table has no workspace column. Feeds SCP-04-05.
+  'sql:security.dbfs_tables': {
+    query: 'security_dbfs_tables',
+    parse: parse.dbfsTableAudit,
+    params: [],
+    reach: 'metastore',
+  },
   // system.information_schema.tables — the metastore's own catalogue, so metastore
   // reach however many workspaces attach to it.
   'sql:uc.census': {
@@ -551,6 +560,16 @@ const DEFINITIONS = {
   'sql:mlflow.run_tracking': {
     query: 'mlflow_run_tracking',
     parse: parse.mlflowRunTracking,
+    params: ['lookback_days', 'workspace_id', 'live_workspace_ids'],
+    reach: 'metastore',
+  },
+  // system.query.history — capacity-limit events, one aggregate row. Narrower than the two workload
+  // shapes signals above it: those are per-shape rankings and this is a single estate-wide count.
+  // Metastore reach because the WHERE clause filters to live_workspace_ids, the same as every other
+  // statement that carries that parameter.
+  'sql:query.capacity': {
+    query: 'query_capacity',
+    parse: parse.queryCapacity,
     params: ['lookback_days', 'workspace_id', 'live_workspace_ids'],
     reach: 'metastore',
   },

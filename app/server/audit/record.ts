@@ -41,8 +41,16 @@
 // and is not satisfied by a counter however visible. ADR 0046 and its amendment carry both.
 //
 // The counter is per process and resets on deploy, which is honest for what it is: a signal that
-// something is wrong now, not a durable count of everything ever lost. A durable one would need a
-// durable place to put it, which is the table that is not writable.
+// something is wrong now, from this instance, and not a durable count of everything ever lost. The
+// durable record is a marker per lost event, written to its own table (`store/audit-gaps.ts`) the moment
+// the append fails. It survives a restart and is shared by every instance over the database, so the
+// diagnostics page reports a gap whichever replica lost it and whichever one is asked, until somebody
+// acknowledges it. A marker is not a second chance at the event: it says who did what and that the
+// record of it is missing, and holds nothing of the act's payload.
+//
+// If the marker cannot be written either, the count and the console are all there is, as they were
+// before the marker existed. The database that refused the event is the database that holds the marker,
+// and no second place is available that a customer would have bound.
 //
 // # Why the strict check runs before the act and not at the close
 //
@@ -70,9 +78,15 @@
 // this narrows the window rather than closing it, and the health surface reports the posture so a
 // reader can tell a zero that means "nothing was lost" from one that means "nothing can be lost" —
 // which in a strict install means "nothing was lost, and the ways it still could are named here".
+//
+// That residual is accepted rather than closed. A mode that wrote the event and the mutation in one
+// transaction would close it, and it would also make every mutation as available as the audit table
+// and bind every store to one connection. Decision D7 in docs/decisions.md records that it is not
+// built: an append that fails after the trail answered cannot be prevented, only recorded durably.
 
 import type { AuditAction, AuditEvent, AuditTarget } from './event.js';
 import type { AuditLog } from '../store/audit-log.js';
+import type { AuditGapLog } from '../store/audit-gaps.js';
 
 /**
  * Set to `1` so an act that cannot be recorded is refused instead of performed.
@@ -149,6 +163,15 @@ export interface Act {
   /** The caller was permitted and it did not complete. */
   failed(cause: unknown, target?: AuditTarget): Promise<void>;
   /**
+   * The caller was permitted, asked for something, and the handler found nothing to change.
+   *
+   * Closes the act without an event, so the close-of-response net does not write a `performed` row
+   * for a request that changed nothing. Only for a repeat of a change the trail already holds: an
+   * absence in this table still has to mean nobody tried, and a request that was refused or that
+   * failed is never "unchanged".
+   */
+  unchanged(): void;
+  /**
    * Closes an act nothing else closed, from the status the route answered with.
    *
    * The net under the other two, called once per act when the response closes — see `begin` in
@@ -174,6 +197,11 @@ export interface RecorderOptions {
   readonly onError?: (operation: string, error: unknown) => void;
   /** What to do about an act that cannot be recorded. Defaults to ADR 0046's default. */
   readonly posture?: AuditPosture;
+  /**
+   * Where a marker goes when an event cannot be written, so the loss is still evident after a restart
+   * and from every instance. Absent on an install that keeps none, which counts and logs as before.
+   */
+  readonly gaps?: AuditGapLog;
 }
 
 export class AuditRecorder {
@@ -239,6 +267,9 @@ export class AuditRecorder {
     return {
       performed: (target, emptied) => write('performed', target, undefined, emptied),
       failed: (cause, target) => write('failed', target, reasonFor(cause)),
+      unchanged: () => {
+        closed = true;
+      },
       settle: (status) =>
         status < 400 ? write('performed', undefined, undefined) : write('failed', undefined, `http-${String(status)}`),
     };
@@ -264,9 +295,23 @@ export class AuditRecorder {
     });
   }
 
-  /** How many events this process could not write. Served on the health surface, not a debug aid. */
+  /**
+   * How many events this instance could not write since it started. Served on the health surface, not
+   * a debug aid, and labelled there as this instance's: it resets on a restart and another instance
+   * has its own. The durable view of the same loss is the markers on `gaps`.
+   */
   get unrecorded(): number {
     return this.lost;
+  }
+
+  /**
+   * Where the markers for lost events are kept, for the surface that reads and acknowledges them.
+   *
+   * Reached through the recorder for the reason `trail` is: one log by construction, so the page that
+   * lists gaps cannot be wired to a different table from the one this writes to.
+   */
+  get gaps(): AuditGapLog | undefined {
+    return this.options.gaps;
   }
 
   /**
@@ -326,8 +371,8 @@ export class AuditRecorder {
    * A strict install reaches here having already passed `refuseIfUnrecordable`, so an append that
    * fails now is one the check could not foresee — and the act it describes has happened. Rethrowing
    * would fail a response for a change that is in the database, which is the dishonest order the
-   * amendment to ADR 0046 exists to avoid. So it is counted, and the health surface names the
-   * posture beside the count so a strict install's non-zero reads as the gap it is.
+   * amendment to ADR 0046 exists to avoid. So it is counted, marked durably, and the health surface
+   * names the posture beside the count so a strict install's non-zero reads as the gap it is.
    */
   private async record(event: AuditEvent): Promise<void> {
     try {
@@ -335,6 +380,42 @@ export class AuditRecorder {
     } catch (error) {
       this.lost += 1;
       this.options.onError?.(`record that ${event.actor} ${event.outcome} ${event.action}`, error);
+      await this.mark(event, error);
+    }
+  }
+
+  /**
+   * Leaves the durable mark for an event that could not be written.
+   *
+   * A separate write through the gap log's own store, after the append has given up, so it is not a
+   * retry on the log and does not share a statement with it. It never throws: it runs in the path of an
+   * act that has already happened, and a second failure there would turn a counted gap into a failed
+   * response. When it fails too, the count above is what there is and the console says so.
+   *
+   * What goes in is the event's identifiers and the class of the failure from `reasonFor`. The
+   * payload is not on an `AuditEvent` to begin with, and the driver's message is not copied, because it
+   * can carry an address.
+   */
+  private async mark(event: AuditEvent, error: unknown): Promise<void> {
+    const gaps = this.options.gaps;
+    // Not for the acknowledgement of a lost event. The marker it would leave is a new unacknowledged
+    // gap, so acknowledging one loss while the table is failing would hand the page another to
+    // acknowledge, and that one's own acknowledgement would do the same. The loss is still counted
+    // and reported to the operator above.
+    if (gaps == null || event.action === 'gap.acknowledge') return;
+
+    try {
+      await gaps.record({
+        id: event.id,
+        at: event.at,
+        actor: event.actor,
+        action: event.action,
+        outcome: event.outcome,
+        ...(event.target != null ? { target: { kind: event.target.kind, id: event.target.id } } : {}),
+        cause: reasonFor(error),
+      });
+    } catch (cause) {
+      this.options.onError?.(`leave a marker for the ${event.action} that could not be recorded`, cause);
     }
   }
 

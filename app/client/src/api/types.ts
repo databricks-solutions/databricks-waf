@@ -193,6 +193,7 @@ export type {
   AdvisoryLinePayload as AdvisoryLine,
   AdvisoryHistoryPayload as AdvisoryHistory,
   WorkloadPayload as Workload,
+  WithheldPayload as Withheld,
   WorkloadShapePayload as WorkloadShape,
   WorkloadFindingPayload as WorkloadFinding,
   WorkloadTrendPayload as WorkloadTrend,

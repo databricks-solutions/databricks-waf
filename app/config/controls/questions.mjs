@@ -270,17 +270,6 @@ export const QUESTIONS = {
       signal: 'system.lakeflow.jobs.deployment',
     },
   },
-  'OE-01-04': {
-    question:
-      'Do models reach production through a defined process — versioned, evaluated, promoted — or by being pointed at from a notebook?',
-    evidence: 'The promotion path for one production model, including what evaluation gates it passed.',
-    cadence_days: HALF_YEARLY,
-    asked_because: {
-      verdict: PARTIAL_TELEMETRY,
-      why: 'Whether served models trace back to registered versions and tracked runs is recorded, so the mechanics of promotion are visible. Whether the process is defined, and whether evaluation gates it, is not.',
-      signal: 'system.mlflow.runs_latest with system.serving.served_entities',
-    },
-  },
   'OE-01-05': {
     question:
       'Are development, test and production genuinely isolated, such that a mistake in development cannot reach production data?',
@@ -314,17 +303,6 @@ export const QUESTIONS = {
       verdict: PARTIAL_TELEMETRY,
       why: 'ML work running as jobs and pipelines on the platform’s own compute is recorded and countable. Work running on separately maintained infrastructure is invisible precisely because it is elsewhere, so an empty result cannot distinguish good practice from a blind spot.',
       signal: 'system.lakeflow.jobs and pipelines with system.compute.clusters',
-    },
-  },
-  'OE-03-01': {
-    question:
-      'Do you know which platform limits and quotas you are near, and does someone watch them before they bite?',
-    evidence: 'The limits tracked, current headroom on the tightest one, and how you found out last time you hit one.',
-    cadence_days: HALF_YEARLY,
-    asked_because: {
-      verdict: PARTIAL_TELEMETRY,
-      why: 'Time spent waiting at capacity is recorded per statement, so limits actually biting are measurable after the fact. Headroom against account quotas — which is what the question means by knowing before they bite — is an account-plane figure with no workspace source.',
-      signal: 'system.query.history.waiting_at_capacity_duration_ms',
     },
   },
   'OE-03-02': {

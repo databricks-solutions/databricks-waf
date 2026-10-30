@@ -16,6 +16,8 @@
 // a timestamptz column holds whatever Date went in — so a test that wants to prove a Date survives
 // the wire has to go to `postgres.live.test.ts` for it.
 
+import { AsyncLocalStorage } from 'node:async_hooks';
+
 import type { Sql } from './postgres.js';
 
 export interface FakeRow {
@@ -97,7 +99,10 @@ export class FakePostgres implements Sql {
   private readonly created = new Set<string>();
   private calls = 0;
   private ended = false;
-  private inSession = false;
+  /** Set for the life of a session and for everything awaited inside it, which is what tells a nested call from a concurrent one. */
+  private readonly inside = new AsyncLocalStorage<true>();
+  /** The end of the last session started, which the next one waits for. */
+  private lastSession: Promise<void> = Promise.resolve();
 
   constructor(private readonly options: FakePostgresOptions = {}) {
     this.schema = options.schema ?? 'waf';
@@ -134,20 +139,37 @@ export class FakePostgres implements Sql {
    * Nested sessions are refused rather than flattened: Postgres treats a second `begin` as a warning
    * and carries on in the first transaction, so a caller that nested them would get one commit point
    * here and one there, and the fake should not be the more forgiving of the two.
+   *
+   * A session started while another is open waits for it to end. Two callers' sessions are two
+   * connections, and with the copy above they could not overlap without one's rollback undoing the
+   * other's commit. Waiting is stricter than a database, which lets transactions overlap until they
+   * conflict, and that is the right direction to err in: it is what an advisory lock taken first thing in
+   * a transaction does to a second transaction taking the same one, and it is the only thing about such a
+   * lock a single-threaded fake can honestly answer.
    */
   async session<T>(run: (sql: Sql) => Promise<T>): Promise<T> {
-    if (this.inSession) throw new Error('session() inside session(): Postgres has no nested transactions');
-    this.inSession = true;
-    const before = new Map([...this.tables].map(([name, rows]) => [name, new Map(rows)]));
+    if (this.inside.getStore() === true) {
+      throw new Error('session() inside session(): Postgres has no nested transactions');
+    }
+
+    const turn = this.lastSession;
+    let finished = (): void => undefined;
+    this.lastSession = new Promise<void>((resolve) => (finished = resolve));
+    await turn;
+
     try {
-      const answer = await run(this);
-      return answer;
-    } catch (cause) {
-      this.tables.clear();
-      for (const [name, rows] of before) this.tables.set(name, rows);
-      throw cause;
+      return await this.inside.run(true, async () => {
+        const before = new Map([...this.tables].map(([name, rows]) => [name, new Map(rows)]));
+        try {
+          return await run(this);
+        } catch (cause) {
+          this.tables.clear();
+          for (const [name, rows] of before) this.tables.set(name, rows);
+          throw cause;
+        }
+      });
     } finally {
-      this.inSession = false;
+      finished();
     }
   }
 
@@ -189,6 +211,16 @@ export class FakePostgres implements Sql {
     // wants to prove the lock is taken asserts on `statements`, which is the only thing about it a
     // single-threaded fake can honestly answer.
     if (/^lock table /i.test(sql)) return [];
+    // An advisory lock held to the end of the transaction. Outside one, a real database takes it and
+    // releases it with the statement, so a store that forgot its transaction would be admitting nothing
+    // and passing here; refusing is what makes that visible. Inside one it is recorded and nothing else,
+    // because `session` already makes a second session wait, which is all the lock is for.
+    if (/^select pg_advisory_xact_lock\(hashtext\('[\w.-]+' \|\| \$\d+::text\)\)$/i.test(sql)) {
+      if (this.inside.getStore() !== true) {
+        throw new Error(`${sql}: an advisory transaction lock outside a transaction is released at once`);
+      }
+      return [];
+    }
     if (/^(begin|commit|rollback)$/i.test(sql)) {
       throw new Error(`${sql}: use session() rather than issuing transaction statements through query()`);
     }
@@ -273,10 +305,29 @@ export class FakePostgres implements Sql {
     // reading every attempt ever made. Matched before the plain select, which would otherwise take the
     // subquery's `from` for the statement's own.
     const excluding =
-      /^select (.+?) from (\S+) (\w+) where (.+?) and not exists \( select 1 from (\S+) (\w+) where (.+?) \)(?: order by (.+?))?$/i.exec(
+      /^select (.+?) from (\S+) (\w+) where (.+?) and not exists \( select 1 from (\S+) (\w+) where (.+?) \)(?: order by (.+?))?(?: limit (\S+))?$/i.exec(
         sql
       );
     if (excluding) return this.excluding(excluding, values);
+
+    // `select distinct on (c) … from t [where …] order by c, … `, the newest revision of each record.
+    //
+    // Modelled as Postgres defines it rather than as a `group by`: the rows are put in the stated order
+    // and the first of each `c` is kept, so an `order by` that did not lead with `c`, or that put the
+    // newest revision second, would answer differently here too. Matched before the plain select, which
+    // would otherwise take `distinct on (c) c` for the projection.
+    const distinctOn = /^select distinct on \((\w+)\) (.+?) from (\S+)(?: where (.+?))? order by (.+?)$/i.exec(sql);
+    if (distinctOn) return this.firstOf(distinctOn, values);
+
+    // `select control_id, body from t where (control_id, c) in (select control_id, max(c) from t [where …]
+    // group by control_id) [and …]`: every row that carries its requirement's newest stamp, ties included.
+    // Special-cased because a row-value `in` over an aggregate is not something the where-clause language
+    // above can say, and it is the one statement the event logs need it for.
+    const newestStamped =
+      /^select control_id, body from (\S+) where \(control_id, (\w+)\) in \(\s*select control_id, max\((\w+)\) from (\S+)(?: where (.+?))? group by control_id\s*\)(?: and (.+?))?$/i.exec(
+        sql
+      );
+    if (newestStamped) return this.newestStamped(newestStamped, values);
 
     const select = /^select (.+?) from (\S+)(?: where (.+?))?(?: order by (.+?))?(?: limit (\S+))?(?: for update)?$/i.exec(sql);
     if (select) return this.select(select, values);
@@ -537,7 +588,7 @@ export class FakePostgres implements Sql {
   }
 
   /**
-   * `select … from t a where … and not exists (select 1 from t b where b.c = a.c and …)`.
+   * `select … from t a where … and not exists (select 1 from t b where b.c = a.c and …) [order by …] [limit …]`.
    *
    * The subquery's `where` is split into the terms that correlate the two rows — `b.c = a.c`, matched on
    * the aliases — and the terms that stand on their own, which go through the same narrow matcher every
@@ -548,7 +599,7 @@ export class FakePostgres implements Sql {
    * tables would need more than this, and nothing here emits one.
    */
   private excluding(match: RegExpExecArray, values: readonly unknown[]): FakeRow[] {
-    const [, projected = '', outerTable = '', outerAlias = '', outerWhere, innerTable = '', innerAlias = '', innerWhere = '', order] =
+    const [, projected = '', outerTable = '', outerAlias = '', outerWhere, innerTable = '', innerAlias = '', innerWhere = '', order, limit] =
       match;
 
     const strip = (text: string, alias: string): string => text.replace(new RegExp(`\\b${alias}\\.`, 'g'), '');
@@ -578,9 +629,66 @@ export class FakePostgres implements Sql {
         .split(',')
         .map((column) => column.trim()),
       order == null ? undefined : strip(order, outerAlias),
-      undefined,
+      limit,
       values
     );
+  }
+
+  /** `select distinct on (c) cols from t [where …] order by c, …`: the first row of each `c` in that order. */
+  private firstOf(match: RegExpExecArray, values: readonly unknown[]): FakeRow[] {
+    const [, distinct = '', projected = '', table = '', where, order = ''] = match;
+
+    const terms = order.split(',').map((term) => {
+      const parsed = /^\s*(\w+)(?: (asc|desc))?\s*$/i.exec(term);
+      if (parsed == null) throw new Error(`FakePostgres only understands "column [asc|desc]" terms, got "${term}"`);
+      return { column: parsed[1] ?? '', sign: (parsed[2] ?? 'asc').toLowerCase() === 'desc' ? -1 : 1 };
+    });
+    // Postgres requires the `distinct on` expressions to lead the `order by`, and refuses the statement
+    // otherwise, so a fake that accepted one would be the more forgiving of the two.
+    if (terms[0]?.column !== distinct) {
+      throw new Error(`FakePostgres: "distinct on (${distinct})" must lead the order by, got "${order}"`);
+    }
+
+    const ordered = this.rows(this.unqualify(table))
+      .filter((row) => this.matches(row, where, values))
+      .sort((left, right) => {
+        for (const { column, sign } of terms) {
+          const found = sign * compare(left[column], right[column]);
+          if (found !== 0) return found;
+        }
+        return 0;
+      });
+
+    const seen = new Set<unknown>();
+    const first = ordered.filter((row) => {
+      if (seen.has(row[distinct])) return false;
+      seen.add(row[distinct]);
+      return true;
+    });
+    return this.shape(first, projected.split(',').map((column) => column.trim()), undefined, undefined, values);
+  }
+
+  /** The rows holding each requirement's newest stamp, and every row tied with it. */
+  private newestStamped(match: RegExpExecArray, values: readonly unknown[]): FakeRow[] {
+    const [, table = '', stamp = '', maxed = '', innerTable = '', innerWhere, outerWhere] = match;
+    if (stamp !== maxed || table !== innerTable) {
+      throw new Error(`FakePostgres wants one table and one stamp column on both sides, got "${match[0]}"`);
+    }
+
+    const rows = this.rows(this.unqualify(table));
+    const newest = new Map<unknown, unknown>();
+    for (const row of rows.filter((one) => this.matches(one, innerWhere, values))) {
+      const held = newest.get(row['control_id']);
+      if (held == null || compare(row[stamp], held) > 0) newest.set(row['control_id'], row[stamp]);
+    }
+
+    const kept = rows.filter(
+      (row) =>
+        newest.has(row['control_id']) &&
+        compare(row[stamp], newest.get(row['control_id'])) === 0 &&
+        this.matches(row, outerWhere, values)
+    );
+    return this.shape(kept, ['control_id', 'body'], undefined, undefined, values);
   }
 
   private select(match: RegExpExecArray, values: readonly unknown[]): FakeRow[] {

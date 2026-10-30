@@ -52,17 +52,27 @@
 
 import { execFileSync } from 'node:child_process';
 import { writeFileSync } from 'node:fs';
-import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import pg from 'pg';
 import { ensureSchema, openPostgres, SCHEMA_ENV, type Postgres, type Sql } from './postgres.js';
-import { PostgresAuditLog } from './audit-log.js';
+import { PostgresAuditLog, type AuditLog } from './audit-log.js';
+import { PostgresAuditGapLog, type AuditGap } from './audit-gaps.js';
+import { AuditRecorder } from '../audit/record.js';
 import { GENESIS, type AuditEvent } from '../audit/event.js';
 import { describeVerification, RECORD_TABLES, verifyRecords } from '../records/verify.js';
 import { PostgresScanStore } from '../scan/postgres-store.js';
 import { PostgresPlanExtractStore, type RetainedPlan } from '../advise/plan-store.js';
 import type { PlanExtract } from '../collect/sql/plans/parse.js';
 import { PostgresAttestationStore } from '../attest/postgres-store.js';
-import { PostgresDecisionStore } from '../decide/store.js';
+import { InMemoryAttestationStore } from '../attest/store.js';
+import { PostgresRiskStore } from '../accept/postgres-store.js';
+import { revoked as revokedRisk, type AcceptedRisk } from '../accept/risk.js';
+import { InMemoryRiskStore } from '../accept/store.js';
+import { PostgresApplicabilityStore } from '../apply/postgres-store.js';
+import { revoked as revokedDecision, type ApplicabilityDecision } from '../apply/applicability.js';
+import { InMemoryApplicabilityStore } from '../apply/store.js';
+import { PostgresEventLog, newestFirstBy, type LoggedEvent } from './event-log.js';
+import { InMemoryDecisionStore, PostgresDecisionStore } from '../decide/store.js';
 import { PostgresDefinitionStore } from '../define/postgres-store.js';
 import { PostgresImprovementStore } from '../improve/postgres-store.js';
 import { ConcurrentChangeError } from '../improve/store.js';
@@ -70,12 +80,12 @@ import type { ImprovementAction } from '../improve/action.js';
 import { PostgresRetentionGateway, PostgresRetentionStore } from '../admin/retention-store.js';
 import { DEFAULT_PERIOD_DAYS, DEFAULT_POLICY, RETAINED, RETENTION_CLASSES, planRetention } from '../admin/retention.js';
 import { PostgresRunStore, type Opening } from '../run/run-store.js';
-import { joinable, resumeFrom, sameRequest, type RunRequest } from '../run/run.js';
+import { joinable, LEASE_SECONDS, resumeFrom, RunAdmissionRefused, sameRequest, type RunRequest } from '../run/run.js';
 import { observed, type SignalId } from '../collect/signal.js';
 import { planReset, resetInstall } from '../admin/reset.js';
 import { PostgresSetupDraftStore } from '../define/setup-postgres-store.js';
 import { define, revise, type Draft } from '../define/definition.js';
-import { DefinitionConflict } from '../define/store.js';
+import { DefinitionConflict, InMemoryDefinitionStore } from '../define/store.js';
 import { CollectionScheduler } from '../scan/scheduler.js';
 import type { Scan } from '../scan/scan.js';
 import type { Attestation } from '../attest/attestation.js';
@@ -122,20 +132,44 @@ async function open(schema: string): Promise<Postgres> {
   return ENDPOINT.includes('/') ? openPostgres({ env }) : openPostgres({ env, connect: connectDirect });
 }
 
-async function connectDirect(): Promise<Sql> {
+/**
+ * The connection for a Provisioned instance, or for any Postgres a role and password are given for.
+ *
+ * With `PGUSER` set the role and password come from the environment and the Databricks CLI is not
+ * run, which is what lets this file be driven against a local PostgreSQL cluster. Without it the role
+ * is the Databricks identity and the password a short-lived token for it.
+ */
+function connectionConfig(): pg.ClientConfig {
+  const database = process.env.PGDATABASE ?? 'databricks_postgres';
+
+  if (process.env.PGUSER != null && process.env.PGUSER !== '') {
+    return {
+      host: ENDPOINT,
+      port: Number(process.env.PGPORT ?? 5432),
+      database,
+      user: process.env.PGUSER,
+      password: process.env.PGPASSWORD,
+      ssl: process.env.PGSSLMODE === 'disable' ? false : true,
+    };
+  }
+
   const profile = process.env.DATABRICKS_CONFIG_PROFILE ?? 'DEFAULT';
   const cli = (args: readonly string[]): Record<string, unknown> =>
     JSON.parse(execFileSync('databricks', [...args, '-p', profile], { encoding: 'utf8' })) as Record<string, unknown>;
 
-  const client = new pg.Client({
+  return {
     host: ENDPOINT,
     port: 5432,
-    database: process.env.PGDATABASE ?? 'databricks_postgres',
+    database,
     // The Postgres role is the Databricks identity, and the password is a short-lived token for it.
     user: String(cli(['current-user', 'me', '-o', 'json']).userName),
     password: String(cli(['auth', 'token']).access_token),
     ssl: true,
-  });
+  };
+}
+
+async function connectDirect(): Promise<Sql> {
+  const client = new pg.Client(connectionConfig());
   await client.connect();
   const query = <T = Record<string, unknown>>(text: string, values?: readonly unknown[]) =>
     client.query<T extends pg.QueryResultRow ? T : never>(text, values as unknown[]) as Promise<{ rows: T[] }>;
@@ -1355,6 +1389,171 @@ describe.skipIf(!bound)('the audit log against a real Lakebase database', () => 
   });
 });
 
+/*
+ * The marks left by lost audit events, against a real database, in a schema of their own.
+ *
+ * What a fake cannot show: the check constraint refusing a row that is neither kind, the unique index
+ * refusing a second acknowledgement under a different id, the anti-join answering from one snapshot, and
+ * a timestamptz coming back as a time. And the property the markers exist for — that a second app
+ * instance over the same database, or the same one after a restart, reports a gap it never counted —
+ * which needs two connections to be anything but a claim about one.
+ */
+describe.skipIf(!bound)('the lost-event markers against a real Lakebase database', () => {
+  const GAPS = `${SCHEMA}_gaps`;
+  let db: Postgres;
+  let other: Postgres;
+  let gaps: PostgresAuditGapLog;
+
+  function gap(id: string, at: string, over: Partial<AuditGap> = {}): AuditGap {
+    return {
+      id,
+      at: new Date(at),
+      actor: 'dana@example.com',
+      action: 'attestation.record',
+      outcome: 'performed',
+      target: { kind: 'control', id: 'OE-02-04' },
+      cause: 'AuditAppendError',
+      ...over,
+    };
+  }
+
+  beforeAll(async () => {
+    db = await open(GAPS);
+    // A second connection to the same schema, which is what a second replica of the app is.
+    other = await open(GAPS);
+    gaps = new PostgresAuditGapLog(db);
+  }, 60_000);
+
+  afterAll(async () => {
+    if (db != null) await db.query(`drop schema if exists ${GAPS} cascade`);
+    await db?.end();
+    await other?.end();
+  }, 60_000);
+
+  it('reads an empty table as nothing to acknowledge', async () => {
+    expect(await gaps.unacknowledged()).toEqual({ gaps: [], truncated: false });
+  });
+
+  it('keeps a marker with its time as a time and its target, newest first', async () => {
+    await gaps.record(gap('live-gap-1', '2026-08-01T00:00:00.000Z'));
+    await gaps.record(gap('live-gap-2', '2026-08-03T00:00:00.000Z', { actor: 'priya@example.com', outcome: 'refused' }));
+    await gaps.record(gap('live-gap-3', '2026-08-02T00:00:00.000Z', { target: undefined as never }));
+
+    const { gaps: found } = await gaps.unacknowledged();
+
+    expect(found.map((one) => one.id)).toEqual(['live-gap-2', 'live-gap-3', 'live-gap-1']);
+    expect(found[0]?.at).toBeInstanceOf(Date);
+    expect(found[0]).toMatchObject({ outcome: 'refused', target: { kind: 'control', id: 'OE-02-04' } });
+    expect(found[1]).not.toHaveProperty('target');
+  });
+
+  it('is one marker however often the same loss is reported', async () => {
+    await gaps.record(gap('live-gap-1', '2026-08-01T00:00:00.000Z'));
+
+    expect((await gaps.unacknowledged()).gaps).toHaveLength(3);
+  });
+
+  it('says when the list was cut short, from the one extra row the read asks for', async () => {
+    const short = await new PostgresAuditGapLog(db, { limit: 2 }).unacknowledged();
+
+    expect(short.gaps.map((one) => one.id)).toEqual(['live-gap-2', 'live-gap-3']);
+    expect(short.truncated).toBe(true);
+  });
+
+  it('is reported by another connection to the same database', async () => {
+    const elsewhere = new PostgresAuditGapLog(other);
+
+    expect((await elsewhere.unacknowledged()).gaps.map((one) => one.id)).toContain('live-gap-2');
+  });
+
+  it('stops listing a marker once acknowledged, from whichever connection asks, and keeps the first', async () => {
+    const first = await gaps.acknowledge('live-gap-2', 'priya@example.com', new Date('2026-08-05T10:00:00.000Z'));
+    const again = await new PostgresAuditGapLog(other).acknowledge(
+      'live-gap-2',
+      'someone-else@example.com',
+      new Date('2026-08-06T10:00:00.000Z')
+    );
+
+    expect(first).toMatchObject({ by: 'priya@example.com', already: false });
+    // The unique index deciding it, not a read above the insert: the second caller's insert is refused
+    // and what it is told is the first acknowledgement.
+    expect(again).toMatchObject({ by: 'priya@example.com', already: true });
+    expect(again?.at.toISOString()).toBe('2026-08-05T10:00:00.000Z');
+    expect((await gaps.unacknowledged()).gaps.map((one) => one.id)).toEqual(['live-gap-3', 'live-gap-1']);
+  });
+
+  it('does not acknowledge what was never recorded, or an acknowledgement', async () => {
+    expect(await gaps.acknowledge('live-no-such-gap', 'priya@example.com', new Date())).toBeUndefined();
+    expect(await gaps.acknowledge('live-gap-2.acknowledged', 'priya@example.com', new Date())).toBeUndefined();
+  });
+
+  it('adds a row to acknowledge and leaves the marker as it was written', async () => {
+    const { rows } = await db.query<{ id: string; kind: string; actor: string; gap_id: string | null }>(
+      `select id, kind, actor, gap_id from ${GAPS}.audit_gaps where id like 'live-gap-2%' order by id`
+    );
+
+    expect(rows).toEqual([
+      { id: 'live-gap-2', kind: 'gap', actor: 'priya@example.com', gap_id: null },
+      { id: 'live-gap-2.acknowledged', kind: 'acknowledgement', actor: 'priya@example.com', gap_id: 'live-gap-2' },
+    ]);
+  });
+
+  it('refuses a second acknowledgement of one marker under any id, which is the constraint rather than the code', async () => {
+    await expect(
+      db.query(
+        `insert into ${GAPS}.audit_gaps (id, kind, at, actor, gap_id) values ($1, 'acknowledgement', now(), $2, $3)`,
+        ['a-different-id', 'x@example.com', 'live-gap-2']
+      )
+    ).rejects.toMatchObject({ code: '23505' });
+  });
+
+  it('refuses a row that is neither a marker nor an acknowledgement', async () => {
+    // A marker with no action, and an acknowledgement naming nothing: each is the check refusing a row
+    // that would be unreadable as either kind.
+    await expect(
+      db.query(`insert into ${GAPS}.audit_gaps (id, kind, at, actor, cause) values ('live-bad-1', 'gap', now(), 'x', 'y')`)
+    ).rejects.toMatchObject({ code: '23514' });
+    await expect(
+      db.query(`insert into ${GAPS}.audit_gaps (id, kind, at, actor) values ('live-bad-2', 'acknowledgement', now(), 'x')`)
+    ).rejects.toMatchObject({ code: '23514' });
+    await expect(
+      db.query(`insert into ${GAPS}.audit_gaps (id, kind, at, actor) values ('live-bad-3', 'other', now(), 'x')`)
+    ).rejects.toMatchObject({ code: '23514' });
+  });
+
+  it('survives the process that lost the event: a new recorder over the same database still reports it', async () => {
+    const trail = new PostgresAuditLog(db);
+    // A trail that answers the head and refuses the insert, which is the failure the markers are for.
+    const refusing: AuditLog = {
+      durable: true,
+      append: () => Promise.reject(new Error('the insert was refused')),
+      head: () => trail.head(),
+      floor: () => trail.floor(),
+      search: (query) => trail.search(query),
+      verify: () => trail.verify(),
+    };
+
+    await trail.append(act('live-gap-kept'));
+    await new AuditRecorder(refusing, { gaps, newId: () => 'live-gap-lost' })
+      .begin('scan.start', { actor: 'dana@example.com', executionMode: 'on-behalf-of-user' })
+      .performed({ kind: 'scan', id: 'scan-1' });
+
+    const restarted = new AuditRecorder(trail, { gaps: new PostgresAuditGapLog(other) });
+    const found = (await restarted.gaps?.unacknowledged())?.gaps.find((one) => one.id === 'live-gap-lost');
+
+    expect(restarted.unrecorded).toBe(0);
+    expect(found).toMatchObject({
+      actor: 'dana@example.com',
+      action: 'scan.start',
+      outcome: 'performed',
+      target: { kind: 'scan', id: 'scan-1' },
+      cause: 'Error',
+    });
+    // The trail itself is exactly as it was: a marker is not an event and does not disturb the chain.
+    expect((await trail.verify()).breaks).toEqual([]);
+  });
+});
+
 describe.skipIf(!bound)('a database that predates digests', () => {
   const OLD = `${SCHEMA}_old`;
   let db: Postgres;
@@ -1746,9 +1945,18 @@ describe.skipIf(!bound)('retention against a real Lakebase database', () => {
 describe.skipIf(!bound)('the run record against a real Lakebase database', () => {
   const RUNS = `${SCHEMA}_runs`;
   const REQUEST: RunRequest = { scope: { description: 'the account' }, lookbackDays: 30 };
-  const AT = new Date('2026-08-06T00:00:00.000Z');
+  const BASE = new Date('2026-08-06T00:00:00.000Z');
   let db: Postgres;
   let store: PostgresRunStore;
+  // Each test works an hour after the last. Admission turns on whether a run of the kind is live, so runs
+  // an earlier test left unfinished have to have lapsed by the time the next one asks, or every test after
+  // the first would be refused for a reason that has nothing to do with what it is about.
+  let tick = 0;
+  let at = BASE;
+  beforeEach(() => {
+    tick += 1;
+    at = new Date(BASE.getTime() + tick * 3_600_000);
+  });
 
   beforeAll(async () => {
     db = await open(RUNS);
@@ -1769,7 +1977,7 @@ describe.skipIf(!bound)('the run record against a real Lakebase database', () =>
       trigger: 'scheduled',
       ...(key != null ? { idempotencyKey: key } : {}),
       request: REQUEST,
-      requestedAt: AT,
+      requestedAt: at,
     };
   }
 
@@ -1799,7 +2007,7 @@ describe.skipIf(!bound)('the run record against a real Lakebase database', () =>
     expect(sameRequest(run.request, asked)).toBe(true);
     expect(sameRequest(readBack!.request, asked)).toBe(true);
     expect(
-      joinable(readBack!, { actor: 'someone@example.com', kind: 'assessment', request: asked }, AT)
+      joinable(readBack!, { actor: 'someone@example.com', kind: 'assessment', request: asked }, at)
     ).toBeUndefined();
   });
 
@@ -1816,8 +2024,8 @@ describe.skipIf(!bound)('the run record against a real Lakebase database', () =>
     // The assertion the fake cannot make. Both statements are in flight together against one row, and
     // the condition that keeps them apart is in the `where` of each.
     const [one, other] = await Promise.all([
-      store.claim('live-run-3', 'process-a', AT),
-      store.claim('live-run-3', 'process-b', AT),
+      store.claim('live-run-3', 'process-a', at),
+      store.claim('live-run-3', 'process-b', at),
     ]);
 
     expect([one, other].filter((attempt) => attempt != null)).toHaveLength(1);
@@ -1828,10 +2036,10 @@ describe.skipIf(!bound)('the run record against a real Lakebase database', () =>
 
   it('keeps a checkpoint per signal, and hands it back as a reading', async () => {
     await store.open(opening('live-run-4'));
-    const attempt = await store.claim('live-run-4', 'process-a', AT);
+    const attempt = await store.claim('live-run-4', 'process-a', at);
     const signal: SignalId = 'rest:workspace:token.list';
-    await store.checkpoint('live-run-4', [observed(signal, { tokens: 3 }, 12)], AT);
-    await store.checkpoint('live-run-4', [observed(signal, { tokens: 4 }, 12)], new Date(AT.getTime() + 1000));
+    await store.checkpoint('live-run-4', [observed(signal, { tokens: 3 }, 12)], at);
+    await store.checkpoint('live-run-4', [observed(signal, { tokens: 4 }, 12)], new Date(at.getTime() + 1000));
 
     const reached = resumeFrom(await store.checkpoints('live-run-4'));
 
@@ -1841,21 +2049,21 @@ describe.skipIf(!bound)('the run record against a real Lakebase database', () =>
     expect(reached.get(signal)?.value).toEqual({ tokens: 4 });
 
     // And they go when the run has a scan holding the same readings.
-    await store.finish(attempt!, { state: 'complete', at: AT, scanId: 'live-scan-4' });
+    await store.finish(attempt!, { state: 'complete', at, scanId: 'live-scan-4' });
     expect(await store.checkpoints('live-run-4')).toEqual([]);
-    expect(await store.claim('live-run-4', 'process-b', new Date(AT.getTime() + 999_000))).toBeUndefined();
+    expect(await store.claim('live-run-4', 'process-b', new Date(at.getTime() + 999_000))).toBeUndefined();
   });
 
   it('takes a failed run back up under its own key, keeping what the broken attempt reached', async () => {
     await store.open(opening('live-run-5', 'live-key-5'));
-    const broke = await store.claim('live-run-5', 'process-a', AT);
+    const broke = await store.claim('live-run-5', 'process-a', at);
     const signal: SignalId = 'rest:workspace:token.list';
-    await store.checkpoint('live-run-5', [observed(signal, { tokens: 1 }, 9)], AT);
-    await store.finish(broke!, { state: 'failed', at: AT, why: 'the warehouse went away' });
+    await store.checkpoint('live-run-5', [observed(signal, { tokens: 1 }, 9)], at);
+    await store.finish(broke!, { state: 'failed', at: at, why: 'the warehouse went away' });
 
     expect(await store.checkpoints('live-run-5')).toHaveLength(1);
 
-    const retry = await store.claim('live-run-5', 'process-b', new Date(AT.getTime() + 999_000));
+    const retry = await store.claim('live-run-5', 'process-b', new Date(at.getTime() + 999_000));
 
     expect(retry?.number).toBe(2);
     const run = await store.get('live-run-5');
@@ -1871,30 +2079,30 @@ describe.skipIf(!bound)('the run record against a real Lakebase database', () =>
     // that a takeover between the read and the write cannot be missed. That distinction does not exist in
     // the fake, where nothing can happen between two statements.
     await store.open(opening('live-run-6'));
-    const stalled = await store.claim('live-run-6', 'process-a', AT);
+    const stalled = await store.claim('live-run-6', 'process-a', at);
     const signal: SignalId = 'rest:workspace:token.list';
-    await store.checkpoint('live-run-6', [observed(signal, { tokens: 2 }, 7)], AT);
-    const took = await store.claim('live-run-6', 'process-b', new Date(AT.getTime() + 999_000));
+    await store.checkpoint('live-run-6', [observed(signal, { tokens: 2 }, 7)], at);
+    const took = await store.claim('live-run-6', 'process-b', new Date(at.getTime() + 999_000));
 
-    expect(await store.finish(stalled!, { state: 'complete', at: AT, scanId: 'live-scan-stale' })).toBe(false);
+    expect(await store.finish(stalled!, { state: 'complete', at, scanId: 'live-scan-stale' })).toBe(false);
 
     // The readings the holder is resuming from are still there, and the run is still that holder's.
     expect(await store.checkpoints('live-run-6')).toHaveLength(1);
     const during = await store.get('live-run-6');
     expect(during?.state).toBe('running');
     expect(during?.scanId).toBeUndefined();
-    expect(await store.finish(took!, { state: 'complete', at: AT, scanId: 'live-scan-6' })).toBe(true);
+    expect(await store.finish(took!, { state: 'complete', at, scanId: 'live-scan-6' })).toBe(true);
     expect((await store.get('live-run-6'))?.scanId).toBe('live-scan-6');
   });
 
   it('records a cancel as a date and nothing else, so it cannot overwrite an outcome', async () => {
-    await store.cancel('live-run-5', new Date(AT.getTime() + 5000));
-    await store.cancel('live-run-5', new Date(AT.getTime() + 9000));
+    await store.cancel('live-run-5', new Date(at.getTime() + 5000));
+    await store.cancel('live-run-5', new Date(at.getTime() + 9000));
 
     const run = await store.get('live-run-5');
     expect(run?.state).toBe('running');
     // The first request, so the date says when the decision was made rather than when it was repeated.
-    expect(run?.cancelRequestedAt).toEqual(new Date(AT.getTime() + 5000));
+    expect(run?.cancelRequestedAt).toEqual(new Date(at.getTime() + 5000));
     expect(await store.cancelRequested('live-run-5')).toBe(true);
   });
 
@@ -1904,6 +2112,169 @@ describe.skipIf(!bound)('the run record against a real Lakebase database', () =>
     // `live-run-4` finished; the rest were left running by the tests above.
     expect(unfinished).not.toContain('live-run-4');
     expect(unfinished).toContain('live-run-5');
+  });
+
+  /*
+   * Admission, which is a lock and a read and an insert in one transaction, and which only a second
+   * connection can test. The fake serialises sessions and so can say the lock is taken; it cannot say that
+   * a real `pg_advisory_xact_lock` on a hash of the kind makes the second transaction wait, nor that the
+   * waiting one then reads what the first committed.
+   */
+  describe('admitting a run', () => {
+    // Two more connections of their own. A handle opened for a Provisioned instance is one client, and a
+    // transaction on it is every statement sent through it, so two callers on `db` would interleave inside
+    // one session rather than be two. A second instance is a second connection, so each of these is one.
+    let other: Postgres;
+    let watcher: Postgres;
+    let otherStore: PostgresRunStore;
+
+    beforeAll(async () => {
+      other = await open(RUNS);
+      watcher = await open(RUNS);
+      otherStore = new PostgresRunStore(other);
+    }, 60_000);
+
+    afterAll(async () => {
+      await other?.end();
+      await watcher?.end();
+    }, 60_000);
+
+    const LOCK = `select pg_advisory_xact_lock(hashtext('waf.run-admission.' || $1::text))`;
+
+    /** The insert `open` makes, for a transaction that is holding the lock and has not committed. */
+    function insertLive(sql: Sql, id: string, kind: string): Promise<unknown> {
+      return sql.query(
+        `insert into ${RUNS}.runs
+           (id, kind, requested_at, actor, trigger, request, state, attempts, lease_until)
+           values ($1, $2, $3, 'someone@example.com', 'scheduled', $4::jsonb, 'running', 0, $3)`,
+        [id, kind, at, JSON.stringify(REQUEST)]
+      );
+    }
+
+    async function waitingOnAdvisoryLocks(): Promise<number> {
+      const { rows } = await watcher.query<{ waiting: string }>(
+        `select count(*)::text as waiting from pg_locks where locktype = 'advisory' and not granted`
+      );
+      return Number(rows[0]?.waiting ?? 0);
+    }
+
+    it('takes a lock a second connection waits on, and then refuses it while the first run is live', async () => {
+      let release = (): void => undefined;
+      const gate = new Promise<void>((resolve) => (release = resolve));
+      let locked = (): void => undefined;
+      const holding = new Promise<void>((resolve) => (locked = resolve));
+
+      // One connection that has taken the lock and written the run `open` would have, and has not yet
+      // committed — which is the position a first instance is in for the length of its transaction.
+      const first = db.session!(async (sql) => {
+        await sql.query(LOCK, ['assessment']);
+        await insertLive(sql, 'live-admit-1', 'assessment');
+        locked();
+        await gate;
+      });
+      await holding;
+
+      let settled = false;
+      const second = otherStore
+        .open({ ...opening('live-admit-2', 'live-admit-key-2'), requestedAt: new Date(at.getTime() + 1000) })
+        .then(
+          (opened) => ({ opened }),
+          (refused: unknown) => ({ refused })
+        )
+        .finally(() => (settled = true));
+
+      // Long enough for a statement that was not waiting to have answered, and the lock table agrees: a
+      // second backend is queued on the advisory lock rather than running.
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      expect(settled).toBe(false);
+      expect(await waitingOnAdvisoryLocks()).toBe(1);
+
+      release();
+      await first;
+      const outcome = await second;
+
+      // It read the committed row after the wait, saw its lease live, and refused naming it.
+      expect('refused' in outcome).toBe(true);
+      const refused = (outcome as { refused: unknown }).refused;
+      expect(refused).toBeInstanceOf(RunAdmissionRefused);
+      expect((refused as RunAdmissionRefused).run.id).toBe('live-admit-1');
+      expect(await store.get('live-admit-2')).toBeUndefined();
+      expect(await waitingOnAdvisoryLocks()).toBe(0);
+    });
+
+    it('does not make the other kind wait, since the lock is named for the kind', async () => {
+      let release = (): void => undefined;
+      const gate = new Promise<void>((resolve) => (release = resolve));
+      let locked = (): void => undefined;
+      const holding = new Promise<void>((resolve) => (locked = resolve));
+      const first = db.session!(async (sql) => {
+        await sql.query(LOCK, ['assessment']);
+        locked();
+        await gate;
+      });
+      await holding;
+
+      const advisory = await otherStore.open({ ...opening('live-admit-3', 'live-admit-key-3'), kind: 'advisory' });
+
+      expect(advisory.created).toBe(true);
+      release();
+      await first;
+    });
+
+    it('lets exactly one of two opens issued together through, whichever connection gets there first', async () => {
+      const outcomes = await Promise.allSettled([
+        store.open(opening('live-admit-4', 'live-admit-key-4')),
+        otherStore.open(opening('live-admit-5', 'live-admit-key-5')),
+      ]);
+
+      expect(outcomes.map((outcome) => outcome.status).sort()).toEqual(['fulfilled', 'rejected']);
+      const refused = outcomes.find((outcome): outcome is PromiseRejectedResult => outcome.status === 'rejected');
+      expect(refused?.reason).toBeInstanceOf(RunAdmissionRefused);
+      const written = (await store.unfinished()).filter((run) => ['live-admit-4', 'live-admit-5'].includes(run.id));
+      expect(written).toHaveLength(1);
+    });
+
+    it('admits another once the first run has finished, and once its holder stopped renewing', async () => {
+      await store.open(opening('live-admit-6', 'live-admit-key-6'));
+      const attempt = await store.claim('live-admit-6', 'process-a', at);
+
+      await expect(
+        store.open({ ...opening('live-admit-7', 'live-admit-key-7'), requestedAt: new Date(at.getTime() + 5000) })
+      ).rejects.toBeInstanceOf(RunAdmissionRefused);
+
+      // Finished: the run is over, and the install is free.
+      await store.finish(attempt!, {
+        state: 'complete',
+        at: new Date(at.getTime() + 10_000),
+        scanId: 'live-admit-scan',
+      });
+      const afterFinish = await store.open({
+        ...opening('live-admit-8', 'live-admit-key-8'),
+        requestedAt: new Date(at.getTime() + 11_000),
+      });
+      expect(afterFinish.created).toBe(true);
+
+      // Lapsed: claimed and never renewed, so a lease window later the run no longer counts.
+      await store.claim('live-admit-8', 'process-b', new Date(at.getTime() + 11_000));
+      const afterLapse = await store.open({
+        ...opening('live-admit-9', 'live-admit-key-9'),
+        requestedAt: new Date(at.getTime() + 12_000 + LEASE_SECONDS * 1000),
+      });
+      expect(afterLapse.created).toBe(true);
+    });
+
+    it('lets the same key through to the run it names, so a retry is told what became of it', async () => {
+      await store.open(opening('live-admit-10', 'live-admit-key-10'));
+      await store.claim('live-admit-10', 'process-a', at);
+
+      const retry = await store.open({
+        ...opening('live-admit-11', 'live-admit-key-10'),
+        requestedAt: new Date(at.getTime() + 5000),
+      });
+
+      expect(retry.created).toBe(false);
+      expect(retry.run.id).toBe('live-admit-10');
+    });
   });
 });
 
@@ -2028,5 +2399,314 @@ describe.skipIf(!bound)('the reads that count and exclude in SQL, against a real
     // this install's legacy imports fetches their envelopes forever.
     expect(rows[0]?.summary).not.toBeNull();
     expect(typeof rows[0]?.summary).toBe('object');
+  });
+
+  it('keeps the workspace in its own column, and reads it from the body for a row that predates it', async () => {
+    // What the fake cannot settle about the workspace column: that the new statements are valid, that
+    // the value survives a real driver as text, and that a row with a null column is still attributed.
+    const store = new PostgresEvidenceImportStore({ db });
+    const raw = envelope({ generated_at: '2026-08-04T10:41:52Z' });
+    const held = envelopeFrom({ ...raw, digest: digestOf(raw.probes) });
+    const one = {
+      digest: `sha256:${'b8'.repeat(32)}`,
+      generatedAt: new Date(held.generatedAt),
+      importedAt: REQUESTED,
+      importedBy: 'importer@example.com',
+      envelope: held,
+      cautions: [],
+    };
+    await store.record(one);
+
+    const { rows } = await db.query<{ workspace_id: string | null }>(
+      `select workspace_id from ${db.schema}.imported_evidence where digest = $1`,
+      [one.digest]
+    );
+    expect(rows[0]?.workspace_id).toBe('7000000000000001');
+    expect((await store.all()).find((held) => held.digest === one.digest)?.workspaceId).toBe('7000000000000001');
+
+    // The upgrade case: a row written before the column, whose body still names the workspace.
+    await db.query(`update ${db.schema}.imported_evidence set workspace_id = null where digest = $1`, [one.digest]);
+    expect((await store.all()).find((held) => held.digest === one.digest)?.workspaceId).toBe('7000000000000001');
+
+    // Boot again over the same schema, which is what a rolling deploy does and must change nothing.
+    await ensureSchema(db, db.schema);
+    expect((await store.all()).find((held) => held.digest === one.digest)?.workspaceId).toBe('7000000000000001');
+  });
+});
+
+/*
+ * The newest-revision reads against a real database, held to the in-memory stores by running one
+ * history through both.
+ *
+ * What a fake cannot say is whether Postgres chooses the row the TypeScript would have: `distinct on`
+ * and `max` are the database's own, and a statement the fake accepts can still pick a different row. So
+ * each case writes the same records to a Postgres store and to its in-memory twin and asks them the same
+ * question, and the second half of each is the row that will not read, which only a column the app does
+ * not control can supply.
+ */
+describe.skipIf(!bound)('the newest-revision reads against a real Lakebase database', () => {
+  const LATEST = `${SCHEMA}_latest`;
+  const AT = new Date('2026-08-01T09:00:00.000Z');
+  let db: Postgres;
+
+  beforeAll(async () => {
+    db = await open(LATEST);
+  }, 60_000);
+
+  afterAll(async () => {
+    if (db == null) return;
+    await db.query(`drop schema if exists ${LATEST} cascade`);
+    await db.end();
+  }, 60_000);
+
+  function risk(id: string, controlId: string, definitionId: string | undefined, hours: number): AcceptedRisk {
+    return {
+      id,
+      controlId,
+      ordinal: 1,
+      reason: 'The review is manual until the platform team finishes the rota tooling next quarter.',
+      compensatingControl: 'The two workspaces are read-only outside the platform group, checked weekly.',
+      residual: 'low',
+      owner: 'platform-engineering',
+      effectiveFrom: AT,
+      expiresAt: new Date('2026-12-01T00:00:00.000Z'),
+      recordedBy: 'ana@example.com',
+      recordedAt: new Date(AT.getTime() + hours * 3_600_000),
+      ...(definitionId != null ? { definitionId } : {}),
+    };
+  }
+
+  function excluded(id: string, controlId: string, definitionId: string | undefined, hours: number): ApplicabilityDecision {
+    return {
+      id,
+      controlId,
+      lever: 'not-applicable',
+      ordinal: 1,
+      reason: 'This estate runs no external sharing, so the requirement is about a thing it does not have.',
+      owner: 'platform-engineering',
+      effectiveFrom: AT,
+      expiresAt: new Date('2026-12-01T00:00:00.000Z'),
+      recordedBy: 'ana@example.com',
+      recordedAt: new Date(AT.getTime() + hours * 3_600_000),
+      ...(definitionId != null ? { definitionId } : {}),
+    };
+  }
+
+  const byId = <T extends { readonly id: string }>(records: readonly T[]): T[] =>
+    [...records].sort((a, b) => a.id.localeCompare(b.id));
+
+  it('reads the register of acceptances as the in-memory store does, at each requirement\'s newest revision', async () => {
+    const postgres = new PostgresRiskStore({ db });
+    const memory = new InMemoryRiskStore();
+    const written = [
+      risk('live-r1', 'LR-01', 'live-def-a', 1),
+      risk('live-r2', 'LR-02', 'live-def-a', 2),
+      risk('live-r3', 'LR-03', 'live-def-b', 3),
+      risk('live-r4', 'LR-04', undefined, 4),
+    ];
+    for (const one of written) {
+      await postgres.record(one);
+      await memory.record(one);
+    }
+    const ended = revokedRisk(written[0], 'raj@example.com', 'The read-only grant was removed.', new Date(AT.getTime() + 9 * 3_600_000));
+    await postgres.revoke(ended);
+    await memory.revoke(ended);
+
+    for (const scope of [undefined, 'live-def-a', 'live-def-b', null] as const) {
+      const here = byId(await postgres.all(scope));
+      expect(here, `scope ${String(scope)}`).toEqual(byId(await memory.all(scope)));
+    }
+    // One row per acceptance, and the revoked one is the revoked revision rather than the first.
+    const all = await postgres.all();
+    expect(all).toHaveLength(4);
+    expect(all.find((one) => one.id === 'live-r1')?.revoked?.by).toBe('raj@example.com');
+    expect(all[0]?.recordedAt).toBeInstanceOf(Date);
+  });
+
+  it('keeps an acceptance standing when the revision that revoked it cannot be read, as the register without it would', async () => {
+    const errors: string[] = [];
+    const postgres = new PostgresRiskStore({ db, onError: (operation) => errors.push(operation) });
+    const memory = new InMemoryRiskStore();
+    const standing = risk('live-r5', 'LR-05', 'live-def-c', 5);
+    await postgres.record(standing);
+    await memory.record(standing);
+    await postgres.revoke(revokedRisk(standing, 'raj@example.com', 'Ended in the March change.', AT));
+    // The revocation is the newest revision and its body is not an acceptance any more.
+    await db.query(`update ${db.schema}.accepted_risks set body = '{"id":"live-r5"}'::jsonb where id = $1 and revision = 1`, [
+      'live-r5',
+    ]);
+
+    expect(await postgres.all('live-def-c')).toEqual(await memory.all('live-def-c'));
+    expect(errors).toContain('read accepted risks');
+  });
+
+  it('reads the register of decisions as the in-memory store does, and keeps one standing past an unreadable revocation', async () => {
+    const errors: string[] = [];
+    const postgres = new PostgresApplicabilityStore({ db, onError: (operation) => errors.push(operation) });
+    const memory = new InMemoryApplicabilityStore();
+    const written = [
+      excluded('live-d1', 'LD-01', 'live-def-a', 1),
+      excluded('live-d2', 'LD-02', 'live-def-a', 2),
+      excluded('live-d3', 'LD-03', undefined, 3),
+    ];
+    for (const one of written) {
+      await postgres.record(one);
+      await memory.record(one);
+    }
+    const ended = revokedDecision(written[0], 'raj@example.com', 'Sharing was turned on.', AT);
+    await postgres.revoke(ended);
+    await memory.revoke(ended);
+
+    for (const scope of [undefined, 'live-def-a', null] as const) {
+      expect(byId(await postgres.all(scope)), `scope ${String(scope)}`).toEqual(byId(await memory.all(scope)));
+    }
+
+    await postgres.revoke(revokedDecision(written[1], 'raj@example.com', 'Sharing was turned on.', AT));
+    await db.query(
+      `update ${db.schema}.applicability_decisions set body = '{"id":"live-d2"}'::jsonb where id = $1 and revision = 1`,
+      ['live-d2']
+    );
+    const standing = (await postgres.all('live-def-a')).find((one) => one.id === 'live-d2');
+    expect(standing?.revoked).toBeUndefined();
+    expect(errors).toContain('read applicability decisions');
+  });
+
+  /*
+   * A same-millisecond supersession is the case SQL cannot settle alone: the two records carry one stamp
+   * and the chain says which is newer. The narrowed read returns both, and the answer has to be the one
+   * the in-memory store gives.
+   */
+  it('settles a same-stamp supersession as the in-memory attestation store does, within each assessment', async () => {
+    const postgres = new PostgresAttestationStore({ db });
+    const memory = new InMemoryAttestationStore();
+    const base = attestation('live-a1', '2026-08-01T01:00:00.000Z');
+    const records: Attestation[] = [
+      // One stamp, the superseding record's id sorting first: only the chain can put it on top.
+      { ...base, id: 'live-z-first', controlId: 'LA-01', definitionId: 'live-def-a' },
+      { ...base, id: 'live-a-second', controlId: 'LA-01', definitionId: 'live-def-a', supersedes: 'live-z-first' },
+      // A requirement with a single newest record, and an older one beneath it.
+      { ...base, id: 'live-old', controlId: 'LA-02', definitionId: 'live-def-a', attestedAt: new Date('2026-07-01T00:00:00.000Z') },
+      { ...base, id: 'live-new', controlId: 'LA-02', definitionId: 'live-def-a', attestedAt: new Date('2026-08-05T00:00:00.000Z') },
+      // The same requirement in another assessment, newer than either, which must not decide this one's.
+      { ...base, id: 'live-other', controlId: 'LA-01', definitionId: 'live-def-b', attestedAt: new Date('2026-09-01T00:00:00.000Z') },
+      // A chain through a record older than the two it joins: `live-c` carries the stamp of `live-a`.
+      { ...base, id: 'live-a', controlId: 'LA-03', definitionId: 'live-def-a' },
+      { ...base, id: 'live-b', controlId: 'LA-03', definitionId: 'live-def-a', attestedAt: new Date('2026-07-01T00:00:00.000Z'), supersedes: 'live-a' },
+      { ...base, id: 'live-c', controlId: 'LA-03', definitionId: 'live-def-a', supersedes: 'live-b' },
+    ];
+    for (const one of records) {
+      await postgres.record(one);
+      await memory.record(one);
+    }
+
+    for (const scope of ['live-def-a', 'live-def-b'] as const) {
+      const here = await postgres.current(scope);
+      expect(byId(here), `scope ${scope}`).toEqual(byId(await memory.current(scope)));
+    }
+    const mine = new Map((await postgres.current('live-def-a')).map((one) => [one.controlId, one.id]));
+    expect(mine.get('LA-01')).toBe('live-a-second');
+    expect(mine.get('LA-02')).toBe('live-new');
+    expect(mine.get('LA-03')).toBe('live-c');
+  });
+
+  it('reads the decision log the same way, and answers a null scope with the records that name no assessment', async () => {
+    const postgres = new PostgresDecisionStore({ db });
+    const memory = new InMemoryDecisionStore();
+    const first = { ...decision('live-dec-1', '2026-08-01T01:00:00.000Z'), controlId: 'LX-01' };
+    const records: Decision[] = [
+      first,
+      { ...decision('live-dec-2', '2026-08-01T01:00:00.000Z'), controlId: 'LX-01', supersedes: first.id },
+      { ...decision('live-dec-3', '2026-08-03T01:00:00.000Z'), controlId: 'LX-02' },
+      { ...decision('live-dec-4', '2026-08-04T01:00:00.000Z'), controlId: 'LX-02', definitionId: 'live-def-a' },
+    ];
+    for (const one of records) {
+      await postgres.record(one);
+      await memory.record(one);
+    }
+
+    for (const scope of [undefined, null, 'live-def-a'] as const) {
+      expect(byId(await postgres.current(scope)), `scope ${String(scope)}`).toEqual(
+        byId(await memory.current(scope))
+      );
+    }
+  });
+
+  it('falls back to the newest record that reads when the newest of a requirement does not', async () => {
+    const errors: string[] = [];
+    const postgres = new PostgresAttestationStore({ db, onError: (operation) => errors.push(operation) });
+    const memory = new InMemoryAttestationStore();
+    const readable = { ...attestation('live-fb-ok', '2026-08-01T01:00:00.000Z'), controlId: 'LF-01', definitionId: 'live-def-f' };
+    await postgres.record(readable);
+    await memory.record(readable);
+    // Written behind the store, as a build with another shape or an edit in psql would: the newest
+    // statement of this requirement, and a document the reader does not recognise.
+    await db.query(
+      `insert into ${db.schema}.attestations (id, control_id, attested_at, body, digest, definition_id)
+         values ($1, $2, $3, $4::jsonb, $5, $6)`,
+      ['live-fb-bad', 'LF-01', new Date('2026-09-01T00:00:00.000Z'), JSON.stringify({ id: 'live-fb-bad' }), 'x', 'live-def-f']
+    );
+
+    const current = await postgres.current('live-def-f');
+    expect(current).toEqual(await memory.current('live-def-f'));
+    expect(current.map((one) => one.id)).toEqual(['live-fb-ok']);
+    expect(errors).toEqual(['read every attestation']);
+  });
+
+  it('breaks a tie between a readable and an unreadable record in favour of the one that reads', async () => {
+    interface Said extends LoggedEvent {
+      readonly at: Date;
+    }
+    const log = new PostgresEventLog<Said>({
+      db,
+      table: 'decisions',
+      stampColumn: 'decided_at',
+      stampOf: (one) => one.at,
+      revive: (raw) => {
+        const candidate = raw as { id?: unknown; controlId?: unknown; at?: unknown } | null;
+        if (typeof candidate?.id !== 'string' || typeof candidate.controlId !== 'string') return undefined;
+        const at = new Date(candidate.at as string);
+        return Number.isNaN(at.getTime()) ? undefined : { id: candidate.id, controlId: candidate.controlId, at };
+      },
+      noun: 'statement',
+    });
+    const at = new Date('2026-08-10T00:00:00.000Z');
+    await log.append({ id: 'live-tie-ok', controlId: 'LT-01', at });
+    await db.query(
+      `insert into ${db.schema}.decisions (id, control_id, decided_at, body, digest) values ($1, $2, $3, $4::jsonb, $5)`,
+      ['live-tie-bad', 'LT-01', at, JSON.stringify({ id: 'live-tie-bad' }), 'x']
+    );
+
+    const current = (await log.current()).filter((one) => one.controlId === 'LT-01');
+    expect(current.map((one) => one.id)).toEqual(['live-tie-ok']);
+    expect(newestFirstBy(current, (one) => one.at)).toEqual(current);
+  });
+
+  it('reads one definition by its id with the answer the in-memory store and the full read give', async () => {
+    const postgres = new PostgresDefinitionStore({ db });
+    const memory = new InMemoryDefinitionStore();
+    const draft: Draft = {
+      measurement: { scope: { kind: 'selected', workspaceIds: ['w2', 'w1'] }, lookbackDays: 30 },
+      attribution: { name: 'Live review', owners: ['alice@example.com'] },
+    };
+    for (const id of ['live-g1', 'live-g2', 'live-g3']) {
+      const first = define(draft, id, new Date('2026-08-01T00:00:00.000Z'), 'alice@example.com');
+      const second = revise(first, { attribution: { name: `Renamed ${id}`, owners: [] } }, new Date('2026-08-02T00:00:00.000Z'), 'alice@example.com');
+      await postgres.create(first);
+      await memory.create(first);
+      const added = second.versions[1];
+      if (added == null) throw new Error('revise produced no second version');
+      await postgres.appendVersion(id, added);
+      await memory.appendVersion(id, added);
+    }
+    await postgres.archive('live-g2', new Date('2026-08-03T00:00:00.000Z'));
+    await memory.archive('live-g2', new Date('2026-08-03T00:00:00.000Z'));
+
+    const everything = await postgres.all();
+    for (const id of ['live-g1', 'live-g2', 'live-g3']) {
+      expect(await postgres.get(id), id).toEqual(await memory.get(id));
+      expect(await postgres.get(id), id).toEqual(everything.find((one) => one.id === id));
+    }
+    expect((await postgres.get('live-g2'))?.archivedAt?.toISOString()).toBe('2026-08-03T00:00:00.000Z');
+    expect(await postgres.get('live-missing')).toBeUndefined();
   });
 });

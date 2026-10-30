@@ -206,12 +206,15 @@ export interface AdvisoryRunnerOptions {
 }
 
 export class AdvisoryInProgressError extends Error {
+  /** `run` names the record behind the run that is going, where there is one, so a refused caller can follow it. */
   constructor(
     readonly startedAt: Date,
-    readonly actor: string
+    readonly actor: string,
+    readonly run?: string
   ) {
     super(
-      `An advisory run started by ${actor} at ${startedAt.toISOString()} is already running. One runs at ` +
+      `An advisory run started by ${actor} at ${startedAt.toISOString()} is already running` +
+        `${run == null ? '' : ` as run ${run}`}. One runs at ` +
         'a time so two people cannot double the load on the warehouse for the same advice. Wait for it ' +
         'to finish; its result will be the latest.'
     );

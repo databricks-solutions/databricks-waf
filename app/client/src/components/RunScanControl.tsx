@@ -25,7 +25,7 @@
 // changes what `/api/scan` accepts as much as what this renders. Raised in docs/review-morning.md.
 // Until it is answered the option is offered, named for what it costs rather than for what it skips.
 
-import { Link } from 'react-router';
+import { Link, useNavigate, useSearchParams } from 'react-router';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -35,11 +35,22 @@ import {
   Spinner,
 } from '@databricks/appkit-ui/react';
 import { Check, ChevronDown, Play } from 'lucide-react';
+import { assessmentOverviewPath } from '../assessment-continuation';
 import { useAssessment } from '../api/assessment-context';
 import { RunScanDialog } from './RunScanDialog';
 
 export function RunScanControl() {
   const { scanning, choices, selected, setChosen } = useAssessment();
+  const navigate = useNavigate();
+  const [params] = useSearchParams();
+
+  const choose = (choice: Parameters<typeof setChosen>[0]) => {
+    setChosen(choice);
+    // A run-specific URL pins its original assessment. Leave that page when the reader switches.
+    if (params.has('definitionId')) {
+      void navigate(assessmentOverviewPath(choice.kind === 'one' ? choice.id : null));
+    }
+  };
 
   return (
     <div className="flex shrink-0 items-center">
@@ -80,7 +91,7 @@ export function RunScanControl() {
           <DropdownMenuLabel>Assessment</DropdownMenuLabel>
 
           {choices.map((choice) => (
-            <DropdownMenuItem key={choice.id} onSelect={() => setChosen({ kind: 'one', id: choice.id })}>
+            <DropdownMenuItem key={choice.id} onSelect={() => choose({ kind: 'one', id: choice.id })}>
               <span className="flex min-w-0 items-start gap-2">
                 {/* The tick marks what the button will run, so the menu answers the question the
                     reader opened it with before they read three scopes to work it out. */}
@@ -102,7 +113,7 @@ export function RunScanControl() {
             <>
               <DropdownMenuLabel>
                 <span className="wa-caption text-wa-text-secondary">
-                  No saved assessment is available. This run will use the scanning identity’s current access.
+                  No saved assessment is available. A custom scan can answer questions but cannot publish a report.
                 </span>
               </DropdownMenuLabel>
               <DropdownMenuItem asChild>
@@ -113,10 +124,11 @@ export function RunScanControl() {
             <>
               <DropdownMenuLabel>
                 <span className="wa-caption text-wa-text-secondary">
-                  Without a saved assessment, the run has no recorded scope beyond the scanning identity’s access.
+                  Without a saved assessment, the run has no recorded scope beyond the scanning identity’s access and
+                  cannot publish a report.
                 </span>
               </DropdownMenuLabel>
-              <DropdownMenuItem onSelect={() => setChosen({ kind: 'none' })}>
+              <DropdownMenuItem onSelect={() => choose({ kind: 'none' })}>
                 <span className="flex min-w-0 items-start gap-2">
                   <Check aria-hidden className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${selected == null ? '' : 'invisible'}`} />
                   <span>Without an assessment</span>

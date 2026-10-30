@@ -22,6 +22,11 @@
 // It cannot overturn a measurement. Where the platform can observe part of a requirement,
 // the observation governs and the attestation is recorded alongside it. An assessment
 // whose subject can self-certify past a contrary measurement is not an assessment.
+//
+// The one thing an answer does to a measurement is lift a cap. Where a resolver marks its `partial`
+// as the ceiling of what the platform can show, a current "met" lifts it to `pass`; it never lifts a
+// `fail` or a shortfall the app measured, and no answer lowers anything (decision D2 in
+// docs/decisions.md).
 
 import type { Severity } from '../resolve/finding.js';
 

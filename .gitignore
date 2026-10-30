@@ -32,3 +32,5 @@ spikes/**/results/
 
 # Local editor state.
 .isaac/
+
+.sdd/

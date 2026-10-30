@@ -337,6 +337,23 @@ export async function ensureSchema(sql: Sql, schema: string): Promise<void> {
   // `docs/design/import-list-cost.md`.
   await sql.query(`alter table ${schema}.imported_evidence add column if not exists summary jsonb`);
 
+  // The workspace the file's workspace half was collected from, promoted out of `body` and recorded
+  // when the row is written, with an index for looking a workspace's files up by it.
+  //
+  // Nothing filters on it in SQL yet. `all()` reads the table and the scan runner picks a workspace's
+  // files from what comes back; the column and index are there so a lookup by workspace does not have
+  // to read every envelope when one is wanted.
+  //
+  // Nullable, because a row written before this column existed has none and a file whose workspace tier
+  // did not run never will. The first is read out of the body when the row is read — one definition of
+  // the answer, in `import/envelope.ts`, rather than a second one in a migration — and the second is
+  // simply a file with nothing to attribute. Nothing writes the answer back to a legacy row. Additive,
+  // so a build that predates it ignores the column.
+  await sql.query(`alter table ${schema}.imported_evidence add column if not exists workspace_id text`);
+  await sql.query(
+    `create index if not exists imported_evidence_workspace on ${schema}.imported_evidence (workspace_id, imported_at desc)`
+  );
+
   // What people did, as opposed to what it produced. Append-only and chained: `sequence` is the
   // primary key and is contiguous, so a removed row leaves a gap a verifier reports, and each row's
   // digest covers the digest of the row before it, so an edit in place cannot be made consistent
@@ -407,6 +424,43 @@ export async function ensureSchema(sql: Sql, schema: string): Promise<void> {
       trimmed_by text        not null
     )
   `);
+
+  // The marks left by audit events that could not be written, so the evidence of a gap in the trail
+  // outlives the process that saw it and is the same whichever instance serves a page. Append-only: a
+  // row is never updated or deleted, and acknowledging a gap is a second row of another `kind` that
+  // names it in `gap_id`, so who dealt with it and when is as durable as the gap.
+  //
+  // A marker is keyed on the id of the event that was lost, so reporting the same loss twice is one
+  // row. It holds who, what, against what, when and the class of the failure, and nothing from the
+  // event's payload — the same rule `audit_events` keeps, for the same readers. The check says which
+  // columns each kind has to carry, since one table with two kinds cannot say it with `not null`.
+  //
+  // Additive: a build that predates it never reads or writes the table.
+  await sql.query(`
+    create table if not exists ${schema}.audit_gaps (
+      id          text        primary key,
+      kind        text        not null,
+      at          timestamptz not null,
+      actor       text        not null,
+      action      text,
+      outcome     text,
+      target_kind text,
+      target_id   text,
+      cause       text,
+      gap_id      text,
+      written_at  timestamptz not null default now(),
+      check (
+        (kind = 'gap' and action is not null and outcome is not null and cause is not null and gap_id is null)
+        or (kind = 'acknowledgement' and gap_id is not null)
+      )
+    )
+  `);
+  // One acknowledgement per marker, enforced by the database. Without it two people acting on the same
+  // page could each write one, and "who acknowledged it" would have two answers. Partial on the column
+  // only acknowledgements carry, which also lets the anti-join that lists open gaps use it.
+  await sql.query(
+    `create unique index if not exists audit_gaps_one_acknowledgement on ${schema}.audit_gaps (gap_id) where gap_id is not null`
+  );
 
   // Plans and the actions inside them, one row per revision of each, keyed on the pair. Insert-only,
   // like the definition versions above and for the same reason: these records are edited by people
@@ -549,6 +603,13 @@ export async function ensureSchema(sql: Sql, schema: string): Promise<void> {
   // Swept on `recorded_at`. `accepted_risks_by_expiry` leads with a different timestamp, which serves
   // nothing here. Measured by `83`: 1,068 heap pages to 2, and it grows with the catalogue.
   await sql.query(`create index if not exists accepted_risks_by_sweep on ${schema}.accepted_risks (recorded_at asc)`);
+  // The register reads the newest revision of every acceptance, `distinct on (id)` over `id, revision desc`.
+  // The primary key is `(id, revision)` ascending, which Postgres cannot read with one column each way, so
+  // without this the read sorts the whole table; with it the planner takes the ordered scan once the sort
+  // would spill to disk.
+  await sql.query(
+    `create index if not exists accepted_risks_newest_revision on ${schema}.accepted_risks (id, revision desc)`
+  );
 
   /*
    * Applicability decisions: the requirements a customer has taken out of their own score, either as not
@@ -596,6 +657,10 @@ export async function ensureSchema(sql: Sql, schema: string): Promise<void> {
   // Swept on `recorded_at`, as `accepted_risks` is and for the same reason. 1,068 heap pages to 2.
   await sql.query(
     `create index if not exists applicability_by_sweep on ${schema}.applicability_decisions (recorded_at asc)`
+  );
+  // For the register's newest-revision read, as `accepted_risks_newest_revision` is.
+  await sql.query(
+    `create index if not exists applicability_newest_revision on ${schema}.applicability_decisions (id, revision desc)`
   );
 
   /*

@@ -10,6 +10,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { readHealth, type Health, type Dependency, type Reading } from './health.js';
+import type { AuditGap } from '../store/audit-gaps.js';
 
 const NOW = new Date('2026-08-04T09:00:00.000Z');
 const LAST_RUN = new Date('2026-08-03T22:00:00.000Z');
@@ -198,6 +199,108 @@ describe('what the app could not record', () => {
     expect(reading(health, 'audit-log').standing).toBe('unknown');
     expect(health.unrecorded).toBe(0);
     expect(health.well).toBe(true);
+  });
+});
+
+/*
+ * What outlives a restart, and what does not.
+ *
+ * The count above is held in memory by one instance, so it says nothing about an event lost before the
+ * last deploy or by another replica. The markers are in the database, so these readings are about what
+ * is true whichever instance answered and whenever the loss happened.
+ */
+describe('events lost that a marker survived', () => {
+  const GAP: AuditGap = {
+    id: 'event-9',
+    at: new Date('2026-08-03T11:30:00.000Z'),
+    actor: 'dana@example.com',
+    action: 'attestation.record',
+    outcome: 'performed',
+    target: { kind: 'control', id: 'OE-02-04' },
+    cause: 'AuditAppendError',
+  };
+
+  it('is degraded for a gap this instance never saw, because the count above would read clean', async () => {
+    // A restart zeroes the count and another replica never had it, which is the case the markers exist
+    // for: `unrecorded` is 0 and an event is still missing from the trail.
+    const health = await readHealth({ ...well(), auditGaps: { gaps: [GAP], truncated: false } });
+
+    const trail = reading(health, 'audit-log');
+    expect(trail.standing).toBe('degraded');
+    expect(trail.detail).toContain('1 lost audit event is recorded');
+    expect(trail.detail).toContain('not been acknowledged');
+    expect(health.unrecorded).toBe(0);
+    expect(health.well).toBe(false);
+  });
+
+  it('serves the gaps themselves, not only that there are some', async () => {
+    const health = await readHealth({ ...well(), auditGaps: { gaps: [GAP], truncated: false } });
+
+    expect(health.gaps).toEqual({ gaps: [GAP], truncated: false });
+  });
+
+  it('counts events in the plural and says when the list is only the newest of them', async () => {
+    const health = await readHealth({
+      ...well(),
+      auditGaps: { gaps: [GAP, { ...GAP, id: 'event-10' }], truncated: true },
+    });
+
+    const trail = reading(health, 'audit-log');
+    expect(trail.detail).toContain('At least 2 lost audit events are recorded');
+  });
+
+  it('says what acknowledging does and does not do', async () => {
+    // Acknowledging says somebody has looked. It does not bring the event back, and a reader who took
+    // it for a repair would stop looking for what the act changed.
+    const trail = reading(
+      await readHealth({ ...well(), auditGaps: { gaps: [GAP], truncated: false } }),
+      'audit-log'
+    );
+
+    expect(trail.action).toContain('Acknowledging');
+    expect(trail.action).toContain('does not recover');
+  });
+
+  it('is answering once every gap is acknowledged, and says there is nothing left to acknowledge', async () => {
+    const health = await readHealth({ ...well(), auditGaps: { gaps: [], truncated: false } });
+
+    expect(reading(health, 'audit-log').standing).toBe('answering');
+    expect(health.gaps).toEqual({ gaps: [], truncated: false });
+    expect(health.well).toBe(true);
+  });
+
+  it('reports a gap on top of this instance’s own count rather than instead of it', async () => {
+    const trail = reading(
+      await readHealth({ ...well(), unrecorded: 2, auditGaps: { gaps: [GAP], truncated: false } }),
+      'audit-log'
+    );
+
+    expect(trail.detail).toContain('2 actions could not be written');
+    expect(trail.detail).toContain('1 lost audit event is recorded');
+  });
+
+  it('labels the in-memory count as this instance’s, since another instance has its own', async () => {
+    const trail = reading(await readHealth({ ...well(), unrecorded: 3 }), 'audit-log');
+
+    expect(trail.detail).toContain('since this instance last started');
+    expect(trail.detail).not.toContain('since this app last started');
+  });
+
+  it('does not call a trail clean when the markers could not be read', async () => {
+    // Failing to read them is not evidence there are none. A page that answered "nothing lost" from a
+    // read that threw would be the worst reading this module could give.
+    const health = await readHealth({ ...well(), auditGapsUnreadable: 'the database did not answer' });
+
+    const trail = reading(health, 'audit-log');
+    expect(trail.standing).toBe('degraded');
+    expect(trail.detail).toContain('could not be read');
+    expect(trail.detail).toContain('the database did not answer');
+    expect(health.gaps).toBeUndefined();
+    expect(health.gapsUnreadable).toBe('the database did not answer');
+  });
+
+  it('reports nothing about gaps on an install that keeps no markers', async () => {
+    expect((await readHealth(well())).gaps).toBeUndefined();
   });
 });
 

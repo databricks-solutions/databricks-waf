@@ -1,9 +1,10 @@
 import { InvalidAttestationError, draftFrom } from "../attest/attestation.js";
 import { registerAttestation } from "../attest/register.js";
+import { projectResultPayload, projectReviewPayload } from "../share/projection.js";
 import { assessmentOf } from "./assessment-query.js";
 import { InvalidReviewError, answered, confirmed, openedFor, pillarEvidenceManifest, selectedPillarsOf, skipped } from "../review/review.js";
 import { publicationOf } from "../review/final-assessment.js";
-import { FinalAssessmentProjectionError } from "../review/projection.js";
+import { CitedAnswerLapsedError, FinalAssessmentProjectionError } from "../review/projection.js";
 import { eligible, ineligible } from "../shared/api/eligibility.js";
 //#region server/api/review-routes.ts
 const NO_STORE = "This installation is not keeping reviews, so there is nowhere to put one. Bind a database and restart, and a confirm or a skip will survive a deploy.";
@@ -12,6 +13,8 @@ const NO_ANSWERS = "This installation is not keeping answers, so a requirement c
 function registerReviewRoutes(app, options) {
 	const now = options.now ?? (() => /* @__PURE__ */ new Date());
 	const newId = options.newId ?? (() => crypto.randomUUID());
+	/** A review as this request's reader may see it: the frozen result inside it carries the findings' evidence. */
+	const shownReview = async (request, record, store) => projectReviewPayload(presentReview(record, store, options.reviewStorage), await options.reader(request));
 	app.get("/api/reviews", async (request, response) => {
 		const store = options.reviews;
 		if (store == null) {
@@ -19,10 +22,10 @@ function registerReviewRoutes(app, options) {
 			return;
 		}
 		try {
-			const open = await store.openReviews(assessmentOf(request));
+			const open = (await store.openReviews(assessmentOf(request))).filter((one) => one.review.definitionId != null);
 			const payload = {
 				eligibility: eligible(),
-				reviews: open.map((one) => presentReview(one, store, options.reviewStorage)),
+				reviews: await Promise.all(open.map((one) => shownReview(request, one, store))),
 				durable: store.durable,
 				...store.durable ? {} : { durabilityNote: options.reviewStorage ?? NOT_DURABLE }
 			};
@@ -51,7 +54,7 @@ function registerReviewRoutes(app, options) {
 				gateFailure(response, 404, ineligible("unknown", "unknown-review", `There is no review of scan ${runId}.`, "Open the review created for this exact run, or start the review and retry."));
 				return;
 			}
-			response.json(dated(presentReview(got, store, options.reviewStorage)));
+			response.json(dated(await shownReview(request, got, store)));
 		} catch (cause) {
 			readFailure(response, "review", cause);
 		}
@@ -73,7 +76,7 @@ function registerReviewRoutes(app, options) {
 				gateFailure(response, 404, ineligible("unknown", "unknown-review", "There is no review with that id.", "Return to the Review page and open a review that exists."));
 				return;
 			}
-			response.json(dated(presentReview(got, store, options.reviewStorage)));
+			response.json(dated(await shownReview(request, got, store)));
 		} catch (cause) {
 			readFailure(response, "review", cause);
 		}
@@ -89,7 +92,7 @@ function registerReviewRoutes(app, options) {
 			const resultEligibility = result == null ? ineligible("unknown", "result-unknown", "No report has been published yet.", "Complete every selected pillar in an open review to publish the first report.") : eligibilityOfResult(result, options.pillars);
 			const payload = {
 				eligibility: resultEligibility,
-				...result != null && resultEligibility.eligible ? { result: presentResult(result) } : {},
+				...result != null && resultEligibility.eligible ? { result: projectResultPayload(presentResult(result), await options.reader(request)) } : {},
 				durable: store.durable,
 				...store.durable ? {} : { durabilityNote: options.reviewStorage ?? NOT_DURABLE }
 			};
@@ -151,7 +154,7 @@ function registerReviewRoutes(app, options) {
 				gateFailure(response, 409, resultEligibility);
 				return;
 			}
-			response.json(dated(presentResult(result)));
+			response.json(dated(projectResultPayload(presentResult(result), await options.reader(request))));
 		} catch (cause) {
 			readFailure(response, "result", cause, "report");
 		}
@@ -555,7 +558,7 @@ async function refuse(response, act, status, error, message) {
 }
 function respond(response, cause, options, writeStarted) {
 	if (cause instanceof FinalAssessmentProjectionError) {
-		gateFailure(response, 409, ineligible("incomplete", "final-assessment-refused", cause.message, "Correct the named review input and retry this exact pillar decision."));
+		gateFailure(response, 409, ineligible("incomplete", "final-assessment-refused", cause.message, cause instanceof CitedAnswerLapsedError ? "Renew the expired answer, then run a new scan and start a new review from it." : "Correct the named review input and retry this exact pillar decision."));
 		return;
 	}
 	if (cause instanceof InvalidReviewError) {

@@ -23,6 +23,7 @@ import { InMemoryReviewStore, type ReviewStore } from '../review/store.js';
 import { InMemoryAttestationStore, type AttestationStore } from '../attest/store.js';
 import type { Attestation } from '../attest/attestation.js';
 import type { CatalogueControl } from '../catalogue/catalogue.js';
+import { CitedAnswerLapsedError } from '../review/projection.js';
 import { customerReviewMessage, registerReviewRoutes, type ReviewRouteOptions } from './review-routes.js';
 
 describe('customer review errors', () => {
@@ -75,6 +76,13 @@ class UnreadableReviewStore extends InMemoryReviewStore {
   }
 }
 
+/** A store whose final write finds that a cited answer lapsed after its pillar was confirmed. */
+class CitedAnswerLapsesBeforeFinalPillar extends InMemoryReviewStore {
+  override record(): ReturnType<ReviewStore['record']> {
+    return Promise.reject(new CitedAnswerLapsedError('att-lapsed'));
+  }
+}
+
 class FailsFirstPillarWrite extends InMemoryReviewStore {
   private failed = false;
 
@@ -120,6 +128,9 @@ async function serve(
   let minted = 0;
 
   registerReviewRoutes(app, {
+    // These tests are about the route's own decisions, and read as an assessor so every field is in
+    // the body; what a reader outside the group is shown is held by `sharing-routes.test.ts`.
+    reader: () => Promise.resolve({ assessor: true, group: 'waf-assessors' }),
     ...(over.omitStore === true ? {} : { reviews }),
     reviewStorage: 'Kept in the waf schema of the bound database.',
     scans,
@@ -264,6 +275,53 @@ async function opened(base: string, scans: ScanStore, over: Partial<Scan> = {}):
 }
 
 describe('opening a review', () => {
+  it('keeps a custom run out of the open review inbox while retaining its exact record', async () => {
+    const { base, scans } = await serve();
+    const review = await opened(base, scans, { stamp: { ...scan().stamp, definition: undefined } });
+
+    const open = await read<OpenReviewsPayload>(base, '/api/reviews?definitionId=');
+    const exact = await read<AssessmentReviewPayload>(base, `/api/reviews/${review.id}?definitionId=`);
+
+    expect(open.reviews).toEqual([]);
+    expect(exact).toMatchObject({ id: review.id, runId: review.runId });
+  });
+
+  it('keeps a partly reviewed assessment open while another assessment starts, then resumes the first', async () => {
+    const { base, scans } = await serve();
+    const first = await opened(base, scans, { id: 'scan-a' });
+    const firstDecision = await send(base, `/api/reviews/${first.id}/pillars/reliability/skip`);
+    expect(firstDecision.status).toBe(201);
+
+    const second = await opened(base, scans, {
+      id: 'scan-b',
+      stamp: { ...scan().stamp, definition: { id: 'definition-2', version: 1, fingerprint: 'second' } },
+    });
+    expect(second.id).not.toBe(first.id);
+    const secondDecision = await send(
+      base,
+      `/api/reviews/${second.id}/pillars/security-compliance-and-privacy/skip?definitionId=definition-2`
+    );
+    expect(secondDecision.status).toBe(201);
+
+    const firstInbox = await read<OpenReviewsPayload>(base, '/api/reviews?definitionId=definition-1');
+    const secondInbox = await read<OpenReviewsPayload>(base, '/api/reviews?definitionId=definition-2');
+    expect(firstInbox.reviews).toMatchObject([
+      { id: first.id, runId: 'scan-a', pillars: [{ pillarId: 'reliability' }] },
+    ]);
+    expect(secondInbox.reviews).toMatchObject([
+      { id: second.id, runId: 'scan-b', pillars: [{ pillarId: 'security-compliance-and-privacy' }] },
+    ]);
+    expect((await send(base, `/api/reviews/${first.id}?definitionId=definition-2`, undefined, 'GET')).status).toBe(404);
+
+    const resumed = await send(base, `/api/reviews/${first.id}/pillars/security-compliance-and-privacy/skip`);
+    expect(resumed.status).toBe(201);
+    expect(resumed.body).toMatchObject({ id: first.id, runId: 'scan-a', result: { runId: 'scan-a' } });
+    const stillOpen = await read<OpenReviewsPayload>(base, '/api/reviews?definitionId=definition-2');
+    expect(stillOpen.reviews).toMatchObject([
+      { id: second.id, runId: 'scan-b', pillars: [{ pillarId: 'security-compliance-and-privacy' }] },
+    ]);
+  });
+
   it('stores it against the scan in the body and records the act against the run', async () => {
     const { base, scans, audit } = await serve();
     const review = await opened(base, scans);
@@ -411,13 +469,22 @@ describe('confirm-current', () => {
     });
   });
 
-  it('refuses unanswered and due manual work before a record is written', async () => {
+  it('refuses expired and unanswered manual work before a record is written', async () => {
     const { base, scans, attestations, reviews, audit } = await serve({
-      requirementsFor: () => [CONTROLS['SCP-01-01'], { ...CONTROLS['SCP-01-01'], id: 'SCP-01-02' }],
+      requirementsFor: () => [
+        CONTROLS['SCP-01-01'],
+        { ...CONTROLS['SCP-01-01'], id: 'SCP-01-02' },
+        { ...CONTROLS['SCP-01-01'], id: 'SCP-01-03' },
+      ],
     });
+    // Due for renewal at NOW, which still counts, so only the other two are asked about.
     await attestations.record({
       ...attestation('att-due', 'SCP-01-01', new Date('2026-08-20T09:00:00.000Z')),
       attestedAt: new Date('2026-07-21T09:00:00.000Z'),
+    });
+    await attestations.record({
+      ...attestation('att-expired', 'SCP-01-02', new Date('2026-08-12T09:00:00.000Z')),
+      attestedAt: new Date('2026-05-14T09:00:00.000Z'),
     });
     const review = await opened(base, scans);
 
@@ -455,6 +522,25 @@ describe('confirm-current', () => {
 
     expect(status).toBe(400);
     expect(body).toMatchObject({ error: 'invalid-review' });
+  });
+});
+
+describe('finalisation refused because a cited answer lapsed', () => {
+  it('tells the reader to renew the answer and start a new review from a new scan', async () => {
+    const { base, scans } = await serve({
+      reviews: new CitedAnswerLapsesBeforeFinalPillar({ pillars: PILLARS }),
+    });
+    const review = await opened(base, scans);
+
+    const { status, body } = await send(base, `/api/reviews/${review.id}/pillars/reliability/skip`);
+
+    expect(status).toBe(409);
+    const refusal = body as { error: string; message: string; action: string };
+    expect(refusal.message).toContain('att-lapsed');
+    expect(refusal.action).toContain('Renew the expired answer');
+    expect(refusal.action).toContain('new scan');
+    expect(refusal.action).toContain('new review');
+    expect(refusal.action).not.toContain('retry this exact pillar decision');
   });
 });
 

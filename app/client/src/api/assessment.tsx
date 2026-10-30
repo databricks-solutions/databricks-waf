@@ -98,7 +98,9 @@ function AssessmentDataProvider({
       setFresh(scan);
       setLost(undefined);
       const reviewId = scan.finalisation?.reviewId;
-      setCompletedReview(reviewId == null ? undefined : { runId: scan.id, reviewId });
+      setCompletedReview(
+        reviewId == null ? undefined : { runId: scan.id, reviewId, definitionId: scan.stamp.definition?.id ?? null }
+      );
       inFlight.check();
     },
     [inFlight]

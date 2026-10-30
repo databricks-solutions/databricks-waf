@@ -1,5 +1,5 @@
 import { shippedConfigDirectory } from "../shipped-config.js";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 //#region server/methodology/identity.ts
 function record(path) {
@@ -63,10 +63,38 @@ function publicMethodologyFrom(releaseValue, manifestValue) {
 		...approvedBy != null ? { approvedBy } : {}
 	};
 }
-function load(moduleUrl) {
-	const directory = shippedConfigDirectory("methodology", moduleUrl);
-	return publicMethodologyFrom(record(join(directory, "version-1.release.json")), record(join(directory, "version-1.manifest.json")));
+/** The public versions with a release record in `directory`, ascending. */
+function versionsIn(directory) {
+	const versions = readdirSync(directory).map((name) => /^version-(\d+)\.release\.json$/.exec(name)?.[1]).filter((digits) => digits != null).map(Number).sort((left, right) => left - right);
+	if (versions.length === 0) throw new Error("No methodology release record ships with this build.");
+	return versions;
 }
-const PUBLIC_METHODOLOGY = load(import.meta.url);
+/**
+* Load every shipped methodology version, ascending.
+*
+* A version's file name and the version its own record claims must agree, and only the highest version
+* may still be a candidate: an older candidate would be a release that was abandoned half way, and
+* nothing could say which of the two a record stamped with it belongs to.
+*/
+function shippedMethodologiesIn(directory) {
+	const loaded = versionsIn(directory).map((version) => {
+		const identity = publicMethodologyFrom(record(join(directory, `version-${String(version)}.release.json`)), record(join(directory, `version-${String(version)}.manifest.json`)));
+		if (identity.publicVersion !== version) throw new Error(`version-${String(version)}.release.json names public version ${String(identity.publicVersion)}.`);
+		return identity;
+	});
+	for (const older of loaded.slice(0, -1)) if (older.state !== "released") throw new Error(`Methodology Version ${String(older.publicVersion)} is superseded but was never released.`);
+	return loaded;
+}
+function load(moduleUrl) {
+	return shippedMethodologiesIn(shippedConfigDirectory("methodology", moduleUrl));
+}
+/** Every public methodology version this build ships, oldest first. Older released versions stay frozen. */
+const SHIPPED_METHODOLOGIES = load(import.meta.url);
+/** The highest shipped version: the one stamped on records created by this build. */
+const PUBLIC_METHODOLOGY = (() => {
+	const highest = SHIPPED_METHODOLOGIES.at(-1);
+	if (highest == null) throw new Error("No methodology release record ships with this build.");
+	return highest;
+})();
 //#endregion
-export { PUBLIC_METHODOLOGY, publicMethodologyFrom };
+export { PUBLIC_METHODOLOGY, SHIPPED_METHODOLOGIES, publicMethodologyFrom, shippedMethodologiesIn };

@@ -20,7 +20,9 @@ async function readHealth(sources = {}) {
 		at: now,
 		readings,
 		well: !readings.some((reading) => reading.standing === "degraded" || reading.standing === "silent"),
-		unrecorded: sources.unrecorded ?? 0
+		unrecorded: sources.unrecorded ?? 0,
+		...sources.auditGaps != null ? { gaps: sources.auditGaps } : {},
+		...sources.auditGapsUnreadable != null ? { gapsUnreadable: sources.auditGapsUnreadable } : {}
 	};
 }
 /**
@@ -133,6 +135,12 @@ async function identityReading(sources, now) {
 * operator does different things about them. It is also the only reading here that reports a fault
 * which has already happened and cannot be undone: an event that was not written is gone, and
 * nothing an operator does now recovers it. Which is exactly why it is volunteered.
+*
+* Two views of the same loss, and they answer different questions. The count is this instance's and
+* lives in memory, so it says what is going wrong now and is zero after a restart or on another
+* replica. The markers are in the database, so they say what is missing whichever instance is asked
+* and however long ago it was lost, until somebody acknowledges it. A reading that had only the first
+* would be clean on the page of the first deploy after an outage.
 */
 function auditReading(sources, now) {
 	if (sources.unrecorded == null) return {
@@ -142,6 +150,9 @@ function auditReading(sources, now) {
 		at: now,
 		detail: "This install records no audit events, so there is no trail to report on."
 	};
+	const marked = markedSentence(sources.auditGaps);
+	const outstanding = [marked, sources.auditGapsUnreadable == null ? "" : `The markers for lost audit events could not be read (${sources.auditGapsUnreadable}), so this install cannot say whether any exist.`].filter((one) => one !== "").join(" ");
+	const acknowledging = "Acknowledging a gap, in the list below, says that somebody has looked at it. It does not recover the event or change the trail, so what happened has to come from elsewhere.";
 	if (sources.unrecorded > 0) {
 		const strict = sources.auditPosture === "strict";
 		return {
@@ -149,10 +160,18 @@ function auditReading(sources, now) {
 			standing: "degraded",
 			provenance: "probed",
 			at: now,
-			detail: `${String(sources.unrecorded)} ${sources.unrecorded === 1 ? "action" : "actions"} could not be written to the trail since this app last started. They happened; the record of them did not. A gap in the trail is not a gap in what was done.` + (strict ? " This install refuses an action it cannot reach the trail to record, so a count here is what that check could not prevent: a record that failed after the trail had answered, or a refusal the gate had already made before the check could run." : ""),
-			action: strict ? "The cause is the database reading above. Refusing before the action does not prevent this, so the count is a real gap: read it as you would on any install. If the trail stops answering altogether, the symptom changes — changes start being refused rather than going unrecorded." : "The cause is the database reading above. Once it answers, new events are recorded again — the ones already missed cannot be recovered, so what happened during the gap has to come from elsewhere."
+			detail: `${String(sources.unrecorded)} ${sources.unrecorded === 1 ? "action" : "actions"} could not be written to the trail since this instance last started. They happened; the record of them did not. A gap in the trail is not a gap in what was done.` + (strict ? " This install refuses an action it cannot reach the trail to record, so a count here is what that check could not prevent: a record that failed after the trail had answered, or a refusal the gate had already made before the check could run." : "") + (outstanding === "" ? "" : ` ${outstanding}`),
+			action: (strict ? "The cause is the database reading above. Refusing before the action does not prevent this, so the count is a real gap: read it as you would on any install. If the trail stops answering altogether, the symptom changes — changes start being refused rather than going unrecorded." : "The cause is the database reading above. Once it answers, new events are recorded again — the ones already missed cannot be recovered, so what happened during the gap has to come from elsewhere.") + (marked === "" ? "" : ` ${acknowledging}`)
 		};
 	}
+	if (outstanding !== "") return {
+		dependency: "audit-log",
+		standing: "degraded",
+		provenance: "probed",
+		at: now,
+		detail: `This instance has not lost any since it started. ${outstanding}`,
+		action: marked === "" ? "The cause is the database reading above. Once it answers, the list of lost events can be read again." : acknowledging
+	};
 	if (sources.auditDurable === false) return {
 		dependency: "audit-log",
 		standing: "degraded",
@@ -166,8 +185,21 @@ function auditReading(sources, now) {
 		standing: "answering",
 		provenance: "probed",
 		at: now,
-		detail: "Every action since this app last started has been written to the trail. " + (sources.auditPosture === "strict" ? "An action this app cannot record is refused rather than performed, so a change that is not in the trail did not happen — except for a record that fails after the trail has answered, which would show as a count above." : "An action this app cannot record still stands, and the count above is how many there have been.")
+		detail: "Every action since this instance last started has been written to the trail" + (sources.auditGaps == null ? ". " : ", and no lost event is waiting to be acknowledged. ") + (sources.auditPosture === "strict" ? "An action this app cannot record is refused rather than performed, so a change that is not in the trail did not happen — except for a record that fails after the trail has answered, which would show as a count above." : "An action this app cannot record still stands, and the count above is how many there have been.")
 	};
+}
+/**
+* The gaps that are waiting, as a sentence, or nothing when there are none.
+*
+* Says where they are held, because that is what makes the number different from the count beside it:
+* these are in the database and so are reported by every instance, and a restart does not clear them.
+* "At least" when the list was cut short, since a page that said "100" of a hundred and one would be
+* reporting its own limit as the size of the problem.
+*/
+function markedSentence(gaps) {
+	const count = gaps?.gaps.length ?? 0;
+	if (gaps == null || count === 0) return "";
+	return `${gaps.truncated ? "At least " : ""}${String(count)} lost audit ${count === 1 ? "event is" : "events are"} recorded as ${count === 1 ? "a gap" : "gaps"} in the trail and ${count === 1 ? "has" : "have"} not been acknowledged. They are held in the database, so every instance reports them and a restart does not clear them.`;
 }
 /**
 * A cause, in as few words as carry information.

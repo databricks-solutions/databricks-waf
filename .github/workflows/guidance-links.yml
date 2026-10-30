@@ -49,14 +49,14 @@ jobs:
       run:
         working-directory: app
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # Full history, because the report's whole job is telling a rename
           # upstream from a mistake here, and it does that from the date each URL
           # entered the repository. A shallow clone makes every failure unknown.
           fetch-depth: 0
 
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
           cache: npm
@@ -67,7 +67,7 @@ jobs:
       - name: Fetch every cited reference
         run: npm run check:guidance-links -- --report ../guidance-links-report.md
 
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: guidance-links-report
@@ -79,7 +79,7 @@ jobs:
       # in front of the person who caused it, so an issue would be noise.
       - name: Open an issue on a broken reference
         if: failure() && github.event_name == 'schedule'
-        uses: actions/github-script@v9
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
             const fs = require('fs');

@@ -211,6 +211,17 @@ export interface Finding {
    * best-established finding in the assessment.
    */
   readonly attested?: AttestedFact;
+  /**
+   * Set when `partial` is the ceiling of what the platform can show rather than a shortfall it
+   * measured, so a current answer may lift it to `pass`.
+   *
+   * Carried on the finding rather than left on the resolution because two things read it after the
+   * resolver is gone. The answers page keeps a capped requirement on it however the scan turned out,
+   * and the final review re-applies a cited answer to a stored finding with no resolver in the path.
+   * It stays set once the answer has lifted the outcome, so the lift can be taken back when the answer
+   * is not cited. Absent on every other finding, including a `partial` that is a measured shortfall.
+   */
+  readonly capped?: true;
 }
 
 /** The parts of an attestation a reader of the finding needs, without the storage record. */
@@ -230,8 +241,13 @@ export interface AttestedFact {
    * has to be able to report how much of itself is attested rather than observed. Without
    * this, an attestation recorded against a requirement the app went on to measure would
    * count towards that figure and overstate how much of the assessment is self-reported.
+   *
+   * `co-signed` is the third case: the app measured the requirement up to a cap, and a current "met"
+   * answer lifted it past the cap. The outcome rests on both, so it counts as an answered outcome
+   * everywhere the score reports how much of itself somebody said (`decidedByAnswer`), and the
+   * measurement stays on the finding beside it.
    */
-  readonly bearing: 'outcome' | 'record';
+  readonly bearing: 'outcome' | 'record' | 'co-signed';
   readonly by: string;
   readonly at: Date;
   /** What the attester said the answer rests on. */
@@ -241,6 +257,18 @@ export interface AttestedFact {
   readonly evidenceUrl?: string;
   /** After this the answer stops counting and the requirement returns to unmeasured. */
   readonly reviewBy: Date;
+}
+
+/**
+ * Whether somebody's answer is part of what decided the outcome.
+ *
+ * True of an answer that settled a requirement the app could not read, and of one that lifted a
+ * measurement past its cap. False of one recorded beside a measurement that decided it alone, and of
+ * a finding with no answer. Everything that asks how much of a result is self-reported asks this, so
+ * a third bearing is one edit here rather than a search for every `=== 'outcome'`.
+ */
+export function decidedByAnswer(attested: Pick<AttestedFact, 'bearing'> | undefined): boolean {
+  return attested != null && attested.bearing !== 'record';
 }
 
 /**

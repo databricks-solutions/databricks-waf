@@ -16,6 +16,12 @@
 // a run having a single answer. An install with one replica needs both, because the second is what a
 // restart mid-run walks into.
 //
+// Neither of those can see another instance, and an install may be served by several. So `open` also
+// admits at most one live run of each kind across all of them — see `PostgresRunStore.open` — and this
+// turns that refusal into the in-progress error a caller already knows how to answer, naming the run.
+// A trigger this instance can already see is refused before anything is written, so the common case of
+// pressing scan twice costs no round trip and leaves no failed run behind.
+//
 // # Why the heartbeat is a timer and the cancel flag is a poll
 //
 // Both are "check the database periodically" and they are deliberately different mechanisms. The
@@ -29,18 +35,21 @@ import { randomUUID } from 'node:crypto';
 
 import type { SignalId, SignalResult } from '../collect/signal.js';
 import type { Scan, ScanTrigger } from '../scan/scan.js';
-import { DEFAULT_LOOKBACK_DAYS, type ScanRequest, type ScanRunner } from '../scan/runner.js';
+import { DEFAULT_LOOKBACK_DAYS, ScanInProgressError, type ScanRequest, type ScanRunner } from '../scan/runner.js';
 import type { Advisory } from '../advise/advisory.js';
-import type { AdvisoryRunner, AdvisoryRunRequest } from '../advise/runner.js';
+import { AdvisoryInProgressError, type AdvisoryRunner, type AdvisoryRunRequest } from '../advise/runner.js';
 import {
   HEARTBEAT_SECONDS,
+  RunAdmissionRefused,
   answered,
   endedAs,
   joinable,
+  live,
   refusalMeans,
   resumeFrom,
   unheld,
   type Run,
+  type RunKind,
   type RunRequest,
 } from './run.js';
 import type { RunAttempt } from './run.js';
@@ -120,14 +129,17 @@ export class Runs {
   private readonly heartbeatMs: number;
   private readonly now: () => Date;
   /**
-   * The run this process is collecting, while it is collecting it.
+   * The run this process is collecting, per kind, while it is collecting it.
    *
    * Kept here rather than read back from the store because the question it answers is about this
-   * process: `/api/scan/status` reports what is running *here*, and a page watching a scan it started
-   * needs the run's name to link to what became of it. Reading the store for that would report a run
-   * another replica holds as though this one were running it.
+   * process: the in-progress refusal and the status of a scan this process started need the run's name,
+   * and which run *another* instance holds is for `live` to say. Per kind because an assessment and an
+   * advisory run may be going at once, and one pointer would have whichever started last hide the other.
+   *
+   * Set only for an attempt that actually started collecting, and cleared only by that attempt: a
+   * trigger that was refused must leave the pointer of the run that is still going as it found it.
    */
-  private held: string | undefined;
+  private readonly held: Partial<Record<RunKind, string>> = {};
 
   constructor(private readonly options: RunsOptions) {
     this.holder = options.holder ?? `${process.pid.toString()}-${randomUUID().slice(0, 8)}`;
@@ -148,19 +160,28 @@ export class Runs {
   ): Promise<Triggered> {
     const asked = requestOf(request, this.options.defaultLookbackDays);
     const at = this.now();
-    const { run, created } = await this.options.store.open({
-      id: randomUUID(),
-      kind: 'assessment',
-      actor: who.actor,
-      trigger: request.trigger ?? 'interactive',
-      ...(who.idempotencyKey != null ? { idempotencyKey: who.idempotencyKey } : {}),
-      request: asked,
-      requestedAt: at,
-    });
+    await this.refuseIfBusy('assessment', who.idempotencyKey);
+    const { run, created } = await this.options.store
+      .open({
+        id: randomUUID(),
+        kind: 'assessment',
+        actor: who.actor,
+        trigger: request.trigger ?? 'interactive',
+        ...(who.idempotencyKey != null ? { idempotencyKey: who.idempotencyKey } : {}),
+        request: asked,
+        requestedAt: at,
+      })
+      .catch((cause: unknown) => {
+        throw this.inProgress('assessment', cause);
+      });
 
     if (!created) {
       const refusal = joinable(run, { actor: who.actor, kind: 'assessment', request: asked }, at);
       if (refusal != null) throw new RunNotJoinable(run, refusal);
+      // A run being taken back up is claimed before the runner is asked, so a scan already collecting
+      // here has to be seen now: claiming first would leave the run an attempt it never made.
+      const busy = this.busy('assessment');
+      if (busy != null) throw busy;
     }
 
     const attempt = await this.options.store.claim(run.id, this.holder, at);
@@ -182,8 +203,10 @@ export class Runs {
       resumed: !created || reached.size > 0,
       resumedFrom: reached.size,
       scan: this.collect(
+        'assessment',
         attempt,
         reached,
+        () => this.options.runner.running() != null,
         (resumption) => this.options.runner.start({ ...request, ...resumption }),
         (scan) => ({ scanId: scan.id })
       ),
@@ -213,19 +236,26 @@ export class Runs {
 
     const asked = adviceOf(request, this.options.defaultLookbackDays);
     const at = this.now();
-    const { run, created } = await this.options.store.open({
-      id: randomUUID(),
-      kind: 'advisory',
-      actor: who.actor,
-      trigger: who.trigger ?? 'interactive',
-      ...(who.idempotencyKey != null ? { idempotencyKey: who.idempotencyKey } : {}),
-      request: asked,
-      requestedAt: at,
-    });
+    await this.refuseIfBusy('advisory', who.idempotencyKey);
+    const { run, created } = await this.options.store
+      .open({
+        id: randomUUID(),
+        kind: 'advisory',
+        actor: who.actor,
+        trigger: who.trigger ?? 'interactive',
+        ...(who.idempotencyKey != null ? { idempotencyKey: who.idempotencyKey } : {}),
+        request: asked,
+        requestedAt: at,
+      })
+      .catch((cause: unknown) => {
+        throw this.inProgress('advisory', cause);
+      });
 
     if (!created) {
       const refusal = joinable(run, { actor: who.actor, kind: 'advisory', request: asked }, at);
       if (refusal != null) throw new RunNotJoinable(run, refusal);
+      const busy = this.busy('advisory');
+      if (busy != null) throw busy;
     }
 
     const attempt = await this.options.store.claim(run.id, this.holder, at);
@@ -241,8 +271,10 @@ export class Runs {
       resumed: !created || reached.size > 0,
       resumedFrom: reached.size,
       advisory: this.collect(
+        'advisory',
         attempt,
         reached,
+        () => advisor.running() != null,
         (resumption) => advisor.start({ ...request, ...resumption, runId: run.id }),
         (advisory) => ({ advisoryId: advisory.id })
       ),
@@ -299,9 +331,26 @@ export class Runs {
     return 'stopping';
   }
 
-  /** The run this process is collecting, or undefined when it is collecting none. */
-  holding(): string | undefined {
-    return this.held;
+  /** The run of a kind this process is collecting, or undefined when it is collecting none. */
+  holding(kind: RunKind = 'assessment'): string | undefined {
+    return this.held[kind];
+  }
+
+  /** Whether a run is this process's own, either because it is collecting it or has just claimed its lease. */
+  owns(run: Pick<Run, 'id' | 'kind' | 'lease'>): boolean {
+    return this.held[run.kind] === run.id || run.lease?.holder === this.holder;
+  }
+
+  /**
+   * The run of a kind that something is working on, wherever it is working.
+   *
+   * Read from the record, so that every instance answers the same: the status of a scan is a fact about
+   * the install, and a page that happened to be served by a different instance from the one that started
+   * it should still be told. Newest first, though admission keeps it to one.
+   */
+  async live(kind: RunKind): Promise<Run | undefined> {
+    const at = this.now();
+    return (await this.options.store.unfinished()).find((run) => run.kind === kind && live(run, at));
   }
 
   async get(runId: string, scope?: AssessmentScope): Promise<Run | undefined> {
@@ -328,6 +377,59 @@ export class Runs {
   }
 
   /**
+   * The refusal for a run of this kind already collecting in this process, or undefined where none is.
+   *
+   * Named with the run this process holds, where it holds one: a scan started outside the coordinator
+   * has no record, and the refusal then says so by carrying none.
+   */
+  private busy(kind: RunKind): ScanInProgressError | AdvisoryInProgressError | undefined {
+    if (kind === 'advisory') {
+      const going = this.options.advisor?.running();
+      return going == null ? undefined : new AdvisoryInProgressError(going.startedAt, going.actor, this.held.advisory);
+    }
+    const going = this.options.runner.running();
+    return going == null ? undefined : new ScanInProgressError(going, this.held.assessment);
+  }
+
+  /**
+   * Turns away a trigger this process can already see will not start, before anything is written.
+   *
+   * Skipped for a key that already names a run. That is a retry, and what it is owed is the answer
+   * `joinable` gives — still being worked on, already finished, somebody else's — rather than a
+   * statement that something is running. A key that names nothing is a new intention like any other and
+   * is refused here; the read costs one round trip against the write and the failed run it avoids.
+   */
+  private async refuseIfBusy(kind: RunKind, key: string | undefined): Promise<void> {
+    const busy = this.busy(kind);
+    if (busy == null) return;
+    if (key != null && (await this.options.store.byKey(key)) != null) return;
+    throw busy;
+  }
+
+  /**
+   * The in-progress error for a run another instance is working on, in the form each kind of run
+   * already answers with. Anything else the store raised passes through as it was.
+   *
+   * What another instance has done so far is not known here, so a scan's call count is reported as zero
+   * rather than guessed: the count is a progress figure for the process doing the work.
+   */
+  private inProgress(kind: RunKind, cause: unknown): unknown {
+    if (!(cause instanceof RunAdmissionRefused)) return cause;
+    const { run } = cause;
+    if (kind === 'advisory') return new AdvisoryInProgressError(run.requestedAt, run.actor, run.id);
+    return new ScanInProgressError(
+      {
+        startedAt: run.requestedAt,
+        actor: run.actor,
+        scope: run.request.scope,
+        trigger: run.trigger,
+        callsMade: 0,
+      },
+      run.id
+    );
+  }
+
+  /**
    * Runs the collection under a claim, and ends the run whatever happens.
    *
    * Every exit writes an ending, including the throw. A run left `running` by a failure is one the
@@ -336,8 +438,10 @@ export class Runs {
    * both true and readable.
    */
   private async collect<T extends { readonly id: string; readonly state: 'complete' | 'partial' }>(
+    kind: RunKind,
     attempt: RunAttempt,
     reached: ReadonlyMap<SignalId, SignalResult>,
+    occupied: () => boolean,
     execute: (resumption: {
       readonly resume?: ReadonlyMap<SignalId, SignalResult>;
       readonly checkpoint: (readings: readonly SignalResult[]) => Promise<void>;
@@ -354,7 +458,10 @@ export class Runs {
     // Node keeps a process alive for a pending timer, which for a fifteen-second beat means a
     // command-line run hanging after its scan is saved.
     beating.unref?.();
-    this.held = attempt.runId;
+    // Whether the executor is free is read here, in the same tick that asks it to start, so that an
+    // attempt it is about to refuse does not take the pointer of the one it is refused for.
+    const started = !occupied();
+    if (started) this.held[kind] = attempt.runId;
 
     try {
       const result = await execute({
@@ -386,7 +493,7 @@ export class Runs {
       clearInterval(beating);
       // Only where it is still this attempt. A takeover started here while this one was finishing would
       // otherwise be forgotten by the attempt it replaced.
-      if (this.held === attempt.runId) this.held = undefined;
+      if (started && this.held[kind] === attempt.runId) delete this.held[kind];
     }
   }
 }

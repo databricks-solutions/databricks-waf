@@ -30,9 +30,10 @@ function configuredGroup(env = process.env) {
 /**
 * Thrown when a caller may not make the change they asked for. Carries the sentence they see.
 *
-* `kind` exists so the refusal reads as one of two distinct events in a log and in a test: a
-* stranger was turned away, or this app could not tell whether they were one. The second is a
-* fault to investigate and the first is the gate working.
+* `kind` exists so the refusal reads as distinct events in a log and in a test: a stranger was
+* turned away, this app could not tell whether they were one, or the identity a header claimed was
+* not the one the workspace verified. The second is a fault to investigate and the others are the
+* gate working.
 */
 var NotPermittedError = class extends Error {
 	kind;
@@ -41,6 +42,20 @@ var NotPermittedError = class extends Error {
 		this.kind = kind;
 	}
 };
+/**
+* Refuses a request whose forwarded identity is not the one the workspace verified for its token.
+*
+* Membership is read from the groups SCIM returned for the token, so the name written beside the
+* act has to be the name SCIM returned for the same token: otherwise a change is authorised for one
+* person and recorded against another. A request with no forwarded identity has nothing to
+* disagree with and passes. Compared case-insensitively, because the proxy lower-cases an email
+* where SCIM may keep its capitals, and that is the same person. Decision A1 in docs/decisions.md.
+*/
+function requireVerifiedIdentity(forwarded, verified) {
+	if (forwarded == null || verified == null) return;
+	if (forwarded.trim().toLowerCase() === verified.trim().toLowerCase()) return;
+	throw new NotPermittedError("identity-mismatch", "The identity forwarded with this request is not the one the workspace verified for its token, so the change was refused rather than recorded under either name. Reading the assessment is unaffected. If this keeps happening for a signed-in user, the proxy in front of the app is passing a header it should have replaced.");
+}
 /**
 * Refuses a caller outside the group, and says which of the two refusals it is.
 *
@@ -76,4 +91,4 @@ function recordRefusal(action, caller, error) {
 	console.warn(`[authorize] refused ${action} to ${caller.actor}: ${error.kind}`);
 }
 //#endregion
-export { GROUP_ENV, NotPermittedError, UnconfiguredGroupError, configuredGroup, recordRefusal, requirePermission };
+export { GROUP_ENV, NotPermittedError, UnconfiguredGroupError, configuredGroup, recordRefusal, requirePermission, requireVerifiedIdentity };

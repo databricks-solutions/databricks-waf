@@ -56,6 +56,25 @@ export interface ProvenancePayload {
   readonly from?: string;
 }
 
+/** What kind of field a placeholder stands in for. Decision D1 in docs/decisions.md. */
+export type WithheldKind = 'statement-text' | 'principal-identifiers' | 'admin-reading';
+
+/**
+ * Stands in for a field this reader may not see, and says why and who can.
+ *
+ * Present where the field would have been, so a client renders a reason instead of a gap. The field
+ * itself is absent or, where the contract makes it required, replaced by `reason` as plain text, so a
+ * consumer that has never heard of this type still reads a sentence and never the restricted value.
+ * Never sent to a direct member of the assessor group, who is sent the field.
+ */
+export interface WithheldPayload {
+  readonly withheld: WithheldKind;
+  /** One sentence naming what is withheld and who can see it. */
+  readonly reason: string;
+  /** The name of the group whose direct members can see the field. */
+  readonly visibleTo: string;
+}
+
 export interface EvidencePayload<TDate = string> {
   readonly signal: string;
   readonly observed: string;
@@ -74,6 +93,12 @@ export interface EvidencePayload<TDate = string> {
    * See server/resolve/locate.
    */
   readonly at?: LocatedPayload;
+  /**
+   * Set where this evidence names a principal or is an administrator's imported reading and the reader
+   * is not an assessor. `observed` then holds the placeholder's `reason`, and `at` and `provenance`
+   * are absent. See `WithheldPayload`.
+   */
+  readonly withheld?: WithheldPayload;
 }
 
 export interface LocatedPayload {
@@ -122,6 +147,8 @@ export interface FindingPayload<TDate = string> {
   readonly remedy?: RemedyPayload;
   /** Present when someone's answer is part of this finding. See `AttestedFactPayload`. */
   readonly attested?: AttestedFactPayload<TDate>;
+  /** Set when `partial` is the ceiling of what the platform can show, so a current answer may lift it. */
+  readonly capped?: true;
   /**
    * How firmly the outcome is established, and what stops it being firmer.
    *
@@ -208,8 +235,12 @@ export interface AttestedFactPayload<TDate = string> {
    * The attestation this fact came from. Absent on scans recorded before the field existed.
    */
   readonly id?: string;
-  /** Whether the outcome rests on this answer, or a measurement decided it and this is beside it. */
-  readonly bearing: 'outcome' | 'record';
+  /**
+   * Whether the outcome rests on this answer, or a measurement decided it and this is beside it.
+   *
+   * `co-signed` is both: the app measured the requirement up to a cap and this answer lifted it past.
+   */
+  readonly bearing: 'outcome' | 'record' | 'co-signed';
   readonly by: string;
   readonly at: TDate;
   readonly statement: string;
@@ -774,6 +805,8 @@ export interface SignalPayload {
   readonly unmeasurableReason?: string;
   readonly durationMs: number;
   readonly provenance?: ProvenancePayload;
+  /** Set where this is an administrator's imported reading and the reader is not an assessor. */
+  readonly withheld?: WithheldPayload;
 }
 
 export interface WorkspaceRefPayload {
@@ -1032,8 +1065,11 @@ export interface ReadinessPayload {
     | { readonly start: true }
     | {
         readonly start: false;
-        /** Turned away, or unable to establish membership at all — a fault rather than a refusal. */
-        readonly refusal: 'not-a-member' | 'membership-unknown';
+        /**
+         * Turned away, unable to establish membership at all (a fault rather than a refusal), or
+         * carrying a forwarded identity that is not the one the workspace verified for the token.
+         */
+        readonly refusal: 'not-a-member' | 'membership-unknown' | 'identity-mismatch';
         readonly message: string;
       };
   /** Whether a warehouse is bound. False means a scan would start and read nothing. */
@@ -1051,8 +1087,8 @@ export interface ReadinessPayload {
 /**
  * A run of the assessment, as the record holds it.
  *
- * Separate from `ScanStatusPayload`, which reports what is happening in *this process* right now and
- * goes back to `{ running: false }` when the process restarts. This is read from the database, so it
+ * Separate from `ScanStatusPayload`, which reports only the run that is being worked on right now and
+ * goes back to `{ running: false }` when its holder stops. This is the whole record, so it
  * answers the question a supervisor actually has — "what became of the run I asked for" — across a
  * restart, a retry and a cancel.
  */
@@ -1408,11 +1444,14 @@ export interface WorkloadShapePayload<TDate = string> {
   /**
    * The head of the representative execution's text.
    *
-   * Shown as it is, not redacted. The app runs inside the customer's own environment against their own
-   * workspace, and the reader already has access to the query history it came from — so redacting it back
-   * from them costs the surface its usefulness for no gain. Absent where the platform recorded none.
+   * Sent to direct members of the assessor group only, because the stored text can name tables and
+   * literals the reader's own grants may not reach: the advisory ran as whoever started it. Everyone
+   * else gets `statementWithheld` in its place. Absent where the platform recorded none. Decision D1
+   * in docs/decisions.md.
    */
   readonly statementText?: string;
+  /** Set where there is text and the reader may not see it. */
+  readonly statementWithheld?: WithheldPayload;
   /** The execution the text and any later plan belong to. */
   readonly statementId?: string;
   readonly representativeAt?: TDate;
@@ -1690,8 +1729,13 @@ export interface WriteShapePayload<TDate = string> {
   readonly totalMs: number;
   readonly firstSeen?: TDate;
   readonly lastSeen?: TDate;
-  /** The largest write of the group, as it was recorded, so a reader has a statement rather than a hash. */
+  /**
+   * The largest write of the group, as it was recorded, so a reader has a statement rather than a hash.
+   *
+   * Restricted the way `WorkloadShapePayload.statementText` is, and replaced by `statementWithheld`.
+   */
   readonly statementText?: string;
+  readonly statementWithheld?: WithheldPayload;
   readonly representativeAt?: TDate;
 }
 
@@ -2391,7 +2435,7 @@ export interface AttestationPayload<TDate = string> {
  * asking of the estates where the reading came back ambiguous — which is why this one is decided
  * per scan rather than per catalogue entry.
  */
-export type AskedBecause = 'no-telemetry' | 'not-authorised' | 'inconclusive';
+export type AskedBecause = 'no-telemetry' | 'not-authorised' | 'inconclusive' | 'capped';
 
 export interface AttestableRequirementPayload<TDate = string> {
   readonly controlId: string;
@@ -2935,6 +2979,8 @@ export interface EvidenceImportPayload<TDate = string> {
    * "the tooling cannot name them" are different claims.
    */
   readonly collectedBy?: string;
+  /** Set where the file names who ran the script and the reader is not an assessor. */
+  readonly collectedByWithheld?: WithheldPayload;
   readonly workspaceTier: boolean;
   readonly accountTier: boolean;
   /** Readings that came back with a value. */
@@ -3150,12 +3196,59 @@ export interface ReadingPayload {
   readonly action?: string;
 }
 
+/**
+ * One audit event that could not be written, as the marker it left.
+ *
+ * Identifiers and the class of the failure, in the register of the trail itself: no payload, and no
+ * driver message, because this is read by the people who read the trail and kept as long as it is.
+ */
+export interface AuditGapPayload {
+  /** The lost event's own id. */
+  readonly id: string;
+  /** When the act was decided. */
+  readonly at: string;
+  readonly actor: string;
+  readonly action: string;
+  /** The act in words, from the same vocabulary the trail page prints. */
+  readonly phrase: string;
+  readonly outcome: 'performed' | 'refused' | 'failed';
+  readonly target?: { readonly kind: string; readonly id: string };
+  /** The class of the failure. Never a message. */
+  readonly cause: string;
+}
+
+/** The lost events nobody has acknowledged, read from the database and so the same from any instance. */
+export interface AuditGapsPayload {
+  /** Newest first. */
+  readonly gaps: readonly AuditGapPayload[];
+  /** True when there are more than `gaps` holds, so a page cannot present the newest as all of them. */
+  readonly truncated: boolean;
+  /** Why they could not be read, when they could not. Then `gaps` is empty and is not an answer. */
+  readonly unreadable?: string;
+}
+
+/** What acknowledging a lost event answers with. */
+export interface AcknowledgedGapPayload {
+  readonly id: string;
+  readonly acknowledgedBy: string;
+  readonly acknowledgedAt: string;
+  /** True when somebody had already acknowledged it, in which case the name and time are theirs. */
+  readonly already: boolean;
+}
+
 /** Everything this install can and cannot reach, in one answer. */
 export interface DiagnosticsPayload {
   readonly at: string;
   readonly well: boolean;
-  /** Acts this process could not write to the trail. Zero on a healthy install. */
+  /**
+   * Acts this instance could not write to the trail since it started. Zero on a healthy install.
+   *
+   * Per instance and in memory: it resets on a restart and another instance has its own. What
+   * survives either is `auditGaps`.
+   */
   readonly unrecorded: number;
+  /** Absent on an install that keeps no markers for lost events. */
+  readonly auditGaps?: AuditGapsPayload;
   readonly readings: readonly ReadingPayload[];
 }
 

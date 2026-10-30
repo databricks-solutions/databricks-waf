@@ -32,7 +32,7 @@ function packageName(path) {
 const lock = JSON.parse(readFileSync(LOCKFILE, 'utf8'));
 const unique = new Map();
 for (const [path, details] of Object.entries(lock.packages)) {
-  if (!path.includes('node_modules/') || details.dev === true || !details.version) continue;
+  if (!path.includes('node_modules/') || details.dev === true || details.devOptional === true || !details.version) continue;
   const name = packageName(path);
   if (name.startsWith('@databricks/')) continue;
   const identifier = `${name}@${details.version}`;
@@ -103,10 +103,19 @@ First-party \`@databricks/*\` packages are governed separately by their publishe
 </details>
 ${README_END}`;
 
+// The count the README states in prose. Replaced rather than rebuilt, so the sentence around it stays
+// editable by hand and only the number is the generator's.
+const README_COUNT = /(The complete production lockfile contains )\d+( third-party package\/version pairs)/;
+
+function withCount(text) {
+  if (!README_COUNT.test(text)) throw new Error('README.md is missing the third-party package count sentence.');
+  return text.replace(README_COUNT, `$1${packages.length}$2`);
+}
+
 const generated = `# Third-party licences
 
 This file inventories every non-development third-party package resolved by the production lockfile for
-Databricks WAF 0.1.0, including optional packages for every supported runtime platform. The application
+Databricks WAF 0.2.0, including optional packages for every supported runtime platform. The application
 itself is governed by the [Databricks License](LICENSE.md). First-party \`@databricks/*\` packages are
 governed separately by their published Apache-2.0 terms and are excluded from this third-party inventory.
 
@@ -133,7 +142,10 @@ if (process.argv.includes('--write')) {
   const start = readme.indexOf(README_START);
   const end = readme.indexOf(README_END);
   if (start < 0 || end < start) throw new Error('README.md is missing the third-party licence markers.');
-  writeFileSync(README, `${readme.slice(0, start)}${readmeBlock}${readme.slice(end + README_END.length)}`);
+  writeFileSync(
+    README,
+    withCount(`${readme.slice(0, start)}${readmeBlock}${readme.slice(end + README_END.length)}`)
+  );
   console.log(`Wrote ${packages.length} third-party package licences and ${directPackages.length} direct libraries.`);
   process.exit(0);
 }
@@ -155,7 +167,7 @@ if (committed !== generated) {
 }
 
 const readme = readFileSync(README, 'utf8');
-if (!readme.includes(readmeBlock)) {
+if (!readme.includes(readmeBlock) || withCount(readme) !== readme) {
   console.error('README.md third-party licence table is stale. Run npm run third-party:licenses.');
   process.exit(1);
 }

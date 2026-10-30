@@ -4,6 +4,7 @@
 // publication, schedule and history context, and it reports only fields the server actually read.
 
 import { Link } from 'react-router';
+import { reviewPath } from '../assessment-continuation';
 import {
   AlertTriangle,
   ArrowRight,
@@ -63,7 +64,7 @@ export function OperatePage() {
 
   return (
     <OperateComposition
-      reviews={open.data?.reviews ?? []}
+      reviews={open.data?.reviews.filter((one) => one.definitionId != null) ?? []}
       scans={history.data?.scans ?? []}
       plans={plans}
       risks={risks.data?.risks ?? []}
@@ -290,7 +291,7 @@ function nextOperatingAction(
           : `Choose from ${String(reviews.length)} open assessment reviews`,
       detail: 'The Dashboard remains unchanged until a review decides every selected pillar.',
       action: reviews.length === 1 ? 'Resume review' : 'Choose a review',
-      to: reviews.length === 1 ? `/review/${review.id}` : '/review',
+      to: reviews.length === 1 ? reviewPath(review.id, review.definitionId ?? '') : '/review',
     };
   }
   const contradicted = plans.find((plan) => plan.progress.contradicted.length > 0);
@@ -413,7 +414,7 @@ function AttentionInbox({
     <ol className="wa-operate-attention-list">
       {reviews.map((review) => (
         <li key={review.id}>
-          <Link to={`/review/${review.id}`}>
+          <Link to={reviewPath(review.id, review.definitionId ?? '')}>
             <span className="wa-operate-attention-icon">
               <CircleDashed aria-hidden />
             </span>
@@ -421,7 +422,12 @@ function AttentionInbox({
               <strong>
                 {scans.get(review.runId)?.trigger === 'scheduled' ? 'Scheduled review' : 'Assessment review'}
               </strong>
-              <span>{remainingPhrase(review.pillars.length, pillarCount)}</span>
+              <span>
+                {remainingPhrase(
+                  review.pillars.length,
+                  review.selectedPillars?.length ?? scans.get(review.runId)?.requestedPillars?.length ?? pillarCount
+                )}
+              </span>
               <small>{reviewTiming(review, scans.get(review.runId), now)}</small>
             </span>
             <ArrowRight aria-hidden />

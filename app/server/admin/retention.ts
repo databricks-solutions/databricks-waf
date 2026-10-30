@@ -428,6 +428,14 @@ export const EXEMPT: readonly { readonly table: string; readonly because: string
       'behind a share changed rather than the estate. The personal data in one is who declared it, ' +
       'and anonymisation is the answer to that rather than deletion.',
   },
+  {
+    table: 'audit_gaps',
+    because:
+      'One row for each audit event this app could not write, and one for each acknowledgement. It is the ' +
+      'only record that the trail is missing something, so a period that aged a marker out before ' +
+      'anybody acknowledged it would delete the evidence it exists to keep. It grows only when an event ' +
+      'is lost, and holds identifiers and a failure class rather than the content of what was done.',
+  },
 ];
 
 /** How many rows a table holds, and how many of them are older than a cutoff. */

@@ -22,6 +22,7 @@ import { InMemorySetupDraftStore, type SetupDraftStore } from '../define/setup-s
 import { InMemoryEvidenceImportStore, PostgresEvidenceImportStore, type EvidenceImportStore } from '../import/store.js';
 import { PostgresSetupDraftStore } from '../define/setup-postgres-store.js';
 import { InMemoryAuditLog, PostgresAuditLog, type AuditLog } from '../store/audit-log.js';
+import { InMemoryAuditGapLog, PostgresAuditGapLog, type AuditGapLog } from '../store/audit-gaps.js';
 import { InMemoryImprovementStore, type ImprovementStore } from '../improve/store.js';
 import { PostgresImprovementStore } from '../improve/postgres-store.js';
 import { InMemoryNoteStore, type NoteStore } from '../note/store.js';
@@ -95,6 +96,14 @@ export interface StoreChoice {
    * belonging on the page that shows the trail.
    */
   readonly audit: AuditLog;
+  /**
+   * Where a mark is left for an audit event that could not be written.
+   *
+   * The same database, and the same reason as the trail for taking the connection rather than the
+   * `durable` wrapper: a marker that failed to write has to reach the recorder, which reports it, and
+   * not be swallowed into a store's error callback as a degraded page.
+   */
+  readonly auditGaps: AuditGapLog;
   /**
    * Where improvement plans and the actions in them are kept.
    *
@@ -312,6 +321,7 @@ export async function chooseStore(options: StoreChoiceOptions = {}): Promise<Sto
       drafts: new InMemorySetupDraftStore(),
       imports: new InMemoryEvidenceImportStore(),
       audit: new InMemoryAuditLog(),
+      auditGaps: new InMemoryAuditGapLog(),
       improvements: new InMemoryImprovementStore(),
       notes: new InMemoryNoteStore(),
       serving: new InMemoryServingStore(),
@@ -366,6 +376,7 @@ export async function chooseStore(options: StoreChoiceOptions = {}): Promise<Sto
     // lost audit row is a hole in the record. The recorder above it decides what to do with the
     // throw, and it counts them — see `AuditRecorder.unrecorded`.
     audit: new PostgresAuditLog(db),
+    auditGaps: new PostgresAuditGapLog(db),
     improvements,
     notes: new PostgresNoteStore(durable),
     serving: new PostgresServingStore(durable),

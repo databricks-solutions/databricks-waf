@@ -39,14 +39,20 @@ import type { AttestableRequirement } from '../api/types';
 const EMPTY: readonly AttestableRequirement[] = [];
 
 /** The list, keeping this pass's scope so leaving mid-pass does not also widen it. */
-function listTo(scope: string): string {
-  return scope === EVERYTHING ? '/answers' : `/answers?pillar=${encodeURIComponent(scope)}`;
+function listTo(scope: string, runId: string | null, definitionId: string | null): string {
+  const query = new URLSearchParams();
+  if (runId != null) query.set('runId', runId);
+  if (definitionId != null) query.set('definitionId', definitionId);
+  if (scope !== EVERYTHING) query.set('pillar', scope);
+  return query.size === 0 ? '/answers' : `/answers?${query.toString()}`;
 }
 
 export function WalkPage() {
   const { catalogue, pillarTitle } = useAssessment();
   const [params, setParams] = useSearchParams();
-  const answers = useAttestations();
+  const runId = params.get('runId');
+  const definitionId = params.get('definitionId');
+  const answers = useAttestations(runId ?? undefined);
   const submission = useSubmitAnswer(answers.reload);
 
   const scope = params.get('pillar') ?? EVERYTHING;
@@ -153,6 +159,15 @@ export function WalkPage() {
 
   return (
     <CustomerPage>
+      {runId != null && definitionId === '' && (
+        <div className="wa-notice-warning flex items-start gap-2" role="status">
+          <AlertTriangle aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-wa-warning" />
+          <p className="wa-body-compact">
+            These answers can be recorded for this custom run. The run was started without a saved assessment, so it
+            cannot publish a report.
+          </p>
+        </div>
+      )}
       {answers.data != null && !answers.data.durable && (
         <div className="wa-notice-warning flex items-start gap-2" role="alert">
           <AlertTriangle aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-wa-warning" />
@@ -176,7 +191,7 @@ export function WalkPage() {
             label="The questions in this pass"
             title="This pass"
             action={
-              <Link className="wa-button-secondary shrink-0" to={listTo(scope)}>
+              <Link className="wa-button-secondary shrink-0" to={listTo(scope, runId, definitionId)}>
                 <List aria-hidden className="h-4 w-4" />
                 All answers
               </Link>

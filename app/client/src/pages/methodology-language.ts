@@ -14,6 +14,8 @@
 // claim about how somebody is being judged, and the ones that are easiest to get wrong are the ones
 // about what a change to a field actually does to a score. Those are worth testing without a renderer.
 
+import { INTERIM_VERSION_1_LABEL, isInterimVersionOne } from '../../../shared/api/methodology-interim';
+
 /**
  * What a field of the scoring shape is, phrased to complete "… moved" or as a column heading.
  *
@@ -74,7 +76,7 @@ export function revisionSentence(
    * there is no revision before it in the record to have differed from. The consequence for a reader is
    * the same and is kept: a score from before this revision cannot be compared with one after.
    */
-  earliest = false,
+  earliest = false
 ): string {
   if (!revision.describes) {
     return earliest
@@ -90,7 +92,9 @@ export function revisionSentence(
     count(revision.changed, 'requirement', 'redefined'),
   ].filter((part): part is string => part != null);
 
-  return parts.length === 0 ? 'Nothing about any requirement moved in this catalogue revision.' : `${parts.join(', ')}.`;
+  return parts.length === 0
+    ? 'Nothing about any requirement moved in this catalogue revision.'
+    : `${parts.join(', ')}.`;
 }
 
 /**
@@ -293,8 +297,47 @@ function thresholdPhrase(thresholds: Readonly<Record<string, number | string | b
     .join(', ');
 }
 
+/** The release a page describes, as far as its wording reads it. */
+interface ReleaseLike {
+  readonly publicVersion: number;
+  readonly state: 'candidate' | 'released';
+}
+
+/** The page title: the version this build ships, and a candidate named as one. */
+export function releaseTitle(release: ReleaseLike): string {
+  return `Methodology Version ${String(release.publicVersion)}${release.state === 'candidate' ? ' candidate' : ''}`;
+}
+
+/** The line under the title. A candidate is described as what it is, so the page never reads as a release. */
+export function releaseSummary(release: ReleaseLike): string {
+  return release.state === 'released'
+    ? 'The released customer standard, scoring method, and exact requirements used by this build.'
+    : `The release candidate for Methodology Version ${String(release.publicVersion)}: the scoring method and exact ` +
+        'requirements this build uses. It is not yet released.';
+}
+
+/**
+ * What a reader of a candidate cannot do with it yet, said once on the page.
+ *
+ * Only where an earlier version is still the released standard. The first candidate has no such version
+ * to point at, and the release summary already says it is not released.
+ */
+export function releaseNotice(release: ReleaseLike): string | undefined {
+  if (release.state === 'released' || release.publicVersion <= 1) return undefined;
+  const earlier = String(release.publicVersion - 1);
+  return (
+    `Version ${earlier} remains the released standard until Version ${String(release.publicVersion)} is approved. ` +
+    `Runs taken under this candidate cannot be compared with Version ${earlier} or earlier scans, because a ` +
+    'different version is a different standard, and they are not eligible for monthly publication until the ' +
+    'release is approved.'
+  );
+}
+
 /**
  * Whether a run records the same public methodology identity this build describes.
+ *
+ * The interim variant of Version 1 is named as what it is wherever it turns up, because its stored stamp
+ * says "Version 1, released" and a reader would otherwise take it for the Version 1 that was.
  */
 export function standingSentence(
   current: {
@@ -310,10 +353,15 @@ export function standingSentence(
         readonly state: 'candidate' | 'released';
         readonly effectiveDate?: string;
       }
-    | undefined,
+    | undefined
 ): string | undefined {
   if (run == null) {
-    return 'The most recent run is a pre-release development record. It does not carry Methodology Version 1.';
+    return `The most recent run is a pre-release development record. It does not carry Methodology Version ${String(current.publicVersion)}.`;
+  }
+  if (isInterimVersionOne(run) && !isInterimVersionOne(current)) {
+    return current.publicVersion === 1
+      ? `The most recent run records the ${INTERIM_VERSION_1_LABEL}, not released Version 1.`
+      : `The most recent run records the ${INTERIM_VERSION_1_LABEL}, not Version ${String(current.publicVersion)}.`;
   }
   if (run.publicVersion !== current.publicVersion) {
     return `The most recent run records Methodology Version ${String(run.publicVersion)}, not Version ${String(current.publicVersion)}.`;

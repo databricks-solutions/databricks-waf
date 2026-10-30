@@ -22,6 +22,7 @@ import {
   type Attestation,
 } from '../attest/attestation.js';
 import { BLOCKED_QUESTIONS } from '../attest/blocked-questions.js';
+import { CAPPED_QUESTIONS } from '../attest/capped-questions.js';
 import { INCONCLUSIVE_QUESTIONS } from '../attest/inconclusive-questions.js';
 import { registerAttestation } from '../attest/register.js';
 import type { AttestationStore } from '../attest/store.js';
@@ -92,12 +93,21 @@ import {
   type CurrentUser,
   type EstateScope,
 } from '../collect/estate-scope.js';
-import { NotPermittedError, recordRefusal, requirePermission } from '../authorize/group.js';
+import { NotPermittedError, recordRefusal, requirePermission, requireVerifiedIdentity } from '../authorize/group.js';
+import { assessorCheck } from '../share/reader.js';
+import { projectScan, projectScanPayload, type Reader } from '../share/projection.js';
 import { AuditRecorder, closedWhenAnswered, TrailUnwritableError, type Act, type Actor } from '../audit/record.js';
 import { AUDIT_PHRASES, type AuditAction, type AuditTarget } from '../audit/event.js';
+import type { AuditGapLog, UnacknowledgedGaps } from '../store/audit-gaps.js';
 import { authoredGuidance, type GuidanceLibrary } from '../guidance/guidance.js';
 import { describeVerification, MEANS, type VerificationReport } from '../records/verify.js';
-import { DEFAULT_LOOKBACK_DAYS, ScanInProgressError, ScanRunner, type ScanRequest } from '../scan/runner.js';
+import {
+  DEFAULT_LOOKBACK_DAYS,
+  ScanInProgressError,
+  ScanRunner,
+  type RunningScan,
+  type ScanRequest,
+} from '../scan/runner.js';
 import type { Run } from '../run/run.js';
 import { RunNotJoinable, type Runs } from '../run/runs.js';
 import { refusedPayload, registerRunRoutes } from './run-routes.js';
@@ -118,7 +128,7 @@ import { SCRIPT_NAME, evidenceScriptPayload, loadEvidenceScript, type EvidenceSc
 import type { ScanStore, ScanSummary } from '../scan/store.js';
 import { occurrencesIn } from '../scan/occurrence.js';
 import { confidenceOf } from '../resolve/confidence.js';
-import type { Finding } from '../resolve/finding.js';
+import { decidedByAnswer, type Finding } from '../resolve/finding.js';
 import { comparable, type Scan, type ScanTrigger } from '../scan/scan.js';
 import { changesBetween } from '../scan/changes.js';
 import { CollectionScheduler, type ScanFootprint } from '../scan/scheduler.js';
@@ -332,6 +342,14 @@ export interface ApiOptions {
   readonly reviews?: ReviewStore;
   readonly reviewStorage?: string;
   /**
+   * The clock the review routes read: when a review opens, when a pillar is decided, and whether each
+   * answer still counts at that moment. Absent means the wall clock.
+   *
+   * Injected so a test can place a review at a chosen point in an answer's life — current, due for
+   * renewal or expired — instead of at whatever date the suite happens to run.
+   */
+  readonly now?: () => Date;
+  /**
    * Where validation attempts are kept. Absent means they are not kept, and the routes say so rather
    * than accepting a question about a claim that nothing would answer.
    */
@@ -398,6 +416,19 @@ export function registerApi(served: Application, options: ApiOptions): void {
   app.use('/api', (_request, response, next) => {
     response.setHeader('X-Content-Type-Options', 'nosniff');
     next();
+  });
+
+  /**
+   * Who is reading, for the routes that serve what a run stored.
+   *
+   * Asked of the request rather than of the route, so every read that can carry a restricted field
+   * answers the same question the same way, and cached for that request alone by `assessorCheck`.
+   * Decision D1 in docs/decisions.md.
+   */
+  const isAssessor = assessorCheck({ host: options.host, assessorGroup: options.assessorGroup });
+  const readerOf = async (request: Request): Promise<Reader> => ({
+    assessor: await isAssessor(request),
+    group: options.assessorGroup,
   });
 
   /**
@@ -642,12 +673,15 @@ export function registerApi(served: Application, options: ApiOptions): void {
       return;
     }
     response.json(
-      present(
-        scan,
-        await historyFor(options.store, assessmentOf(request)),
-        options.catalogue.changelog,
-        await targetsFor(scan, options.definitions, new Date()),
-        await standingOf(scan.id, assessmentOf(request))
+      projectScanPayload(
+        present(
+          scan,
+          await historyFor(options.store, assessmentOf(request)),
+          options.catalogue.changelog,
+          await targetsFor(scan, options.definitions, new Date()),
+          await standingOf(scan.id, assessmentOf(request))
+        ),
+        await readerOf(request)
       )
     );
   });
@@ -662,12 +696,15 @@ export function registerApi(served: Application, options: ApiOptions): void {
       return;
     }
     response.json(
-      present(
-        scan,
-        await historyFor(options.store, assessmentOf(request)),
-        options.catalogue.changelog,
-        await targetsFor(scan, options.definitions, new Date()),
-        await standingOf(scan.id, assessmentOf(request))
+      projectScanPayload(
+        present(
+          scan,
+          await historyFor(options.store, assessmentOf(request)),
+          options.catalogue.changelog,
+          await targetsFor(scan, options.definitions, new Date()),
+          await standingOf(scan.id, assessmentOf(request))
+        ),
+        await readerOf(request)
       )
     );
   });
@@ -872,7 +909,7 @@ export function registerApi(served: Application, options: ApiOptions): void {
           'incomplete',
           'legacy-result',
           `Published report ${result.id} predates the Version 2 outcome and cannot produce a report file.`,
-          'Complete a new assessment and review under Methodology Version 1, then use that report.'
+          'Complete a new assessment and review under the current methodology, then use that report.'
         )
       );
       return undefined;
@@ -932,8 +969,9 @@ export function registerApi(served: Application, options: ApiOptions): void {
       // The review of this run, whichever run it is: unlike a standing, it is recorded against the run
       // itself, so an export of a six-week-old scan carries that scan's own review rather than nothing.
       const reviewed = await standingOf(scan.id, scan.stamp.definition?.id ?? null);
+      // Projected before it is sealed, so the file a reader downloads is the file their digest is of.
       const file = seal({
-        scan,
+        scan: projectScan(scan, await readerOf(request)),
         catalogue: options.catalogue,
         decisions: decided,
         format,
@@ -1066,15 +1104,20 @@ export function registerApi(served: Application, options: ApiOptions): void {
 
   const listExports = async (
     scan: Scan,
-    identity: { readonly correlation: string; readonly resultId?: string }
+    identity: { readonly correlation: string; readonly resultId?: string },
+    reader: Reader
   ): Promise<RunExportsPayload> => {
     const decided = await exportDecisions(scan);
+    // The scan the reader's own downloads are built from, so each digest listed is the digest of the
+    // bytes that reader is sent. A colleague's file differs from an assessor's wherever evidence is
+    // withheld, and one digest for both would read as tampering to whoever checked it.
+    const shown = projectScan(scan, reader);
     // Read once for every file listed, and the same read the download makes — the digests here have to
     // be the digests of the bytes that endpoint produces, so both have to see the same review.
     const reviewed = await standingOf(scan.id, scan.stamp.definition?.id ?? null);
     const fileOf = (variant: ExportVariant, format: 'csv' | 'json'): ExportFilePayload => {
       const file = seal({
-        scan,
+        scan: shown,
         catalogue: options.catalogue,
         decisions: decided,
         format,
@@ -1126,13 +1169,19 @@ export function registerApi(served: Application, options: ApiOptions): void {
   app.get('/api/scans/:id/exports', async (request: Request<{ id: string }>, response: Response) => {
     const scan = await exportSubject(request, response);
     if (scan == null) return;
-    response.json(await listExports(scan, { correlation: scan.id }));
+    response.json(await listExports(scan, { correlation: scan.id }, await readerOf(request)));
   });
 
   app.get('/api/results/:id/exports', async (request: Request<{ id: string }>, response: Response) => {
     const result = await finalResultSubject(request, response);
     if (result == null) return;
-    response.json(await listExports(result.scan, { correlation: result.resultId, resultId: result.resultId }));
+    response.json(
+      await listExports(
+        result.scan,
+        { correlation: result.resultId, resultId: result.resultId },
+        await readerOf(request)
+      )
+    );
   });
 
   /**
@@ -1209,24 +1258,18 @@ export function registerApi(served: Application, options: ApiOptions): void {
     }
   });
 
-  app.get('/api/scan/status', (_request, response) => {
-    const running = options.runner.running();
-    // The record behind it, where there is one. Absent on an install with nothing durable bound, and
-    // absent for a scan started outside the coordinator — both of which mean the same thing to a
-    // reader: this scan has no name that outlives the process.
-    const run = options.runs?.holding();
-    const payload: ScanStatusPayload<Date> =
-      running == null
-        ? { running: false }
-        : {
-            running: true,
-            startedAt: running.startedAt,
-            actor: running.actor,
-            scope: running.scope,
-            callsMade: running.callsMade,
-            ...(running.trigger != null && { trigger: running.trigger }),
-            ...(run != null && { run }),
-          };
+  /**
+   * What is running now, for a reader who did not start it.
+   *
+   * Read from the run record where there is one, so every instance of a scaled install says the same
+   * thing: a page served by a different instance from the one that started the scan is still told it is
+   * going, and by whom. Where this process is the one collecting, its own runner supplies the progress
+   * count, which nothing durable holds. Where nothing durable is bound, or the record cannot be read,
+   * what this process knows is all there is, and it is reported as such.
+   */
+  app.get('/api/scan/status', async (_request, response) => {
+    const local = options.runner.running();
+    const payload: ScanStatusPayload<Date> = await scanStatus(local, options.runs);
     response.json(payload);
   });
 
@@ -1401,10 +1444,16 @@ export function registerApi(served: Application, options: ApiOptions): void {
   app.get('/api/scan/readiness', async (request, response) => {
     try {
       const token = userToken(request);
-      const identity = identityFrom(actorFromHeaders(request), await probeCurrentUser({ host: options.host, token }));
+      const headerActor = actorFromHeaders(request);
+      const user = await probeCurrentUser({ host: options.host, token });
+      // The identity a change would be attributed to rather than the header's, and checked against it
+      // first, in the order the gate checks them: this answers whether a scan would be allowed to
+      // start, so a request the gate would turn away for its identity must not read as ready.
+      const identity = verifiedIdentityFrom(headerActor, user);
 
       let may: ReadinessPayload['may'];
       try {
+        requireVerifiedIdentity(headerActor, user.userName);
         requirePermission(options.assessorGroup, identity);
         may = { start: true };
       } catch (cause) {
@@ -1520,11 +1569,20 @@ export function registerApi(served: Application, options: ApiOptions): void {
   // is not the same permission as changing an assessment — and `health-routes.ts` says what that
   // constrains it to contain. Nothing in it spends the customer's money; `health/health.ts` says why
   // the warehouse reading is the one that is observed rather than probed.
+  //
+  // The lost audit events are read from the database on each request rather than counted in memory, so
+  // the page reports a gap whichever instance lost it and whichever one is asked. Acknowledging one is
+  // the exception to the page being ungated: it is a statement, so it takes the gate like every other.
+  const gapLog = options.audit?.gaps;
   registerHealthRoutes(app, {
     respondToFailure,
+    ...(gapLog != null ? { gaps: gapLog } : {}),
+    permitted: (request, response, action, context) => permitted(request, response, options, action, context),
+    ...(options.now != null ? { now: options.now } : {}),
     sourcesFor: async (request) => {
       const token = forwardedToken(request);
       return {
+        ...(gapLog != null ? await readGaps(gapLog) : {}),
         ...(options.pingDatabase != null ? { pingDatabase: options.pingDatabase } : {}),
         ...(options.storage != null ? { storage: options.storage } : {}),
         durable: options.store.durable,
@@ -1712,8 +1770,10 @@ export function registerApi(served: Application, options: ApiOptions): void {
   // the result that exists only when every pillar has one. Completing a scan does not replace
   // current(); only finalising a review does.
   registerReviewRoutes(app, {
+    reader: readerOf,
     ...(options.reviews != null ? { reviews: options.reviews } : {}),
     ...(options.reviewStorage != null ? { reviewStorage: options.reviewStorage } : {}),
+    ...(options.now != null ? { now: options.now } : {}),
     scans: options.store,
     // The catalogue, not the measured subset. A targeted rerun still needs every pillar recorded
     // before a result exists; measuring fewer pillars does not shrink the review.
@@ -1725,14 +1785,23 @@ export function registerApi(served: Application, options: ApiOptions): void {
     ...(options.attestations != null ? { attestations: options.attestations } : {}),
     control: (id) => controlIndex(options.catalogue).get(id),
     cadenceDays: (spec) => asked(spec).cadenceDays,
-    requirementsFor: (scan) =>
-      attestable(
+    requirementsFor: (scan) => {
+      const capped = cappedMeasurements(scan);
+      return attestable(
         options.catalogue,
         options.registry,
         settledByMeasurement(scan),
         inconclusiveMeasurements(scan),
-        unreachableMeasurements(scan)
-      ),
+        unreachableMeasurements(scan),
+        capped
+      ).map((control) => ({
+        id: control.id,
+        pillarId: control.pillarId,
+        // The measurement stands without an answer, so the review does not ask for one. See
+        // `ReviewableControl.optional`.
+        ...(capped.has(control.id) ? { optional: true } : {}),
+      }));
+    },
     permitted: (request, response, action, context) => permitted(request, response, options, action, context),
     respondToFailure,
   });
@@ -1835,6 +1904,7 @@ export function registerApi(served: Application, options: ApiOptions): void {
   // module because turning a request into a scope, a window and a set of collectors is this file's job,
   // and having two places do it would be two answers to "what does an advisory run read".
   registerAdvisoryRoutes(app, {
+    reader: readerOf,
     ...(options.advisories != null ? { advisories: options.advisories } : {}),
     ...(options.runs != null ? { runs: options.runs } : {}),
     asking: (request, actor, granted) => advisoryRequest(request, actor, granted, options),
@@ -1847,6 +1917,7 @@ export function registerApi(served: Application, options: ApiOptions): void {
   // import compares the collecting script against the one published above and wants the copy already
   // loaded. Route order does not affect the `nosniff` middleware, which was installed before either.
   registerImportRoutes(app, {
+    reader: readerOf,
     ...(options.imports != null ? { imports: options.imports } : {}),
     store: options.store,
     permitted: (request, response, action, context) => permitted(request, response, options, action, context),
@@ -1926,21 +1997,33 @@ export function registerApi(served: Application, options: ApiOptions): void {
       const measured = settledByMeasurement(reference);
       const inconclusive = inconclusiveMeasurements(reference);
       const unreachable = unreachableMeasurements(reference);
+      const capped = cappedMeasurements(reference);
+      // Older full scans did not record requestedPillars. Their score still records which
+      // pillars this build collected, so a run-specific pass must not offer questions from
+      // unrelated catalogue pillars.
+      const runPillars =
+        reference?.requestedPillars ??
+        (reference?.score.pillars.length ? reference.score.pillars.map((pillar) => pillar.pillarId) : undefined);
       const payload: AttestationsPayload<Date> = {
         durable: store.durable,
         ...(store.durable ? {} : { durabilityNote: options.attestationStorage ?? NO_ATTESTATION_STORE }),
-        requirements: attestable(options.catalogue, options.registry, measured, inconclusive, unreachable).map(
-          (control) => ({
+        requirements: attestable(options.catalogue, options.registry, measured, inconclusive, unreachable, capped)
+          .filter(
+            (control) =>
+              requestedRunId === '' ||
+              runPillars == null ||
+              runPillars.includes(control.pillarId)
+          )
+          .map((control) => ({
             controlId: control.id,
             pillarId: control.pillarId,
             principleId: control.principleId,
             title: control.title,
             severity: control.severity,
-            askedBecause: askedBecause(control, inconclusive),
-            ...asked(control),
+            askedBecause: askedBecause(control, inconclusive, capped),
+            ...asked(control, capped.has(control.id)),
             ...withAnswer(recorded.get(control.id)),
-          })
-        ),
+          })),
       };
       response.json(payload);
     } catch (cause) {
@@ -2251,6 +2334,9 @@ const NO_ATTESTATION_STORE =
  * the app has just measured is asking them to duplicate a reading — and if their report disagreed
  * with the measurement, the app would show a contradiction it already knows the answer to.
  *
+ * A third group joins them: requirements the app measured up to a cap, where an answer is what lifts
+ * it. They are offered because the scan reached the cap, not because anything was unreadable.
+ *
  * The first kind is never removed, however a scan turned out. Their only route to an outcome is an
  * answer, so a settled one is settled *by* an answer, and dropping it from this page would leave no
  * way to renew it before it lapses.
@@ -2260,7 +2346,8 @@ function attestable(
   registry: ResolverRegistry,
   measured: ReadonlySet<string> = new Set(),
   inconclusive: ReadonlySet<string> = new Set(),
-  unreachable: ReadonlySet<string> = new Set()
+  unreachable: ReadonlySet<string> = new Set(),
+  capped: ReadonlySet<string> = new Set()
 ): readonly CatalogueControl[] {
   const byId = descriptorsById();
   return catalogue.controls.filter((control) => {
@@ -2276,7 +2363,12 @@ function attestable(
     // any install. Unconditional on an authored question, unlike the third kind — `unreachable`
     // is a permanent verdict rather than a description of one scan, so a missing question is a
     // gap to fill and not a reason to drop the requirement off the page. CI fails on the gap.
-    return unreachable.has(control.id);
+    if (unreachable.has(control.id)) return true;
+    // The fifth: a measurement that stopped at its cap. The app read it, so this is not a gap in the
+    // reading, and the question is what lifts the cap. It stays on the page whether or not it has
+    // been answered, because a lifted outcome rests on the answer and dropping the requirement would
+    // leave no way to renew the answer before it lapses and the cap came back.
+    return capped.has(control.id);
   });
 }
 
@@ -2341,9 +2433,28 @@ function settledByMeasurement(scan: Scan | undefined): ReadonlySet<string> {
   if (scan == null) return new Set();
   return new Set(
     scan.findings
-      .filter((finding) => finding.outcome !== 'unmeasurable' && finding.attested?.bearing !== 'outcome')
+      .filter(
+        (finding) =>
+          finding.outcome !== 'unmeasurable' &&
+          !decidedByAnswer(finding.attested) &&
+          // A capped measurement is settled only up to its cap. The rest is the answer's, so it is
+          // not settled and its requirement keeps its place on the page.
+          finding.capped !== true
+      )
       .map((finding) => finding.controlId)
   );
+}
+
+/**
+ * Requirements the last scan measured as far as the platform shows, where an answer lifts the cap.
+ *
+ * Read off the finding rather than derived from the catalogue, because a cap is a property of a
+ * measurement and not of a requirement: the same control is capped on an estate with more than one
+ * catalog and `fail` on one with a single catalog, and only the first has a question to ask.
+ */
+function cappedMeasurements(scan: Scan | undefined): ReadonlySet<string> {
+  if (scan == null) return new Set();
+  return new Set(scan.findings.filter((finding) => finding.capped === true).map((finding) => finding.controlId));
 }
 
 /**
@@ -2376,43 +2487,66 @@ async function latestOrNothing(store: ScanStore | undefined, scope?: AssessmentS
  * judgement is at least honest about what is being requested, and CI fails on the gap so this
  * branch stays unreached.
  */
-function asked(control: CatalogueControl): {
+function asked(
+  control: CatalogueControl,
+  cappedHere = false
+): {
   question: string;
   evidenceGuidance?: string;
   cadenceDays: number;
 } {
   const blocked = BLOCKED_QUESTIONS[control.id];
-  const unsettled = INCONCLUSIVE_QUESTIONS[control.id];
-  const question = control.attestation?.question ?? blocked?.question ?? unsettled?.question;
-  const guidance = control.attestation?.evidenceGuidance ?? blocked?.evidence ?? unsettled?.evidence;
+  const capped = CAPPED_QUESTIONS[control.id];
+  // Which of the two tables speaks for a requirement that has both is decided by what this scan
+  // reached: a capped measurement and an inconclusive one are different situations with different
+  // reasons to ask, and quoting the wrong one tells a reader their scan found something it did not.
+  const unsettled = cappedHere ? undefined : INCONCLUSIVE_QUESTIONS[control.id];
+  const asking = cappedHere ? capped : undefined;
+  const question = control.attestation?.question ?? blocked?.question ?? unsettled?.question ?? asking?.question;
+  const guidance =
+    control.attestation?.evidenceGuidance ?? blocked?.evidence ?? unsettled?.evidence ?? asking?.evidence;
+  const why = unsettled?.whyAsked ?? asking?.whyAsked;
   return {
     question: question ?? `${control.title}. How well does this describe your estate?`,
     // The inconclusive table's `whyAsked` is appended rather than replacing the guidance,
     // because the two answer different questions: one says what evidence to give, the other
     // says why a scan that ran is asking at all. A reader who sees their own scan hand them a
     // question will want the second before they read the first.
-    ...(guidance != null || unsettled != null
+    ...(guidance != null || why != null
       ? {
-          evidenceGuidance: [unsettled?.whyAsked, guidance].filter((part) => part != null).join('\n\n'),
+          evidenceGuidance: [why, guidance].filter((part) => part != null).join('\n\n'),
         }
       : {}),
+    // The cap's cadence applies to a requirement that can be capped whether or not this scan reached
+    // the cap, because the answer is recorded against the requirement and an answer given on one
+    // estate's scan has to expire on the schedule it was asked on.
     cadenceDays: cadenceDaysFor(
       control.severity,
-      control.attestation?.cadenceDays ?? blocked?.cadenceDays ?? unsettled?.cadenceDays
+      control.attestation?.cadenceDays ??
+        blocked?.cadenceDays ??
+        INCONCLUSIVE_QUESTIONS[control.id]?.cadenceDays ??
+        capped?.cadenceDays
     ),
   };
 }
 
 /**
- * Which of the three reasons this requirement is being put to a person.
+ * Which of the reasons this requirement is being put to a person.
  *
  * Order matters. A practice requirement is `no-telemetry` however a scan turned out, because no
- * scan was ever going to settle it. An inconclusive reading is checked before the authorisation
+ * scan was ever going to settle it. A measurement at its cap is next, because it is the more specific
+ * of the two scan-dependent reasons: the app read the requirement and an answer lifts what it read.
+ * An inconclusive reading is checked before the authorisation
  * case so that a control which is both — written, unauthorised, and inconclusive this time —
  * reports the reason the reader can act on.
  */
-function askedBecause(control: CatalogueControl, inconclusive: ReadonlySet<string>): AskedBecause {
+function askedBecause(
+  control: CatalogueControl,
+  inconclusive: ReadonlySet<string>,
+  capped: ReadonlySet<string> = new Set()
+): AskedBecause {
   if (control.measurability === 'attestation') return 'no-telemetry';
+  if (capped.has(control.id)) return 'capped';
   if (inconclusive.has(control.id)) return 'inconclusive';
   return 'not-authorised';
 }
@@ -3082,9 +3216,31 @@ interface Acting extends Identity {
   readonly act: Act;
 }
 
+/**
+ * The identity a read attributes, which is the proxy's header when there is one.
+ *
+ * A read records nothing against a person, so the header is allowed to stand in for SCIM's answer
+ * here. The gate does not take this shortcut: see `verifiedIdentityFrom`.
+ */
 function identityFrom(headerActor: string | undefined, user: CurrentUser): Identity {
+  return identityOf(headerActor ?? user.userName, user);
+}
+
+/**
+ * The identity a change is attributed to: what SCIM returned for the token, never the header.
+ *
+ * The header is only the fallback for a SCIM answer that carries no `userName`. Where both are
+ * present the caller checks them against each other with `requireVerifiedIdentity`, so by the time
+ * a change is recorded the two agree. A service principal's `userName` is its application id and
+ * its display name is kept in `actorName`, as for any other caller. Decision A1 in docs/decisions.md.
+ */
+function verifiedIdentityFrom(headerActor: string | undefined, user: CurrentUser): Identity {
+  return identityOf(user.userName ?? headerActor, user);
+}
+
+function identityOf(actor: string | undefined, user: CurrentUser): Identity {
   return {
-    actor: headerActor ?? user.userName ?? 'unknown',
+    actor: actor ?? 'unknown',
     ...(user.displayName != null ? { actorName: user.displayName } : {}),
     scope: scopeFromProbe(user),
     ...(user.groups != null ? { groups: user.groups } : {}),
@@ -3112,13 +3268,18 @@ async function permitted(
   context: { readonly target?: AuditTarget; readonly correlation?: string } = {}
 ): Promise<Acting> {
   const token = userToken(request);
-  const identity = identityFrom(actorFromHeaders(request), await probeCurrentUser({ host: options.host, token }));
+  const forwarded = actorFromHeaders(request);
+  const user = await probeCurrentUser({ host: options.host, token });
+  const identity = verifiedIdentityFrom(forwarded, user);
   // Every request this build serves is the caller's own; the app has no identity of its own to act
   // under until A4 lands the job worker. Derived rather than hardcoded at each call site so that
   // when it does, this is the one line that changes.
   const who = { actor: identity.actor, executionMode: 'on-behalf-of-user' } as const;
 
   try {
+    // Before membership: the groups are the ones SCIM listed for its own name, so a request that
+    // names somebody else is refused as that, and recorded under the verified name.
+    requireVerifiedIdentity(forwarded, user.userName);
     requirePermission(options.assessorGroup, identity);
   } catch (cause) {
     if (cause instanceof NotPermittedError) {
@@ -3191,7 +3352,12 @@ function begin(
   context: { readonly correlation?: string; readonly target?: AuditTarget }
 ): Act {
   if (recorder == null) {
-    return { performed: () => Promise.resolve(), failed: () => Promise.resolve(), settle: () => Promise.resolve() };
+    return {
+      performed: () => Promise.resolve(),
+      failed: () => Promise.resolve(),
+      unchanged: () => undefined,
+      settle: () => Promise.resolve(),
+    };
   }
   return closedWhenAnswered(recorder.begin(action, who, context), response);
 }
@@ -3218,6 +3384,25 @@ function forwardedToken(request: { readonly headers: NodeJS.Dict<string | string
   const raw = request.headers[USER_TOKEN_HEADER];
   const token = Array.isArray(raw) ? raw[0] : raw;
   return token == null || token === '' ? undefined : token;
+}
+
+/**
+ * The lost-event markers for the diagnostics, or the reason they could not be read.
+ *
+ * Caught into the sources rather than thrown, because a markers table that cannot be read is a thing
+ * the page has to say and not a reason for it to fail — and it must not read as none, which is what
+ * `auditGapsUnreadable` is for. The cause is the first line of the message, as every other reading
+ * here gives it.
+ */
+async function readGaps(
+  gaps: AuditGapLog
+): Promise<{ readonly auditGaps: UnacknowledgedGaps } | { readonly auditGapsUnreadable: string }> {
+  try {
+    return { auditGaps: await gaps.unacknowledged() };
+  } catch (cause) {
+    const message = cause instanceof Error ? cause.message : String(cause);
+    return { auditGapsUnreadable: (message.split('\n')[0] ?? '').trim() || 'no reason given' };
+  }
 }
 
 /**
@@ -3357,12 +3542,80 @@ function resultGateFailure(response: Response, status: number, eligibility: Resu
   });
 }
 
+/**
+ * The scan status, from the run record where one is bound.
+ *
+ * The record is asked first and decides *whether* a scan is running; this process's runner only enriches
+ * the answer when the run is its own. Where the record names a run this process is not collecting — it is
+ * on another instance — the answer is what the record holds, without a call count, because that count is
+ * the other process's and is not written anywhere.
+ *
+ * Falls back to the local runner, with no run named, when nothing durable is bound or the read fails. A
+ * status that errors would show the page nothing at all, and the local answer is true as far as it goes.
+ */
+export async function scanStatus(
+  local: RunningScan | undefined,
+  runs: Runs | undefined
+): Promise<ScanStatusPayload<Date>> {
+  const onThisProcess = (run?: string): ScanStatusPayload<Date> =>
+    local == null
+      ? { running: false }
+      : {
+          running: true,
+          startedAt: local.startedAt,
+          actor: local.actor,
+          scope: local.scope,
+          callsMade: local.callsMade,
+          ...(local.trigger != null && { trigger: local.trigger }),
+          ...(run != null && { run }),
+        };
+
+  if (runs == null) return onThisProcess();
+
+  let live: Run | undefined;
+  try {
+    live = await runs.live('assessment');
+  } catch {
+    return onThisProcess(runs.holding());
+  }
+  // Where the record says nothing is live and this process is collecting anyway, it is either a scan
+  // started outside the coordinator, which has no name, or a run whose renewals have been failing, which
+  // still has one. The pointer is what tells them apart, and it is only ever set by an attempt that began.
+  if (live == null) return onThisProcess(runs.holding());
+  if (runs.holding() === live.id || runs.owns?.(live) === true) {
+    if (local != null) return onThisProcess(live.id);
+    // This instance admitted the attempt and the runner has not yet reported it: the pointer is set
+    // when the attempt is admitted and the runner's own record a moment later. It is this process's
+    // run with nothing counted yet, not another instance's, which the absent count would say.
+    return {
+      running: true,
+      startedAt: live.requestedAt,
+      actor: live.actor,
+      scope: live.request.scope,
+      trigger: live.trigger,
+      callsMade: 0,
+      run: live.id,
+    };
+  }
+
+  return {
+    running: true,
+    startedAt: live.requestedAt,
+    actor: live.actor,
+    scope: live.request.scope,
+    trigger: live.trigger,
+    run: live.id,
+  };
+}
+
 function respondToFailure(response: Response, cause: unknown): void {
   if (cause instanceof ScanInProgressError) {
     response.status(409).json({
       error: 'scan-in-progress',
       message: cause.message,
       running: cause.running,
+      // The run behind it, where there is one, so a refused caller has something to poll or cancel.
+      ...(cause.run != null && { run: cause.run }),
     });
     return;
   }

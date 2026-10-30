@@ -18,7 +18,7 @@
 // and not consented to, and a permission this user lacks are all 403, and only the words
 // separate them.
 
-import type { SignalId, SignalResult } from '../collect/signal.js';
+import type { Refusal, SignalId, SignalResult } from '../collect/signal.js';
 import { familyOf } from '../collect/rest/families.js';
 import { demandedScope } from '../collect/rest/reach.js';
 
@@ -101,7 +101,7 @@ export function remedyFor(
   const failed = required.filter((id) => (signals.get(id)?.status ?? 'unmeasurable') === 'unmeasurable');
   if (failed.length === 0) return undefined;
 
-  const each = failed.map((id) => one(id, signals.get(id)?.unmeasurableReason, context));
+  const each = failed.map((id) => one(id, signals.get(id), context));
   const worst = each.reduce((so_far, candidate) => (rank(candidate.kind) > rank(so_far.kind) ? candidate : so_far));
 
   return { ...worst, signals: failed };
@@ -147,8 +147,15 @@ function rank(kind: RemedyKind): number {
   return ORDER.indexOf(kind);
 }
 
-function one(signal: SignalId, reason: string | undefined, context: RemedyContext): Remedy {
+function one(signal: SignalId, result: SignalResult | undefined, context: RemedyContext): Remedy {
+  const reason = result?.unmeasurableReason;
   const base = { signals: [signal] as readonly SignalId[], ...(reason != null ? { because: reason } : {}) };
+
+  // The structured refusal first. It is a fact the collector knew before any call, where everything
+  // below is a reading of prose; and a signal stored before the field existed has none, so it falls
+  // through to the text matching it was always classified by. Decision A6 in docs/decisions.md.
+  if (result?.refusal != null) return fromRefusal(result.refusal, context, base);
+
   if (reason == null) {
     return {
       ...base,
@@ -207,6 +214,43 @@ function one(signal: SignalId, reason: string | undefined, context: RemedyContex
 }
 
 /**
+ * A refusal the collector recorded as a fact, which is always a limit of the platform.
+ *
+ * Both kinds end at a person, so both are `attest`. The family table is not consulted: it describes
+ * the endpoint the catalogue names, and this refusal describes the call that was actually considered.
+ */
+function fromRefusal(
+  refusal: Refusal,
+  context: RemedyContext,
+  base: { signals: readonly SignalId[]; because?: string }
+): Remedy {
+  return {
+    ...base,
+    kind: 'attest',
+    says:
+      refusal.kind === 'account-plane'
+        ? accountPlaneSays(familyOf(context.collector)?.label ?? 'This setting')
+        : ungrantableScopeSays(refusal.scope),
+  };
+}
+
+function accountPlaneSays(label: string): string {
+  return (
+    `${label} is account-plane configuration, and this app is installed in a workspace. The ` +
+    'token is rejected before authorisation is considered, so no scope and no grant would help. ' +
+    'Answer this requirement on the Answers page instead.'
+  );
+}
+
+function ungrantableScopeSays(scope: string): string {
+  return (
+    `Reading this needs the "${scope}" scope, which Databricks Apps does not offer an app. No ` +
+    'install of this app can be granted it, so answer this requirement on the Answers page rather ' +
+    'than waiting for a version that measures it.'
+  );
+}
+
+/**
  * A refusal that named a scope, which is three different situations wearing one message.
  *
  * The distinction is the reason `declared-scopes.ts` exists: "invalid scope, required scopes:
@@ -229,14 +273,7 @@ function fromScope(
     return {
       ...base,
       kind: 'attest',
-      says:
-        family.plane === 'account'
-          ? `${family.label} is account-plane configuration, and this app is installed in a workspace. The ` +
-            'token is rejected before authorisation is considered, so no scope and no grant would help. ' +
-            'Answer this requirement on the Answers page instead.'
-          : `Reading this needs the "${scope}" scope, which Databricks Apps does not offer an app. No ` +
-            'install of this app can be granted it, so answer this requirement on the Answers page rather ' +
-            'than waiting for a version that measures it.',
+      says: family.plane === 'account' ? accountPlaneSays(family.label) : ungrantableScopeSays(scope),
     };
   }
 

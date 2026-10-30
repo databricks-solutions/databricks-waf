@@ -69,10 +69,20 @@ describe('pillars offered for a confirmed run', () => {
   const pillars = [{ id: 'cost' }, { id: 'reliability' }, { id: 'security' }] as const;
 
   it('offers only pillars this build measures for a custom run', () => {
-    expect(eligiblePillars(pillars, ['cost', 'security'], undefined).map((pillar) => pillar.id)).toEqual([
+    const offered = eligiblePillars(pillars, ['cost', 'security'], undefined).map((pillar) => pillar.id);
+    expect(offered).toEqual([
       'cost',
       'security',
     ]);
+    expect(pillarsForConfirmation('all', 'custom', offered, [], undefined)).toEqual(offered);
+    expect(
+      confirmedScanRequest({
+        basis: 'custom',
+        pillars: pillarsForConfirmation('all', 'custom', offered, [], undefined),
+        workspaceScope: 'account',
+        workspaces: [],
+      })
+    ).toEqual({ definitionId: null, pillars: ['cost', 'security'] });
   });
 
   it('intersects a saved assessment with the pillars this build measures', () => {

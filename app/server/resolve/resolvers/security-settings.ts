@@ -20,7 +20,11 @@ import type { ControlResolver } from '../resolver.js';
 import { evidenceFrom, detailFrom, fromSignal, fromSignals, notApplicable, threshold, unmeasured, valueOf } from './helpers.js';
 
 const SETTINGS: SignalId = 'rest:workspace:preview.workspace-conf';
-const TOKENS: SignalId = 'rest:workspace:token.list';
+/**
+ * The token inventory. The detail evidence read from it names who holds each token, which is why
+ * `share/projection.ts` knows this id: it withholds that evidence from readers outside the assessor group.
+ */
+export const TOKENS: SignalId = 'rest:workspace:token.list';
 const SERVING: SignalId = 'rest:workspace:serving-endpoints';
 
 /**

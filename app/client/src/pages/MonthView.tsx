@@ -126,6 +126,8 @@ export function PublishAction({
 export function MonthFigures({ content }: { readonly content: MonthContent }) {
   return (
     <div className="space-y-4">
+      {/* Which reading closed the month, so a reader can tell a scheduled close from the fallback. */}
+      {content.closing != null && <p className="wa-caption">{content.closing.statement}</p>}
       <div className="grid gap-4 md:grid-cols-2">
         <FactSection title="Run health" rows={content.runHealth} empty="No assessment runs landed in this month." />
         {/* Omitted, not empty, where the payload does not carry the section: no run closed the month, so
@@ -139,13 +141,13 @@ export function MonthFigures({ content }: { readonly content: MonthContent }) {
           />
         )}
         <FactSection title="Actions" rows={content.actions} empty="No improvement actions moved in this month." />
-        <MovementSection rows={content.movement} />
+        <MovementSection rows={content.movement} note={content.movementNote} />
       </div>
 
       <Disclosure summary="Detailed month record">
         <div className="space-y-6" data-technical-evidence>
           <FactSection title="Outcomes" rows={content.outcomes} empty="No closing scan was in this month." />
-          <DeltaSection rows={content.findingDeltas} />
+          <DeltaSection rows={content.findingDeltas} note={content.movementNote} />
           <ExceptionSection rows={content.exceptions} />
           <TrendSection rows={content.trend} />
         </div>
@@ -182,12 +184,16 @@ function FactSection({
   );
 }
 
-function MovementSection({ rows }: { readonly rows: MonthContent['movement'] }) {
+function MovementSection({ rows, note }: { readonly rows: MonthContent['movement']; readonly note?: string }) {
   return (
     <section aria-label="Coverage and score movement" className="space-y-2">
       <h2 className="wa-label-eyebrow text-wa-text">Coverage and score</h2>
       {rows.length === 0 ? (
-        <p className="wa-caption">No opening and closing scans both exist for this month, so nothing moved.</p>
+        // The document's own reason where it gives one: an empty section there is a comparison the
+        // server refused, which is not the same as nothing having moved.
+        <p className="wa-caption">
+          {note ?? 'No opening and closing scans both exist for this month, so nothing moved.'}
+        </p>
       ) : (
         <DataTable
           caption="Coverage and score movement"
@@ -205,23 +211,30 @@ function MovementSection({ rows }: { readonly rows: MonthContent['movement'] }) 
   );
 }
 
-function DeltaSection({ rows }: { readonly rows: MonthContent['findingDeltas'] }) {
+function DeltaSection({ rows, note }: { readonly rows: MonthContent['findingDeltas']; readonly note?: string }) {
   return (
     <section aria-label="Finding deltas" className="space-y-2">
       <h2 className="wa-label-eyebrow text-wa-text">Findings that changed</h2>
-      <DataTable
-        caption="Findings that changed"
-        columns={[
-          { key: 'control', header: 'Control', cell: (row) => <span className="wa-code">{row.control}</span> },
-          { key: 'requirement', header: 'Requirement', cell: (row) => row.requirement },
-          { key: 'from', header: 'Opened as', cell: (row) => row.from },
-          { key: 'to', header: 'Closed as', cell: (row) => row.to },
-          { key: 'note', header: 'Note', cell: (row) => row.note ?? '—' },
-        ]}
-        rows={rows}
-        rowKey={(row) => `${row.control}:${row.from}:${row.to}`}
-        empty={{ reason: 'nothing-to-report', detail: 'No finding changed between the opening and closing readings.' }}
-      />
+      {rows.length === 0 && note != null ? (
+        <p className="wa-caption">{note}</p>
+      ) : (
+        <DataTable
+          caption="Findings that changed"
+          columns={[
+            { key: 'control', header: 'Control', cell: (row) => <span className="wa-code">{row.control}</span> },
+            { key: 'requirement', header: 'Requirement', cell: (row) => row.requirement },
+            { key: 'from', header: 'Opened as', cell: (row) => row.from },
+            { key: 'to', header: 'Closed as', cell: (row) => row.to },
+            { key: 'note', header: 'Note', cell: (row) => row.note ?? '—' },
+          ]}
+          rows={rows}
+          rowKey={(row) => `${row.control}:${row.from}:${row.to}`}
+          empty={{
+            reason: 'nothing-to-report',
+            detail: 'No finding changed between the opening and closing readings.',
+          }}
+        />
+      )}
     </section>
   );
 }

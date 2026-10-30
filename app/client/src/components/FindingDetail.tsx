@@ -17,7 +17,7 @@ import { Link } from 'react-router';
 import { Fragment, type ReactNode } from 'react';
 import { useAssessment, type AlsoAsking } from '../api/assessment-context';
 import { coverageNote, measuredTogether } from './verdict-language';
-import { collectorNote, provenanceSentence } from './provenance-language';
+import { collectorNote, readSentence } from './provenance-language';
 import { attributionPhrase, renewalPhrase } from '../pages/attest-language';
 import { DecisionNote, StandingBadge } from './DecisionNote';
 import { RemedyNote } from './RemedyNote';
@@ -28,6 +28,7 @@ import { ActionPanel as CustomerActionPanel, Fact, FactList, Surface, TechnicalD
 import { FindingConfidence, FindingHistory } from './FindingConfidence';
 import { FindingGuidance } from './FindingGuidance';
 import { FoundOnSection } from './FoundOn';
+import { EvidenceValue } from './WithheldNote';
 import { MeasurementRemedyAction } from './MeasurementRemedyAction';
 import { findingActionReason } from './finding-action-language';
 import type {
@@ -117,7 +118,7 @@ export function FindingDetail({
   // Provenance comes off the first piece of evidence: which collector saw this, and when. Absent
   // for a finding that was never observed, where a timestamp would be an invention.
   const first = finding.evidence[0];
-  const read = provenanceSentence(first?.provenance);
+  const read = readSentence(first);
   const collector = collectorNote(first?.provenance);
   // The rows with something to say above the resources section. A row carrying `at` is rendered
   // there in full, so it appears here only where it also states an expectation — which no resolver
@@ -143,7 +144,7 @@ export function FindingDetail({
         <div className="flex flex-wrap items-center gap-1.5">
           <OutcomeBadge outcome={finding.outcome} />
           <SeverityBadge severity={finding.severity} />
-          {finding.attested?.bearing === 'outcome' && <AttestedBadge />}
+          {(finding.attested?.bearing === 'outcome' || finding.attested?.bearing === 'co-signed') && <AttestedBadge />}
           {decision != null && <StandingBadge standing={decision.standing} />}
           {control?.provenance === 'extension' && <span className="wa-badge">Extension to the framework</span>}
         </div>
@@ -192,7 +193,7 @@ export function FindingDetail({
                 {evidence.at == null && (
                   <Fact
                     label={evidence.bearing === 'detail' ? 'Where' : 'Observed'}
-                    value={evidence.observed}
+                    value={<EvidenceValue evidence={evidence} />}
                     emphasis="strong"
                   />
                 )}
@@ -362,18 +363,26 @@ function AlsoMeasured({
  * the app went on to measure itself is worth keeping — it is often the reason somebody looked — but
  * presenting it under the same heading as one that decided the verdict would invite the reader to
  * think the measurement had been overridden. It cannot be; the resolver settles it and this sits
- * beside it.
+ * beside it. The exception is an answer that lifted a measured cap, which is said to be both.
  */
 function Attested({ fact }: { fact: AttestedFact }) {
-  const decided = fact.bearing === 'outcome';
+  const decided = fact.bearing !== 'record';
+  const title =
+    fact.bearing === 'co-signed'
+      ? 'Measured, and answered by a person'
+      : decided
+        ? 'Answered by a person'
+        : 'Also answered by a person';
 
   return (
-    <Surface tone="raised" title={decided ? 'Answered by a person' : 'Also answered by a person'} headingLevel={3}>
+    <Surface tone="raised" title={title} headingLevel={3}>
       <blockquote className="wa-body-compact border-l-2 border-wa-divider pl-2 text-wa-text">
         {fact.statement}
       </blockquote>
       <p className="wa-caption mt-2">
         {attributionPhrase(fact.by, fact.at)}. Accountable: {fact.owner}.{' '}
+        {fact.bearing === 'co-signed' &&
+          'The scan measured this as far as the platform shows; this answer lifts it to a pass. '}
         {decided ? renewalPhrase(fact.reviewBy, 'current') : 'This did not decide the outcome above.'}
       </p>
       {fact.evidenceUrl != null && (
