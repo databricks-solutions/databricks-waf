@@ -281,3 +281,52 @@ describe('figures', () => {
     expect(markup).not.toMatch(/<h[3456]/);
   });
 });
+
+describe('a month whose movement was not published', () => {
+  const NOTE =
+    'Movement and finding changes are not shown: no earlier scan can be compared with the run that closed the month. These scans ran as different identities (ana@example.com and sp-schedule), whose visible estates may differ.';
+  const CLOSING = {
+    kind: 'latest-scan' as const,
+    statement:
+      'No scheduled run finished in July 2026, so the month closes on its latest scan, which was started by hand.',
+  };
+
+  it('says why the movement is empty, in the document’s words, rather than that nothing moved', () => {
+    const markup = renderToStaticMarkup(
+      <MonthFigures content={content({ movement: [], findingDeltas: [], movementNote: NOTE })} />
+    );
+
+    expect(markup.split(NOTE.replace(/'/g, '&#x27;')).length - 1).toBe(2);
+    expect(markup).not.toContain('so nothing moved');
+    expect(markup).not.toContain('No finding changed between the opening and closing readings');
+  });
+
+  it('says which reading closed the month', () => {
+    const markup = renderToStaticMarkup(<MonthFigures content={content({ closing: CLOSING })} />);
+
+    expect(markup).toContain(CLOSING.statement);
+  });
+
+  it('shows a scheduled close the same way', () => {
+    const statement = 'The month closes on its latest scheduled run, the system of record.';
+    const markup = renderToStaticMarkup(
+      <MonthFigures content={content({ closing: { kind: 'scheduled', statement } })} />
+    );
+
+    expect(markup).toContain(statement);
+  });
+
+  it('keeps the earlier wording for a stored month that carries neither field', () => {
+    const markup = renderToStaticMarkup(<MonthFigures content={content({ movement: [], findingDeltas: [] })} />);
+
+    expect(markup).toContain('so nothing moved');
+    expect(markup).toContain('No finding changed between the opening and closing readings');
+  });
+
+  it('draws a measured movement as a table and shows no note', () => {
+    const markup = renderToStaticMarkup(<MonthFigures content={content()} />);
+
+    expect(markup).toContain('Opened at');
+    expect(markup).not.toContain('are not shown');
+  });
+});

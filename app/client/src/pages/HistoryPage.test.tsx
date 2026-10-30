@@ -9,6 +9,7 @@ import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { MemoryRouter } from 'react-router';
 import { columns } from './HistoryPage';
+import { filterScans, scanFilterCounts, scanFilterFrom } from './schedule-language';
 import type { ScanSummary } from '../api/types';
 
 function summary(over: Partial<ScanSummary> = {}): ScanSummary {
@@ -92,5 +93,40 @@ describe('the customer-result boundary in raw-run history', () => {
     expect(markup).toContain('/report/result-1?definitionId=assessment-a');
     expect(markup).toContain('wa-row-inset');
     expect(markup).not.toContain('65.3');
+  });
+});
+
+// The scheduled service principal's runs are the system of record for the trend, so they are what the
+// page shows first. A run somebody started by hand is one filter away rather than mixed in, where a
+// spot-check by another identity would read as the estate moving.
+describe('the scan filter on the history page', () => {
+  const scheduled = summary({ id: 'nightly', trigger: 'scheduled' });
+  const byHand = summary({ id: 'spot-check', trigger: 'interactive' });
+  const unrecorded = summary({ id: 'older' });
+  const all = [byHand, scheduled, unrecorded];
+
+  it('defaults to the scheduled runs', () => {
+    expect(scanFilterFrom(null)).toBe('scheduled');
+    expect(scanFilterFrom('something-else')).toBe('scheduled');
+    expect(filterScans(all, scanFilterFrom(null)).map((scan) => scan.id)).toEqual(['nightly']);
+  });
+
+  it('shows the runs started by hand one filter away', () => {
+    expect(scanFilterFrom('interactive')).toBe('interactive');
+    expect(filterScans(all, 'interactive').map((scan) => scan.id)).toEqual(['spot-check']);
+  });
+
+  it('shows every run, including those from before the trigger was recorded, under all', () => {
+    expect(scanFilterFrom('all')).toBe('all');
+    expect(filterScans(all, 'all').map((scan) => scan.id)).toEqual(['spot-check', 'nightly', 'older']);
+  });
+
+  it('does not count a run with no recorded trigger as either kind', () => {
+    expect(filterScans([unrecorded], 'scheduled')).toEqual([]);
+    expect(filterScans([unrecorded], 'interactive')).toEqual([]);
+  });
+
+  it('counts what each filter holds, so an empty default says what is behind it', () => {
+    expect(scanFilterCounts(all)).toEqual({ scheduled: 1, interactive: 1, all: 3 });
   });
 });

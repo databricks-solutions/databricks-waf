@@ -129,3 +129,26 @@ Durable audit gaps, the other state that was per instance, are decided in D7.
 - `app/server/api/advisory-routes.ts`: the `advisory-in-progress` response.
 - `app/server/store/postgres-fake.ts`: sessions that wait for one another, and the advisory transaction lock, which the fake accepts only inside a session.
 - `docs/install.md` and `docs/user-guide.md`: the statement that more than one instance is supported.
+
+## A9: scheduled service-principal runs are the system of record for trends and monthly publications
+
+**Status:** decided 2026-10-29 by the product owner
+
+**Decision.** The scheduled service principal's runs are the record the App's trends and monthly publications are built from, and its grants are managed as code.
+
+1. **Closing reading.** A month closes on its latest scheduled run. A month with no scheduled run closes on its latest scan of any kind, and the document says so. A scan that did not record how it was started is not counted as scheduled.
+2. **Opening reading.** The reading a month opened at is the newest earlier scan that `comparable()` admits against the closing reading. A newer earlier scan that is not comparable is passed over, not measured against.
+3. **No comparable opening.** The movement and finding-change sections are empty. The document carries `comparable()`'s reason, or says that no scan finished before the month, in the same way the trend section carries the reason for a point it cannot place. A scan with no recorded measurement basis cannot be shown to be comparable and does not qualify.
+4. **Trend.** Each earlier month in a month's trend closes on the same rule, so consecutive points come from one identity. The History page lists the scheduled runs by default, with the runs started by hand one filter away and every run under All.
+5. **Grants as code.** The principal's access is declared and reviewed, not granted by hand: `npm run schedule:principal`, or the customer's own bundle or Terraform.
+6. **Document version.** The monthly document version is 2. A month published under version 1 may carry a movement between two readings that were not comparable, and it stays a valid record of its own version; published months are not edited.
+
+**Reason.** A published month is immutable, so what it says about movement has to be true of the estate. A scan run by an assessor sees what that assessor sees, a different lookback or methodology asks a different question, and a movement across any of those measures the observer. The scheduled principal is the one identity, lookback and schedule an install keeps constant, which makes its runs the series a trend and a monthly record can rest on. Interactive runs remain recorded and listed. They just do not close a month or open a movement.
+
+**Governs:**
+
+- `app/server/monthly/content.ts`: `closingScan`, which prefers the scheduled run; `openingReading`, which chooses the comparable opening; and `monthContent`, which empties the movement sections and carries the reason.
+- `app/server/monthly/document.ts`: `MONTH_DOCUMENT_VERSION`, and the `closing` and `movementNote` fields of the document and its CSV.
+- `app/server/api/publication-routes.ts`: the assembly of a month's opening and closing readings, shared by preview, publish and correction, and the closing scan each earlier month's trend point is read from.
+- `app/client/src/pages/HistoryPage.tsx` and `app/client/src/pages/schedule-language.ts`: the scan filter and its scheduled default.
+- `docs/scheduled-scans.md`: the scheduled principal and its grants.

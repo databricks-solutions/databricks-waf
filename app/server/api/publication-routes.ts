@@ -34,6 +34,7 @@ import type { ImprovementStore } from '../improve/store.js';
 import type { ScanStore, ScanSummary } from '../scan/store.js';
 import {
   closingScan,
+  openingReading,
   monthContent,
   scoreText,
   type ControlLabel,
@@ -462,10 +463,6 @@ export function registerPublicationRoutes(app: Application, options: Publication
   ): Promise<Assembled> {
     const summaries = await options.scans.history(SOURCE_LIMIT, scope);
     const scans = summaries.filter((scan) => inWindow(scan.finishedAt, window.start, window.end));
-    // The last scan before the window: summaries come back newest first, so the first one that ended
-    // before the window opened is the latest one that did.
-    const priorScan = summaries.find((scan): scan is ScanSummary => scan.finishedAt.getTime() < window.start.getTime());
-
     const runs = (await options.runs?.recent(SOURCE_LIMIT, scope)) ?? [];
     const risks = (await options.risks?.all(scope)) ?? [];
 
@@ -486,6 +483,14 @@ export function registerPublicationRoutes(app: Application, options: Publication
     // its own — and a publish that passed the gate and then froze a document saying the review was
     // unfinished is a contradiction nobody can correct afterwards.
     const closing = closingScan(summaries, window);
+    // The reading the month opened at is the newest earlier scan that can be compared with the closing
+    // one, not merely the newest: a movement across a change of identity, lookback or methodology is
+    // not a movement in the estate, and the document is frozen.
+    const opening = openingReading(
+      summaries.filter((scan) => scan.finishedAt.getTime() < window.start.getTime()),
+      closing
+    );
+    const priorScan = opening.scan;
     const standing = await standingFor(closing, month, scope, closed);
     const finalisation = standing.finalisation;
     const unreviewed =
@@ -511,6 +516,7 @@ export function registerPublicationRoutes(app: Application, options: Publication
         runs,
         scans,
         ...(priorScan != null ? { priorScan } : {}),
+        ...(opening.refusal != null ? { priorRefusal: opening.refusal } : {}),
         risks,
         actions,
         label: options.label,

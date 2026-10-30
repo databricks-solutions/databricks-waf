@@ -12,7 +12,7 @@ const MONTH_DOCUMENT_KIND = "databricks-waf-month";
 function monthDocument(identity, content) {
 	return {
 		documentKind: MONTH_DOCUMENT_KIND,
-		documentVersion: 1,
+		documentVersion: 2,
 		publication: {
 			id: identity.id,
 			month: identity.month,
@@ -23,9 +23,11 @@ function monthDocument(identity, content) {
 			...identity.reason != null ? { reason: identity.reason } : {}
 		},
 		...content.assessment != null ? { assessment: content.assessment } : {},
+		...content.closing != null ? { closing: content.closing } : {},
 		runHealth: content.runHealth,
 		findingDeltas: content.findingDeltas,
 		movement: content.movement,
+		...content.movementNote != null ? { movementNote: content.movementNote } : {},
 		actions: content.actions,
 		exceptions: content.exceptions,
 		outcomes: content.outcomes,
@@ -65,6 +67,14 @@ function monthCsv(document) {
 		publishedAt
 	];
 	const rows = [[...CSV_HEADER]];
+	if (document.closing != null) rows.push([
+		...lead,
+		"closing",
+		"Closing reading",
+		document.closing.kind,
+		"",
+		document.closing.statement
+	]);
 	for (const fact of document.runHealth) rows.push([
 		...lead,
 		"run health",
@@ -80,6 +90,14 @@ function monthCsv(document) {
 		move.from,
 		move.to,
 		""
+	]);
+	if (document.movementNote != null) rows.push([
+		...lead,
+		"movement",
+		"Not shown",
+		"",
+		"",
+		document.movementNote
 	]);
 	for (const delta of document.findingDeltas) rows.push([
 		...lead,

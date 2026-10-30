@@ -131,6 +131,26 @@
 <li><code>app/server/store/postgres-fake.ts</code>: sessions that wait for one another, and the advisory transaction lock, which the fake accepts only inside a session.</li>
 <li><code>docs/install.md</code> and <code>docs/user-guide.md</code>: the statement that more than one instance is supported.</li>
 </ul>
+<h2 id="a9-scheduled-service-principal-runs-are-the-system-of-record-for-trends-and-monthly-publications">A9: scheduled service-principal runs are the system of record for trends and monthly publications</h2>
+<p><strong>Status:</strong> decided 2026-10-29 by the product owner</p>
+<p><strong>Decision.</strong> The scheduled service principal&#39;s runs are the record the App&#39;s trends and monthly publications are built from, and its grants are managed as code.</p>
+<ol>
+<li><strong>Closing reading.</strong> A month closes on its latest scheduled run. A month with no scheduled run closes on its latest scan of any kind, and the document says so. A scan that did not record how it was started is not counted as scheduled.</li>
+<li><strong>Opening reading.</strong> The reading a month opened at is the newest earlier scan that <code>comparable()</code> admits against the closing reading. A newer earlier scan that is not comparable is passed over, not measured against.</li>
+<li><strong>No comparable opening.</strong> The movement and finding-change sections are empty. The document carries <code>comparable()</code>&#39;s reason, or says that no scan finished before the month, in the same way the trend section carries the reason for a point it cannot place. A scan with no recorded measurement basis cannot be shown to be comparable and does not qualify.</li>
+<li><strong>Trend.</strong> Each earlier month in a month&#39;s trend closes on the same rule, so consecutive points come from one identity. The History page lists the scheduled runs by default, with the runs started by hand one filter away and every run under All.</li>
+<li><strong>Grants as code.</strong> The principal&#39;s access is declared and reviewed, not granted by hand: <code>npm run schedule:principal</code>, or the customer&#39;s own bundle or Terraform.</li>
+<li><strong>Document version.</strong> The monthly document version is 2. A month published under version 1 may carry a movement between two readings that were not comparable, and it stays a valid record of its own version; published months are not edited.</li>
+</ol>
+<p><strong>Reason.</strong> A published month is immutable, so what it says about movement has to be true of the estate. A scan run by an assessor sees what that assessor sees, a different lookback or methodology asks a different question, and a movement across any of those measures the observer. The scheduled principal is the one identity, lookback and schedule an install keeps constant, which makes its runs the series a trend and a monthly record can rest on. Interactive runs remain recorded and listed. They just do not close a month or open a movement.</p>
+<p><strong>Governs:</strong></p>
+<ul>
+<li><code>app/server/monthly/content.ts</code>: <code>closingScan</code>, which prefers the scheduled run; <code>openingReading</code>, which chooses the comparable opening; and <code>monthContent</code>, which empties the movement sections and carries the reason.</li>
+<li><code>app/server/monthly/document.ts</code>: <code>MONTH_DOCUMENT_VERSION</code>, and the <code>closing</code> and <code>movementNote</code> fields of the document and its CSV.</li>
+<li><code>app/server/api/publication-routes.ts</code>: the assembly of a month&#39;s opening and closing readings, shared by preview, publish and correction, and the closing scan each earlier month&#39;s trend point is read from.</li>
+<li><code>app/client/src/pages/HistoryPage.tsx</code> and <code>app/client/src/pages/schedule-language.ts</code>: the scan filter and its scheduled default.</li>
+<li><code>docs/scheduled-scans.md</code>: the scheduled principal and its grants.</li>
+</ul>
 
         <footer class="page-footer">
           <span>Databricks Well-Architected Framework assessment</span>

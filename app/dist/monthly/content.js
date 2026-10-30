@@ -1,4 +1,4 @@
-import { comparable } from "../shared/api/comparability.js";
+import { comparable, stampEnough } from "../shared/api/comparability.js";
 import { inForce } from "../accept/risk.js";
 import "../scan/scan.js";
 import { monthLabel } from "./publication.js";
@@ -25,16 +25,74 @@ function inWindow(at, window) {
 	return t >= window.start.getTime() && t < window.end.getTime();
 }
 /**
-* The last scan of the month: the one whose result landed latest inside the window.
+* The last scan of the month: the scheduled run whose result landed latest inside the window, or the
+* latest scan of any kind where the month has no scheduled run.
+*
+* Scheduled first because the scheduled service principal is the system of record (decision A9 in
+* docs/decisions.md): an assessor's interactive run is a different observer, and letting whichever
+* finished last close the month would let a spot-check replace the reading the trend is built from. A
+* run that did not record its trigger is not known to be scheduled, so it does not take the preference.
 *
 * Exported for the endpoint, which finds each prior published month's closing scan the same way to
 * build the trend's series — one definition of "the month's close" rather than two that drift.
 */
 function closingScan(scans, window) {
-	return scans.filter((scan) => inWindow(scan.finishedAt, window)).reduce((latest, scan) => {
-		if (latest == null) return scan;
-		return scan.finishedAt.getTime() > latest.finishedAt.getTime() ? scan : latest;
+	const inMonth = scans.filter((scan) => inWindow(scan.finishedAt, window));
+	const scheduled = inMonth.filter((scan) => scan.trigger === "scheduled");
+	return latest(scheduled.length > 0 ? scheduled : inMonth);
+}
+function latest(scans) {
+	return scans.reduce((newest, scan) => {
+		if (newest == null) return scan;
+		return scan.finishedAt.getTime() > newest.finishedAt.getTime() ? scan : newest;
 	}, void 0);
+}
+/**
+* Why a reading cannot open a month that `closing` closes, or undefined where it can.
+*
+* The server's own `comparable`, in the order the trend reads it (later run first), so the reason reads
+* the same here as there. A reading without a usable stamp cannot be shown comparable, which is the
+* rule the trend applies through `stampEnough`: absence is not agreement.
+*/
+function openingBarrier(opening, closing) {
+	if (!stampEnough(closing.stamp)) return "The run that closed the month did not record how it was measured, so nothing can be shown to be comparable with it.";
+	if (!stampEnough(opening.stamp)) return "The earlier scan did not record how it was measured, so it cannot be shown to be comparable with the run that closed the month.";
+	const verdict = comparable(closing.stamp, opening.stamp);
+	return verdict.ok ? void 0 : verdict.reason;
+}
+/**
+* The reading a month opened at: the newest scan before it that can be compared with the closing one.
+*
+* A newer scan that cannot be compared is passed over rather than measured against, because the month's
+* movement is a statement about the estate and a scan taken as a different identity or over a different
+* lookback is not a reading of the same one. Where none qualifies, the reason given is the newest earlier
+* scan's — the nearest reading to the month, and the one a reader asks about.
+*
+* Exported for the endpoint, which reads the scans and so chooses the opening; `monthContent` checks the
+* choice again, so a caller that hands in an opening it did not choose this way is corrected here.
+*/
+function openingReading(earlier, closing) {
+	if (closing == null) return {};
+	const newestFirst = [...earlier].sort((a, b) => b.finishedAt.getTime() - a.finishedAt.getTime());
+	let refusal;
+	for (const candidate of newestFirst) {
+		const barrier = openingBarrier(candidate, closing);
+		if (barrier == null) return { scan: candidate };
+		refusal ??= barrier;
+	}
+	return refusal != null ? { refusal } : {};
+}
+/** What the document says about which reading closed the month. */
+function closingReading(closing, month) {
+	if (closing.trigger === "scheduled") return {
+		kind: "scheduled",
+		statement: "The month closes on its latest scheduled run, the system of record."
+	};
+	const how = closing.trigger === "interactive" ? "was started by hand" : "did not record whether it was scheduled or started by hand";
+	return {
+		kind: "latest-scan",
+		statement: `No scheduled run finished in ${monthLabel(month)}, so the month closes on its latest scan, which ${how}.`
+	};
 }
 /**
 * The health of the month's assessment runs: the total, then one fact per state a run can be left in.
@@ -254,6 +312,16 @@ function actionsMoved(actions, window) {
 	];
 }
 /**
+* What the empty movement sections say for themselves, where there is a closing run and no opening one.
+*
+* Absent where the month has its two readings, and where no run closed it: with nothing to move to, an
+* explanation of why nothing moved would be about a measurement that was never going to be made.
+*/
+function movementNote(closing, opening, refusal, month) {
+	if (closing == null || opening != null) return void 0;
+	return refusal != null ? `Movement and finding changes are not shown: no earlier scan can be compared with the run that closed the month. ${refusal}` : `Movement and finding changes are not shown: no scan finished before ${monthLabel(month)}, so the month has no opening reading to measure from.`;
+}
+/**
 * The month's whole content, ready for the builder to freeze.
 *
 * A pure function of the records passed in: the same sources produce the same rows, which is what lets
@@ -264,6 +332,9 @@ function actionsMoved(actions, window) {
 function monthContent(sources) {
 	const closing = closingScan(sources.scans, sources.window);
 	const finalisation = sources.finalisation;
+	const checked = sources.priorScan != null && closing != null ? openingBarrier(sources.priorScan, closing) : void 0;
+	const opening = checked == null ? sources.priorScan : void 0;
+	const note = movementNote(closing, opening, checked ?? sources.priorRefusal, sources.month);
 	return {
 		...closing != null && finalisation?.resultId != null ? { assessment: {
 			runId: closing.id,
@@ -275,9 +346,11 @@ function monthContent(sources) {
 				fingerprint: closing.stamp.definition.fingerprint
 			} } : {}
 		} } : {},
+		...closing != null ? { closing: closingReading(closing, sources.month) } : {},
 		runHealth: runHealth(sources.runs, sources.window),
-		findingDeltas: findingDeltas(sources.priorScan, closing, sources.label),
-		movement: movement(sources.priorScan, closing),
+		findingDeltas: findingDeltas(opening, closing, sources.label),
+		movement: movement(opening, closing),
+		...note != null ? { movementNote: note } : {},
 		actions: actionsMoved(sources.actions, sources.window),
 		exceptions: exceptions(sources.risks, sources.window.end, sources.label),
 		outcomes: outcomes(closing),
@@ -341,4 +414,4 @@ function whyUnplaceable(point) {
 	return point.closingScan === "not-in-history" ? `The run that closed ${label} is not in the scan history this app reads, so how it was measured cannot be read from it. That month’s own published document is where it is recorded.` : `The run that closed ${label} did not record how it was measured, so it cannot be placed on the same line as the others.`;
 }
 //#endregion
-export { closingScan, monthContent, scoreText };
+export { closingScan, monthContent, openingReading, scoreText };

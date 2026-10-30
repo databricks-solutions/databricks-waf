@@ -51,11 +51,26 @@ export interface MonthTrendPointPayload {
   readonly note?: string;
 }
 
+/** Which reading closed the month, and the sentence the document says it in. */
+export interface MonthClosingPayload {
+  /** `scheduled` is the system of record; `latest-scan` is the fallback for a month with no scheduled run. */
+  readonly kind: 'scheduled' | 'latest-scan';
+  readonly statement: string;
+}
+
 /** Everything a month reports, already resolved to the strings it will display. */
 export interface MonthContentPayload {
+  /** Absent where no run closed the month, and on a month frozen before documents carried it. */
+  readonly closing?: MonthClosingPayload;
   readonly runHealth: readonly MonthFactPayload[];
   readonly findingDeltas: readonly MonthDeltaPayload[];
   readonly movement: readonly MonthMovementPayload[];
+  /**
+   * Why `movement` and `findingDeltas` are empty, where a run closed the month and nothing it could be
+   * compared with opened it: the comparability rule's reason, or that no earlier scan exists. Absent
+   * where they were measured, where no run closed the month, and on months frozen before it was kept.
+   */
+  readonly movementNote?: string;
   readonly actions: readonly MonthFactPayload[];
   readonly exceptions: readonly MonthExceptionPayload[];
   readonly outcomes: readonly MonthFactPayload[];
@@ -189,9 +204,11 @@ export interface MonthDocumentPayload {
     readonly supersedes?: string;
     readonly reason?: string;
   };
+  readonly closing?: MonthClosingPayload;
   readonly runHealth: readonly MonthFactPayload[];
   readonly findingDeltas: readonly MonthDeltaPayload[];
   readonly movement: readonly MonthMovementPayload[];
+  readonly movementNote?: string;
   readonly actions: readonly MonthFactPayload[];
   readonly exceptions: readonly MonthExceptionPayload[];
   readonly outcomes: readonly MonthFactPayload[];
