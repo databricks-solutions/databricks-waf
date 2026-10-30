@@ -178,13 +178,18 @@ const ASSESSORS = 'waf-assessors';
  */
 let scimGroups: readonly string[] | undefined = [ASSESSORS];
 
+/** What SCIM calls the caller, and what it says the caller is named when that is not the same. */
+let scimUserName = 'admin@example.com';
+let scimDisplayName: string | undefined;
+
 /** Stands in for the workspace: answers the SCIM current-user call, header and all. */
 const workspace: RequestListener = (request, response) => {
   if (request.url === '/api/2.0/preview/scim/v2/Me') {
     response.writeHead(200, { 'content-type': 'application/json', 'x-databricks-org-id': '1234567890' });
     response.end(
       JSON.stringify({
-        userName: 'admin@example.com',
+        userName: scimUserName,
+        ...(scimDisplayName != null ? { displayName: scimDisplayName } : {}),
         ...(scimGroups == null
           ? {}
           : { groups: scimGroups.map((display, at) => ({ display, type: 'direct', value: String(at) })) }),
@@ -311,6 +316,8 @@ afterAll(() => closeServed(servers));
 // So that a test which makes the caller a stranger cannot leave every test after it refused.
 afterEach(() => {
   scimGroups = [ASSESSORS];
+  scimUserName = 'admin@example.com';
+  scimDisplayName = undefined;
 });
 
 async function post(path: string, headers: Record<string, string> = {}, url = appUrl) {
@@ -2912,6 +2919,101 @@ describe('whether the stored records are still what was written', () => {
     scimGroups = [];
     const url = await startApp({ verifyRecords: () => Promise.resolve(report()) });
     expect((await fetch(`${url}/api/records/verification`)).status).toBe(200);
+  });
+});
+
+/*
+ * Who a change is recorded against.
+ *
+ * Permission is decided on the groups SCIM returns for the forwarded token, so the name written
+ * beside the act has to be the one SCIM returned for that same token. A forwarded header is a claim
+ * about the caller, and a request whose header names somebody else is refused rather than recorded
+ * under either name. Decision A1 in docs/decisions.md.
+ */
+describe('who a change is attributed to', () => {
+  const SERVICE_PRINCIPAL = '5af463d1-8cb9-4417-b2a5-725cea64cce5';
+
+  async function start(url: string, headers: Record<string, string> = {}) {
+    const response = await fetch(`${url}/api/scan`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-forwarded-access-token': 'token', ...headers },
+      body: '{}',
+    });
+    return { status: response.status, body: (await response.json()) as Record<string, unknown> };
+  }
+
+  it('refuses a request whose forwarded identity disagrees with the one SCIM returned, and records the refusal', async () => {
+    const audit = new InMemoryAuditLog();
+    const url = await startApp({ audit });
+
+    const { status, body } = await start(url, { 'x-forwarded-email': 'someone.else@example.com' });
+
+    expect(status).toBe(403);
+    expect(body.error).toBe('identity-mismatch');
+    const events = (await audit.search()).events;
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({
+      action: 'scan.start',
+      outcome: 'refused',
+      reason: 'identity-mismatch',
+      actor: 'admin@example.com',
+    });
+  });
+
+  it.each([
+    ['a header that matches exactly', 'admin@example.com'],
+    ['a header that differs only in case', 'Admin@Example.COM'],
+  ])('allows %s', async (_what, header) => {
+    const audit = new InMemoryAuditLog();
+    const url = await startApp({ audit });
+
+    const { status, body } = await start(url, { 'x-forwarded-email': header });
+
+    expect(status).toBe(200);
+    // The verified spelling is what is recorded, not the one the header happened to use.
+    expect((body.stamp as { actor: string }).actor).toBe('admin@example.com');
+  });
+
+  it('attributes to the SCIM identity when there is no forwarded header', async () => {
+    const url = await startApp({});
+
+    const { status, body } = await start(url);
+
+    expect(status).toBe(200);
+    expect((body.stamp as { actor: string }).actor).toBe('admin@example.com');
+  });
+
+  it('records a service principal under its application id, with its name beside it', async () => {
+    scimUserName = SERVICE_PRINCIPAL;
+    scimDisplayName = 'waf-schedule-probe';
+    const url = await startApp({});
+
+    const { status, body } = await start(url, { 'x-forwarded-email': SERVICE_PRINCIPAL });
+
+    expect(status).toBe(200);
+    expect(body.stamp).toMatchObject({ actor: SERVICE_PRINCIPAL, actorName: 'waf-schedule-probe' });
+  });
+
+  it('names the mismatch ahead of membership, whatever the permission would have been', async () => {
+    // A caller who is both a stranger and mismatched is told about the identity, because the groups
+    // SCIM listed are only meaningful for the name it returned.
+    const audit = new InMemoryAuditLog();
+    const url = await startApp({ audit });
+    scimGroups = ['users'];
+
+    const { status, body } = await start(url, { 'x-forwarded-email': 'someone.else@example.com' });
+
+    expect(status).toBe(403);
+    expect(body.error).toBe('identity-mismatch');
+    expect((await audit.search()).events).toMatchObject([{ reason: 'identity-mismatch' }]);
+  });
+
+  it('leaves the read-only shortcut alone, because a read attributes nothing', async () => {
+    const response = await fetch(`${appUrl}/api/scan/readiness`, {
+      headers: { 'x-forwarded-access-token': 'token', 'x-forwarded-email': 'someone.else@example.com' },
+    });
+
+    expect(response.status).toBe(200);
   });
 });
 

@@ -92,7 +92,7 @@ import {
   type CurrentUser,
   type EstateScope,
 } from '../collect/estate-scope.js';
-import { NotPermittedError, recordRefusal, requirePermission } from '../authorize/group.js';
+import { NotPermittedError, recordRefusal, requirePermission, requireVerifiedIdentity } from '../authorize/group.js';
 import { AuditRecorder, closedWhenAnswered, TrailUnwritableError, type Act, type Actor } from '../audit/record.js';
 import { AUDIT_PHRASES, type AuditAction, type AuditTarget } from '../audit/event.js';
 import { authoredGuidance, type GuidanceLibrary } from '../guidance/guidance.js';
@@ -1416,7 +1416,9 @@ export function registerApi(served: Application, options: ApiOptions): void {
         requirePermission(options.assessorGroup, identity);
         may = { start: true };
       } catch (cause) {
-        if (!(cause instanceof NotPermittedError)) throw cause;
+        // Membership is the only refusal this read can make: it takes the header as given, and the
+        // identity check belongs to the gate on the change itself.
+        if (!(cause instanceof NotPermittedError) || cause.kind === 'identity-mismatch') throw cause;
         may = { start: false, refusal: cause.kind, message: cause.message };
       }
 
@@ -3102,9 +3104,31 @@ interface Acting extends Identity {
   readonly act: Act;
 }
 
+/**
+ * The identity a read attributes, which is the proxy's header when there is one.
+ *
+ * A read records nothing against a person, so the header is allowed to stand in for SCIM's answer
+ * here. The gate does not take this shortcut: see `verifiedIdentityFrom`.
+ */
 function identityFrom(headerActor: string | undefined, user: CurrentUser): Identity {
+  return identityOf(headerActor ?? user.userName, user);
+}
+
+/**
+ * The identity a change is attributed to: what SCIM returned for the token, never the header.
+ *
+ * The header is only the fallback for a SCIM answer that carries no `userName`. Where both are
+ * present the caller checks them against each other with `requireVerifiedIdentity`, so by the time
+ * a change is recorded the two agree. A service principal's `userName` is its application id and
+ * its display name is kept in `actorName`, as for any other caller. Decision A1 in docs/decisions.md.
+ */
+function verifiedIdentityFrom(headerActor: string | undefined, user: CurrentUser): Identity {
+  return identityOf(user.userName ?? headerActor, user);
+}
+
+function identityOf(actor: string | undefined, user: CurrentUser): Identity {
   return {
-    actor: headerActor ?? user.userName ?? 'unknown',
+    actor: actor ?? 'unknown',
     ...(user.displayName != null ? { actorName: user.displayName } : {}),
     scope: scopeFromProbe(user),
     ...(user.groups != null ? { groups: user.groups } : {}),
@@ -3132,13 +3156,18 @@ async function permitted(
   context: { readonly target?: AuditTarget; readonly correlation?: string } = {}
 ): Promise<Acting> {
   const token = userToken(request);
-  const identity = identityFrom(actorFromHeaders(request), await probeCurrentUser({ host: options.host, token }));
+  const forwarded = actorFromHeaders(request);
+  const user = await probeCurrentUser({ host: options.host, token });
+  const identity = verifiedIdentityFrom(forwarded, user);
   // Every request this build serves is the caller's own; the app has no identity of its own to act
   // under until A4 lands the job worker. Derived rather than hardcoded at each call site so that
   // when it does, this is the one line that changes.
   const who = { actor: identity.actor, executionMode: 'on-behalf-of-user' } as const;
 
   try {
+    // Before membership: the groups are the ones SCIM listed for its own name, so a request that
+    // names somebody else is refused as that, and recorded under the verified name.
+    requireVerifiedIdentity(forwarded, user.userName);
     requirePermission(options.assessorGroup, identity);
   } catch (cause) {
     if (cause instanceof NotPermittedError) {
