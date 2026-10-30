@@ -12,6 +12,7 @@ const WRITE = process.argv.includes('--write');
 const PAGES = [
   ['index.md', 'index.html'],
   ['install.md', 'install/index.html'],
+  ['deploy-with-genie-code.md', 'deploy-with-genie-code/index.html'],
   ['configuration.md', 'configuration/index.html'],
   ['user-guide.md', 'user-guide/index.html'],
   ['pages.md', 'pages/index.html'],
