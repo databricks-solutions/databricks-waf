@@ -7,6 +7,7 @@
 
 import type { RunDefinitionPayload, RunIdentityPayload, StampPayload } from './contract.js';
 import internalDeliveryPatterns from './internal-delivery-patterns.json';
+import { INTERIM_VERSION_1_LABEL, isInterimVersionOne, methodologyVersionName } from './methodology-interim.js';
 
 const INTERNAL_DELIVERY_NAMES = internalDeliveryPatterns.map((pattern) => new RegExp(pattern, 'iu'));
 
@@ -168,6 +169,9 @@ export function comparable(
  * ships Version 1. Candidate runs carry their candidate state and exact manifest, so two matching
  * candidate records can be compared without either being presented as released. Publication remains
  * a separate, stricter gate.
+ *
+ * Different public versions are refused whatever the catalogue span between them: a version is a
+ * different standard, and describing what separates two of them would make a trend of what is not one.
  */
 function methodologyBarrier(a: StampPayload, b: StampPayload): string | undefined {
   const one = a.publicMethodology;
@@ -184,13 +188,20 @@ function methodologyBarrier(a: StampPayload, b: StampPayload): string | undefine
       'They do not belong to one customer methodology trend.'
     );
   }
+  const interim = isInterimVersionOne(one) || isInterimVersionOne(two);
   if (one.publicVersion !== two.publicVersion) {
-    return `These scans belong to different public methodology versions (${String(one.publicVersion)} and ${String(two.publicVersion)}).`;
+    // The interim variant is named rather than numbered: "1" would read as the released Version 1, which
+    // it is not, and the reader comparing against it is owed that distinction.
+    const [first, second] = interim
+      ? [methodologyVersionName(one), methodologyVersionName(two)]
+      : [String(one.publicVersion), String(two.publicVersion)];
+    return `These scans belong to different public methodology versions (${first} and ${second}).`;
   }
   if (one.manifestDigest !== two.manifestDigest) {
     return (
-      `These scans name Methodology Version ${String(one.publicVersion)} with different manifest digests, ` +
-      'so they do not describe the same released standard.'
+      `These scans name Methodology Version ${String(one.publicVersion)} with different manifest digests` +
+      (interim ? `, and one of them is the ${INTERIM_VERSION_1_LABEL}, which was never released` : '') +
+      ', so they do not describe the same released standard.'
     );
   }
   return undefined;

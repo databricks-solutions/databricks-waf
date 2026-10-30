@@ -310,6 +310,27 @@
 <li><code>app/server/resolve/resolvers/governance.ts</code>: <code>registeredInUnityCatalog</code> and <code>dataAndAiInOnePlace</code>.</li>
 <li><code>app/config/controls/enrichment.mjs</code>: the <code>DG-01-03</code> criteria and <code>thresholds</code>.</li>
 </ul>
+<h2 id="d5-restore-version-1-release-version-2-label-interim-records">D5: restore Version 1, release Version 2, label interim records</h2>
+<p><strong>Status:</strong> decided 2026-10-29 by the product owner</p>
+<p><strong>Decision.</strong></p>
+<ol>
+<li><strong>Version 1 is the released artifact, byte for byte.</strong> <code>version-1.manifest.json</code> and <code>version-1.release.json</code> are the files from the <code>v0.1.0</code> release, and the manifest digest is <code>sha256:30d26e28904afb7e2c95799daef7ee26219c1461728ded11f514435394c99761</code>. A released version&#39;s content is never edited, and nothing can satisfy the freeze check by regenerating it.</li>
+<li><strong>A change to what a methodology fingerprints is a new public version.</strong> Version 2 carries the scoring changes made since Version 1. It stays a candidate until the product owner approves and releases it, and a release pins its manifest digest in <code>RELEASED_MANIFEST_DIGESTS</code> in the same change.</li>
+<li><strong>The interim Version 1 manifest is labelled, not rewritten.</strong> Scans taken while the Version 1 manifest on <code>main</code> had been regenerated carry the digest <code>sha256:3ffb685e36d092c91f52a93a172c1db7e32a2ec5f88f3efdab361390eb0dd71f</code> under <code>publicVersion: 1</code>. Wherever a stamp is shown or compared, that digest on a Version 1 stamp is called the &quot;unreleased interim variant of Version 1&quot;. Stored stamps and published results keep the bytes they were written with, and no stored scan is re-scored.</li>
+<li><strong>A comparison across public versions is refused.</strong> Version 1 against Version 2, or against the interim variant, is a comparison of different standards. <code>comparable()</code> refuses it with a reason that names the versions, and names the interim variant by its label. The same label is used when the interim variant is compared with released Version 1, whose digest differs.</li>
+<li><strong>The interim variant cannot be published.</strong> A month whose closing run records the interim digest is refused for publication, whatever state its stamp recorded, because no release ever carried that digest.</li>
+</ol>
+<p><strong>Reason.</strong> Version 1 was released at one digest and then changed under the same name. A reader who sees &quot;Methodology Version 1&quot; has to be able to rely on it meaning one fixed standard, so the released files were restored and the later scoring changes moved to a version of their own. The scans that stamped the changed manifest are true records of what was measured, so they stay as they are and are described accurately instead. Comparing them with released Version 1 or with Version 2 would draw a trend across scoring that differs, which is what the methodology barrier exists to refuse.</p>
+<p><strong>Governs:</strong></p>
+<ul>
+<li><code>app/config/methodology/version-1.manifest.json</code> and <code>version-1.release.json</code>: restored from <code>v0.1.0</code> and never regenerated.</li>
+<li><code>app/config/methodology/version-2.release.json</code> and <code>version-2.manifest.json</code>: the candidate, regenerated with <code>npm run methodology:manifest</code> whenever what the manifest fingerprints changes, and released by the product owner with <code>npm run methodology:release</code>.</li>
+<li><code>app/scripts/methodology-release-policy.ts</code>: <code>RELEASED_MANIFEST_DIGESTS</code>, the pinned digest of every released version, and the freeze check that a regenerated or state-flipped manifest cannot satisfy.</li>
+<li><code>app/shared/api/methodology-interim.ts</code>: the interim digest, its label, and the one test for it.</li>
+<li><code>app/shared/api/comparability.ts</code>: <code>methodologyBarrier</code>, which refuses a comparison across public versions or digests and names the interim variant.</li>
+<li><code>app/client/src/methodology-identity.ts</code>, <code>app/client/src/pages/methodology-language.ts</code> and <code>app/client/src/pages/MethodologyPage.tsx</code>: the stamp label on run and report stamps, and the Methodology page wording for a release or a candidate.</li>
+<li><code>app/server/api/publication-routes.ts</code>: <code>methodologyRefusal</code>, which refuses a month closed on the interim variant.</li>
+</ul>
 
         <footer class="page-footer">
           <span>Databricks Well-Architected Framework assessment</span>

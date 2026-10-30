@@ -909,7 +909,7 @@ export function registerApi(served: Application, options: ApiOptions): void {
           'incomplete',
           'legacy-result',
           `Published report ${result.id} predates the Version 2 outcome and cannot produce a report file.`,
-          'Complete a new assessment and review under Methodology Version 1, then use that report.'
+          'Complete a new assessment and review under the current methodology, then use that report.'
         )
       );
       return undefined;

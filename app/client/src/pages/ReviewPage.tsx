@@ -582,7 +582,7 @@ export function PublishedReview({ review }: { readonly review: import('../api/ty
             <div className="wa-assess-publication-hold">
               <CircleSlash aria-hidden />
               <p>
-                Methodology Version 1 is not released, so monthly publication remains held. This published report
+                The current methodology is not released, so monthly publication remains held. This published report
                 remains on the Dashboard.
               </p>
             </div>

@@ -59,6 +59,7 @@ import { PublicationRaceError, type PublicationStore } from '../monthly/store.js
 import { finalisationOf } from '../review/finalisation.js';
 import type { FinalisationPayload } from '../../shared/api/contract.js';
 import { eligible, ineligible, type GateEligibilityPayload } from '../../shared/api/eligibility.js';
+import { INTERIM_VERSION_1_LABEL, isInterimVersionOne } from '../../shared/api/methodology-interim.js';
 import type { ReviewStore } from '../review/store.js';
 import { monthWindow } from '../monthly/window.js';
 import type { AssessmentScope } from '../store/assessment-scope.js';
@@ -506,7 +507,7 @@ export function registerPublicationRoutes(app: Application, options: Publication
             'incomplete',
             'methodology-not-released',
             methodologyUnpublishable,
-            'Run the released Methodology Version 1 assessment, complete its review, and retry publication.'
+            'Run an assessment under a released methodology version, complete its review, and retry publication.'
           );
 
     return {
@@ -537,7 +538,14 @@ export function registerPublicationRoutes(app: Application, options: Publication
     if (methodology == null) {
       return (
         `${selectedRun(monthLabel(month), runMoment(closing.finishedAt), closed)}, which records no public methodology release. ` +
-        'It is pre-release development evidence and cannot be published as Methodology Version 1.'
+        'It is pre-release development evidence and cannot be published under a public methodology version.'
+      );
+    }
+    // Its stamp says released, which is what it recorded; no release ever carried that digest.
+    if (isInterimVersionOne(methodology)) {
+      return (
+        `${selectedRun(monthLabel(month), runMoment(closing.finishedAt), closed)}, which records the ` +
+        `${INTERIM_VERSION_1_LABEL}. That scoring shape was never released, so a customer publication cannot rest on it.`
       );
     }
     if (methodology.state !== 'released') {

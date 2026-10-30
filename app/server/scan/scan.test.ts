@@ -467,6 +467,50 @@ describe('comparing two scans', () => {
       expect(result.reason).toContain('different manifest digests');
     });
 
+    const INTERIM = 'sha256:3ffb685e36d092c91f52a93a172c1db7e32a2ec5f88f3efdab361390eb0dd71f';
+    const RELEASED_V1 = 'sha256:30d26e28904afb7e2c95799daef7ee26219c1461728ded11f514435394c99761';
+    const methodology = (publicVersion: number, manifestDigest: string, state: 'released' | 'candidate' = 'released') =>
+      stamp({ publicMethodology: { publicVersion, manifestDigest, state } });
+
+    it('refuses Version 1 against Version 2 and names both versions', () => {
+      const result = comparable(methodology(2, 'sha256:two', 'candidate'), methodology(1, RELEASED_V1));
+
+      expect(result.ok).toBe(false);
+      expect(result.reason).toContain('different public methodology versions');
+      expect(result.reason).toContain('2 and 1');
+      expect(result.reason).not.toContain('interim');
+    });
+
+    it('names the unreleased interim variant when it is compared with released Version 1', () => {
+      for (const [a, b] of [
+        [methodology(1, INTERIM), methodology(1, RELEASED_V1)],
+        [methodology(1, RELEASED_V1), methodology(1, INTERIM)],
+      ]) {
+        const result = comparable(a, b);
+        expect(result.ok).toBe(false);
+        expect(result.reason).toContain('unreleased interim variant of Version 1');
+        expect(result.reason).toContain('different manifest digests');
+      }
+    });
+
+    it('names the unreleased interim variant when it is compared with Version 2', () => {
+      const result = comparable(methodology(1, INTERIM), methodology(2, 'sha256:two', 'candidate'));
+
+      expect(result.ok).toBe(false);
+      expect(result.reason).toContain('unreleased interim variant of Version 1');
+      expect(result.reason).toContain('different public methodology versions');
+    });
+
+    it('compares two interim records, which share one digest, without calling them released', () => {
+      expect(comparable(methodology(1, INTERIM), methodology(1, INTERIM))).toEqual({ ok: true });
+    });
+
+    it('does not take the interim label for a Version 2 record that happens to share the digest', () => {
+      const result = comparable(methodology(2, INTERIM, 'candidate'), methodology(2, 'sha256:other', 'candidate'));
+
+      expect(result.reason).not.toContain('interim');
+    });
+
     it('compares two records of the same candidate without calling either released', () => {
       const candidate = stamp({
         publicMethodology: { publicVersion: 1, manifestDigest: 'sha256:manifest', state: 'candidate' },
