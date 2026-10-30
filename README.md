@@ -3,7 +3,7 @@
 **Find architecture gaps, trace them to evidence, and turn them into owned improvement work.**
 
 [Get started](#get-started) · [Read the guide](https://databricks-solutions.github.io/databricks-waf/) ·
-[View v0.1.0 Alpha](https://github.com/databricks-solutions/databricks-waf/releases/tag/v0.1.0) ·
+[View v0.2.0 Beta](https://github.com/databricks-solutions/databricks-waf/releases/tag/v0.2.0) ·
 [Report an issue](https://github.com/databricks-solutions/databricks-waf/issues)
 
 ![A Databricks estate being assessed, connected to evidence and converted into verified improvement work](docs/assets/images/readme-evidence-to-action.jpg)
@@ -18,7 +18,7 @@ It assesses a workspace or account against the seven pillars of the
 Automated evidence provides an indicative posture immediately. Human review fills only the gaps that
 platform data cannot answer. Publication creates an immutable report for governance and comparison.
 
-> **Alpha release:** v0.1.0 is ready for evaluation and field feedback. The supported experience is a
+> **Beta release:** v0.2.0 is ready for customer pilots and field evaluation. The supported experience is a
 > current desktop or laptop Chrome browser installed through the Databricks Asset Bundle path below.
 
 ## What teams get
@@ -89,7 +89,7 @@ You need:
 ```bash
 git clone https://github.com/databricks-solutions/databricks-waf.git
 cd databricks-waf
-git checkout v0.1.0
+git checkout v0.2.0
 cd app
 npm ci
 databricks auth profiles

@@ -115,7 +115,7 @@ function withCount(text) {
 const generated = `# Third-party licences
 
 This file inventories every non-development third-party package resolved by the production lockfile for
-Databricks WAF 0.1.0, including optional packages for every supported runtime platform. The application
+Databricks WAF 0.2.0, including optional packages for every supported runtime platform. The application
 itself is governed by the [Databricks License](LICENSE.md). First-party \`@databricks/*\` packages are
 governed separately by their published Apache-2.0 terms and are excluded from this third-party inventory.
 
