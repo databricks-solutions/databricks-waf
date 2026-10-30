@@ -165,7 +165,10 @@ export function registerHealthRoutes(app: Application, options: HealthRouteOptio
         return;
       }
 
-      await act.performed({ kind: 'audit-gap', id });
+      // A repeat changed nothing, and the first acknowledgement already has its event: a second one
+      // would put a second "acknowledged" in the trail for a gap that was acknowledged once.
+      if (done.already) act.unchanged();
+      else await act.performed({ kind: 'audit-gap', id });
       const payload: AcknowledgedGapPayload = {
         id,
         acknowledgedBy: done.by,

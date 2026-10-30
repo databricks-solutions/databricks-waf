@@ -61,13 +61,17 @@ export function attentionReason(requirement: AttestableRequirement): AttentionRe
 }
 
 /**
- * The earliest review date among the due answers a confirm of this pillar would cite, if any.
+ * The earliest review date among the due answers a confirm would cite, if any.
  *
  * A due answer counts until that date; a report that cites one after it is refused, so this is the
- * deadline for recording every selected pillar.
+ * deadline for recording every selected pillar. Given the whole review it reads every pillar that
+ * was not skipped, because the deadline is the report's and the pillar on screen is only one of the
+ * pillars whose answers it cites; a skipped pillar cites none.
  */
-export function earliestDueBy(summary: PillarSummary): string | undefined {
-  const dates = summary.reused
+export function earliestDueBy(target: PillarSummary | readonly PillarSummary[]): string | undefined {
+  const summaries = 'pillarId' in target ? [target] : target.filter((one) => one.recorded?.kind !== 'skipped');
+  const dates = summaries
+    .flatMap((one) => one.reused)
     .filter((one) => stateOf(one) === 'due')
     .flatMap((one) => (one.attestation != null ? [one.attestation.reviewBy] : []));
   return dates.sort((left, right) => new Date(left).getTime() - new Date(right).getTime())[0];

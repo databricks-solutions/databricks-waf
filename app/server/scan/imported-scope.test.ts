@@ -236,16 +236,15 @@ describe('which account an account-level reading may come from', () => {
     expect(finding(scan, 'SCP-04-02').outcome).not.toBe('unmeasurable');
   });
 
-  it('offers every file\u2019s account half when no file names an account', async () => {
-    const store = new InMemoryEvidenceImportStore();
-    const unnamed = held('e', '2026-08-01T09:00:00Z', WORKSPACE_A, 'true', true);
-    const bare = {
-      ...unnamed,
+  /** A file whose account half says audit logs are delivered, from a script that read no account id. */
+  function unnamed(digest: string, collected: string, workspaceId: string): ImportedEvidence {
+    return {
+      ...held(digest, collected, workspaceId, 'true', true),
       envelope: envelopeFrom({
         ...envelope({
-          generated_at: '2026-08-01T09:00:00Z',
+          generated_at: collected,
           tiers: {
-            workspace: { ran: true, identity: identity({ workspace_id: WORKSPACE_A, account_id: null }) },
+            workspace: { ran: true, identity: identity({ workspace_id: workspaceId, account_id: null }) },
             account: {
               ran: true,
               identity: identity({ workspace_id: null, account_id: null, host: 'https://accounts.cloud.databricks.com' }),
@@ -261,11 +260,36 @@ describe('which account an account-level reading may come from', () => {
             }),
           ],
         }),
-        digest: `sha256:${'e'.repeat(64)}`,
+        digest: `sha256:${digest.repeat(64).slice(0, 64)}`,
       }),
     };
-    await store.record(bare);
+  }
+
+  it('offers every file\u2019s account half when no file names an account', async () => {
+    const store = new InMemoryEvidenceImportStore();
+    await store.record(unnamed('e', '2026-08-01T09:00:00Z', WORKSPACE_A));
 
     expect(finding(await scanned(workspaceScope(WORKSPACE_C), store), 'SCP-04-02').outcome).toBe('pass');
+  });
+
+  it('keeps a file\u2019s account half that names no account when a later file names one', async () => {
+    const store = new InMemoryEvidenceImportStore();
+    await store.record(unnamed('e', '2026-08-01T09:00:00Z', WORKSPACE_C));
+    // Newer, names account X, and carries no account half of its own.
+    await store.record(held('a', '2026-08-02T09:00:00Z', WORKSPACE_A, 'true'));
+
+    expect(finding(await scanned(workspaceScope(WORKSPACE_A), store), 'SCP-04-02').outcome).toBe('pass');
+  });
+
+  it('still leaves out the account half of a file that names a different account than the one chosen', async () => {
+    const store = new InMemoryEvidenceImportStore();
+    await store.record(unnamed('e', '2026-08-01T09:00:00Z', WORKSPACE_C));
+    await store.record(held('d', '2026-08-02T09:00:00Z', WORKSPACE_D, 'true', true, ACCOUNT_Y, 'DISABLED'));
+    // Account X is chosen by the workspace's own file, and Y's newer account half is not offered.
+    await store.record(held('a', '2026-08-03T09:00:00Z', WORKSPACE_A, 'true'));
+
+    const scan = await scanned(workspaceScope(WORKSPACE_A), store);
+
+    expect(finding(scan, 'SCP-04-02').outcome).toBe('pass');
   });
 });

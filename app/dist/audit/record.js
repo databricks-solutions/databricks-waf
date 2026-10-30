@@ -74,6 +74,9 @@ var AuditRecorder = class {
 		return {
 			performed: (target, emptied) => write("performed", target, void 0, emptied),
 			failed: (cause, target) => write("failed", target, reasonFor(cause)),
+			unchanged: () => {
+				closed = true;
+			},
 			settle: (status) => status < 400 ? write("performed", void 0, void 0) : write("failed", void 0, `http-${String(status)}`)
 		};
 	}
@@ -189,7 +192,7 @@ var AuditRecorder = class {
 	*/
 	async mark(event, error) {
 		const gaps = this.options.gaps;
-		if (gaps == null) return;
+		if (gaps == null || event.action === "gap.acknowledge") return;
 		try {
 			await gaps.record({
 				id: event.id,

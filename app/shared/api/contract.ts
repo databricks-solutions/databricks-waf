@@ -1065,8 +1065,11 @@ export interface ReadinessPayload {
     | { readonly start: true }
     | {
         readonly start: false;
-        /** Turned away, or unable to establish membership at all — a fault rather than a refusal. */
-        readonly refusal: 'not-a-member' | 'membership-unknown';
+        /**
+         * Turned away, unable to establish membership at all (a fault rather than a refusal), or
+         * carrying a forwarded identity that is not the one the workspace verified for the token.
+         */
+        readonly refusal: 'not-a-member' | 'membership-unknown' | 'identity-mismatch';
         readonly message: string;
       };
   /** Whether a warehouse is bound. False means a scan would start and read nothing. */

@@ -214,6 +214,7 @@ async function serve(
           recorded.outcome = 'failed';
           return Promise.resolve();
         },
+        unchanged: () => undefined,
         settle: () => Promise.resolve(),
       };
       return Promise.resolve({ actor: 'priya@example.com', scope: accountScope(), act });

@@ -171,7 +171,8 @@ var ScanRunner = class {
 	* attributed cannot be shown to be about anything. The account half describes the account, so it
 	* applies to every scan but only from files of the scan's account: the one the newest file for the
 	* scanned workspace names, or failing that the newest file that names one at all. When no file
-	* names an account there is nothing to hold them to and they all apply. The import-time check
+	* names an account there is nothing to hold them to and they all apply, and a file that names none
+	* is never held to one: only a file naming a different account is left out. The import-time check
 	* refuses a file for a different account than the one already held, so this is the second of two.
 	*
 	* Oldest applied first so that a newer collection of the same signal overwrites an older one, which
@@ -191,7 +192,8 @@ var ScanRunner = class {
 			for (const one of [...newest].reverse()) {
 				const workspaceId = one.workspaceId ?? workspaceOf(one.envelope);
 				const tiers = [];
-				if (account == null || accountOf(one.envelope) === account) tiers.push("account");
+				const named = accountOf(one.envelope);
+				if (account == null || named == null || named === account) tiers.push("account");
 				if (describes != null && workspaceId === describes) tiers.push("workspace");
 				for (const [id, reading] of readingsFrom(one, tiers).signals) applied.set(id, reading);
 			}

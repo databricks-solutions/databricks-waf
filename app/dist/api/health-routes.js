@@ -98,7 +98,8 @@ function registerHealthRoutes(app, options) {
 				});
 				return;
 			}
-			await act.performed({
+			if (done.already) act.unchanged();
+			else await act.performed({
 				kind: "audit-gap",
 				id
 			});

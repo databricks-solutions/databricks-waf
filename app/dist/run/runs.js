@@ -178,6 +178,10 @@ var Runs = class {
 	holding(kind = "assessment") {
 		return this.held[kind];
 	}
+	/** Whether a run is this process's own, either because it is collecting it or has just claimed its lease. */
+	owns(run) {
+		return this.held[run.kind] === run.id || run.lease?.holder === this.holder;
+	}
 	/**
 	* The run of a kind that something is working on, wherever it is working.
 	*

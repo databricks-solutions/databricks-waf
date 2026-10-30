@@ -178,6 +178,10 @@ export function MonthDetail({
   const content: MonthContent | undefined =
     publishedMode && document != null
       ? {
+          // Which reading closed the month, and why its movement is empty, are part of what was
+          // frozen; leaving them off would show a published copy less than its own preview said.
+          ...(document.closing != null ? { closing: document.closing } : {}),
+          ...(document.movementNote != null ? { movementNote: document.movementNote } : {}),
           runHealth: document.runHealth,
           findingDeltas: document.findingDeltas,
           movement: document.movement,

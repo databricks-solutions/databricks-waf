@@ -483,6 +483,7 @@ export function ReviewPage() {
             <PillarPane
               key={current.pillarId}
               summary={current}
+              summaries={summaries}
               title={pillarTitle(current.pillarId)}
               runId={assembled.runId}
               definitionId={assembled.definitionId ?? ''}
@@ -611,6 +612,7 @@ function ReviewFact({ label, value }: { readonly label: string; readonly value: 
 
 function PillarPane({
   summary,
+  summaries,
   title,
   runId,
   definitionId,
@@ -621,6 +623,8 @@ function PillarPane({
   finalDecision,
 }: {
   readonly summary: PillarSummary;
+  /** Every pillar of the review, for the deadline the report as a whole has. */
+  readonly summaries: readonly PillarSummary[];
   readonly title: string;
   readonly runId: string;
   readonly definitionId: string;
@@ -719,7 +723,7 @@ function PillarPane({
             <div className="wa-assess-confirmation">
               <p id={noticeId}>
                 {pending === 'confirm'
-                  ? `${confirmNotice(title, summary.cited, earliestDueBy(summary))}${finalDecision ? ` ${finalDecisionNotice()}` : ''}`
+                  ? `${confirmNotice(title, summary.cited, earliestDueBy(summaries))}${finalDecision ? ` ${finalDecisionNotice()}` : ''}`
                   : `${skipNotice(title, skippedUnresolved(summary))}${finalDecision ? ` ${finalDecisionNotice()}` : ''}`}
               </p>
               <div className="wa-assess-decision-actions">

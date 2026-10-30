@@ -36,8 +36,10 @@ import { InMemoryAuditLog, type AuditLog } from '../store/audit-log.js';
 import { InMemoryAuditGapLog, type AuditGapLog } from '../store/audit-gaps.js';
 import { FakePostgres } from '../store/postgres-fake.js';
 import { PostgresRunStore } from '../run/run-store.js';
+import { accountScope } from '../collect/estate-scope.js';
+import type { CredentialProvider } from '../collect/credentials.js';
 import { Runs } from '../run/runs.js';
-import { registerApi, type CollectorFactoryContext } from './routes.js';
+import { registerApi, scanStatus, type CollectorFactoryContext } from './routes.js';
 import { explain } from './fallback.js';
 import type {
   AssessmentResultPayload,
@@ -771,6 +773,63 @@ describe('starting a scan on an install that records runs', () => {
     expect(typeof status.run).toBe('string');
     expect((await scanning).status).toBe(200);
     expect(shared.rows('runs').map((row) => row.state)).toEqual(['complete']);
+  });
+
+  /** A runner that has not yet reported what it is collecting, as in the moment after a run is admitted. */
+  class Unreported extends ScanRunner {
+    override running(): undefined {
+      return undefined;
+    }
+  }
+
+  async function admitted(runs: Runs) {
+    const credentials: CredentialProvider = {
+      mode: 'on-behalf-of-user',
+      databricks: () =>
+        Promise.resolve({
+          mode: 'on-behalf-of-user',
+          actor: 'admin@example.com',
+          host: 'https://example.cloud.databricks.com',
+          token: () => Promise.resolve('t'),
+        }),
+      cloud: () => Promise.resolve(null),
+    };
+    return runs.trigger(
+      { credentials, scope: accountScope(), collectors: [collector(20)] },
+      { actor: 'admin@example.com' }
+    );
+  }
+
+  it('calls a run this instance has admitted its own, with no calls counted, before the runner reports it', async () => {
+    const store = new PostgresRunStore(runsDatabase());
+    const runner = new Unreported({
+      catalogue,
+      registry,
+      store: new InMemoryScanStore(),
+      measuredPillars: MEASURED,
+    });
+    const runs = new Runs({ store, runner });
+    const { run, scan } = await admitted(runs);
+
+    const status = await scanStatus(runner.running(), runs);
+
+    // Not "collecting on another instance", which is what a missing count reads as on the page.
+    expect(status).toMatchObject({ running: true, run: run.id, callsMade: 0, actor: 'admin@example.com' });
+    await scan;
+  });
+
+  it('still reads a run nobody here is holding as another instance\u2019s, with no count', async () => {
+    const store = new PostgresRunStore(runsDatabase());
+    const config = { catalogue, registry, store: new InMemoryScanStore(), measuredPillars: MEASURED };
+    const there = new Runs({ store, runner: new Unreported(config) });
+    const here = new Runs({ store, runner: new Unreported(config) });
+    const { run, scan } = await admitted(there);
+
+    const status = await scanStatus(undefined, here);
+
+    expect(status).toMatchObject({ running: true, run: run.id });
+    expect(status).not.toHaveProperty('callsMade');
+    await scan;
   });
 
   it('says nothing is recorded where no database is bound, rather than reporting an empty history', async () => {
@@ -3096,12 +3155,15 @@ describe('who a change is attributed to', () => {
     expect((await audit.search()).events).toMatchObject([{ reason: 'identity-mismatch' }]);
   });
 
-  it('leaves the read-only shortcut alone, because a read attributes nothing', async () => {
+  it('tells the readiness read a mismatched header may not start a scan, as the start itself would refuse', async () => {
     const response = await fetch(`${appUrl}/api/scan/readiness`, {
       headers: { 'x-forwarded-access-token': 'token', 'x-forwarded-email': 'someone.else@example.com' },
     });
 
     expect(response.status).toBe(200);
+    const body = (await response.json()) as ReadinessPayload;
+    expect(body.may).toMatchObject({ start: false, refusal: 'identity-mismatch' });
+    expect(body.may.start ? '' : body.may.message).toContain('verified');
   });
 });
 

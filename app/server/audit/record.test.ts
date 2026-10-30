@@ -320,6 +320,31 @@ describe('when an event cannot be written and the marker can', () => {
     expect((await gaps.unacknowledged()).gaps).toEqual([]);
   });
 
+  it('leaves no marker for an acknowledgement it could not write, though it still counts the loss', async () => {
+    const gaps = new InMemoryAuditGapLog();
+    const said: string[] = [];
+    const made = withGaps(gaps, (operation) => said.push(operation));
+
+    await made.begin('gap.acknowledge', WHO).performed({ kind: 'audit-gap', id: 'event-0' });
+
+    // A marker for it would be a new unacknowledged gap, created by dealing with the last one.
+    expect((await gaps.unacknowledged()).gaps).toEqual([]);
+    expect(made.unrecorded).toBe(1);
+    expect(said).toEqual(['record that priya@example.com performed gap.acknowledge']);
+  });
+
+  it('writes no event for an act that found nothing to change, and still refuses a second close', async () => {
+    const log = new InMemoryAuditLog();
+    const made = new AuditRecorder(log);
+    const act = made.begin('gap.acknowledge', WHO);
+
+    act.unchanged();
+    await act.settle(200);
+    await act.performed();
+
+    expect((await log.search()).events).toEqual([]);
+  });
+
   it('survives a restart: a new recorder over the same database still reports the gap', async () => {
     const database = new FakePostgres({
       unique: { audit_gaps: [{ columns: ['gap_id'], name: 'audit_gaps_one_acknowledgement' }] },

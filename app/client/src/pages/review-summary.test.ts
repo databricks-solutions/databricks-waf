@@ -402,6 +402,29 @@ describe('the earliest date a due answer stops counting', () => {
     expect(row == null ? undefined : earliestDueBy(row)).toBe('2026-09-05T00:00:00.000Z');
   });
 
+  it('reads every pillar of the review, not only the one on screen, and ignores a skipped pillar', () => {
+    const pillars = ['operational-excellence', 'security-compliance-and-privacy', 'reliability'];
+    const summaries = summarisePillars(
+      pillars,
+      review([recorded('reliability', 'skipped')]),
+      [],
+      [
+        requirement({ ...base, attestation: dueBy('2026-09-20T00:00:00.000Z') }),
+        requirement({
+          controlId: 'SCP-01-01',
+          pillarId: 'security-compliance-and-privacy',
+          attestation: dueBy('2026-09-10T00:00:00.000Z'),
+        }),
+        requirement({ controlId: 'REL-01-01', pillarId: 'reliability', attestation: dueBy('2026-09-01T00:00:00.000Z') }),
+      ]
+    );
+
+    // The pillar on screen alone would say 20 September.
+    const onScreen = summaries[0];
+    expect(onScreen == null ? 'missing' : earliestDueBy(onScreen)).toBe('2026-09-20T00:00:00.000Z');
+    expect(earliestDueBy(summaries)).toBe('2026-09-10T00:00:00.000Z');
+  });
+
   it('is absent when every cited answer is current', () => {
     const [row] = summarisePillars(
       ['operational-excellence'],

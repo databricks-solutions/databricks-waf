@@ -1444,16 +1444,20 @@ export function registerApi(served: Application, options: ApiOptions): void {
   app.get('/api/scan/readiness', async (request, response) => {
     try {
       const token = userToken(request);
-      const identity = identityFrom(actorFromHeaders(request), await probeCurrentUser({ host: options.host, token }));
+      const headerActor = actorFromHeaders(request);
+      const user = await probeCurrentUser({ host: options.host, token });
+      // The identity a change would be attributed to rather than the header's, and checked against it
+      // first, in the order the gate checks them: this answers whether a scan would be allowed to
+      // start, so a request the gate would turn away for its identity must not read as ready.
+      const identity = verifiedIdentityFrom(headerActor, user);
 
       let may: ReadinessPayload['may'];
       try {
+        requireVerifiedIdentity(headerActor, user.userName);
         requirePermission(options.assessorGroup, identity);
         may = { start: true };
       } catch (cause) {
-        // Membership is the only refusal this read can make: it takes the header as given, and the
-        // identity check belongs to the gate on the change itself.
-        if (!(cause instanceof NotPermittedError) || cause.kind === 'identity-mismatch') throw cause;
+        if (!(cause instanceof NotPermittedError)) throw cause;
         may = { start: false, refusal: cause.kind, message: cause.message };
       }
 
@@ -3348,7 +3352,12 @@ function begin(
   context: { readonly correlation?: string; readonly target?: AuditTarget }
 ): Act {
   if (recorder == null) {
-    return { performed: () => Promise.resolve(), failed: () => Promise.resolve(), settle: () => Promise.resolve() };
+    return {
+      performed: () => Promise.resolve(),
+      failed: () => Promise.resolve(),
+      unchanged: () => undefined,
+      settle: () => Promise.resolve(),
+    };
   }
   return closedWhenAnswered(recorder.begin(action, who, context), response);
 }
@@ -3544,7 +3553,10 @@ function resultGateFailure(response: Response, status: number, eligibility: Resu
  * Falls back to the local runner, with no run named, when nothing durable is bound or the read fails. A
  * status that errors would show the page nothing at all, and the local answer is true as far as it goes.
  */
-async function scanStatus(local: RunningScan | undefined, runs: Runs | undefined): Promise<ScanStatusPayload<Date>> {
+export async function scanStatus(
+  local: RunningScan | undefined,
+  runs: Runs | undefined
+): Promise<ScanStatusPayload<Date>> {
   const onThisProcess = (run?: string): ScanStatusPayload<Date> =>
     local == null
       ? { running: false }
@@ -3570,7 +3582,21 @@ async function scanStatus(local: RunningScan | undefined, runs: Runs | undefined
   // started outside the coordinator, which has no name, or a run whose renewals have been failing, which
   // still has one. The pointer is what tells them apart, and it is only ever set by an attempt that began.
   if (live == null) return onThisProcess(runs.holding());
-  if (local != null && runs.holding() === live.id) return onThisProcess(live.id);
+  if (runs.holding() === live.id || runs.owns?.(live) === true) {
+    if (local != null) return onThisProcess(live.id);
+    // This instance admitted the attempt and the runner has not yet reported it: the pointer is set
+    // when the attempt is admitted and the runner's own record a moment later. It is this process's
+    // run with nothing counted yet, not another instance's, which the absent count would say.
+    return {
+      running: true,
+      startedAt: live.requestedAt,
+      actor: live.actor,
+      scope: live.request.scope,
+      trigger: live.trigger,
+      callsMade: 0,
+      run: live.id,
+    };
+  }
 
   return {
     running: true,
