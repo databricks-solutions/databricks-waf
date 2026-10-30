@@ -101,10 +101,12 @@ const OPERATIONAL_EXCELLENCE_RESOLVERS = [
 		const bundled = jobs.filter(fromBundle);
 		const adopted = share(bundled.length, jobs.length);
 		if (bundled.length === 0) return unmeasured(`None of the ${jobs.length} jobs here carry a deployment marker, which does not mean they were built by hand. Databricks records \`deployment.kind = BUNDLE\` for jobs deployed by an asset bundle, but the Terraform provider writes jobs through the same API a person uses and leaves no marker at all. So this reads as no evidence either way rather than as a failure — an estate managed entirely in Terraform looks exactly like this. Answer the attestation to record which it is.`, "attestation");
+		const rest = bundled.length === jobs.length ? `Every one of the ${jobs.length} jobs carries the marker, so the deployment pipeline reaches every job the inventory lists. The inventory lists jobs and nothing beside them: the pipelines, clusters, warehouses and policies defined by the same practice leave no marker here, so this cannot show that all of the infrastructure is defined in code.` : "The jobs without the marker cannot be told apart: Terraform-managed jobs carry no marker, so the unmarked ones are either Terraform-managed or hand-built and this signal cannot say which.";
 		return {
 			outcome: "partial",
+			capped: true,
 			evidence: [evidenceFrom(context, JOBS, `${bundled.length} of ${jobs.length} jobs were deployed by an asset bundle (${percent(adopted)})`, "Workloads are deployed from version-controlled definitions rather than edited in the workspace")],
-			outcomeReason: "Asset bundles are in use, so a deployment pipeline exists. This caps at partial rather than passing because the remaining jobs cannot be told apart: Terraform-managed jobs carry no marker, so the unmarked ones are either Terraform-managed or hand-built and this signal cannot say which."
+			outcomeReason: `Asset bundles are in use, so a deployment pipeline exists. ${rest} This stays partial unless the person accountable for the practice answers that the rest is covered; a current answer of "met" lifts it to a pass.`
 		};
 	})),
 	fromSignal(CLUSTERS, ["OE-02-02", "IU-03-03"], (clusters, context) => {
@@ -131,8 +133,9 @@ const OPERATIONAL_EXCELLENCE_RESOLVERS = [
 		};
 		return {
 			outcome: "partial",
+			capped: true,
 			evidence: [evidenceFrom(context, CENSUS, `${census.tableCount} tables across ${census.catalogCount} catalogs and ${census.schemaCount} schemas, averaging ${Math.round(perCatalog)} tables per catalog, with ${census.distinctOwners} distinct owner${census.distinctOwners === 1 ? "" : "s"}`, "Assets are organised across catalogs along a deliberate boundary — environment, domain or team")],
-			outcomeReason: "The estate is spread across catalogs rather than piled into one, which is the observable half of a catalog strategy. Whether the boundary is environment, domain or team — and whether it is the one you intended — is not readable from the metastore, so this caps at partial and the attestation records which it is."
+			outcomeReason: "The estate is spread across catalogs rather than piled into one, which is the observable half of a catalog strategy. Whether the boundary is environment, domain or team — and whether it is the one you intended — is not readable from the metastore, so this stays partial unless the person accountable for the catalog layout answers that it is deliberate; a current answer of \"met\" lifts it to a pass."
 		};
 	})),
 	fromSignals([JOBS], [
@@ -160,21 +163,22 @@ const OPERATIONAL_EXCELLENCE_RESOLVERS = [
 		if (capacity.totalStatements === 0) return notApplicable("No query history found for this workspace in the window, so there is no evidence of capacity limits being reached or not reached.");
 		const total = capacity.totalStatements;
 		const { noun: totalNoun } = agreeing(total, "statement");
-		if (capacity.waitingAtCapacity === 0) return {
-			outcome: "partial",
-			evidence: [evidenceFrom(context, CAPACITY, `${totalNoun} in the window, none waited at a capacity limit`, "No queries are delayed by a service limit or quota")],
-			outcomeReason: "No capacity-limit delays were recorded in this window, which is the measurable half of this control. Whether proactive monitoring exists — watching headroom before a limit bites — is not recorded in the workspace. The absence of events confirms limits are not currently biting; it does not confirm someone is watching them."
-		};
 		const waitShare = capacity.waitingAtCapacity / total;
+		const banded = bandOutcome(share(total - capacity.waitingAtCapacity, total), bandsOf(context.spec, {
+			pass: 1,
+			partial: .99
+		}));
+		if (capacity.waitingAtCapacity === 0) return {
+			outcome: banded === "pass" ? "partial" : banded,
+			capped: true,
+			evidence: [evidenceFrom(context, CAPACITY, `${totalNoun} in the window, none waited at a capacity limit`, "No queries are delayed by a service limit or quota")],
+			outcomeReason: "No capacity-limit delays were recorded in this window, which is the measurable half of this control. Whether proactive monitoring exists — watching headroom before a limit bites — is not recorded in the workspace. The absence of events confirms limits are not currently biting; it does not confirm someone is watching them, so this stays partial unless the person accountable for capacity answers that they are; a current answer of \"met\" lifts it to a pass."
+		};
 		const { noun: waitNoun } = agreeing(capacity.waitingAtCapacity, "statement");
-		const regularPressure = waitShare >= bandsOf(context.spec, {
-			pass: 0,
-			partial: .01
-		}).partial;
 		return {
-			outcome: "partial",
+			outcome: banded,
 			evidence: [evidenceFrom(context, CAPACITY, `${waitNoun} of ${totalNoun} waited at a capacity limit (${percent(waitShare)})`, "No queries are delayed by a service limit or quota")],
-			outcomeReason: `Statements ${regularPressure ? "regularly" : "occasionally"} waited at a capacity limit during this window, which means a service quota was reached. The workspace does not record whether it was noticed and managed proactively.`
+			outcomeReason: `Statements ${banded === "fail" ? "regularly" : "occasionally"} waited at a capacity limit during this window, which means a service quota was reached` + (banded === "fail" ? ", on more than 1% of statements. That is a measured shortfall, and no answer changes it. " : ". ") + "The workspace does not record whether it was noticed and managed proactively."
 		};
 	}),
 	fromSignals([SERVING_ENTITIES, RUN_TRACKING], ["OE-01-04"], (context) => {
@@ -198,8 +202,9 @@ const OPERATIONAL_EXCELLENCE_RESOLVERS = [
 		} else if (tracking.runs > 0) evidences.push(evidenceFrom(context, RUN_TRACKING, `${tracking.runs.toLocaleString("en-US")} MLflow runs recorded, none sourced from a job`, "Training runs are started by the platform rather than by hand in a notebook"));
 		return {
 			outcome: "partial",
+			capped: true,
 			evidence: evidences,
-			outcomeReason: "MLOps tooling is in use — model serving and/or experiment tracking are active in this workspace. Whether the process is standardized, documented and enforced — with defined evaluation gates, a promotion path and review steps — is not recorded in any system table. This reading provides context for the review rather than a complete verdict."
+			outcomeReason: "MLOps tooling is in use — model serving and/or experiment tracking are active in this workspace. Whether the process is standardized, documented and enforced — with defined evaluation gates, a promotion path and review steps — is not recorded in any system table. This stays partial unless the person accountable for the process answers that it is; a current answer of \"met\" lifts it to a pass."
 		};
 	})
 ];

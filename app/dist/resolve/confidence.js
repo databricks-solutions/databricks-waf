@@ -1,3 +1,4 @@
+import { decidedByAnswer } from "./finding.js";
 import { classOf } from "./evidence-class.js";
 //#region server/resolve/confidence.ts
 /** An attestation within this many days of its review date is called out as expiring. */
@@ -39,10 +40,10 @@ function standingOf(finding, limitations) {
 function limitationsOf(finding, circumstances) {
 	const limitations = [];
 	const attested = finding.attested;
-	if (attested != null && attested.bearing === "outcome") {
+	if (attested != null && decidedByAnswer(attested)) {
 		limitations.push({
 			kind: "attested",
-			says: `This is ${attested.by}'s answer about the practice, recorded ${on(attested.at)}, not something this app read. ${attested.owner} is accountable for it.`
+			says: attested.bearing === "co-signed" ? `This app measured it up to partial, which is as far as the platform can show. ${attested.by} answered that the rest is met, recorded ${on(attested.at)}, and that answer is what lifts it to a pass. ${attested.owner} is accountable for it.` : `This is ${attested.by}'s answer about the practice, recorded ${on(attested.at)}, not something this app read. ${attested.owner} is accountable for it.`
 		});
 		const days = daysUntil(attested.reviewBy, circumstances.asOf);
 		if (days != null && days <= EXPIRING_WITHIN_DAYS) limitations.push({

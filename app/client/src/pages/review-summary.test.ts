@@ -107,6 +107,31 @@ describe('why a requirement needs attention', () => {
     ).toBe('due');
   });
 
+  it('does not ask a capped requirement nobody has answered, because the measurement already stands', () => {
+    const capped = requirement({ controlId: 'OE-01-06', pillarId: 'operational-excellence', askedBecause: 'capped' });
+    expect(attentionReason(capped)).toBeNull();
+  });
+
+  it('does not ask a capped requirement whose answer has lapsed, because the cap simply stands again', () => {
+    const capped = requirement({
+      controlId: 'OE-01-06',
+      pillarId: 'operational-excellence',
+      askedBecause: 'capped',
+      attestation: answered('expired'),
+    });
+    expect(attentionReason(capped)).toBeNull();
+  });
+
+  it('asks a due capped answer as due, because it still counts and is about to stop', () => {
+    const capped = requirement({
+      controlId: 'OE-01-06',
+      pillarId: 'operational-excellence',
+      askedBecause: 'capped',
+      attestation: answered('due'),
+    });
+    expect(attentionReason(capped)).toBe('due');
+  });
+
   it('names inconclusive only when the scan handed over a question nobody has answered', () => {
     expect(
       attentionReason(
@@ -142,6 +167,29 @@ describe('why a requirement needs attention', () => {
 });
 
 describe('a pillar summary', () => {
+  it('keeps a capped requirement nobody has answered with the findings the app measured, and cites nothing for it', () => {
+    const [excellence] = summarisePillars(
+      ['operational-excellence'],
+      review(),
+      [finding({ controlId: 'OE-01-06', pillarId: 'operational-excellence', outcome: 'partial' })],
+      [
+        requirement({ controlId: 'OE-01-06', pillarId: 'operational-excellence', askedBecause: 'capped' }),
+        requirement({
+          controlId: 'OE-03-01',
+          pillarId: 'operational-excellence',
+          askedBecause: 'capped',
+          attestation: answered('current'),
+        }),
+      ]
+    );
+
+    expect(excellence?.automatic.map((one) => one.controlId)).toEqual(['OE-01-06']);
+    expect(excellence?.reused.map((one) => one.controlId)).toEqual(['OE-03-01']);
+    expect(excellence?.attention).toEqual([]);
+    // What the server freezes: one counting answer, and nothing for the one nobody gave.
+    expect(excellence?.cited).toBe(1);
+  });
+
   it('splits automatic, reused and attention from the fields rather than from a second opinion', () => {
     const summaries = summarisePillars(
       PILLARS,

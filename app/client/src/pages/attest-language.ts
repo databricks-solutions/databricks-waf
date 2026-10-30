@@ -111,6 +111,7 @@ export const ASKED_LABEL: Readonly<Record<AskedBecause, string>> = {
   'no-telemetry': 'Practice',
   'not-authorised': 'Setting the app cannot read',
   inconclusive: 'Scan could not tell',
+  capped: 'Measured, answer lifts it',
 };
 
 /**
@@ -128,6 +129,9 @@ export const ASKED_DETAIL: Readonly<Record<AskedBecause, string>> = {
   inconclusive:
     'The check ran and the answer was ambiguous — the platform records the same thing either way. ' +
     'The question explains what it saw.',
+  capped:
+    'The scan measured this as far as the platform shows. A "met" lifts the result to a pass; no answer ' +
+    'lowers it, and a pillar can be confirmed without one.',
 };
 
 /**

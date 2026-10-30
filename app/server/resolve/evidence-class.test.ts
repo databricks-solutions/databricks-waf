@@ -36,7 +36,7 @@ function finding(over: Partial<Finding> = {}): Finding {
   };
 }
 
-function answered(bearing: 'outcome' | 'record' = 'outcome'): Finding['attested'] {
+function answered(bearing: 'outcome' | 'record' | 'co-signed' = 'outcome'): Finding['attested'] {
   return {
     bearing,
     by: 'admin@example.com',
@@ -97,6 +97,12 @@ describe('the class a finding rests on', () => {
     // answer at all — so an attested outcome means the observation beside it did not settle the
     // question, and calling the finding observed would credit it with a measurement it does not have.
     expect(classOf(finding({ attested: answered() }))).toBe('attested');
+  });
+
+  it('is attested when an answer lifted a measured partial, because the pass rests on it', () => {
+    // Calling a lifted pass observed would report the share of the score that somebody said as a
+    // share the app read.
+    expect(classOf(finding({ capped: true, attested: answered('co-signed') }))).toBe('attested');
   });
 
   it('is not attested when the answer is only recorded beside a measurement', () => {

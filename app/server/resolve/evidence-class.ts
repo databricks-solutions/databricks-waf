@@ -23,7 +23,7 @@
 // So the class is carried on the evidence, derived onto the finding by one function here, and counted
 // once into a composition the score, the UI and both exports read. ADR 0033.
 
-import type { Finding } from './finding.js';
+import { decidedByAnswer, type Finding } from './finding.js';
 
 export type EvidenceClass = 'observed' | 'admin-collected' | 'attested';
 
@@ -64,7 +64,9 @@ export function mayDecideOver(incoming: EvidenceClass, existing: EvidenceClass):
  *
  * An attestation that bears on the outcome makes the finding attested, whatever else is attached.
  * That follows from the precedence above: a resolver that had an observation of its own would not
- * have consulted the answer, so an attested outcome means there was no observation to weigh.
+ * have consulted the answer, so an attested outcome means there was no observation to weigh. The one
+ * case with both is an answer that lifted a measured cap: the pass would not exist without it, so it
+ * is as stated as any other and the measurement sits beside it as the reason it is not lower.
  *
  * Otherwise the *weakest* bearing evidence governs — the same rule `Finding.coverage` uses, for the
  * same reason. A verdict that needed an observation and an admin's import is only as good as the
@@ -76,7 +78,7 @@ export function mayDecideOver(incoming: EvidenceClass, existing: EvidenceClass):
  * class of evidence behind a finding that has no evidence.
  */
 export function classOf(finding: Finding): EvidenceClass | undefined {
-  if (finding.attested?.bearing === 'outcome') return 'attested';
+  if (decidedByAnswer(finding.attested)) return 'attested';
 
   const bearing = finding.evidence.filter((one) => (one.bearing ?? 'outcome') === 'outcome');
   if (bearing.length === 0) return decidedByApplicability(finding) ? 'observed' : undefined;

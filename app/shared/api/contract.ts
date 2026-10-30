@@ -147,6 +147,8 @@ export interface FindingPayload<TDate = string> {
   readonly remedy?: RemedyPayload;
   /** Present when someone's answer is part of this finding. See `AttestedFactPayload`. */
   readonly attested?: AttestedFactPayload<TDate>;
+  /** Set when `partial` is the ceiling of what the platform can show, so a current answer may lift it. */
+  readonly capped?: true;
   /**
    * How firmly the outcome is established, and what stops it being firmer.
    *
@@ -233,8 +235,12 @@ export interface AttestedFactPayload<TDate = string> {
    * The attestation this fact came from. Absent on scans recorded before the field existed.
    */
   readonly id?: string;
-  /** Whether the outcome rests on this answer, or a measurement decided it and this is beside it. */
-  readonly bearing: 'outcome' | 'record';
+  /**
+   * Whether the outcome rests on this answer, or a measurement decided it and this is beside it.
+   *
+   * `co-signed` is both: the app measured the requirement up to a cap and this answer lifted it past.
+   */
+  readonly bearing: 'outcome' | 'record' | 'co-signed';
   readonly by: string;
   readonly at: TDate;
   readonly statement: string;
@@ -2426,7 +2432,7 @@ export interface AttestationPayload<TDate = string> {
  * asking of the estates where the reading came back ambiguous — which is why this one is decided
  * per scan rather than per catalogue entry.
  */
-export type AskedBecause = 'no-telemetry' | 'not-authorised' | 'inconclusive';
+export type AskedBecause = 'no-telemetry' | 'not-authorised' | 'inconclusive' | 'capped';
 
 export interface AttestableRequirementPayload<TDate = string> {
   readonly controlId: string;

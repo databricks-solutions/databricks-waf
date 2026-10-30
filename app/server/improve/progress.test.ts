@@ -49,7 +49,7 @@ function ran(outcomes: Readonly<Record<string, Outcome>>, at = new Date(CLAIMED.
 }
 
 /** A run reporting the requirement met on the strength of an answer somebody gave on a date. */
-function attested(at: Date, bearing: 'outcome' | 'record' = 'outcome'): AgreementContext {
+function attested(at: Date, bearing: 'outcome' | 'record' | 'co-signed' = 'outcome'): AgreementContext {
   return {
     findings: [
       {
@@ -137,6 +137,12 @@ describe('what the estate says about an action', () => {
 
   it('counts one given after it, which is what asking again produces', () => {
     expect(progressOf(offered(), attested(new Date(CLAIMED.getTime() + DAY_MS))).agreement).toBe('agreed');
+  });
+
+  it('does not count a lifting answer from before the claim, because the pass rests on it', () => {
+    const stale = attested(new Date(CLAIMED.getTime() - 30 * DAY_MS), 'co-signed');
+
+    expect(progressOf(offered(), stale).agreement).toBe('unmeasured');
   });
 
   it('counts an answer recorded beside a measurement, because the measurement decided it', () => {

@@ -7,6 +7,7 @@
 // and reports a permission error as a failed control, another omits the expectation
 // and leaves a finding nobody can act on.
 
+import { counts, type Attestation } from '../../attest/attestation.js';
 import type { SignalId, SignalResult } from '../../collect/signal.js';
 import type { JobRow, PriceCoverage, WorkspaceDirectory } from '../../collect/sql/shapes.js';
 import type { EvidenceClass } from '../evidence-class.js';
@@ -319,6 +320,31 @@ export function bandOutcome(share: number | undefined, bands: Bands): Outcome {
   if (share >= bands.pass) return 'pass';
   if (share >= bands.partial) return 'partial';
   return 'fail';
+}
+
+/**
+ * The outcome once a capped `partial` has met a current answer.
+ *
+ * A resolver marks a `partial` as a cap when the platform shows that the practice has an artefact and
+ * cannot show that the artefact is the whole practice. A "met" from the person accountable for it is
+ * the missing half, so it lifts `partial` to `pass` — and only that. A `fail`, a `partial` the app
+ * measured as a shortfall, and every outcome a resolver did not flag come back as they went in, and so
+ * does a capped `partial` met by anything but a counting "met": "partially-met", "not-met" and
+ * "not-applicable" are recorded and not counted, which is what keeps an answer from ever lowering a
+ * measurement.
+ *
+ * "Counting" is `counts()`, the one definition the score, the review and the published report share:
+ * an answer due for renewal still lifts, and an expired one has stopped. See decision D2 in
+ * docs/decisions.md.
+ */
+export function liftCap(
+  resolution: Pick<Resolution, 'outcome' | 'capped'>,
+  attested: Attestation | undefined,
+  now: Date = new Date()
+): Outcome {
+  if (resolution.capped !== true || resolution.outcome !== 'partial') return resolution.outcome;
+  if (attested?.answer !== 'met' || !counts(attested, now)) return resolution.outcome;
+  return 'pass';
 }
 
 /** A threshold from the catalogue, so a number can be changed without a code change. */

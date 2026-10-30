@@ -25,6 +25,7 @@ import { fileURLToPath } from 'node:url';
 import { loadCatalogue, type CatalogueControl } from '../server/catalogue/catalogue.js';
 import { ANSWERS, DUE_WINDOW_DAYS, cadenceDaysFor } from '../server/attest/attestation.js';
 import { BLOCKED_QUESTIONS } from '../server/attest/blocked-questions.js';
+import { CAPPED_QUESTIONS } from '../server/attest/capped-questions.js';
 import { INCONCLUSIVE_QUESTIONS } from '../server/attest/inconclusive-questions.js';
 import { judgmentRoutes } from '../server/judge/route.js';
 import { beyondAnyInstall, descriptorsById } from '../server/plan/plan.js';
@@ -179,6 +180,17 @@ function questionContracts(control: CatalogueControl): readonly Record<string, u
       cadence_days: inconclusive.cadenceDays,
     });
   }
+
+  const capped = CAPPED_QUESTIONS[control.id];
+  if (capped != null) {
+    questions.push({
+      trigger: 'measurement-stops-at-its-cap',
+      question: capped.question,
+      evidence_guidance: capped.evidence,
+      why_asked: capped.whyAsked,
+      cadence_days: capped.cadenceDays,
+    });
+  }
   return questions;
 }
 
@@ -269,14 +281,17 @@ const scoreContract = {
   alias_groups:
     'one requirement is scored once per pillar at the group worst outcome and reported in every pillar that expresses it',
   evidence_precedence:
-    'applicability is evaluated before evidence; a measurement overrides an attestation and an attestation decides only an unmeasurable reading',
+    'applicability is evaluated before evidence; a measurement overrides an attestation and an attestation decides only an unmeasurable reading, with one exception: a partial a resolver marks as the ceiling of what the platform can show is lifted to pass by a current or due "met" answer, and nothing lifts a fail or a measured shortfall',
 };
 
 const questionContract = {
   answers: ANSWERS,
   outcome_of_answer: OUTCOME_OF_ANSWER,
   due_window_days: DUE_WINDOW_DAYS,
-  expiry: 'an answer stops counting at reviewBy and the requirement returns to unmeasured',
+  expiry:
+    'an answer stops counting at reviewBy; a requirement it decided returns to unmeasured, and one it lifted returns to its measured partial',
+  cap_lift:
+    'a capped partial is lifted to pass only by a current or due "met" answer, recorded with the bearing co-signed; "partially-met", "not-met" and "not-applicable" are recorded and never counted, and no answer lowers a measurement',
   attribution:
     'owner and recording identity are required; a later answer supersedes rather than rewrites the earlier record',
 };

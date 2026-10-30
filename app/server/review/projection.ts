@@ -11,7 +11,7 @@ import type { Catalogue } from '../catalogue/catalogue.js';
 import { digestOf, hexOf } from '../records/digest.js';
 import { confidenceOf } from '../resolve/confidence.js';
 import type { Finding } from '../resolve/finding.js';
-import { factFromAttestation, findingFromAttestation, type ResolverRegistry } from '../resolve/resolver.js';
+import { findingFromAttestation, withAnswer, withoutAnswer, type ResolverRegistry } from '../resolve/resolver.js';
 import { scoreFindings, type Score } from '../score/score.js';
 import { aliasLookup, type Scan } from '../scan/scan.js';
 import {
@@ -156,11 +156,13 @@ export function finalAssessmentProjector(options: {
         }
 
         // A measured result stays measured: an answer may be recorded beside it and may never
-        // overturn it. Human-answerable or previously attested outcomes are re-resolved from the
-        // stored signal statuses and the exact selected answer, with no collector in the path.
+        // overturn it. The one thing it may do is lift a cap the resolver marked, and that is decided
+        // here from the answer the review cited rather than from the one the run saw, so a lift whose
+        // answer was not cited is taken back. Human-answerable or previously attested outcomes are
+        // re-resolved from the stored signal statuses and the exact selected answer, with no collector
+        // in the path.
         if (finding.outcome !== 'unmeasurable' && finding.attested?.bearing !== 'outcome') {
-          const { attested: _was, ...automated } = finding;
-          return selected == null ? automated : { ...automated, attested: factFromAttestation(selected, 'record') };
+          return selected == null ? withoutAnswer(finding) : withAnswer(finding, selected, result.finalisedAt);
         }
 
         // An unmeasurable automated finding is the immutable run's answer. When the review selects

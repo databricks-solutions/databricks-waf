@@ -286,7 +286,10 @@ const centralCatalog = fromSignals([CENSUS, LINEAGE], ['IU-04-03'], (context) =>
  * a description, a tag marking their status, an owner. Whether the business actually trusts
  * them, and whether "customer" means the same thing in two schemas, are not readable.
  *
- * So this caps at partial and says which part it measured. Tags matter more than
+ * So this caps at partial and says which part it measured, and a current "met" from the person
+ * accountable for the data products lifts the cap. Only the tagged estate is capped: with no tags
+ * the shortfall is a measured one, `partial` where most tables are described and `fail` where they
+ * are not, and no answer moves it. Tags matter more than
  * descriptions here: a description says what a table is, a tag says what it is *for* —
  * certified, deprecated, restricted — which is the claim a data product makes.
  */
@@ -333,6 +336,7 @@ const dataProducts = enrichedBy(
 
       return {
         outcome: 'partial',
+        capped: true,
         evidence: [
           evidenceFrom(
             context,
@@ -349,10 +353,11 @@ const dataProducts = enrichedBy(
           ),
         ],
         outcomeReason:
-          'Tagging and descriptions are in use, which is the metadata a data product needs. This caps at ' +
+          'Tagging and descriptions are in use, which is the metadata a data product needs. This stays ' +
           'partial because the rest of the requirement is semantic: whether the same business concept is ' +
           'named the same way across schemas, and whether the business actually trusts these assets, is ' +
-          'not something the metastore records.',
+          'not something the metastore records. The person accountable for the data products can say so: ' +
+          'a current answer of "met" lifts it to a pass.',
       };
     })
   )

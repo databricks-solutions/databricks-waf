@@ -2,6 +2,7 @@ import { familyOf } from "../collect/rest/families.js";
 import { narrowest } from "./finding.js";
 import { resolveApplicability } from "./applicability.js";
 import { attestRemedy, remedyFor } from "./remedy.js";
+import { liftCap } from "./resolvers/helpers.js";
 //#region server/resolve/resolver.ts
 var ResolverRegistry = class {
 	byControl = /* @__PURE__ */ new Map();
@@ -61,6 +62,8 @@ function resolveControl(spec, signals, resolver, attested, context = {}) {
 		...findingFromAttestation(spec, attested),
 		evidence: resolution.evidence
 	};
+	const outcome = liftCap(resolution, attested);
+	const lifted = outcome !== resolution.outcome;
 	const reason = reasonFor(resolution, applicability);
 	const refused = remedyFor(resolver.requires, signals, {
 		...context.declaredScopes != null ? { declaredScopes: context.declaredScopes } : {},
@@ -69,13 +72,14 @@ function resolveControl(spec, signals, resolver, attested, context = {}) {
 	const unmeasured = resolution.outcome === "unmeasurable" ? kindOfGap(resolution.unmeasured, refused) : void 0;
 	return {
 		...base(spec),
-		outcome: resolution.outcome,
+		outcome,
 		coverage: coverageOf(resolution.evidence),
 		evidence: resolution.evidence,
 		...unmeasured != null ? { unmeasured } : {},
 		...reason != null ? { outcomeReason: reason } : {},
 		...remedyWhenUnmeasured(refused, unmeasured, resolution.remedy) ?? {},
-		...attested != null ? { attested: factFromAttestation(attested, "record") } : {}
+		...resolution.capped === true && resolution.outcome === "partial" ? { capped: true } : {},
+		...attested != null ? { attested: factFromAttestation(attested, lifted ? "co-signed" : "record") } : {}
 	};
 }
 /**
@@ -129,6 +133,39 @@ const OUTCOME_OF_ANSWER = {
 	"not-met": "fail",
 	"not-applicable": "not-applicable"
 };
+/**
+* A measured finding as it read before any answer touched it.
+*
+* A lift is taken back and an answer recorded beside the measurement is dropped, so the result is the
+* outcome the resolver reached on its own. The final review starts from here: it re-applies the
+* answers it cites to the stored finding, and a lift whose answer the review does not cite must not
+* survive into the published report.
+*/
+function withoutAnswer(finding) {
+	const { attested, ...measured } = finding;
+	return attested?.bearing === "co-signed" ? {
+		...measured,
+		outcome: "partial"
+	} : measured;
+}
+/**
+* A measured finding with one answer applied, by the same rule `resolveControl` applies it.
+*
+* For a stored finding with no resolver in the path: the answer is recorded beside the measurement,
+* and lifts a capped `partial` where it counts and says "met". See `liftCap`.
+*/
+function withAnswer(finding, attestation, now) {
+	const measured = withoutAnswer(finding);
+	const outcome = liftCap({
+		outcome: measured.outcome,
+		capped: measured.capped
+	}, attestation, now);
+	return {
+		...measured,
+		outcome,
+		attested: factFromAttestation(attestation, outcome !== measured.outcome ? "co-signed" : "record")
+	};
+}
 function findingFromAttestation(spec, attested) {
 	const outcome = OUTCOME_OF_ANSWER[attested.answer];
 	return {
@@ -217,4 +254,4 @@ function base(spec) {
 	};
 }
 //#endregion
-export { OUTCOME_OF_ANSWER, ResolverRegistry, factFromAttestation, findingFromAttestation, resolveControl };
+export { OUTCOME_OF_ANSWER, ResolverRegistry, factFromAttestation, findingFromAttestation, resolveControl, withAnswer, withoutAnswer };

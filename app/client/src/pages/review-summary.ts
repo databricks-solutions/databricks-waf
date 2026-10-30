@@ -48,8 +48,28 @@ export interface PillarSummary {
 export function attentionReason(requirement: AttestableRequirement): AttentionReason | null {
   const state = stateOf(requirement);
   if (state === 'current') return null;
+  // A measurement that stopped at its cap stands without an answer, and a lapsed one simply stands
+  // again. Neither is something the review has to deal with before confirming; a due answer still
+  // counts and is listed like any other.
+  if (optional(requirement) && (state === 'unanswered' || state === 'expired')) return null;
   if (state === 'unanswered' && requirement.askedBecause === 'inconclusive') return 'inconclusive';
   return state;
+}
+
+/**
+ * Whether the measurement already stands for this requirement, so an answer only lifts a cap on it.
+ *
+ * Mirrors `ReviewableControl.optional` on the server, which freezes the same set: an answer that
+ * counts is cited, and one that does not is not asked for.
+ */
+function optional(requirement: AttestableRequirement): boolean {
+  return requirement.askedBecause === 'capped';
+}
+
+/** Whether a requirement has an answer this review would cite. */
+function answered(requirement: AttestableRequirement): boolean {
+  const state = stateOf(requirement);
+  return state === 'current' || state === 'due';
 }
 
 export function recordedOf(review: AssessmentReview, pillarId: string): PillarReview | undefined {
@@ -86,10 +106,13 @@ export function summarisePillars(
   findings: readonly Finding[],
   requirements: readonly AttestableRequirement[]
 ): readonly PillarSummary[] {
-  const attestable = new Set(requirements.map((one) => one.controlId));
+  // Without an answer that counts, a capped requirement is a finding the app measured and not a
+  // question this review asks, so it is counted with the automatic ones and cites nothing.
+  const asked = requirements.filter((one) => !optional(one) || answered(one));
+  const attestable = new Set(asked.map((one) => one.controlId));
   return pillarIds.map((pillarId) => {
     const recorded = recordedOf(review, pillarId);
-    const ofPillar = requirements.filter((one) => one.pillarId === pillarId);
+    const ofPillar = asked.filter((one) => one.pillarId === pillarId);
     const reused: AttestableRequirement[] = [];
     const attention: AttentionItem[] = [];
     for (const requirement of ofPillar) {

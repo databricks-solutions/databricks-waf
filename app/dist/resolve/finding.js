@@ -12,6 +12,17 @@ function describeItem(item) {
 	return aside.length === 0 ? item.label : `${item.label} (${aside.join(", ")})`;
 }
 /**
+* Whether somebody's answer is part of what decided the outcome.
+*
+* True of an answer that settled a requirement the app could not read, and of one that lifted a
+* measurement past its cap. False of one recorded beside a measurement that decided it alone, and of
+* a finding with no answer. Everything that asks how much of a result is self-reported asks this, so
+* a third bearing is one edit here rather than a search for every `=== 'outcome'`.
+*/
+function decidedByAnswer(attested) {
+	return attested != null && attested.bearing !== "record";
+}
+/**
 * The narrowest of several coverages, for a control resolved from more than one signal.
 *
 * Mode and reach narrow independently, so both are reduced. A control answered from an
@@ -33,4 +44,4 @@ function fraction(coverage) {
 	return coverage.examined / coverage.population;
 }
 //#endregion
-export { describeItem, narrowest };
+export { decidedByAnswer, describeItem, narrowest };

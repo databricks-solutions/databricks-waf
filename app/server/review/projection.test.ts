@@ -387,6 +387,97 @@ describe('the final assessment projection', () => {
     });
   });
 
+  describe('a requirement whose measurement stops at a cap', () => {
+    const capped =
+      catalogue.controls.find((one) => one.id === 'OE-01-06') ??
+      (() => {
+        throw new Error('The cap projection requires OE-01-06.');
+      })();
+
+    function cappedScan(using: Attestation | undefined): Scan {
+      const source = scan(attestation('att-unused', 'met'));
+      const finding = resolveControl(capped, new Map(), undefined, undefined);
+      const measured = {
+        ...finding,
+        outcome: using?.answer === 'met' ? ('pass' as const) : ('partial' as const),
+        capped: true as const,
+        coverage: { mode: 'complete' as const },
+        evidence: [
+          {
+            signal: 'sql:uc.census' as const,
+            observed: '120 tables across 4 catalogs and 18 schemas',
+            coverage: { mode: 'complete' as const },
+            collectedAt: AT,
+          },
+        ],
+        ...(using?.answer === 'met'
+          ? {
+              attested: {
+                id: using.id,
+                bearing: 'co-signed' as const,
+                by: using.attestedBy,
+                at: using.attestedAt,
+                statement: using.statement,
+                owner: using.owner,
+                reviewBy: using.reviewBy,
+              },
+            }
+          : {}),
+      };
+      return { ...source, findings: [measured], score: scoreFindings([measured]) };
+    }
+
+    function projectedWith(selected: Attestation | undefined, ran: Attestation | undefined) {
+      return projector({
+        result: result(selected == null ? [] : [selected.id], false, capped),
+        scan: cappedScan(ran),
+        runDigest: 'sha256:run',
+        answers: [],
+        attestations: selected == null ? [] : [selected],
+      }).finalAssessment.outcome.findings[0]?.finding;
+    }
+
+    it('keeps the lift when the review cites the answer that made it', () => {
+      const met = attestation('att-met', 'met', { controlId: capped.id });
+      expect(projectedWith(met, met)).toMatchObject({
+        outcome: 'pass',
+        attested: { id: met.id, bearing: 'co-signed' },
+      });
+    });
+
+    it('takes the lift back when the review cites no answer, and returns the measured partial', () => {
+      const met = attestation('att-met', 'met', { controlId: capped.id });
+      const finding = projectedWith(undefined, met);
+      expect(finding?.outcome).toBe('partial');
+      expect(finding?.attested).toBeUndefined();
+    });
+
+    it('lifts a measured partial when the review cites a "met" the run had not seen', () => {
+      const met = attestation('att-met', 'met', { controlId: capped.id });
+      expect(projectedWith(met, undefined)).toMatchObject({
+        outcome: 'pass',
+        attested: { id: met.id, bearing: 'co-signed' },
+      });
+    });
+
+    it('records a cited answer that says less than "met" without lifting or lowering anything', () => {
+      const partly = attestation('att-partly', 'partially-met', { controlId: capped.id });
+      expect(projectedWith(partly, undefined)).toMatchObject({
+        outcome: 'partial',
+        attested: { id: partly.id, bearing: 'record' },
+      });
+    });
+
+    it('does not let the cited answer replace the one that lifted the run, so a stricter answer lowers it back', () => {
+      const met = attestation('att-met', 'met', { controlId: capped.id });
+      const notMet = attestation('att-not-met', 'not-met', { controlId: capped.id });
+      expect(projectedWith(notMet, met)).toMatchObject({
+        outcome: 'partial',
+        attested: { id: notMet.id, bearing: 'record' },
+      });
+    });
+  });
+
   it('derives unresolved controls only for legacy skips that predate the frozen manifest', () => {
     const old = attestation('att-old', 'met');
     const legacy = result([], true);

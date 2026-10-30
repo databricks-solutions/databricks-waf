@@ -144,7 +144,7 @@ export function FindingDetail({
         <div className="flex flex-wrap items-center gap-1.5">
           <OutcomeBadge outcome={finding.outcome} />
           <SeverityBadge severity={finding.severity} />
-          {finding.attested?.bearing === 'outcome' && <AttestedBadge />}
+          {(finding.attested?.bearing === 'outcome' || finding.attested?.bearing === 'co-signed') && <AttestedBadge />}
           {decision != null && <StandingBadge standing={decision.standing} />}
           {control?.provenance === 'extension' && <span className="wa-badge">Extension to the framework</span>}
         </div>
@@ -363,18 +363,26 @@ function AlsoMeasured({
  * the app went on to measure itself is worth keeping — it is often the reason somebody looked — but
  * presenting it under the same heading as one that decided the verdict would invite the reader to
  * think the measurement had been overridden. It cannot be; the resolver settles it and this sits
- * beside it.
+ * beside it. The exception is an answer that lifted a measured cap, which is said to be both.
  */
 function Attested({ fact }: { fact: AttestedFact }) {
-  const decided = fact.bearing === 'outcome';
+  const decided = fact.bearing !== 'record';
+  const title =
+    fact.bearing === 'co-signed'
+      ? 'Measured, and answered by a person'
+      : decided
+        ? 'Answered by a person'
+        : 'Also answered by a person';
 
   return (
-    <Surface tone="raised" title={decided ? 'Answered by a person' : 'Also answered by a person'} headingLevel={3}>
+    <Surface tone="raised" title={title} headingLevel={3}>
       <blockquote className="wa-body-compact border-l-2 border-wa-divider pl-2 text-wa-text">
         {fact.statement}
       </blockquote>
       <p className="wa-caption mt-2">
         {attributionPhrase(fact.by, fact.at)}. Accountable: {fact.owner}.{' '}
+        {fact.bearing === 'co-signed' &&
+          'The scan measured this as far as the platform shows; this answer lifts it to a pass. '}
         {decided ? renewalPhrase(fact.reviewBy, 'current') : 'This did not decide the outcome above.'}
       </p>
       {fact.evidenceUrl != null && (

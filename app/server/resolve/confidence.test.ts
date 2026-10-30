@@ -207,6 +207,30 @@ describe('how firmly a finding is established', () => {
     expect(confidence.limitations[0].says).toContain('Platform Engineering');
   });
 
+  it('calls a pass an answer lifted from a measured partial stated, and says what was measured and what was said', () => {
+    // The measurement alone would have been partial. The answer is why it is not, so the standing is
+    // the answer's, and the limitation has to say that the app read part of it.
+    const confidence = confidenceOf(finding({ capped: true, attested: answer({ bearing: 'co-signed' }) }));
+
+    expect(confidence.standing).toBe('stated');
+    expect(confidence.limitations[0].kind).toBe('attested');
+    expect(confidence.limitations[0].says).toContain('Dana Okafor');
+    expect(confidence.limitations[0].says).toContain('partial');
+    expect(confidence.limitations[0].says).toContain('Platform Engineering');
+  });
+
+  it('warns that a lifting answer is about to stop counting, because the lift goes with it', () => {
+    const confidence = confidenceOf(
+      finding({
+        capped: true,
+        attested: answer({ bearing: 'co-signed', reviewBy: new Date('2026-08-20T00:00:00.000Z') }),
+      }),
+      { asOf: new Date('2026-08-03T00:00:00.000Z') }
+    );
+
+    expect(confidence.limitations.map((one) => one.kind)).toEqual(['attested', 'expiring']);
+  });
+
   it('leaves an answer recorded beside a measurement out of the standing', () => {
     // `bearing: 'record'` means the app decided this itself and somebody's note sits next to it.
     const confidence = confidenceOf(finding({ attested: answer({ bearing: 'record' }) }));

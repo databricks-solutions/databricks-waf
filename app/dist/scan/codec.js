@@ -19,12 +19,19 @@
 * than backfill Version 1 from the technical catalogue revision. This is the upgrade path required
 * before the first pilot install holds customer history; it deliberately narrows ADR 0094's earlier
 * development-estate permission to discard records across a shape change.
+*
+* 4 remains readable after the bump to 5 for the same reason, in the other direction. Version 5 added
+* `capped` to a finding and the `co-signed` bearing to an answer, both of which can only say that a
+* measurement stopped at a cap and an answer lifted it. A version 4 document carries neither, and a
+* requirement with neither is exactly what a version 4 build recorded: the outcome the resolver
+* reached, with any answer beside it. The absence is the fact, so no field is backfilled.
 */
 const READABLE = /* @__PURE__ */ new Set([
 	1,
 	2,
 	3,
-	4
+	4,
+	5
 ]);
 var UnreadableScanError = class extends Error {
 	constructor(id, why) {
@@ -42,7 +49,7 @@ var UnreadableScanError = class extends Error {
 function encodeScan(scan) {
 	const signals = scan.signals.map(({ value: _dropped, ...rest }) => rest);
 	const file = {
-		codecVersion: 4,
+		codecVersion: 5,
 		scan: {
 			...scan,
 			signals

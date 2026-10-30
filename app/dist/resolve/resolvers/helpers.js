@@ -1,4 +1,5 @@
 import { describeItem } from "../finding.js";
+import { counts } from "../../attest/attestation.js";
 import { linksIn } from "../locate.js";
 //#region server/resolve/resolvers/helpers.ts
 /**
@@ -244,6 +245,26 @@ function bandOutcome(share, bands) {
 	if (share >= bands.partial) return "partial";
 	return "fail";
 }
+/**
+* The outcome once a capped `partial` has met a current answer.
+*
+* A resolver marks a `partial` as a cap when the platform shows that the practice has an artefact and
+* cannot show that the artefact is the whole practice. A "met" from the person accountable for it is
+* the missing half, so it lifts `partial` to `pass` — and only that. A `fail`, a `partial` the app
+* measured as a shortfall, and every outcome a resolver did not flag come back as they went in, and so
+* does a capped `partial` met by anything but a counting "met": "partially-met", "not-met" and
+* "not-applicable" are recorded and not counted, which is what keeps an answer from ever lowering a
+* measurement.
+*
+* "Counting" is `counts()`, the one definition the score, the review and the published report share:
+* an answer due for renewal still lifts, and an expired one has stopped. See decision D2 in
+* docs/decisions.md.
+*/
+function liftCap(resolution, attested, now = /* @__PURE__ */ new Date()) {
+	if (resolution.capped !== true || resolution.outcome !== "partial") return resolution.outcome;
+	if (attested?.answer !== "met" || !counts(attested, now)) return resolution.outcome;
+	return "pass";
+}
 /** A threshold from the catalogue, so a number can be changed without a code change. */
 function threshold(spec, name, fallback) {
 	const value = spec.thresholds?.[name];
@@ -443,4 +464,4 @@ function triggerMechanismRecorded(job) {
 	return triggerRecorded(job) && !multipleTriggers(job);
 }
 //#endregion
-export { agreeing, bandOutcome, bandsOf, bytes, detailFrom, directoryIn, enrichedBy, evidenceFrom, fromSignal, fromSignals, money, multipleTriggers, nameIn, notApplicable, observedValue, offenders, percent, priceBarrier, priceCoverageClause, qualifierIn, satisfiedByArchitecture, sourcedFrom, threshold, triggerMechanismRecorded, triggerRecorded, unmeasured, valueOf };
+export { agreeing, bandOutcome, bandsOf, bytes, detailFrom, directoryIn, enrichedBy, evidenceFrom, fromSignal, fromSignals, liftCap, money, multipleTriggers, nameIn, notApplicable, observedValue, offenders, percent, priceBarrier, priceCoverageClause, qualifierIn, satisfiedByArchitecture, sourcedFrom, threshold, triggerMechanismRecorded, triggerRecorded, unmeasured, valueOf };
