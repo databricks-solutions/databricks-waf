@@ -256,9 +256,9 @@ dependency change.
 | @types/d3-color | 3.1.3 | MIT | [source](https://www.npmjs.com/package/@types/d3-color/v/3.1.3) |
 | @types/d3-drag | 3.0.7 | MIT | [source](https://www.npmjs.com/package/@types/d3-drag/v/3.0.7) |
 | @types/d3-interpolate | 3.0.4 | MIT | [source](https://www.npmjs.com/package/@types/d3-interpolate/v/3.0.4) |
-| @types/d3-selection | 3.0.11 | MIT | [source](https://www.npmjs.com/package/@types/d3-selection/v/3.0.11) |
+| @types/d3-selection | 3.0.12 | MIT | [source](https://www.npmjs.com/package/@types/d3-selection/v/3.0.12) |
 | @types/d3-transition | 3.0.9 | MIT | [source](https://www.npmjs.com/package/@types/d3-transition/v/3.0.9) |
-| @types/d3-zoom | 3.0.8 | MIT | [source](https://www.npmjs.com/package/@types/d3-zoom/v/3.0.8) |
+| @types/d3-zoom | 3.0.9 | MIT | [source](https://www.npmjs.com/package/@types/d3-zoom/v/3.0.9) |
 | @types/memcached | 2.2.10 | MIT | [source](https://www.npmjs.com/package/@types/memcached/v/2.2.10) |
 | @types/mysql | 2.15.27 | MIT | [source](https://www.npmjs.com/package/@types/mysql/v/2.15.27) |
 | @types/node | 24.13.3 | MIT | [source](https://www.npmjs.com/package/@types/node/v/24.13.3) |
@@ -270,8 +270,8 @@ dependency change.
 | @types/semver | 7.7.1 | MIT | [source](https://www.npmjs.com/package/@types/semver/v/7.7.1) |
 | @types/tedious | 4.0.14 | MIT | [source](https://www.npmjs.com/package/@types/tedious/v/4.0.14) |
 | @types/trusted-types | 2.0.7 | MIT | [source](https://www.npmjs.com/package/@types/trusted-types/v/2.0.7) |
-| @xyflow/react | 12.11.3 | MIT | [source](https://www.npmjs.com/package/@xyflow/react/v/12.11.3) |
-| @xyflow/system | 0.0.80 | MIT | [source](https://www.npmjs.com/package/@xyflow/system/v/0.0.80) |
+| @xyflow/react | 12.11.5 | MIT | [source](https://www.npmjs.com/package/@xyflow/react/v/12.11.5) |
+| @xyflow/system | 0.0.81 | MIT | [source](https://www.npmjs.com/package/@xyflow/system/v/0.0.81) |
 | accepts | 1.3.8 | MIT | [source](https://www.npmjs.com/package/accepts/v/1.3.8) |
 | accepts | 2.0.0 | MIT | [source](https://www.npmjs.com/package/accepts/v/2.0.0) |
 | agent-base | 7.1.4 | MIT | [source](https://www.npmjs.com/package/agent-base/v/7.1.4) |
