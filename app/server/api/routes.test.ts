@@ -243,12 +243,25 @@ interface AppOptions {
    * takes — which is a real configuration and the one where a route has to work without a coordinator.
    */
   readonly durableRuns?: boolean;
+  /**
+   * The database the run record lives in, so that two apps started here are two instances of one install.
+   * Implies `durableRuns`.
+   */
+  readonly runsDatabase?: FakePostgres;
   /** The warehouse binding, as a resource-bound install reports it. Absent means nothing is bound. */
   readonly warehouse?: string;
   /** Observe the exact collection question assembled by a route without replacing its collectors. */
   readonly observeCollectorContext?: (context: CollectorFactoryContext) => void;
   /** The clock reviews are judged by. Absent means the wall clock, as an install runs. */
   readonly now?: () => Date;
+}
+
+/** A database for the run record, empty. Shared between two `startApp`s it is one install on two instances. */
+function runsDatabase(): FakePostgres {
+  return new FakePostgres({
+    keys: { run_checkpoints: ['run_id', 'signal_id'] },
+    unique: { runs: ['idempotency_key'] },
+  });
 }
 
 async function startApp(options: AppOptions = {}): Promise<string> {
@@ -263,15 +276,10 @@ async function startApp(options: AppOptions = {}): Promise<string> {
     ...(attestations != null ? { attestations } : {}),
   });
   const runs =
-    options.durableRuns !== true
+    options.durableRuns !== true && options.runsDatabase == null
       ? undefined
       : new Runs({
-          store: new PostgresRunStore(
-            new FakePostgres({
-              keys: { run_checkpoints: ['run_id', 'signal_id'] },
-              unique: { runs: ['idempotency_key'] },
-            })
-          ),
+          store: new PostgresRunStore(options.runsDatabase ?? runsDatabase()),
           runner,
         });
   const routes = express();
@@ -699,6 +707,70 @@ describe('starting a scan on an install that records runs', () => {
     const after = (await (await fetch(`${url}/api/scan/status`)).json()) as { running: boolean; run?: string };
     expect(after.running).toBe(false);
     expect(after.run).toBeUndefined();
+  });
+
+  it('reports a scan another instance started, read from the record rather than from this process', async () => {
+    const shared = runsDatabase();
+    const instanceA = await startApp({ runsDatabase: shared, collectorDelayMs: 200 });
+    const instanceB = await startApp({ runsDatabase: shared });
+    const scanning = post('/api/scan', { 'x-forwarded-access-token': 'token' }, instanceA);
+
+    await new Promise((resolve) => setTimeout(resolve, 60));
+    const here = (await (await fetch(`${instanceA}/api/scan/status`)).json()) as { run?: string };
+    const there = (await (await fetch(`${instanceB}/api/scan/status`)).json()) as {
+      running: boolean;
+      run?: string;
+      actor?: string;
+      startedAt?: string;
+      trigger?: string;
+    };
+
+    expect(there.running).toBe(true);
+    expect(there.run).toBe(here.run);
+    expect(there.actor).toBe('admin@example.com');
+    expect(there.trigger).toBe('interactive');
+    expect(typeof there.startedAt).toBe('string');
+
+    await scanning;
+    const after = (await (await fetch(`${instanceB}/api/scan/status`)).json()) as { running: boolean; run?: string };
+    expect(after.running).toBe(false);
+    expect(after.run).toBeUndefined();
+  });
+
+  it('refuses a scan another instance is running with a conflict that names the run, and writes no run', async () => {
+    const shared = runsDatabase();
+    const instanceA = await startApp({ runsDatabase: shared, collectorDelayMs: 200 });
+    const instanceB = await startApp({ runsDatabase: shared });
+    const scanning = post('/api/scan', { 'x-forwarded-access-token': 'token' }, instanceA);
+
+    await new Promise((resolve) => setTimeout(resolve, 60));
+    const refused = await post('/api/scan', { 'x-forwarded-access-token': 'token' }, instanceB);
+    const live = (await (await fetch(`${instanceA}/api/scan/status`)).json()) as { run?: string };
+
+    expect(refused.status).toBe(409);
+    expect(refused.body.error).toBe('scan-in-progress');
+    expect(refused.body.run).toBe(live.run);
+    expect(refused.body.running).toMatchObject({ actor: 'admin@example.com' });
+    expect(shared.rows('runs')).toHaveLength(1);
+
+    expect((await scanning).status).toBe(200);
+    expect(shared.rows('runs')).toHaveLength(1);
+  });
+
+  it('keeps naming the run on a refused attempt\u2019s own instance, and writes no failed run for it', async () => {
+    const shared = runsDatabase();
+    const url = await startApp({ runsDatabase: shared, collectorDelayMs: 200 });
+    const scanning = post('/api/scan', { 'x-forwarded-access-token': 'token' }, url);
+
+    await new Promise((resolve) => setTimeout(resolve, 60));
+    const refused = await post('/api/scan', { 'x-forwarded-access-token': 'token' }, url);
+    const status = (await (await fetch(`${url}/api/scan/status`)).json()) as { run?: string };
+
+    expect(refused.status).toBe(409);
+    expect(status.run).toBe(refused.body.run);
+    expect(typeof status.run).toBe('string');
+    expect((await scanning).status).toBe(200);
+    expect(shared.rows('runs').map((row) => row.state)).toEqual(['complete']);
   });
 
   it('says nothing is recorded where no database is bound, rather than reporting an empty history', async () => {

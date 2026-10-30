@@ -21,14 +21,14 @@ import type { CredentialProvider } from '../collect/credentials.js';
 import type { Collector, SignalId, SignalResult } from '../collect/signal.js';
 import { unmeasurable } from '../collect/signal.js';
 import { buildRegistry } from '../resolve/resolvers/index.js';
-import { ScanRunner } from '../scan/runner.js';
-import { AdvisoryRunner } from '../advise/runner.js';
+import { ScanInProgressError, ScanRunner } from '../scan/runner.js';
+import { AdvisoryInProgressError, AdvisoryRunner } from '../advise/runner.js';
 import { InMemoryAdvisoryStore } from '../advise/store.js';
 import { InMemoryScanStore } from '../scan/store.js';
 import { FakePostgres } from '../store/postgres-fake.js';
 import { LEASE_SECONDS } from './run.js';
 import { PostgresRunStore } from './run-store.js';
-import { RunNotJoinable, Runs, requestOf } from './runs.js';
+import { RunNotJoinable, Runs, requestOf, type Triggered } from './runs.js';
 
 const SETTINGS: SignalId = 'rest:workspace:preview.workspace-conf';
 const TOKENS: SignalId = 'rest:workspace:token.list';
@@ -729,5 +729,230 @@ describe('what the record keeps of a request', () => {
     const asked = requestOf({ credentials: asUser, scope: accountScope(), collectors: [] });
     expect(asked.pillars).toBeUndefined();
     expect(asked.definition).toBeUndefined();
+  });
+});
+
+// A scaled install runs several instances against one database, so "one scan at a time" has to be
+// decided where they meet. Each `harness` below is one instance — its own runner, its own in-process
+// lock — over a shared fake, which is the arrangement the in-process lock alone cannot keep to one run.
+describe('admitting one live run of a kind, however many instances serve the install', () => {
+  const ADVISORY_SIGNALS: readonly SignalId[] = [
+    'sql:serverless.job_readiness',
+    'sql:serverless.job_spend',
+    'sql:jobs.inventory',
+    'sql:estate.workspaces',
+  ];
+
+  function advisoryCollectors(first?: Collector): Collector[] {
+    return [
+      ...(first != null ? [first] : []),
+      {
+        surface: 'sql',
+        name: 'advisory',
+        signals: first != null ? ADVISORY_SIGNALS.slice(1) : [...ADVISORY_SIGNALS],
+        collect: (ids): Promise<SignalResult[]> =>
+          Promise.resolve(ids.map((id) => unmeasurable(id, 'The advisory collector is refused here.'))),
+      },
+    ];
+  }
+
+  it('lets one of two instances triggered together start, and tells the other which run it lost to', async () => {
+    const db = database();
+    const one = harness({ db, holder: 'instance-one' });
+    const two = harness({ db, holder: 'instance-two' });
+    const held = stalling('settings', SETTINGS);
+
+    const [first, second] = await Promise.allSettled([
+      one.runs.trigger(request([held.collector]), { actor: 'ada@example.com' }),
+      two.runs.trigger(request([held.collector]), { actor: 'grace@example.com' }),
+    ]);
+
+    expect([first.status, second.status].sort()).toEqual(['fulfilled', 'rejected']);
+    const winner = first.status === 'fulfilled' ? first.value : (second as PromiseFulfilledResult<Triggered>).value;
+    const refused = (first.status === 'rejected' ? first.reason : (second as PromiseRejectedResult).reason) as unknown;
+
+    // One row, and it is the winner's: the refused caller wrote nothing, so there is no failed run
+    // for a supervisor to find and wonder about.
+    expect(db.rows('runs').map((row) => row.id)).toEqual([winner.run.id]);
+    expect(refused).toBeInstanceOf(ScanInProgressError);
+    expect((refused as ScanInProgressError).run).toBe(winner.run.id);
+    expect((refused as ScanInProgressError).message).toContain(winner.run.id);
+    expect((refused as ScanInProgressError).running.actor).toBe(winner.run.actor);
+
+    await held.reached;
+    held.release();
+    await winner.scan;
+  });
+
+  it('refuses a keyed trigger that names a different run, and leaves the one running alone', async () => {
+    const db = database();
+    const one = harness({ db, holder: 'instance-one' });
+    const two = harness({ db, holder: 'instance-two' });
+    const held = stalling('settings', SETTINGS);
+    const started = await one.runs.trigger(request([held.collector]), {
+      actor: 'ada@example.com',
+      idempotencyKey: 'nightly',
+    });
+    await held.reached;
+
+    const refused = await two.runs
+      .trigger(request([refusing('settings', SETTINGS)]), { actor: 'ada@example.com', idempotencyKey: 'other' })
+      .catch((cause: unknown) => cause);
+
+    expect(refused).toBeInstanceOf(ScanInProgressError);
+    expect((refused as ScanInProgressError).run).toBe(started.run.id);
+    expect(db.rows('runs')).toHaveLength(1);
+    expect(two.runs.holding()).toBeUndefined();
+
+    held.release();
+    await started.scan;
+  });
+
+  it('admits another once the first has finished', async () => {
+    const db = database();
+    const one = harness({ db, holder: 'instance-one' });
+    const two = harness({ db, holder: 'instance-two' });
+    const { scan } = await one.runs.trigger(request([refusing('settings', SETTINGS)]), { actor: 'ada@example.com' });
+    await scan;
+
+    const next = await two.runs.trigger(request([refusing('settings', SETTINGS)]), { actor: 'grace@example.com' });
+    await next.scan;
+
+    expect(db.rows('runs')).toHaveLength(2);
+  });
+
+  it('admits another where the holder stopped renewing, since a run nobody is working on is not live', async () => {
+    const clock = { at: new Date('2026-01-01T00:00:00Z') };
+    const db = database();
+    const killed = harness({ db, now: () => clock.at, holder: 'instance-one' });
+    const held = stalling('settings', SETTINGS);
+    const abandoned = await killed.runs.trigger(request([held.collector]), { actor: 'ada@example.com' });
+    await held.reached;
+
+    clock.at = new Date(clock.at.getTime() + (LEASE_SECONDS + 1) * 1000);
+    const next = harness({ db, now: () => clock.at, holder: 'instance-two' });
+    const taken = await next.runs.trigger(request([refusing('settings', SETTINGS)]), { actor: 'grace@example.com' });
+    await taken.scan;
+
+    expect(taken.run.id).not.toBe(abandoned.run.id);
+    held.release();
+    await abandoned.scan.catch(() => undefined);
+  });
+
+  it('refuses a second on the same instance without writing anything, and keeps the status link of the first', async () => {
+    const { runs, db } = harness();
+    const held = stalling('settings', SETTINGS);
+    const first = await runs.trigger(request([held.collector]), { actor: 'ada@example.com' });
+    await held.reached;
+    expect(runs.holding()).toBe(first.run.id);
+
+    const before = db.statements.length;
+    const refused = await runs
+      .trigger(request([refusing('settings', SETTINGS)]), { actor: 'grace@example.com' })
+      .catch((cause: unknown) => cause);
+
+    expect(refused).toBeInstanceOf(ScanInProgressError);
+    expect((refused as ScanInProgressError).run).toBe(first.run.id);
+    // Nothing was issued at all, so the refusal costs no round trip and leaves no failed run behind.
+    expect(db.statements.slice(before)).toEqual([]);
+    expect(db.rows('runs')).toHaveLength(1);
+    // The refused attempt did not take the pointer, and did not clear it on the way out.
+    expect(runs.holding()).toBe(first.run.id);
+
+    held.release();
+    await first.scan;
+    expect(runs.holding()).toBeUndefined();
+  });
+
+  it('does not claim a resumable run, or name it, while another scan is collecting here', async () => {
+    const db = database();
+    const broken = harness({ db });
+    const failing = new InMemoryScanStore();
+    failing.save = () => Promise.reject(new Error('the store is unreachable'));
+    const first = new Runs({ store: broken.store, runner: new ScanRunner({ catalogue, registry, store: failing }) });
+    const failed = await first.trigger(request([refusing('settings', SETTINGS)]), {
+      actor: 'ada@example.com',
+      idempotencyKey: 'nightly',
+    });
+    await expect(failed.scan).rejects.toThrow('unreachable');
+
+    // Another scan on the retrying instance, started outside the coordinator. The retry names a run
+    // that exists, so it gets past the early refusal and has to be stopped before it claims anything.
+    const retrying = harness({ db });
+    const held = stalling('settings', SETTINGS);
+    const outside = retrying.runner.start(request([held.collector]));
+    await held.reached;
+
+    const refused = await retrying.runs
+      .trigger(request([refusing('settings', SETTINGS)]), { actor: 'ada@example.com', idempotencyKey: 'nightly' })
+      .catch((cause: unknown) => cause);
+
+    expect(refused).toBeInstanceOf(ScanInProgressError);
+    expect(retrying.runs.holding()).toBeUndefined();
+    const left = await retrying.store.get(failed.run.id);
+    expect(left?.state).toBe('failed');
+    expect(left?.attempts).toBe(1);
+
+    held.release();
+    await outside;
+  });
+
+  it('applies to an advisory run in the same way, across instances', async () => {
+    const db = database();
+    const one = harness({ db, holder: 'instance-one' });
+    const two = harness({ db, holder: 'instance-two' });
+    const held = stalling('advisory', ADVISORY_SIGNALS[0]);
+    const started = await one.runs.advise(request(advisoryCollectors(held.collector)), { actor: 'ada@example.com' });
+    await held.reached;
+
+    const refused = await two.runs
+      .advise(request(advisoryCollectors()), { actor: 'grace@example.com' })
+      .catch((cause: unknown) => cause);
+
+    expect(refused).toBeInstanceOf(AdvisoryInProgressError);
+    expect((refused as AdvisoryInProgressError).run).toBe(started.run.id);
+    expect(db.rows('runs')).toHaveLength(1);
+
+    held.release();
+    await started.advisory;
+  });
+
+  it('does not make an advisory run wait for a scan, or a scan for an advisory run', async () => {
+    const db = database();
+    const one = harness({ db, holder: 'instance-one' });
+    const two = harness({ db, holder: 'instance-two' });
+    const held = stalling('settings', SETTINGS);
+    const scanning = await one.runs.trigger(request([held.collector]), { actor: 'ada@example.com' });
+    await held.reached;
+
+    const advising = await two.runs.advise(request(advisoryCollectors()), { actor: 'grace@example.com' });
+    await advising.advisory;
+
+    expect(
+      db
+        .rows('runs')
+        .map((row) => row.kind)
+        .sort()
+    ).toEqual(['advisory', 'assessment']);
+    held.release();
+    await scanning.scan;
+  });
+
+  it('reads what is live from the record, so another instance can say which run is going', async () => {
+    const db = database();
+    const one = harness({ db, holder: 'instance-one' });
+    const two = harness({ db, holder: 'instance-two' });
+    const held = stalling('settings', SETTINGS);
+    expect(await two.runs.live('assessment')).toBeUndefined();
+
+    const started = await one.runs.trigger(request([held.collector]), { actor: 'ada@example.com' });
+    await held.reached;
+
+    expect((await two.runs.live('assessment'))?.id).toBe(started.run.id);
+    expect(await two.runs.live('advisory')).toBeUndefined();
+
+    held.release();
+    await started.scan;
+    expect(await two.runs.live('assessment')).toBeUndefined();
   });
 });

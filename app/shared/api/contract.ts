@@ -1078,8 +1078,8 @@ export interface ReadinessPayload {
 /**
  * A run of the assessment, as the record holds it.
  *
- * Separate from `ScanStatusPayload`, which reports what is happening in *this process* right now and
- * goes back to `{ running: false }` when the process restarts. This is read from the database, so it
+ * Separate from `ScanStatusPayload`, which reports only the run that is being worked on right now and
+ * goes back to `{ running: false }` when its holder stops. This is the whole record, so it
  * answers the question a supervisor actually has — "what became of the run I asked for" — across a
  * restart, a retry and a cancel.
  */

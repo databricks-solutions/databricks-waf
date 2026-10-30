@@ -118,6 +118,10 @@ Select **Run assessment** from the header. Choose the saved definition or a one-
 
 The Dashboard shows indicative automated posture as soon as collection completes. Publication waits for the selected pillars to be reviewed.
 
+## Running more than one instance
+
+The App can run on two or more instances behind the one URL, and Databricks recommends at least two. Every instance reads and writes the same Lakebase database, so they agree on what is running. At most one assessment run and one advisory run are live at a time across all of them: a second request is refused with a `409` that names the run already going, and no run record is written for the refusal. Progress and status are read from the run record, so any instance reports a scan that another started. A rolling deploy that serves the old and new versions side by side is covered, because the admission rule needs no schema change. See decision A16 in [Product decisions]({{ '/decisions/' | relative_url }}).
+
 ## Optional schedule
 
 Finish an interactive run first. Then follow [Configure scheduled assessments]({{ '/configuration/#scheduled-assessments' | relative_url }}). Deployment never unpauses the schedule for you.

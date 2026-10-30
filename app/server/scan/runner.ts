@@ -52,9 +52,17 @@ export interface RunningScan {
 }
 
 export class ScanInProgressError extends Error {
-  constructor(readonly running: RunningScan) {
+  /**
+   * `run` names the record behind the scan that is running, where there is one, so a refused caller
+   * can follow it. Absent for a scan started outside the coordinator, which has no record to name.
+   */
+  constructor(
+    readonly running: RunningScan,
+    readonly run?: string
+  ) {
     super(
-      `A scan started by ${running.actor} at ${running.startedAt.toISOString()} is already running. ` +
+      `A scan started by ${running.actor} at ${running.startedAt.toISOString()} is already running` +
+        `${run == null ? '' : ` as run ${run}`}. ` +
         'Only one scan runs at a time so two admins cannot double the load on the warehouse for the ' +
         'same answer. Wait for it to finish; its results will be the latest scan.'
     );

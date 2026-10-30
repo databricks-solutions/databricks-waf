@@ -189,6 +189,39 @@ export function unheld(run: Run, now: Date): boolean {
   return run.lease == null || run.lease.until.getTime() <= now.getTime();
 }
 
+/**
+ * Whether something is working on a run as at `now`, or is about to be.
+ *
+ * What admission waits for. Two cases count, and they are both "a process that is not yet known to have
+ * stopped": a lease that has not lapsed, and a run that was asked for within one lease window and has
+ * not been claimed yet. The second is the gap between `open` and `claim`, which are two statements; a
+ * second instance admitted inside it would see an unclaimed run, find nothing live, and start a run of
+ * its own beside the one the first is about to claim. After a window with no claim the trigger that
+ * opened it is presumed gone, as an expired lease says of a holder, and the run stops counting.
+ *
+ * A finished run is never live, whatever its lease says: `finish` leaves a date there that is the
+ * moment the run ended rather than a claim on anything.
+ */
+export function live(run: Run, now: Date): boolean {
+  if (run.finishedAt != null) return false;
+  if (run.lease != null) return !unheld(run, now);
+  return run.attempts === 0 && now.getTime() - run.requestedAt.getTime() < LEASE_SECONDS * 1000;
+}
+
+/**
+ * A run was not opened because another of its kind is live.
+ *
+ * Carries the run it lost to, so the caller can name it: a refusal that says only "busy" leaves a
+ * supervisor with nothing to poll or cancel. The store throws this and the coordinator turns it into the
+ * in-progress error each kind of run already answers with.
+ */
+export class RunAdmissionRefused extends Error {
+  constructor(readonly run: Run) {
+    super(`A ${run.kind} run is already live: ${run.id}, asked for by ${run.actor}.`);
+    this.name = 'RunAdmissionRefused';
+  }
+}
+
 /** Why a trigger may not join a run, or `undefined` when it may. */
 export type Refusal = 'terminal' | 'held' | 'other-actor' | 'other-request' | 'other-kind';
 

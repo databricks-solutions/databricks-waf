@@ -103,3 +103,29 @@ Each section records one settled question about how the App works: what was deci
 - `app/server/health/health.ts` and `app/server/api/health-routes.ts`: the marker list on `/api/diagnostics`, and the gated `POST /api/diagnostics/audit-gaps/:id/acknowledge`.
 - `app/client/src/pages/DiagnosticsPage.tsx` and `app/client/src/components/AuditGapList.tsx`: the list and the acknowledge button.
 - `app/server/admin/reset.ts` and `app/server/admin/retention.ts`: a reset empties the markers with the trail they describe, and a retention period never removes one.
+
+## A16: an install may run on several instances; the database admits one live run per kind
+
+**Status:** decided 2026-10-29 by the product owner
+
+**Decision.** The App supports two or more instances behind one URL, and three things that used to be held in one process's memory are now decided where the instances meet.
+
+1. **Admission.** At most one assessment run and one advisory run are live at a time across all instances. `PostgresRunStore.open` takes `pg_advisory_xact_lock(hashtext('waf.run-admission.' || kind))` in the transaction that opens a run, reads the unfinished runs, and inserts only if none of that kind is live. A run is live while its lease has not lapsed, or for one lease window after it was asked for if nothing has claimed it yet. A run whose holder stopped renewing is not live, so a dead instance does not block the install, and it is still taken back up by its own idempotency key. A trigger with the same key as the live run is not refused at this step; it reaches the existing duplicate-key path and is told why it cannot join. Any other trigger, with another key or none, is refused. The two kinds do not wait for each other. The lock is released by the commit or rollback, and a handle that cannot open a transaction refuses to admit anything.
+2. **Refusal.** A refused trigger writes no run, answers `409` with the same in-progress error as before (`scan-in-progress`, and `advisory-in-progress` for an advisory run), and names the live run. A trigger that this instance can already see will be refused is turned away before anything is written. A refused attempt does not change the pointer to the run this instance is collecting, and does not leave a failed run behind.
+3. **Status.** `/api/scan/status` reads the live assessment run from the run record, so every instance reports the same scan, with the starter, scope and trigger. The progress count (`callsMade`) is shown only by the instance doing the work, because nothing durable holds it. Where nothing durable is bound, or the record cannot be read, the instance's own runner answers.
+
+Durable audit gaps, the other state that was per instance, are decided in D7.
+
+**Reason.** Databricks Apps run one to five instances behind one URL, and a rolling deploy serves two versions at once. The in-process lock stops two scans in one instance and can't see another, so two people could start two scans and double the load on the warehouse for the same answer. The database is the one thing every instance shares, and an advisory lock taken in the admitting transaction is what makes "read what is live, then insert" safe against another instance doing the same. It adds no table or column, so two versions can run against one database during a deploy. Reading status from the run record means a page served by a different instance from the one that started the scan is still told it is running.
+
+**Not decided here.** Scans do not run in parallel, and cancelling is still the cancel flag in the run record, which the instance holding the run reads between collection units.
+
+**Governs:**
+
+- `app/server/run/run-store.ts`: `PostgresRunStore.open`, the advisory lock, the read of unfinished runs and the refusal.
+- `app/server/run/run.ts`: `live`, which says when a run counts against admission, and `RunAdmissionRefused`, which carries the run that was lost to.
+- `app/server/run/runs.ts`: the early refusal, the translation of an admission refusal into `ScanInProgressError` and `AdvisoryInProgressError`, the per-kind pointer to the run this instance is collecting, and `live()`, which the status route reads.
+- `app/server/api/routes.ts`: `/api/scan/status` and the `scan-in-progress` response, which names the run.
+- `app/server/api/advisory-routes.ts`: the `advisory-in-progress` response.
+- `app/server/store/postgres-fake.ts`: sessions that wait for one another, and the advisory transaction lock, which the fake accepts only inside a session.
+- `docs/install.md` and `docs/user-guide.md`: the statement that more than one instance is supported.

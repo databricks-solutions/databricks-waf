@@ -1,10 +1,10 @@
 {
   "what": "The last run of server/store/postgres.live.test.ts that passed, and the SQL it passed against.",
-  "ran": "2026-10-29T13:36:51.669Z",
-  "commit": "0d5a05b306d65efe4682f95c436599e66c101b12",
+  "ran": "2026-10-29T13:57:13.770Z",
+  "commit": "32c30627ea4c043af62c2e2b4a3b856ca19831ba",
   "endpoint": "local",
-  "tests": 66,
-  "digest": "d6e11cb8ac0b3e6e",
+  "tests": 71,
+  "digest": "b8c1dd2ffffc7ce1",
   "lifecycle": {
     "restarted": true,
     "definition": {

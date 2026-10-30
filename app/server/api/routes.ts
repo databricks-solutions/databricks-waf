@@ -100,7 +100,13 @@ import { AUDIT_PHRASES, type AuditAction, type AuditTarget } from '../audit/even
 import type { AuditGapLog, UnacknowledgedGaps } from '../store/audit-gaps.js';
 import { authoredGuidance, type GuidanceLibrary } from '../guidance/guidance.js';
 import { describeVerification, MEANS, type VerificationReport } from '../records/verify.js';
-import { DEFAULT_LOOKBACK_DAYS, ScanInProgressError, ScanRunner, type ScanRequest } from '../scan/runner.js';
+import {
+  DEFAULT_LOOKBACK_DAYS,
+  ScanInProgressError,
+  ScanRunner,
+  type RunningScan,
+  type ScanRequest,
+} from '../scan/runner.js';
 import type { Run } from '../run/run.js';
 import { RunNotJoinable, type Runs } from '../run/runs.js';
 import { refusedPayload, registerRunRoutes } from './run-routes.js';
@@ -1251,24 +1257,18 @@ export function registerApi(served: Application, options: ApiOptions): void {
     }
   });
 
-  app.get('/api/scan/status', (_request, response) => {
-    const running = options.runner.running();
-    // The record behind it, where there is one. Absent on an install with nothing durable bound, and
-    // absent for a scan started outside the coordinator — both of which mean the same thing to a
-    // reader: this scan has no name that outlives the process.
-    const run = options.runs?.holding();
-    const payload: ScanStatusPayload<Date> =
-      running == null
-        ? { running: false }
-        : {
-            running: true,
-            startedAt: running.startedAt,
-            actor: running.actor,
-            scope: running.scope,
-            callsMade: running.callsMade,
-            ...(running.trigger != null && { trigger: running.trigger }),
-            ...(run != null && { run }),
-          };
+  /**
+   * What is running now, for a reader who did not start it.
+   *
+   * Read from the run record where there is one, so every instance of a scaled install says the same
+   * thing: a page served by a different instance from the one that started the scan is still told it is
+   * going, and by whom. Where this process is the one collecting, its own runner supplies the progress
+   * count, which nothing durable holds. Where nothing durable is bound, or the record cannot be read,
+   * what this process knows is all there is, and it is reported as such.
+   */
+  app.get('/api/scan/status', async (_request, response) => {
+    const local = options.runner.running();
+    const payload: ScanStatusPayload<Date> = await scanStatus(local, options.runs);
     response.json(payload);
   });
 
@@ -3471,12 +3471,63 @@ function resultGateFailure(response: Response, status: number, eligibility: Resu
   });
 }
 
+/**
+ * The scan status, from the run record where one is bound.
+ *
+ * The record is asked first and decides *whether* a scan is running; this process's runner only enriches
+ * the answer when the run is its own. Where the record names a run this process is not collecting — it is
+ * on another instance — the answer is what the record holds, without a call count, because that count is
+ * the other process's and is not written anywhere.
+ *
+ * Falls back to the local runner, with no run named, when nothing durable is bound or the read fails. A
+ * status that errors would show the page nothing at all, and the local answer is true as far as it goes.
+ */
+async function scanStatus(local: RunningScan | undefined, runs: Runs | undefined): Promise<ScanStatusPayload<Date>> {
+  const onThisProcess = (run?: string): ScanStatusPayload<Date> =>
+    local == null
+      ? { running: false }
+      : {
+          running: true,
+          startedAt: local.startedAt,
+          actor: local.actor,
+          scope: local.scope,
+          callsMade: local.callsMade,
+          ...(local.trigger != null && { trigger: local.trigger }),
+          ...(run != null && { run }),
+        };
+
+  if (runs == null) return onThisProcess();
+
+  let live: Run | undefined;
+  try {
+    live = await runs.live('assessment');
+  } catch {
+    return onThisProcess(runs.holding());
+  }
+  // Where the record says nothing is live and this process is collecting anyway, it is either a scan
+  // started outside the coordinator, which has no name, or a run whose renewals have been failing, which
+  // still has one. The pointer is what tells them apart, and it is only ever set by an attempt that began.
+  if (live == null) return onThisProcess(runs.holding());
+  if (local != null && runs.holding() === live.id) return onThisProcess(live.id);
+
+  return {
+    running: true,
+    startedAt: live.requestedAt,
+    actor: live.actor,
+    scope: live.request.scope,
+    trigger: live.trigger,
+    run: live.id,
+  };
+}
+
 function respondToFailure(response: Response, cause: unknown): void {
   if (cause instanceof ScanInProgressError) {
     response.status(409).json({
       error: 'scan-in-progress',
       message: cause.message,
       running: cause.running,
+      // The run behind it, where there is one, so a refused caller has something to poll or cancel.
+      ...(cause.run != null && { run: cause.run }),
     });
     return;
   }

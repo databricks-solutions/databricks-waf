@@ -9,9 +9,15 @@ import { carryForward } from "./carry-forward.js";
 //#region server/scan/runner.ts
 var ScanInProgressError = class extends Error {
 	running;
-	constructor(running) {
-		super(`A scan started by ${running.actor} at ${running.startedAt.toISOString()} is already running. Only one scan runs at a time so two admins cannot double the load on the warehouse for the same answer. Wait for it to finish; its results will be the latest scan.`);
+	run;
+	/**
+	* `run` names the record behind the scan that is running, where there is one, so a refused caller
+	* can follow it. Absent for a scan started outside the coordinator, which has no record to name.
+	*/
+	constructor(running, run) {
+		super(`A scan started by ${running.actor} at ${running.startedAt.toISOString()} is already running${run == null ? "" : ` as run ${run}`}. Only one scan runs at a time so two admins cannot double the load on the warehouse for the same answer. Wait for it to finish; its results will be the latest scan.`);
 		this.running = running;
+		this.run = run;
 		this.name = "ScanInProgressError";
 	}
 };

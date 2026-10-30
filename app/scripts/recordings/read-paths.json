@@ -457,27 +457,7 @@
     },
     {
       "file": "server/run/run-store.ts",
-      "line": 196,
-      "table": "runs",
-      "class": "scoped",
-      "shape": "predicate",
-      "alreadyFiltersDefinition": false,
-      "reason": null,
-      "sql": "select ${} from ${}.runs ${}"
-    },
-    {
-      "file": "server/run/run-store.ts",
-      "line": 205,
-      "table": "runs",
-      "class": "scoped",
-      "shape": "predicate",
-      "alreadyFiltersDefinition": false,
-      "reason": null,
-      "sql": "select ${} from ${}.runs where idempotency_key = $1"
-    },
-    {
-      "file": "server/run/run-store.ts",
-      "line": 214,
+      "line": 195,
       "table": "runs",
       "class": "scoped",
       "shape": "predicate",
@@ -487,7 +467,37 @@
     },
     {
       "file": "server/run/run-store.ts",
-      "line": 222,
+      "line": 251,
+      "table": "runs",
+      "class": "scoped",
+      "shape": "predicate",
+      "alreadyFiltersDefinition": false,
+      "reason": null,
+      "sql": "select ${} from ${}.runs ${}"
+    },
+    {
+      "file": "server/run/run-store.ts",
+      "line": 260,
+      "table": "runs",
+      "class": "scoped",
+      "shape": "predicate",
+      "alreadyFiltersDefinition": false,
+      "reason": null,
+      "sql": "select ${} from ${}.runs where idempotency_key = $1"
+    },
+    {
+      "file": "server/run/run-store.ts",
+      "line": 269,
+      "table": "runs",
+      "class": "scoped",
+      "shape": "predicate",
+      "alreadyFiltersDefinition": false,
+      "reason": null,
+      "sql": "select ${} from ${}.runs where finished_at is null order by requested_at desc"
+    },
+    {
+      "file": "server/run/run-store.ts",
+      "line": 277,
       "table": "runs",
       "class": "scoped",
       "shape": "predicate",
@@ -497,7 +507,7 @@
     },
     {
       "file": "server/run/run-store.ts",
-      "line": 321,
+      "line": 376,
       "table": "runs",
       "class": "scoped",
       "shape": "predicate",
@@ -507,7 +517,7 @@
     },
     {
       "file": "server/run/run-store.ts",
-      "line": 347,
+      "line": 402,
       "table": "run_checkpoints",
       "class": "by-parent",
       "shape": "join",
@@ -517,7 +527,7 @@
     },
     {
       "file": "server/run/run-store.ts",
-      "line": 436,
+      "line": 491,
       "table": "run_attempts",
       "class": "by-parent",
       "shape": "join",
@@ -597,8 +607,8 @@
     }
   ],
   "totals": {
-    "reads": 55,
-    "predicate": 31,
+    "reads": 56,
+    "predicate": 32,
     "join": 7,
     "unclassified": 17,
     "alreadyFiltersDefinition": 1,
@@ -617,11 +627,11 @@
       "review_answers": 1,
       "run_attempts": 1,
       "run_checkpoints": 1,
-      "runs": 5,
+      "runs": 6,
       "scans": 4,
       "serving_declarations": 1,
       "validation_attempts": 2
     }
   },
-  "measuredAt": "2026-10-29T13:36:41.586Z"
+  "measuredAt": "2026-10-29T13:56:34.872Z"
 }

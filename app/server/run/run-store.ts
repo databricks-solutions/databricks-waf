@@ -9,7 +9,8 @@
 //
 //   * `open` inserts and lets the unique constraint on the key refuse the second retry. Reading for
 //     an existing run first and inserting if absent looks equivalent and is not: two retries arriving
-//     together both read nothing.
+//     together both read nothing. The one exception is admission, which has to read before it writes
+//     and so takes a lock first — see `open`.
 //   * `claim` sets the lease with `where` on the lease being absent or lapsed. Checking first would
 //     let two processes both see a lapsed lease and both start collecting.
 //   * `cancel` writes a date and never touches state. A cancel that also set the state would race the
@@ -20,6 +21,8 @@ import type { SignalResult } from '../collect/signal.js';
 import type { Sql } from '../store/postgres.js';
 import {
   LEASE_SECONDS,
+  RunAdmissionRefused,
+  live,
   type Checkpoint,
   type Run,
   type RunAttempt,
@@ -51,7 +54,12 @@ export interface Opened {
 
 export interface RunStore {
   readonly durable: boolean;
-  /** Starts a run, or answers with the one this key already names. */
+  /**
+   * Starts a run, or answers with the one this key already names.
+   *
+   * Rejects with `RunAdmissionRefused`, writing nothing, where a run of the same kind is live and this
+   * is not a retry of it: at most one live run of each kind per install, whichever instance asks.
+   */
   open(opening: Opening): Promise<Opened>;
   get(id: string, scope?: AssessmentScope): Promise<Run | undefined>;
   byKey(key: string): Promise<Run | undefined>;
@@ -143,41 +151,88 @@ export class PostgresRunStore implements RunStore {
   constructor(private readonly db: Sql & { readonly schema: string }) {}
 
   /**
-   * Starts a run, letting the database refuse a duplicate key.
+   * Starts a run, unless another of its kind is live, and lets the database refuse a duplicate key.
    *
-   * `on conflict do nothing` and then a read, rather than reading first: the read-then-insert version
-   * has both of two simultaneous retries see no run and both insert, and one of them raises. Doing it
-   * this way, the second insert is a no-op and the read that follows finds the run the first created,
-   * which is the answer the caller wanted anyway.
+   * **Admission.** An install may be served by several instances, and the in-process lock in
+   * `ScanRunner` cannot see the others, so whether a run may start is decided here, where they meet. One
+   * transaction takes an advisory lock named for the kind, reads the unfinished runs, and inserts only if
+   * none of that kind is live — see `live`. The lock is what makes the read mean something: without it two
+   * instances both read nothing live and both insert. It is `xact` rather than session-scoped so that it
+   * is released by the commit or rollback and a connection returned to the pool cannot keep it, and it is
+   * keyed on the kind so that an advisory run does not wait for an assessment.
+   *
+   * A live run with the same key is not a refusal. That is a retry, and the insert below turns it into
+   * the existing run, which `joinable` then judges with a reason the caller can act on. A live run with
+   * any other key — including none, since two people pressing scan are two intentions — is refused, and
+   * the refusal is thrown after the transaction has ended with nothing written. A lapsed lease is not
+   * live, so a run whose holder died does not block the install; it is taken back up by its own key.
+   *
+   * Refuses outright where the handle cannot give it a transaction, as the reset does: admitting without
+   * one would work whenever nothing else was happening and fail the one time it mattered.
+   *
+   * **Duplicate keys.** `on conflict do nothing` and then a read, rather than reading first: the
+   * read-then-insert version has both of two simultaneous retries see no run and both insert, and one of
+   * them raises. Doing it this way, the second insert is a no-op and the read that follows finds the run
+   * the first created, which is the answer the caller wanted anyway.
    *
    * The generated id is discarded in that case. That is fine and worth being explicit about: an id is
    * cheap, and the alternative — asking the caller to check first — is the race this avoids.
    */
   async open(opening: Opening): Promise<Opened> {
     const key = opening.idempotencyKey;
-    await this.db.query(
-      // `definition_id` is `request.definition.id` promoted to a column, on the same reasoning as the
-      // scan's: the request body stays the authority, and null means the run was started directly
-      // rather than from an assessment. Written at `open` and never revised, because which assessment
-      // a run answers to is decided when it is asked for.
-      `insert into ${this.db.schema}.runs
-         (id, kind, requested_at, actor, trigger, idempotency_key, request, state, attempts, lease_until,
-          definition_id)
-         values ($1, $9, $2, $3, $4, $5, $6::jsonb, $7, $8, $2, $10)
-         on conflict (idempotency_key) do nothing`,
-      [
-        opening.id,
-        opening.requestedAt,
-        opening.actor,
-        opening.trigger,
-        key ?? null,
-        JSON.stringify(opening.request),
-        'running' satisfies RunState,
-        0,
-        opening.kind,
-        opening.request.definition?.id ?? null,
-      ]
-    );
+    const db = this.db;
+    if (db.session == null) {
+      throw new Error(
+        'This database handle cannot open a transaction, and a run admitted outside one can start beside ' +
+          'another instance\u2019s. Nothing was written.'
+      );
+    }
+
+    const lost = await db.session(async (sql) => {
+      await sql.query(`select pg_advisory_xact_lock(hashtext('waf.run-admission.' || $1::text))`, [opening.kind]);
+
+      const { rows } = await sql.query<RunRow>(
+        `select ${COLUMNS} from ${db.schema}.runs where finished_at is null order by requested_at desc`
+      );
+      // Decided here rather than in the `where`: liveness has an `or` in it — a held lease, or a run
+      // asked for a moment ago and not yet claimed — and the schema's own note on `lease_until` says
+      // why a condition like that belongs in one tested function rather than in SQL. The kind is
+      // compared on the revived run, so a row written before the column existed counts as the
+      // assessment it was.
+      const blocking = rows
+        .map(reviveRun)
+        .find(
+          (run) =>
+            run.kind === opening.kind && live(run, opening.requestedAt) && (key == null || run.idempotencyKey !== key)
+        );
+      if (blocking != null) return blocking;
+
+      await sql.query(
+        // `definition_id` is `request.definition.id` promoted to a column, on the same reasoning as the
+        // scan's: the request body stays the authority, and null means the run was started directly
+        // rather than from an assessment. Written at `open` and never revised, because which assessment
+        // a run answers to is decided when it is asked for.
+        `insert into ${db.schema}.runs
+           (id, kind, requested_at, actor, trigger, idempotency_key, request, state, attempts, lease_until,
+            definition_id)
+           values ($1, $9, $2, $3, $4, $5, $6::jsonb, $7, $8, $2, $10)
+           on conflict (idempotency_key) do nothing`,
+        [
+          opening.id,
+          opening.requestedAt,
+          opening.actor,
+          opening.trigger,
+          key ?? null,
+          JSON.stringify(opening.request),
+          'running' satisfies RunState,
+          0,
+          opening.kind,
+          opening.request.definition?.id ?? null,
+        ]
+      );
+      return undefined;
+    });
+    if (lost != null) throw new RunAdmissionRefused(lost);
 
     const mine = await this.get(opening.id);
     if (mine != null) return { run: mine, created: true };
