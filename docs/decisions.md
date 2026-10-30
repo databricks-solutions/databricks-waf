@@ -85,3 +85,21 @@ Each section records one settled question about how the App works: what was deci
 - `app/server/api/routes.ts`, `app/server/api/review-routes.ts`, `app/server/api/advisory-routes.ts` and `app/server/api/import-routes.ts`: every read and export route that can carry one of these fields.
 - `app/client/src/components/WithheldNote.tsx`: where the client prints the placeholder.
 - `app/server/scan/postgres-store.ts` and `app/config/statements/workload_query_shapes.sql`: the comments that state this policy as the reason stored detail is not open to every reader.
+
+## D7: no transactional strict audit mode; a lost audit event is recorded durably
+
+**Status:** decided 2026-10-29 by the product owner
+
+**Decision.** The App does not write an action and its audit event in one transaction. `WAF_AUDIT_STRICT=1` checks that the audit trail answers before an action and refuses the action when it does not. `WAF_AUDIT_STRICT=0` performs the action and records the loss. An append that fails after the trail answered cannot be prevented at either value, so it is recorded: the App writes a marker to an append-only `audit_gaps` table in the same database, through the pool rather than on the connection the failed append used. A marker holds the time, the action, the actor, the target and the class of the failure, and no payload and no driver message. Every instance reads the same table, so Diagnostics lists the unacknowledged markers whichever instance lost the event or serves the request, and a restart does not clear them. The in-memory count stays and is labelled as the current instance's. Acknowledging a marker is an act of its own, gated like any other change to direct members of `WAF_ASSESSOR_GROUP` and recorded in the trail. It adds a row beside the marker and does not alter it. If the marker cannot be written either, the count and the App log are what remain.
+
+**Reason.** A transactional mode would make the audit table a single point of failure for every change in the App: a database blip would stop somebody answering a requirement, and it would bind every store to one connection when the stores take the pool a statement at a time. The default posture refuses that trade, and the strict posture's check before the action already refuses the case it can see. What was missing was that the one piece of evidence of the case it cannot see, a count in memory, disappeared on the next deploy. A durable marker makes the loss evident after a restart and from every instance without changing what an action costs, and it leaves the hash-chain format and the default posture alone. Acknowledgement says that a person has looked and does not recover the event, so it changes what Diagnostics reports and nothing the trail's verification reads.
+
+**Governs:**
+
+- `docs/configuration.md`: the `WAF_AUDIT_STRICT` row and the section that describes both values and what they cannot promise.
+- `app/server/audit/record.ts`: `AuditRecorder.record` and `mark`, which write the marker when an append fails, and the `gaps` option and getter.
+- `app/server/store/audit-gaps.ts`: the marker store, its in-memory twin, and the acknowledgement row.
+- `app/server/store/postgres.ts`: the `audit_gaps` table and its unique index, which refuses a second acknowledgement of one marker.
+- `app/server/health/health.ts` and `app/server/api/health-routes.ts`: the marker list on `/api/diagnostics`, and the gated `POST /api/diagnostics/audit-gaps/:id/acknowledge`.
+- `app/client/src/pages/DiagnosticsPage.tsx` and `app/client/src/components/AuditGapList.tsx`: the list and the acknowledge button.
+- `app/server/admin/reset.ts` and `app/server/admin/retention.ts`: a reset empties the markers with the trail they describe, and a retention period never removes one.

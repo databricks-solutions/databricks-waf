@@ -96,9 +96,22 @@ var AuditRecorder = class {
 			...target != null ? { target } : {}
 		});
 	}
-	/** How many events this process could not write. Served on the health surface, not a debug aid. */
+	/**
+	* How many events this instance could not write since it started. Served on the health surface, not
+	* a debug aid, and labelled there as this instance's: it resets on a restart and another instance
+	* has its own. The durable view of the same loss is the markers on `gaps`.
+	*/
 	get unrecorded() {
 		return this.lost;
+	}
+	/**
+	* Where the markers for lost events are kept, for the surface that reads and acknowledges them.
+	*
+	* Reached through the recorder for the reason `trail` is: one log by construction, so the page that
+	* lists gaps cannot be wired to a different table from the one this writes to.
+	*/
+	get gaps() {
+		return this.options.gaps;
 	}
 	/**
 	* What this install does about an act it cannot record.
@@ -150,8 +163,8 @@ var AuditRecorder = class {
 	* A strict install reaches here having already passed `refuseIfUnrecordable`, so an append that
 	* fails now is one the check could not foresee — and the act it describes has happened. Rethrowing
 	* would fail a response for a change that is in the database, which is the dishonest order the
-	* amendment to ADR 0046 exists to avoid. So it is counted, and the health surface names the
-	* posture beside the count so a strict install's non-zero reads as the gap it is.
+	* amendment to ADR 0046 exists to avoid. So it is counted, marked durably, and the health surface
+	* names the posture beside the count so a strict install's non-zero reads as the gap it is.
 	*/
 	async record(event) {
 		try {
@@ -159,6 +172,39 @@ var AuditRecorder = class {
 		} catch (error) {
 			this.lost += 1;
 			this.options.onError?.(`record that ${event.actor} ${event.outcome} ${event.action}`, error);
+			await this.mark(event, error);
+		}
+	}
+	/**
+	* Leaves the durable mark for an event that could not be written.
+	*
+	* A separate write through the gap log's own store, after the append has given up, so it is not a
+	* retry on the log and does not share a statement with it. It never throws: it runs in the path of an
+	* act that has already happened, and a second failure there would turn a counted gap into a failed
+	* response. When it fails too, the count above is what there is and the console says so.
+	*
+	* What goes in is the event's identifiers and the class of the failure from `reasonFor`. The
+	* payload is not on an `AuditEvent` to begin with, and the driver's message is not copied, because it
+	* can carry an address.
+	*/
+	async mark(event, error) {
+		const gaps = this.options.gaps;
+		if (gaps == null) return;
+		try {
+			await gaps.record({
+				id: event.id,
+				at: event.at,
+				actor: event.actor,
+				action: event.action,
+				outcome: event.outcome,
+				...event.target != null ? { target: {
+					kind: event.target.kind,
+					id: event.target.id
+				} } : {},
+				cause: reasonFor(error)
+			});
+		} catch (cause) {
+			this.options.onError?.(`leave a marker for the ${event.action} that could not be recorded`, cause);
 		}
 	}
 	mintId() {

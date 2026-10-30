@@ -55,7 +55,9 @@ import { writeFileSync } from 'node:fs';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import pg from 'pg';
 import { ensureSchema, openPostgres, SCHEMA_ENV, type Postgres, type Sql } from './postgres.js';
-import { PostgresAuditLog } from './audit-log.js';
+import { PostgresAuditLog, type AuditLog } from './audit-log.js';
+import { PostgresAuditGapLog, type AuditGap } from './audit-gaps.js';
+import { AuditRecorder } from '../audit/record.js';
 import { GENESIS, type AuditEvent } from '../audit/event.js';
 import { describeVerification, RECORD_TABLES, verifyRecords } from '../records/verify.js';
 import { PostgresScanStore } from '../scan/postgres-store.js';
@@ -1376,6 +1378,171 @@ describe.skipIf(!bound)('the audit log against a real Lakebase database', () => 
     const report = await log.verify();
 
     expect(report.breaks.some((one) => one.kind === 'gap')).toBe(true);
+  });
+});
+
+/*
+ * The marks left by lost audit events, against a real database, in a schema of their own.
+ *
+ * What a fake cannot show: the check constraint refusing a row that is neither kind, the unique index
+ * refusing a second acknowledgement under a different id, the anti-join answering from one snapshot, and
+ * a timestamptz coming back as a time. And the property the markers exist for — that a second app
+ * instance over the same database, or the same one after a restart, reports a gap it never counted —
+ * which needs two connections to be anything but a claim about one.
+ */
+describe.skipIf(!bound)('the lost-event markers against a real Lakebase database', () => {
+  const GAPS = `${SCHEMA}_gaps`;
+  let db: Postgres;
+  let other: Postgres;
+  let gaps: PostgresAuditGapLog;
+
+  function gap(id: string, at: string, over: Partial<AuditGap> = {}): AuditGap {
+    return {
+      id,
+      at: new Date(at),
+      actor: 'dana@example.com',
+      action: 'attestation.record',
+      outcome: 'performed',
+      target: { kind: 'control', id: 'OE-02-04' },
+      cause: 'AuditAppendError',
+      ...over,
+    };
+  }
+
+  beforeAll(async () => {
+    db = await open(GAPS);
+    // A second connection to the same schema, which is what a second replica of the app is.
+    other = await open(GAPS);
+    gaps = new PostgresAuditGapLog(db);
+  }, 60_000);
+
+  afterAll(async () => {
+    if (db != null) await db.query(`drop schema if exists ${GAPS} cascade`);
+    await db?.end();
+    await other?.end();
+  }, 60_000);
+
+  it('reads an empty table as nothing to acknowledge', async () => {
+    expect(await gaps.unacknowledged()).toEqual({ gaps: [], truncated: false });
+  });
+
+  it('keeps a marker with its time as a time and its target, newest first', async () => {
+    await gaps.record(gap('live-gap-1', '2026-08-01T00:00:00.000Z'));
+    await gaps.record(gap('live-gap-2', '2026-08-03T00:00:00.000Z', { actor: 'priya@example.com', outcome: 'refused' }));
+    await gaps.record(gap('live-gap-3', '2026-08-02T00:00:00.000Z', { target: undefined as never }));
+
+    const { gaps: found } = await gaps.unacknowledged();
+
+    expect(found.map((one) => one.id)).toEqual(['live-gap-2', 'live-gap-3', 'live-gap-1']);
+    expect(found[0]?.at).toBeInstanceOf(Date);
+    expect(found[0]).toMatchObject({ outcome: 'refused', target: { kind: 'control', id: 'OE-02-04' } });
+    expect(found[1]).not.toHaveProperty('target');
+  });
+
+  it('is one marker however often the same loss is reported', async () => {
+    await gaps.record(gap('live-gap-1', '2026-08-01T00:00:00.000Z'));
+
+    expect((await gaps.unacknowledged()).gaps).toHaveLength(3);
+  });
+
+  it('says when the list was cut short, from the one extra row the read asks for', async () => {
+    const short = await new PostgresAuditGapLog(db, { limit: 2 }).unacknowledged();
+
+    expect(short.gaps.map((one) => one.id)).toEqual(['live-gap-2', 'live-gap-3']);
+    expect(short.truncated).toBe(true);
+  });
+
+  it('is reported by another connection to the same database', async () => {
+    const elsewhere = new PostgresAuditGapLog(other);
+
+    expect((await elsewhere.unacknowledged()).gaps.map((one) => one.id)).toContain('live-gap-2');
+  });
+
+  it('stops listing a marker once acknowledged, from whichever connection asks, and keeps the first', async () => {
+    const first = await gaps.acknowledge('live-gap-2', 'priya@example.com', new Date('2026-08-05T10:00:00.000Z'));
+    const again = await new PostgresAuditGapLog(other).acknowledge(
+      'live-gap-2',
+      'someone-else@example.com',
+      new Date('2026-08-06T10:00:00.000Z')
+    );
+
+    expect(first).toMatchObject({ by: 'priya@example.com', already: false });
+    // The unique index deciding it, not a read above the insert: the second caller's insert is refused
+    // and what it is told is the first acknowledgement.
+    expect(again).toMatchObject({ by: 'priya@example.com', already: true });
+    expect(again?.at.toISOString()).toBe('2026-08-05T10:00:00.000Z');
+    expect((await gaps.unacknowledged()).gaps.map((one) => one.id)).toEqual(['live-gap-3', 'live-gap-1']);
+  });
+
+  it('does not acknowledge what was never recorded, or an acknowledgement', async () => {
+    expect(await gaps.acknowledge('live-no-such-gap', 'priya@example.com', new Date())).toBeUndefined();
+    expect(await gaps.acknowledge('live-gap-2.acknowledged', 'priya@example.com', new Date())).toBeUndefined();
+  });
+
+  it('adds a row to acknowledge and leaves the marker as it was written', async () => {
+    const { rows } = await db.query<{ id: string; kind: string; actor: string; gap_id: string | null }>(
+      `select id, kind, actor, gap_id from ${GAPS}.audit_gaps where id like 'live-gap-2%' order by id`
+    );
+
+    expect(rows).toEqual([
+      { id: 'live-gap-2', kind: 'gap', actor: 'priya@example.com', gap_id: null },
+      { id: 'live-gap-2.acknowledged', kind: 'acknowledgement', actor: 'priya@example.com', gap_id: 'live-gap-2' },
+    ]);
+  });
+
+  it('refuses a second acknowledgement of one marker under any id, which is the constraint rather than the code', async () => {
+    await expect(
+      db.query(
+        `insert into ${GAPS}.audit_gaps (id, kind, at, actor, gap_id) values ($1, 'acknowledgement', now(), $2, $3)`,
+        ['a-different-id', 'x@example.com', 'live-gap-2']
+      )
+    ).rejects.toMatchObject({ code: '23505' });
+  });
+
+  it('refuses a row that is neither a marker nor an acknowledgement', async () => {
+    // A marker with no action, and an acknowledgement naming nothing: each is the check refusing a row
+    // that would be unreadable as either kind.
+    await expect(
+      db.query(`insert into ${GAPS}.audit_gaps (id, kind, at, actor, cause) values ('live-bad-1', 'gap', now(), 'x', 'y')`)
+    ).rejects.toMatchObject({ code: '23514' });
+    await expect(
+      db.query(`insert into ${GAPS}.audit_gaps (id, kind, at, actor) values ('live-bad-2', 'acknowledgement', now(), 'x')`)
+    ).rejects.toMatchObject({ code: '23514' });
+    await expect(
+      db.query(`insert into ${GAPS}.audit_gaps (id, kind, at, actor) values ('live-bad-3', 'other', now(), 'x')`)
+    ).rejects.toMatchObject({ code: '23514' });
+  });
+
+  it('survives the process that lost the event: a new recorder over the same database still reports it', async () => {
+    const trail = new PostgresAuditLog(db);
+    // A trail that answers the head and refuses the insert, which is the failure the markers are for.
+    const refusing: AuditLog = {
+      durable: true,
+      append: () => Promise.reject(new Error('the insert was refused')),
+      head: () => trail.head(),
+      floor: () => trail.floor(),
+      search: (query) => trail.search(query),
+      verify: () => trail.verify(),
+    };
+
+    await trail.append(act('live-gap-kept'));
+    await new AuditRecorder(refusing, { gaps, newId: () => 'live-gap-lost' })
+      .begin('scan.start', { actor: 'dana@example.com', executionMode: 'on-behalf-of-user' })
+      .performed({ kind: 'scan', id: 'scan-1' });
+
+    const restarted = new AuditRecorder(trail, { gaps: new PostgresAuditGapLog(other) });
+    const found = (await restarted.gaps?.unacknowledged())?.gaps.find((one) => one.id === 'live-gap-lost');
+
+    expect(restarted.unrecorded).toBe(0);
+    expect(found).toMatchObject({
+      actor: 'dana@example.com',
+      action: 'scan.start',
+      outcome: 'performed',
+      target: { kind: 'scan', id: 'scan-1' },
+      cause: 'Error',
+    });
+    // The trail itself is exactly as it was: a marker is not an event and does not disturb the chain.
+    expect((await trail.verify()).breaks).toEqual([]);
   });
 });
 

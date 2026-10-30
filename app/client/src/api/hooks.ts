@@ -243,6 +243,54 @@ export function useDiagnostics(): Loadable<Diagnostics> {
   return useGet<Diagnostics>('/api/diagnostics');
 }
 
+export interface AcknowledgeAuditGap {
+  /** Acknowledges one lost event. Resolves true when the server took it, and false with `error` set. */
+  readonly acknowledge: (gapId: string) => Promise<boolean>;
+  /** The event being sent now, so only its own button reads as busy. */
+  readonly acknowledging?: string;
+  /** The server's own sentence, shown as written: a refusal here says which group may do it. */
+  readonly error?: string;
+}
+
+/**
+ * Saying that somebody has looked at a lost audit event.
+ *
+ * By id on each call rather than one hook per row, because the list is however long the outage was and
+ * a hook cannot be called in a loop. Not assessment-scoped: the trail belongs to the install, and so do
+ * the gaps in it. `onSaved` reloads the page, which is what the answer is about — the list the server
+ * now holds, not a patched copy of the one on screen.
+ */
+export function useAcknowledgeAuditGap(onSaved?: () => void): AcknowledgeAuditGap {
+  const [state, setState] = useState<{ acknowledging?: string; error?: string }>({});
+
+  const acknowledge = useCallback(
+    async (gapId: string): Promise<boolean> => {
+      setState({ acknowledging: gapId });
+      try {
+        const response = await fetch(`/api/diagnostics/audit-gaps/${encodeURIComponent(gapId)}/acknowledge`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: '{}',
+        });
+        if (!response.ok) {
+          const { message } = await readError(response);
+          setState({ error: message });
+          return false;
+        }
+        setState({});
+        onSaved?.();
+        return true;
+      } catch (cause) {
+        setState({ error: cause instanceof Error ? cause.message : 'The acknowledgement could not be sent.' });
+        return false;
+      }
+    },
+    [onSaved]
+  );
+
+  return { acknowledge, ...state };
+}
+
 /**
  * A page of the trail, under the filters the caller passes.
  *

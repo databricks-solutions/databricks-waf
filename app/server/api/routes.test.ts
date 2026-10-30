@@ -33,6 +33,7 @@ import { define, revise } from '../define/definition.js';
 import { InMemoryDefinitionStore, type DefinitionStore } from '../define/store.js';
 import { AuditRecorder, type AuditPosture } from '../audit/record.js';
 import { InMemoryAuditLog, type AuditLog } from '../store/audit-log.js';
+import { InMemoryAuditGapLog, type AuditGapLog } from '../store/audit-gaps.js';
 import { FakePostgres } from '../store/postgres-fake.js';
 import { PostgresRunStore } from '../run/run-store.js';
 import { Runs } from '../run/runs.js';
@@ -231,6 +232,8 @@ interface AppOptions {
    * no-op act in `begin` to actually being a no-op rather than a crash.
    */
   readonly audit?: AuditLog;
+  /** Where the markers for events the trail lost go, when a test is about those. */
+  readonly gaps?: AuditGapLog;
   /** What this install does about an act it cannot record. Defaults to what a real install defaults to. */
   readonly auditPosture?: AuditPosture;
   /**
@@ -294,6 +297,7 @@ async function startApp(options: AppOptions = {}): Promise<string> {
       ? {
           audit: new AuditRecorder(options.audit, {
             ...(options.auditPosture != null ? { posture: options.auditPosture } : {}),
+            ...(options.gaps != null ? { gaps: options.gaps } : {}),
           }),
         }
       : {}),
@@ -3112,6 +3116,148 @@ describe('the acts the gate and the scan routes record', () => {
 
     expect(await second.text()).toBe(await first.text());
     expect(second.headers.get('x-export-digest')).toBe(first.headers.get('x-export-digest'));
+  });
+});
+
+/*
+ * A lost audit event, from the append that fails to the diagnostics page and the person who clears it.
+ *
+ * Through the real gate and the real recorder, because the properties that matter live between them:
+ * the marker is written by the recorder when the trail refuses an act, and acknowledging it is an act
+ * the gate permits, so a caller outside the assessor group is turned away and the refusal is recorded.
+ */
+describe('a lost audit event and what is done about it', () => {
+  /** A trail that takes nothing, with the refusal it would give a database that is down. */
+  const refusing: AuditLog = {
+    durable: true,
+    append: () => Promise.reject(new Error('the database is unreachable')),
+    head: () => Promise.reject(new Error('the database is unreachable')),
+    floor: () => Promise.resolve(undefined),
+    search: () => Promise.resolve({ events: [] }),
+    verify: () => Promise.reject(new Error('the database is unreachable')),
+  };
+
+  /** Records a requirement being answered, which is an act the trail then cannot take. */
+  async function decideWhileTrailIsDown(url: string): Promise<void> {
+    const response = await fetch(`${url}/api/decisions`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-forwarded-access-token': 'token' },
+      body: JSON.stringify({
+        controlId: 'DG-02-01',
+        disposition: 'accepted',
+        reason: 'Two clusters in a lab account with no customer data; the account closes in November.',
+        owner: 'platform-team@example.com',
+        until: new Date(Date.now() + 60 * 86_400_000).toISOString(),
+      }),
+    });
+    expect(response.status).toBe(201);
+  }
+
+  async function diagnostics(url: string) {
+    return (await (await fetch(`${url}/api/diagnostics`)).json()) as {
+      well: boolean;
+      unrecorded: number;
+      auditGaps?: { gaps: { id: string; action: string; actor: string }[] };
+    };
+  }
+
+  async function acknowledge(url: string, id: string, headers: Record<string, string> = {}) {
+    const response = await fetch(`${url}/api/diagnostics/audit-gaps/${id}/acknowledge`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-forwarded-access-token': 'token', ...headers },
+      body: '{}',
+    });
+    return { status: response.status, body: (await response.json()) as Record<string, unknown> };
+  }
+
+  it('shows on the diagnostics an act the trail could not take, with who did it', async () => {
+    const gaps = new InMemoryAuditGapLog();
+    const url = await startApp({ audit: refusing, gaps, decisions: new InMemoryDecisionStore() });
+
+    await decideWhileTrailIsDown(url);
+
+    const found = await diagnostics(url);
+    expect(found.unrecorded).toBe(1);
+    expect(found.auditGaps?.gaps).toMatchObject([{ action: 'decision.record', actor: 'admin@example.com' }]);
+    expect(found.well).toBe(false);
+  });
+
+  it('is still shown by an instance that did not lose it, and after the one that did is gone', async () => {
+    const gaps = new InMemoryAuditGapLog();
+    const lost = await startApp({ audit: refusing, gaps, decisions: new InMemoryDecisionStore() });
+    await decideWhileTrailIsDown(lost);
+
+    // Another replica, or the same one after a deploy: a recorder with nothing in its count, over the
+    // same markers, whose own trail is working.
+    const other = await startApp({ audit: new InMemoryAuditLog(), gaps });
+
+    const found = await diagnostics(other);
+    expect(found.unrecorded).toBe(0);
+    expect(found.auditGaps?.gaps).toHaveLength(1);
+    expect(found.well).toBe(false);
+  });
+
+  it('is acknowledged by an assessor, and the acknowledgement is itself in the trail', async () => {
+    const gaps = new InMemoryAuditGapLog();
+    const lost = await startApp({ audit: refusing, gaps, decisions: new InMemoryDecisionStore() });
+    await decideWhileTrailIsDown(lost);
+    const [gap] = (await gaps.unacknowledged()).gaps;
+    const trail = new InMemoryAuditLog();
+    const url = await startApp({ audit: trail, gaps });
+
+    const { status, body } = await acknowledge(url, gap?.id ?? 'missing');
+
+    expect(status).toBe(200);
+    expect(body).toMatchObject({ id: gap?.id, acknowledgedBy: 'admin@example.com', already: false });
+    expect((await diagnostics(url)).auditGaps?.gaps).toEqual([]);
+    expect((await trail.search()).events).toMatchObject([
+      {
+        action: 'gap.acknowledge',
+        outcome: 'performed',
+        actor: 'admin@example.com',
+        target: { kind: 'audit-gap', id: gap?.id },
+      },
+    ]);
+  });
+
+  it('is refused for a caller outside the assessor group, who leaves the gap standing and a refusal behind', async () => {
+    const gaps = new InMemoryAuditGapLog();
+    const lost = await startApp({ audit: refusing, gaps, decisions: new InMemoryDecisionStore() });
+    await decideWhileTrailIsDown(lost);
+    const [gap] = (await gaps.unacknowledged()).gaps;
+    const trail = new InMemoryAuditLog();
+    const url = await startApp({ audit: trail, gaps });
+    scimGroups = ['users'];
+
+    const { status, body } = await acknowledge(url, gap?.id ?? 'missing');
+
+    expect(status).toBe(403);
+    expect(body.error).toBe('not-a-member');
+    expect((await gaps.unacknowledged()).gaps).toHaveLength(1);
+    expect((await trail.search()).events).toMatchObject([
+      { action: 'gap.acknowledge', outcome: 'refused', reason: 'not-a-member' },
+    ]);
+  });
+
+  it('is refused without a forwarded token, like every other change', async () => {
+    const url = await startApp({ audit: new InMemoryAuditLog(), gaps: new InMemoryAuditGapLog() });
+
+    const response = await fetch(`${url}/api/diagnostics/audit-gaps/event-1/acknowledge`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: '{}',
+    });
+
+    expect(response.status).toBe(401);
+  });
+
+  it('leaves reading the diagnostics open to anyone who can open the app', async () => {
+    const gaps = new InMemoryAuditGapLog();
+    const url = await startApp({ audit: refusing, gaps, decisions: new InMemoryDecisionStore() });
+    await decideWhileTrailIsDown(url);
+    scimGroups = ['users'];
+
+    expect((await diagnostics(url)).auditGaps?.gaps).toHaveLength(1);
   });
 });
 

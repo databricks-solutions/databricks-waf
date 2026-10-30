@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   agoPhrase,
   DEPENDENCY_LABEL,
+  gapOutcomePhrase,
+  gapsSentence,
   healthSentence,
   provenancePhrase,
   standingPresentation,
@@ -115,6 +117,55 @@ describe('what could not be recorded', () => {
     expect(sentence).toContain('was not written');
     expect(sentence).toContain('cannot be recovered');
     expect(unrecordedSentence(4)).toContain('4 actions');
+  });
+
+  it('labels the count as this instance’s, since it is held in memory and another instance has its own', () => {
+    expect(unrecordedSentence(2)).toContain('since this instance last started');
+    expect(unrecordedSentence(2)).not.toContain('this app last started');
+  });
+});
+
+describe('what the trail is missing that a restart did not erase', () => {
+  it('says nothing when every gap is acknowledged', () => {
+    expect(gapsSentence({ gaps: [], truncated: false })).toBeUndefined();
+    expect(gapsSentence(undefined)).toBeUndefined();
+  });
+
+  it('counts the gaps and says they are held in the database, whichever instance lost them', () => {
+    const gap = {
+      id: 'event-9',
+      at: '2026-08-03T11:30:00.000Z',
+      actor: 'dana@example.com',
+      action: 'attestation.record',
+      phrase: 'answer a requirement',
+      outcome: 'performed' as const,
+      cause: 'AuditAppendError',
+    };
+
+    expect(gapsSentence({ gaps: [gap], truncated: false })).toContain('1 lost audit event');
+    const two = gapsSentence({ gaps: [gap, { ...gap, id: 'event-10' }], truncated: false });
+    expect(two).toContain('2 lost audit events');
+    expect(two).toContain('any instance');
+  });
+
+  it('says at least when the list was cut short', () => {
+    const gap = {
+      id: 'event-9',
+      at: '2026-08-03T11:30:00.000Z',
+      actor: 'dana@example.com',
+      action: 'attestation.record',
+      phrase: 'answer a requirement',
+      outcome: 'performed' as const,
+      cause: 'AuditAppendError',
+    };
+
+    expect(gapsSentence({ gaps: [gap], truncated: true })).toContain('At least 1');
+  });
+
+  it('puts an outcome in words, so a lost refusal is not read as a lost change', () => {
+    expect(gapOutcomePhrase('performed')).toBe('went ahead');
+    expect(gapOutcomePhrase('refused')).toBe('was refused');
+    expect(gapOutcomePhrase('failed')).toBe('did not complete');
   });
 });
 

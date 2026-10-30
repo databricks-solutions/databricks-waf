@@ -96,6 +96,20 @@
 <li><code>app/client/src/components/WithheldNote.tsx</code>: where the client prints the placeholder.</li>
 <li><code>app/server/scan/postgres-store.ts</code> and <code>app/config/statements/workload_query_shapes.sql</code>: the comments that state this policy as the reason stored detail is not open to every reader.</li>
 </ul>
+<h2 id="d7-no-transactional-strict-audit-mode-a-lost-audit-event-is-recorded-durably">D7: no transactional strict audit mode; a lost audit event is recorded durably</h2>
+<p><strong>Status:</strong> decided 2026-10-29 by the product owner</p>
+<p><strong>Decision.</strong> The App does not write an action and its audit event in one transaction. <code>WAF_AUDIT_STRICT=1</code> checks that the audit trail answers before an action and refuses the action when it does not. <code>WAF_AUDIT_STRICT=0</code> performs the action and records the loss. An append that fails after the trail answered cannot be prevented at either value, so it is recorded: the App writes a marker to an append-only <code>audit_gaps</code> table in the same database, through the pool rather than on the connection the failed append used. A marker holds the time, the action, the actor, the target and the class of the failure, and no payload and no driver message. Every instance reads the same table, so Diagnostics lists the unacknowledged markers whichever instance lost the event or serves the request, and a restart does not clear them. The in-memory count stays and is labelled as the current instance&#39;s. Acknowledging a marker is an act of its own, gated like any other change to direct members of <code>WAF_ASSESSOR_GROUP</code> and recorded in the trail. It adds a row beside the marker and does not alter it. If the marker cannot be written either, the count and the App log are what remain.</p>
+<p><strong>Reason.</strong> A transactional mode would make the audit table a single point of failure for every change in the App: a database blip would stop somebody answering a requirement, and it would bind every store to one connection when the stores take the pool a statement at a time. The default posture refuses that trade, and the strict posture&#39;s check before the action already refuses the case it can see. What was missing was that the one piece of evidence of the case it cannot see, a count in memory, disappeared on the next deploy. A durable marker makes the loss evident after a restart and from every instance without changing what an action costs, and it leaves the hash-chain format and the default posture alone. Acknowledgement says that a person has looked and does not recover the event, so it changes what Diagnostics reports and nothing the trail&#39;s verification reads.</p>
+<p><strong>Governs:</strong></p>
+<ul>
+<li><code>docs/configuration.md</code>: the <code>WAF_AUDIT_STRICT</code> row and the section that describes both values and what they cannot promise.</li>
+<li><code>app/server/audit/record.ts</code>: <code>AuditRecorder.record</code> and <code>mark</code>, which write the marker when an append fails, and the <code>gaps</code> option and getter.</li>
+<li><code>app/server/store/audit-gaps.ts</code>: the marker store, its in-memory twin, and the acknowledgement row.</li>
+<li><code>app/server/store/postgres.ts</code>: the <code>audit_gaps</code> table and its unique index, which refuses a second acknowledgement of one marker.</li>
+<li><code>app/server/health/health.ts</code> and <code>app/server/api/health-routes.ts</code>: the marker list on <code>/api/diagnostics</code>, and the gated <code>POST /api/diagnostics/audit-gaps/:id/acknowledge</code>.</li>
+<li><code>app/client/src/pages/DiagnosticsPage.tsx</code> and <code>app/client/src/components/AuditGapList.tsx</code>: the list and the acknowledge button.</li>
+<li><code>app/server/admin/reset.ts</code> and <code>app/server/admin/retention.ts</code>: a reset empties the markers with the trail they describe, and a retention period never removes one.</li>
+</ul>
 
         <footer class="page-footer">
           <span>Databricks Well-Architected Framework assessment</span>

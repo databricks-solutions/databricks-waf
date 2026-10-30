@@ -425,6 +425,43 @@ export async function ensureSchema(sql: Sql, schema: string): Promise<void> {
     )
   `);
 
+  // The marks left by audit events that could not be written, so the evidence of a gap in the trail
+  // outlives the process that saw it and is the same whichever instance serves a page. Append-only: a
+  // row is never updated or deleted, and acknowledging a gap is a second row of another `kind` that
+  // names it in `gap_id`, so who dealt with it and when is as durable as the gap.
+  //
+  // A marker is keyed on the id of the event that was lost, so reporting the same loss twice is one
+  // row. It holds who, what, against what, when and the class of the failure, and nothing from the
+  // event's payload — the same rule `audit_events` keeps, for the same readers. The check says which
+  // columns each kind has to carry, since one table with two kinds cannot say it with `not null`.
+  //
+  // Additive: a build that predates it never reads or writes the table.
+  await sql.query(`
+    create table if not exists ${schema}.audit_gaps (
+      id          text        primary key,
+      kind        text        not null,
+      at          timestamptz not null,
+      actor       text        not null,
+      action      text,
+      outcome     text,
+      target_kind text,
+      target_id   text,
+      cause       text,
+      gap_id      text,
+      written_at  timestamptz not null default now(),
+      check (
+        (kind = 'gap' and action is not null and outcome is not null and cause is not null and gap_id is null)
+        or (kind = 'acknowledgement' and gap_id is not null)
+      )
+    )
+  `);
+  // One acknowledgement per marker, enforced by the database. Without it two people acting on the same
+  // page could each write one, and "who acknowledged it" would have two answers. Partial on the column
+  // only acknowledgements carry, which also lets the anti-join that lists open gaps use it.
+  await sql.query(
+    `create unique index if not exists audit_gaps_one_acknowledgement on ${schema}.audit_gaps (gap_id) where gap_id is not null`
+  );
+
   // Plans and the actions inside them, one row per revision of each, keyed on the pair. Insert-only,
   // like the definition versions above and for the same reason: these records are edited by people
   // and often by two people within the same minute, and a primary key the database enforces is what

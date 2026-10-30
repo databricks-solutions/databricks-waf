@@ -3187,12 +3187,59 @@ export interface ReadingPayload {
   readonly action?: string;
 }
 
+/**
+ * One audit event that could not be written, as the marker it left.
+ *
+ * Identifiers and the class of the failure, in the register of the trail itself: no payload, and no
+ * driver message, because this is read by the people who read the trail and kept as long as it is.
+ */
+export interface AuditGapPayload {
+  /** The lost event's own id. */
+  readonly id: string;
+  /** When the act was decided. */
+  readonly at: string;
+  readonly actor: string;
+  readonly action: string;
+  /** The act in words, from the same vocabulary the trail page prints. */
+  readonly phrase: string;
+  readonly outcome: 'performed' | 'refused' | 'failed';
+  readonly target?: { readonly kind: string; readonly id: string };
+  /** The class of the failure. Never a message. */
+  readonly cause: string;
+}
+
+/** The lost events nobody has acknowledged, read from the database and so the same from any instance. */
+export interface AuditGapsPayload {
+  /** Newest first. */
+  readonly gaps: readonly AuditGapPayload[];
+  /** True when there are more than `gaps` holds, so a page cannot present the newest as all of them. */
+  readonly truncated: boolean;
+  /** Why they could not be read, when they could not. Then `gaps` is empty and is not an answer. */
+  readonly unreadable?: string;
+}
+
+/** What acknowledging a lost event answers with. */
+export interface AcknowledgedGapPayload {
+  readonly id: string;
+  readonly acknowledgedBy: string;
+  readonly acknowledgedAt: string;
+  /** True when somebody had already acknowledged it, in which case the name and time are theirs. */
+  readonly already: boolean;
+}
+
 /** Everything this install can and cannot reach, in one answer. */
 export interface DiagnosticsPayload {
   readonly at: string;
   readonly well: boolean;
-  /** Acts this process could not write to the trail. Zero on a healthy install. */
+  /**
+   * Acts this instance could not write to the trail since it started. Zero on a healthy install.
+   *
+   * Per instance and in memory: it resets on a restart and another instance has its own. What
+   * survives either is `auditGaps`.
+   */
   readonly unrecorded: number;
+  /** Absent on an install that keeps no markers for lost events. */
+  readonly auditGaps?: AuditGapsPayload;
   readonly readings: readonly ReadingPayload[];
 }
 

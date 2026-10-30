@@ -77,7 +77,7 @@ async function main() {
 	});
 	const assessorGroup = configuredGroup();
 	console.log(`[authorize] changes are restricted to members of the ${assessorGroup} group`);
-	const { store, attestations, decisions, definitions, drafts, imports, audit: auditLog, improvements, improvementExplanation: improvementStorage, notes, noteExplanation: noteStorage, serving, servingExplanation: servingStorage, reviews, reviewExplanation: reviewStorage, validations, validationExplanation: validationStorage, risks, riskExplanation: riskStorage, applicability: applicabilityStore, explanation: storage, attestationExplanation: attestationStorage, decisionExplanation: decisionStorage, definitionExplanation: definitionStorage, verify: verifyRecords, ping: pingDatabase, retention: retentionStore, retentionGateway, runs: runStore, advisories: advisoryStore, planExtracts, publications: publicationStore, close: closeStore } = await chooseStore({
+	const { store, attestations, decisions, definitions, drafts, imports, audit: auditLog, auditGaps, improvements, improvementExplanation: improvementStorage, notes, noteExplanation: noteStorage, serving, servingExplanation: servingStorage, reviews, reviewExplanation: reviewStorage, validations, validationExplanation: validationStorage, risks, riskExplanation: riskStorage, applicability: applicabilityStore, explanation: storage, attestationExplanation: attestationStorage, decisionExplanation: decisionStorage, definitionExplanation: definitionStorage, verify: verifyRecords, ping: pingDatabase, retention: retentionStore, retentionGateway, runs: runStore, advisories: advisoryStore, planExtracts, publications: publicationStore, close: closeStore } = await chooseStore({
 		pillars: catalogue.pillars.map((pillar) => pillar.id),
 		projector,
 		onError: (operation, error) => {
@@ -97,6 +97,7 @@ async function main() {
 	console.log(`[validations] ${validationStorage}`);
 	console.log(`[accepted risks] ${riskStorage}`);
 	const audit = new AuditRecorder(auditLog, {
+		gaps: auditGaps,
 		onError: (operation, error) => {
 			console.error(`[audit] could not ${operation}:`, error);
 		},

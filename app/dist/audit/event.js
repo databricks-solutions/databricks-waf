@@ -58,7 +58,8 @@ const AUDIT_ACTIONS = [
 	"retention.sweep",
 	"retention.reset",
 	"month.publish",
-	"month.supersede"
+	"month.supersede",
+	"gap.acknowledge"
 ];
 /**
 * Each act in the words a person would use for it.
@@ -119,7 +120,8 @@ const AUDIT_PHRASES = {
 	"retention.sweep": "remove records that are past their retention period",
 	"retention.reset": "delete this install's assessment data",
 	"month.publish": "publish a month",
-	"month.supersede": "publish a correction to a month"
+	"month.supersede": "publish a correction to a month",
+	"gap.acknowledge": "acknowledge a lost audit event"
 };
 /**
 * What the first event's `previous` points at.

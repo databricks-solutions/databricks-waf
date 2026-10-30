@@ -185,6 +185,26 @@ async function ensureSchema(sql, schema) {
       trimmed_by text        not null
     )
   `);
+	await sql.query(`
+    create table if not exists ${schema}.audit_gaps (
+      id          text        primary key,
+      kind        text        not null,
+      at          timestamptz not null,
+      actor       text        not null,
+      action      text,
+      outcome     text,
+      target_kind text,
+      target_id   text,
+      cause       text,
+      gap_id      text,
+      written_at  timestamptz not null default now(),
+      check (
+        (kind = 'gap' and action is not null and outcome is not null and cause is not null and gap_id is null)
+        or (kind = 'acknowledgement' and gap_id is not null)
+      )
+    )
+  `);
+	await sql.query(`create unique index if not exists audit_gaps_one_acknowledgement on ${schema}.audit_gaps (gap_id) where gap_id is not null`);
 	for (const [table, extra] of [["improvement_plans", ""], ["improvement_actions", "plan_id text not null, plan_created_at timestamptz not null,"]]) await sql.query(`
       create table if not exists ${schema}.${table} (
         id         text        not null,
