@@ -237,7 +237,7 @@ production dependency whose licence is absent or outside the reviewed allowlist.
 
 | Direct third-party library | Version | Licence | Source |
 | --- | --- | --- | --- |
-| @xyflow/react | 12.11.3 | MIT | [npm](https://www.npmjs.com/package/@xyflow/react/v/12.11.3) |
+| @xyflow/react | 12.11.5 | MIT | [npm](https://www.npmjs.com/package/@xyflow/react/v/12.11.5) |
 | clsx | 2.1.1 | MIT | [npm](https://www.npmjs.com/package/clsx/v/2.1.1) |
 | embla-carousel-react | 8.6.0 | MIT | [npm](https://www.npmjs.com/package/embla-carousel-react/v/8.6.0) |
 | express | 5.2.1 | MIT | [npm](https://www.npmjs.com/package/express/v/5.2.1) |
