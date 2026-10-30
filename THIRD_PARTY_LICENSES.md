@@ -15,11 +15,11 @@ dependency change.
 | --- | ---: |
 | (MPL-2.0 OR Apache-2.0) | 1 |
 | 0BSD | 2 |
-| Apache-2.0 | 97 |
+| Apache-2.0 | 101 |
 | BSD-2-Clause | 1 |
 | BSD-3-Clause | 15 |
-| ISC | 27 |
-| MIT | 362 |
+| ISC | 29 |
+| MIT | 385 |
 | MPL-2.0 | 12 |
 | Python-2.0 | 1 |
 
@@ -73,13 +73,15 @@ dependency change.
 | @floating-ui/dom | 1.8.0 | MIT | [source](https://www.npmjs.com/package/@floating-ui/dom/v/1.8.0) |
 | @floating-ui/react-dom | 2.1.9 | MIT | [source](https://www.npmjs.com/package/@floating-ui/react-dom/v/2.1.9) |
 | @floating-ui/utils | 0.2.12 | MIT | [source](https://www.npmjs.com/package/@floating-ui/utils/v/0.2.12) |
-| @grpc/grpc-js | 1.14.4 | Apache-2.0 | [source](https://www.npmjs.com/package/@grpc/grpc-js/v/1.14.4) |
+| @grpc/grpc-js | 1.14.5 | Apache-2.0 | [source](https://www.npmjs.com/package/@grpc/grpc-js/v/1.14.5) |
 | @grpc/proto-loader | 0.8.1 | Apache-2.0 | [source](https://www.npmjs.com/package/@grpc/proto-loader/v/0.8.1) |
 | @jridgewell/sourcemap-codec | 1.5.5 | MIT | [source](https://www.npmjs.com/package/@jridgewell/sourcemap-codec/v/1.5.5) |
 | @js-sdsl/ordered-map | 4.4.2 | MIT | [source](https://www.npmjs.com/package/@js-sdsl/ordered-map/v/4.4.2) |
+| @js-temporal/polyfill | 0.5.1 | ISC | [source](https://www.npmjs.com/package/@js-temporal/polyfill/v/0.5.1) |
 | @napi-rs/wasm-runtime | 1.1.6 | MIT | [source](https://www.npmjs.com/package/@napi-rs/wasm-runtime/v/1.1.6) |
 | @opentelemetry/api | 1.9.0 | Apache-2.0 | [source](https://www.npmjs.com/package/@opentelemetry/api/v/1.9.0) |
 | @opentelemetry/api-logs | 0.219.0 | Apache-2.0 | [source](https://www.npmjs.com/package/@opentelemetry/api-logs/v/0.219.0) |
+| @opentelemetry/api-logs | 0.221.0 | Apache-2.0 | [source](https://www.npmjs.com/package/@opentelemetry/api-logs/v/0.221.0) |
 | @opentelemetry/auto-instrumentations-node | 0.77.0 | Apache-2.0 | [source](https://www.npmjs.com/package/@opentelemetry/auto-instrumentations-node/v/0.77.0) |
 | @opentelemetry/configuration | 0.219.0 | Apache-2.0 | [source](https://www.npmjs.com/package/@opentelemetry/configuration/v/0.219.0) |
 | @opentelemetry/context-async-hooks | 2.8.0 | Apache-2.0 | [source](https://www.npmjs.com/package/@opentelemetry/context-async-hooks/v/2.8.0) |
@@ -96,11 +98,12 @@ dependency change.
 | @opentelemetry/exporter-trace-otlp-proto | 0.219.0 | Apache-2.0 | [source](https://www.npmjs.com/package/@opentelemetry/exporter-trace-otlp-proto/v/0.219.0) |
 | @opentelemetry/exporter-zipkin | 2.8.0 | Apache-2.0 | [source](https://www.npmjs.com/package/@opentelemetry/exporter-zipkin/v/2.8.0) |
 | @opentelemetry/instrumentation | 0.219.0 | Apache-2.0 | [source](https://www.npmjs.com/package/@opentelemetry/instrumentation/v/0.219.0) |
+| @opentelemetry/instrumentation | 0.221.0 | Apache-2.0 | [source](https://www.npmjs.com/package/@opentelemetry/instrumentation/v/0.221.0) |
 | @opentelemetry/instrumentation-amqplib | 0.66.0 | Apache-2.0 | [source](https://www.npmjs.com/package/@opentelemetry/instrumentation-amqplib/v/0.66.0) |
 | @opentelemetry/instrumentation-aws-lambda | 0.71.0 | Apache-2.0 | [source](https://www.npmjs.com/package/@opentelemetry/instrumentation-aws-lambda/v/0.71.0) |
 | @opentelemetry/instrumentation-aws-sdk | 0.74.0 | Apache-2.0 | [source](https://www.npmjs.com/package/@opentelemetry/instrumentation-aws-sdk/v/0.74.0) |
 | @opentelemetry/instrumentation-bunyan | 0.64.0 | Apache-2.0 | [source](https://www.npmjs.com/package/@opentelemetry/instrumentation-bunyan/v/0.64.0) |
-| @opentelemetry/instrumentation-cassandra-driver | 0.64.0 | Apache-2.0 | [source](https://www.npmjs.com/package/@opentelemetry/instrumentation-cassandra-driver/v/0.64.0) |
+| @opentelemetry/instrumentation-cassandra-driver | 0.66.0 | Apache-2.0 | [source](https://www.npmjs.com/package/@opentelemetry/instrumentation-cassandra-driver/v/0.66.0) |
 | @opentelemetry/instrumentation-connect | 0.62.0 | Apache-2.0 | [source](https://www.npmjs.com/package/@opentelemetry/instrumentation-connect/v/0.62.0) |
 | @opentelemetry/instrumentation-cucumber | 0.35.0 | Apache-2.0 | [source](https://www.npmjs.com/package/@opentelemetry/instrumentation-cucumber/v/0.35.0) |
 | @opentelemetry/instrumentation-dataloader | 0.36.0 | Apache-2.0 | [source](https://www.npmjs.com/package/@opentelemetry/instrumentation-dataloader/v/0.36.0) |
@@ -115,26 +118,26 @@ dependency change.
 | @opentelemetry/instrumentation-http | 0.219.0 | Apache-2.0 | [source](https://www.npmjs.com/package/@opentelemetry/instrumentation-http/v/0.219.0) |
 | @opentelemetry/instrumentation-ioredis | 0.67.0 | Apache-2.0 | [source](https://www.npmjs.com/package/@opentelemetry/instrumentation-ioredis/v/0.67.0) |
 | @opentelemetry/instrumentation-kafkajs | 0.28.0 | Apache-2.0 | [source](https://www.npmjs.com/package/@opentelemetry/instrumentation-kafkajs/v/0.28.0) |
-| @opentelemetry/instrumentation-knex | 0.63.0 | Apache-2.0 | [source](https://www.npmjs.com/package/@opentelemetry/instrumentation-knex/v/0.63.0) |
+| @opentelemetry/instrumentation-knex | 0.65.0 | Apache-2.0 | [source](https://www.npmjs.com/package/@opentelemetry/instrumentation-knex/v/0.65.0) |
 | @opentelemetry/instrumentation-koa | 0.67.0 | Apache-2.0 | [source](https://www.npmjs.com/package/@opentelemetry/instrumentation-koa/v/0.67.0) |
 | @opentelemetry/instrumentation-lru-memoizer | 0.63.0 | Apache-2.0 | [source](https://www.npmjs.com/package/@opentelemetry/instrumentation-lru-memoizer/v/0.63.0) |
 | @opentelemetry/instrumentation-memcached | 0.62.0 | Apache-2.0 | [source](https://www.npmjs.com/package/@opentelemetry/instrumentation-memcached/v/0.62.0) |
 | @opentelemetry/instrumentation-mongodb | 0.72.0 | Apache-2.0 | [source](https://www.npmjs.com/package/@opentelemetry/instrumentation-mongodb/v/0.72.0) |
-| @opentelemetry/instrumentation-mongoose | 0.65.0 | Apache-2.0 | [source](https://www.npmjs.com/package/@opentelemetry/instrumentation-mongoose/v/0.65.0) |
-| @opentelemetry/instrumentation-mysql | 0.65.0 | Apache-2.0 | [source](https://www.npmjs.com/package/@opentelemetry/instrumentation-mysql/v/0.65.0) |
-| @opentelemetry/instrumentation-mysql2 | 0.65.0 | Apache-2.0 | [source](https://www.npmjs.com/package/@opentelemetry/instrumentation-mysql2/v/0.65.0) |
+| @opentelemetry/instrumentation-mongoose | 0.67.0 | Apache-2.0 | [source](https://www.npmjs.com/package/@opentelemetry/instrumentation-mongoose/v/0.67.0) |
+| @opentelemetry/instrumentation-mysql | 0.67.0 | Apache-2.0 | [source](https://www.npmjs.com/package/@opentelemetry/instrumentation-mysql/v/0.67.0) |
+| @opentelemetry/instrumentation-mysql2 | 0.67.0 | Apache-2.0 | [source](https://www.npmjs.com/package/@opentelemetry/instrumentation-mysql2/v/0.67.0) |
 | @opentelemetry/instrumentation-nestjs-core | 0.65.0 | Apache-2.0 | [source](https://www.npmjs.com/package/@opentelemetry/instrumentation-nestjs-core/v/0.65.0) |
 | @opentelemetry/instrumentation-net | 0.63.0 | Apache-2.0 | [source](https://www.npmjs.com/package/@opentelemetry/instrumentation-net/v/0.63.0) |
 | @opentelemetry/instrumentation-openai | 0.17.0 | Apache-2.0 | [source](https://www.npmjs.com/package/@opentelemetry/instrumentation-openai/v/0.17.0) |
-| @opentelemetry/instrumentation-oracledb | 0.44.0 | Apache-2.0 | [source](https://www.npmjs.com/package/@opentelemetry/instrumentation-oracledb/v/0.44.0) |
-| @opentelemetry/instrumentation-pg | 0.71.0 | Apache-2.0 | [source](https://www.npmjs.com/package/@opentelemetry/instrumentation-pg/v/0.71.0) |
+| @opentelemetry/instrumentation-oracledb | 0.46.0 | Apache-2.0 | [source](https://www.npmjs.com/package/@opentelemetry/instrumentation-oracledb/v/0.46.0) |
+| @opentelemetry/instrumentation-pg | 0.73.0 | Apache-2.0 | [source](https://www.npmjs.com/package/@opentelemetry/instrumentation-pg/v/0.73.0) |
 | @opentelemetry/instrumentation-pino | 0.65.0 | Apache-2.0 | [source](https://www.npmjs.com/package/@opentelemetry/instrumentation-pino/v/0.65.0) |
 | @opentelemetry/instrumentation-redis | 0.67.0 | Apache-2.0 | [source](https://www.npmjs.com/package/@opentelemetry/instrumentation-redis/v/0.67.0) |
 | @opentelemetry/instrumentation-restify | 0.64.0 | Apache-2.0 | [source](https://www.npmjs.com/package/@opentelemetry/instrumentation-restify/v/0.64.0) |
 | @opentelemetry/instrumentation-router | 0.63.0 | Apache-2.0 | [source](https://www.npmjs.com/package/@opentelemetry/instrumentation-router/v/0.63.0) |
 | @opentelemetry/instrumentation-runtime-node | 0.32.0 | Apache-2.0 | [source](https://www.npmjs.com/package/@opentelemetry/instrumentation-runtime-node/v/0.32.0) |
 | @opentelemetry/instrumentation-socket.io | 0.66.0 | Apache-2.0 | [source](https://www.npmjs.com/package/@opentelemetry/instrumentation-socket.io/v/0.66.0) |
-| @opentelemetry/instrumentation-tedious | 0.38.0 | Apache-2.0 | [source](https://www.npmjs.com/package/@opentelemetry/instrumentation-tedious/v/0.38.0) |
+| @opentelemetry/instrumentation-tedious | 0.40.0 | Apache-2.0 | [source](https://www.npmjs.com/package/@opentelemetry/instrumentation-tedious/v/0.40.0) |
 | @opentelemetry/instrumentation-undici | 0.29.0 | Apache-2.0 | [source](https://www.npmjs.com/package/@opentelemetry/instrumentation-undici/v/0.29.0) |
 | @opentelemetry/instrumentation-winston | 0.63.0 | Apache-2.0 | [source](https://www.npmjs.com/package/@opentelemetry/instrumentation-winston/v/0.63.0) |
 | @opentelemetry/otlp-exporter-base | 0.219.0 | Apache-2.0 | [source](https://www.npmjs.com/package/@opentelemetry/otlp-exporter-base/v/0.219.0) |
@@ -247,6 +250,7 @@ dependency change.
 | @tybys/wasm-util | 0.10.3 | MIT | [source](https://www.npmjs.com/package/@tybys/wasm-util/v/0.10.3) |
 | @types/aws-lambda | 8.10.162 | MIT | [source](https://www.npmjs.com/package/@types/aws-lambda/v/8.10.162) |
 | @types/bunyan | 1.8.11 | MIT | [source](https://www.npmjs.com/package/@types/bunyan/v/1.8.11) |
+| @types/chai | 5.2.3 | MIT | [source](https://www.npmjs.com/package/@types/chai/v/5.2.3) |
 | @types/command-line-args | 5.2.3 | MIT | [source](https://www.npmjs.com/package/@types/command-line-args/v/5.2.3) |
 | @types/command-line-usage | 5.0.4 | MIT | [source](https://www.npmjs.com/package/@types/command-line-usage/v/5.0.4) |
 | @types/connect | 3.4.38 | MIT | [source](https://www.npmjs.com/package/@types/connect/v/3.4.38) |
@@ -256,6 +260,8 @@ dependency change.
 | @types/d3-selection | 3.0.11 | MIT | [source](https://www.npmjs.com/package/@types/d3-selection/v/3.0.11) |
 | @types/d3-transition | 3.0.9 | MIT | [source](https://www.npmjs.com/package/@types/d3-transition/v/3.0.9) |
 | @types/d3-zoom | 3.0.8 | MIT | [source](https://www.npmjs.com/package/@types/d3-zoom/v/3.0.8) |
+| @types/deep-eql | 4.0.2 | MIT | [source](https://www.npmjs.com/package/@types/deep-eql/v/4.0.2) |
+| @types/estree | 1.0.9 | MIT | [source](https://www.npmjs.com/package/@types/estree/v/1.0.9) |
 | @types/memcached | 2.2.10 | MIT | [source](https://www.npmjs.com/package/@types/memcached/v/2.2.10) |
 | @types/mysql | 2.15.27 | MIT | [source](https://www.npmjs.com/package/@types/mysql/v/2.15.27) |
 | @types/node | 24.13.3 | MIT | [source](https://www.npmjs.com/package/@types/node/v/24.13.3) |
@@ -269,6 +275,13 @@ dependency change.
 | @types/semver | 7.7.1 | MIT | [source](https://www.npmjs.com/package/@types/semver/v/7.7.1) |
 | @types/tedious | 4.0.14 | MIT | [source](https://www.npmjs.com/package/@types/tedious/v/4.0.14) |
 | @types/trusted-types | 2.0.7 | MIT | [source](https://www.npmjs.com/package/@types/trusted-types/v/2.0.7) |
+| @vitest/expect | 4.1.12 | MIT | [source](https://www.npmjs.com/package/@vitest/expect/v/4.1.12) |
+| @vitest/mocker | 4.1.12 | MIT | [source](https://www.npmjs.com/package/@vitest/mocker/v/4.1.12) |
+| @vitest/pretty-format | 4.1.12 | MIT | [source](https://www.npmjs.com/package/@vitest/pretty-format/v/4.1.12) |
+| @vitest/runner | 4.1.12 | MIT | [source](https://www.npmjs.com/package/@vitest/runner/v/4.1.12) |
+| @vitest/snapshot | 4.1.12 | MIT | [source](https://www.npmjs.com/package/@vitest/snapshot/v/4.1.12) |
+| @vitest/spy | 4.1.12 | MIT | [source](https://www.npmjs.com/package/@vitest/spy/v/4.1.12) |
+| @vitest/utils | 4.1.12 | MIT | [source](https://www.npmjs.com/package/@vitest/utils/v/4.1.12) |
 | @xyflow/react | 12.11.3 | MIT | [source](https://www.npmjs.com/package/@xyflow/react/v/12.11.3) |
 | @xyflow/system | 0.0.80 | MIT | [source](https://www.npmjs.com/package/@xyflow/system/v/0.0.80) |
 | accepts | 1.3.8 | MIT | [source](https://www.npmjs.com/package/accepts/v/1.3.8) |
@@ -282,14 +295,16 @@ dependency change.
 | aria-hidden | 1.2.6 | MIT | [source](https://www.npmjs.com/package/aria-hidden/v/1.2.6) |
 | array-back | 6.2.3 | MIT | [source](https://www.npmjs.com/package/array-back/v/6.2.3) |
 | array-flatten | 1.1.1 | MIT | [source](https://www.npmjs.com/package/array-flatten/v/1.1.1) |
+| assertion-error | 2.0.1 | MIT | [source](https://www.npmjs.com/package/assertion-error/v/2.0.1) |
 | base64-js | 1.5.1 | MIT | [source](https://www.npmjs.com/package/base64-js/v/1.5.1) |
 | bignumber.js | 9.3.1 | MIT | [source](https://www.npmjs.com/package/bignumber.js/v/9.3.1) |
-| body-parser | 1.20.6 | MIT | [source](https://www.npmjs.com/package/body-parser/v/1.20.6) |
-| body-parser | 2.3.0 | MIT | [source](https://www.npmjs.com/package/body-parser/v/2.3.0) |
+| body-parser | 1.20.9 | MIT | [source](https://www.npmjs.com/package/body-parser/v/1.20.9) |
+| body-parser | 2.4.0 | MIT | [source](https://www.npmjs.com/package/body-parser/v/2.4.0) |
 | buffer-equal-constant-time | 1.0.1 | BSD-3-Clause | [source](https://www.npmjs.com/package/buffer-equal-constant-time/v/1.0.1) |
 | bytes | 3.1.2 | MIT | [source](https://www.npmjs.com/package/bytes/v/3.1.2) |
 | call-bind-apply-helpers | 1.0.2 | MIT | [source](https://www.npmjs.com/package/call-bind-apply-helpers/v/1.0.2) |
 | call-bound | 1.0.4 | MIT | [source](https://www.npmjs.com/package/call-bound/v/1.0.4) |
+| chai | 6.3.0 | MIT | [source](https://www.npmjs.com/package/chai/v/6.3.0) |
 | chalk | 4.1.2 | MIT | [source](https://www.npmjs.com/package/chalk/v/4.1.2) |
 | chalk-template | 0.4.0 | MIT | [source](https://www.npmjs.com/package/chalk-template/v/0.4.0) |
 | cjs-module-lexer | 2.2.0 | MIT | [source](https://www.npmjs.com/package/cjs-module-lexer/v/2.2.0) |
@@ -307,6 +322,8 @@ dependency change.
 | content-disposition | 1.1.0 | MIT | [source](https://www.npmjs.com/package/content-disposition/v/1.1.0) |
 | content-type | 1.0.5 | MIT | [source](https://www.npmjs.com/package/content-type/v/1.0.5) |
 | content-type | 2.0.0 | MIT | [source](https://www.npmjs.com/package/content-type/v/2.0.0) |
+| content-type | 2.1.0 | MIT | [source](https://www.npmjs.com/package/content-type/v/2.1.0) |
+| convert-source-map | 2.0.0 | MIT | [source](https://www.npmjs.com/package/convert-source-map/v/2.0.0) |
 | cookie | 0.7.2 | MIT | [source](https://www.npmjs.com/package/cookie/v/0.7.2) |
 | cookie-es | 3.1.1 | MIT | [source](https://www.npmjs.com/package/cookie-es/v/3.1.1) |
 | cookie-signature | 1.0.7 | MIT | [source](https://www.npmjs.com/package/cookie-signature/v/1.0.7) |
@@ -330,7 +347,7 @@ dependency change.
 | destroy | 1.2.0 | MIT | [source](https://www.npmjs.com/package/destroy/v/1.2.0) |
 | detect-libc | 2.1.2 | Apache-2.0 | [source](https://www.npmjs.com/package/detect-libc/v/2.1.2) |
 | detect-node-es | 1.1.0 | MIT | [source](https://www.npmjs.com/package/detect-node-es/v/1.1.0) |
-| dompurify | 3.4.13 | (MPL-2.0 OR Apache-2.0) | [source](https://www.npmjs.com/package/dompurify/v/3.4.13) |
+| dompurify | 3.4.17 | (MPL-2.0 OR Apache-2.0) | [source](https://www.npmjs.com/package/dompurify/v/3.4.17) |
 | dotenv | 16.6.1 | BSD-2-Clause | [source](https://www.npmjs.com/package/dotenv/v/16.6.1) |
 | drizzle-orm | 0.45.2 | Apache-2.0 | [source](https://www.npmjs.com/package/drizzle-orm/v/0.45.2) |
 | dunder-proto | 1.0.1 | MIT | [source](https://www.npmjs.com/package/dunder-proto/v/1.0.1) |
@@ -350,7 +367,9 @@ dependency change.
 | esbuild | 0.28.1 | MIT | [source](https://www.npmjs.com/package/esbuild/v/0.28.1) |
 | escalade | 3.2.0 | MIT | [source](https://www.npmjs.com/package/escalade/v/3.2.0) |
 | escape-html | 1.0.3 | MIT | [source](https://www.npmjs.com/package/escape-html/v/1.0.3) |
+| estree-walker | 3.0.3 | MIT | [source](https://www.npmjs.com/package/estree-walker/v/3.0.3) |
 | etag | 1.8.1 | MIT | [source](https://www.npmjs.com/package/etag/v/1.8.1) |
+| expect-type | 1.4.0 | Apache-2.0 | [source](https://www.npmjs.com/package/expect-type/v/1.4.0) |
 | express | 4.22.2 | MIT | [source](https://www.npmjs.com/package/express/v/4.22.2) |
 | express | 5.2.1 | MIT | [source](https://www.npmjs.com/package/express/v/5.2.1) |
 | extend | 3.0.2 | MIT | [source](https://www.npmjs.com/package/extend/v/3.0.2) |
@@ -393,9 +412,11 @@ dependency change.
 | ipaddr.js | 1.9.1 | MIT | [source](https://www.npmjs.com/package/ipaddr.js/v/1.9.1) |
 | is-fullwidth-code-point | 3.0.0 | MIT | [source](https://www.npmjs.com/package/is-fullwidth-code-point/v/3.0.0) |
 | is-promise | 4.0.0 | MIT | [source](https://www.npmjs.com/package/is-promise/v/4.0.0) |
+| jiti | 2.6.1 | MIT | [source](https://www.npmjs.com/package/jiti/v/2.6.1) |
 | jiti | 2.7.0 | MIT | [source](https://www.npmjs.com/package/jiti/v/2.7.0) |
-| js-yaml | 4.3.1 | MIT | [source](https://www.npmjs.com/package/js-yaml/v/4.3.1) |
-| js-yaml | 5.4.0 | MIT | [source](https://www.npmjs.com/package/js-yaml/v/5.4.0) |
+| js-yaml | 4.3.2 | MIT | [source](https://www.npmjs.com/package/js-yaml/v/4.3.2) |
+| js-yaml | 5.4.1 | MIT | [source](https://www.npmjs.com/package/js-yaml/v/5.4.1) |
+| jsbi | 4.3.2 | Apache-2.0 | [source](https://www.npmjs.com/package/jsbi/v/4.3.2) |
 | json-bigint | 1.0.0 | MIT | [source](https://www.npmjs.com/package/json-bigint/v/1.0.0) |
 | json-bignum | 0.0.3 | MIT | [source](https://www.npmjs.com/package/json-bignum/v/0.0.3) |
 | jwa | 2.0.1 | MIT | [source](https://www.npmjs.com/package/jwa/v/2.0.1) |
@@ -445,6 +466,7 @@ dependency change.
 | parseurl | 1.3.3 | MIT | [source](https://www.npmjs.com/package/parseurl/v/1.3.3) |
 | path-to-regexp | 0.1.13 | MIT | [source](https://www.npmjs.com/package/path-to-regexp/v/0.1.13) |
 | path-to-regexp | 8.4.2 | MIT | [source](https://www.npmjs.com/package/path-to-regexp/v/8.4.2) |
+| pathe | 2.0.3 | MIT | [source](https://www.npmjs.com/package/pathe/v/2.0.3) |
 | pg | 8.18.0 | MIT | [source](https://www.npmjs.com/package/pg/v/8.18.0) |
 | pg | 8.23.0 | MIT | [source](https://www.npmjs.com/package/pg/v/8.23.0) |
 | pg-cloudflare | 1.4.0 | MIT | [source](https://www.npmjs.com/package/pg-cloudflare/v/1.4.0) |
@@ -461,9 +483,9 @@ dependency change.
 | postgres-bytea | 1.0.1 | MIT | [source](https://www.npmjs.com/package/postgres-bytea/v/1.0.1) |
 | postgres-date | 1.0.7 | MIT | [source](https://www.npmjs.com/package/postgres-date/v/1.0.7) |
 | postgres-interval | 1.2.0 | MIT | [source](https://www.npmjs.com/package/postgres-interval/v/1.2.0) |
-| protobufjs | 7.6.5 | BSD-3-Clause | [source](https://www.npmjs.com/package/protobufjs/v/7.6.5) |
-| proxy-addr | 2.0.7 | MIT | [source](https://www.npmjs.com/package/proxy-addr/v/2.0.7) |
-| qs | 6.15.3 | BSD-3-Clause | [source](https://www.npmjs.com/package/qs/v/6.15.3) |
+| protobufjs | 7.6.6 | BSD-3-Clause | [source](https://www.npmjs.com/package/protobufjs/v/7.6.6) |
+| proxy-addr | 2.0.8 | MIT | [source](https://www.npmjs.com/package/proxy-addr/v/2.0.8) |
+| qs | 6.16.1 | BSD-3-Clause | [source](https://www.npmjs.com/package/qs/v/6.16.1) |
 | range-parser | 1.2.1 | MIT | [source](https://www.npmjs.com/package/range-parser/v/1.2.1) |
 | range-parser | 1.3.0 | MIT | [source](https://www.npmjs.com/package/range-parser/v/1.3.0) |
 | raw-body | 2.5.3 | MIT | [source](https://www.npmjs.com/package/raw-body/v/2.5.3) |
@@ -496,22 +518,28 @@ dependency change.
 | side-channel-list | 1.0.1 | MIT | [source](https://www.npmjs.com/package/side-channel-list/v/1.0.1) |
 | side-channel-map | 1.0.1 | MIT | [source](https://www.npmjs.com/package/side-channel-map/v/1.0.1) |
 | side-channel-weakmap | 1.0.2 | MIT | [source](https://www.npmjs.com/package/side-channel-weakmap/v/1.0.2) |
+| siginfo | 2.0.0 | ISC | [source](https://www.npmjs.com/package/siginfo/v/2.0.0) |
 | sisteransi | 1.0.5 | MIT | [source](https://www.npmjs.com/package/sisteransi/v/1.0.5) |
 | size-sensor | 1.0.3 | ISC | [source](https://www.npmjs.com/package/size-sensor/v/1.0.3) |
 | sonner | 2.0.7 | MIT | [source](https://www.npmjs.com/package/sonner/v/2.0.7) |
-| source-map-js | 1.2.1 | BSD-3-Clause | [source](https://www.npmjs.com/package/source-map-js/v/1.2.1) |
+| source-map-js | 1.2.2 | BSD-3-Clause | [source](https://www.npmjs.com/package/source-map-js/v/1.2.2) |
 | split2 | 4.2.0 | ISC | [source](https://www.npmjs.com/package/split2/v/4.2.0) |
+| stackback | 0.0.2 | MIT | [source](https://www.npmjs.com/package/stackback/v/0.0.2) |
 | statuses | 2.0.2 | MIT | [source](https://www.npmjs.com/package/statuses/v/2.0.2) |
+| std-env | 4.2.0 | MIT | [source](https://www.npmjs.com/package/std-env/v/4.2.0) |
 | string-width | 4.2.3 | MIT | [source](https://www.npmjs.com/package/string-width/v/4.2.3) |
 | strip-ansi | 6.0.1 | MIT | [source](https://www.npmjs.com/package/strip-ansi/v/6.0.1) |
 | supports-color | 7.2.0 | MIT | [source](https://www.npmjs.com/package/supports-color/v/7.2.0) |
-| systeminformation | 5.31.7 | MIT | [source](https://www.npmjs.com/package/systeminformation/v/5.31.7) |
+| systeminformation | 5.33.16 | MIT | [source](https://www.npmjs.com/package/systeminformation/v/5.33.16) |
 | table-layout | 4.1.1 | MIT | [source](https://www.npmjs.com/package/table-layout/v/4.1.1) |
 | tailwind-merge | 3.4.0 | MIT | [source](https://www.npmjs.com/package/tailwind-merge/v/3.4.0) |
 | tailwind-merge | 3.6.0 | MIT | [source](https://www.npmjs.com/package/tailwind-merge/v/3.6.0) |
 | tailwindcss | 4.3.3 | MIT | [source](https://www.npmjs.com/package/tailwindcss/v/4.3.3) |
 | tailwindcss-animate | 1.0.7 | MIT | [source](https://www.npmjs.com/package/tailwindcss-animate/v/1.0.7) |
+| tinybench | 2.9.0 | MIT | [source](https://www.npmjs.com/package/tinybench/v/2.9.0) |
+| tinyexec | 1.2.4 | MIT | [source](https://www.npmjs.com/package/tinyexec/v/1.2.4) |
 | tinyglobby | 0.2.17 | MIT | [source](https://www.npmjs.com/package/tinyglobby/v/0.2.17) |
+| tinyrainbow | 3.2.0 | MIT | [source](https://www.npmjs.com/package/tinyrainbow/v/3.2.0) |
 | toidentifier | 1.0.1 | MIT | [source](https://www.npmjs.com/package/toidentifier/v/1.0.1) |
 | tslib | 2.3.0 | 0BSD | [source](https://www.npmjs.com/package/tslib/v/2.3.0) |
 | tslib | 2.8.1 | 0BSD | [source](https://www.npmjs.com/package/tslib/v/2.8.1) |
@@ -530,7 +558,9 @@ dependency change.
 | vary | 1.1.2 | MIT | [source](https://www.npmjs.com/package/vary/v/1.1.2) |
 | vaul | 1.1.2 | MIT | [source](https://www.npmjs.com/package/vaul/v/1.1.2) |
 | vite | 7.1.14 | MIT | [source](https://www.npmjs.com/package/vite/v/7.1.14) |
+| vitest | 4.1.12 | MIT | [source](https://www.npmjs.com/package/vitest/v/4.1.12) |
 | web-streams-polyfill | 3.3.3 | MIT | [source](https://www.npmjs.com/package/web-streams-polyfill/v/3.3.3) |
+| why-is-node-running | 2.3.0 | MIT | [source](https://www.npmjs.com/package/why-is-node-running/v/2.3.0) |
 | wordwrapjs | 5.1.1 | MIT | [source](https://www.npmjs.com/package/wordwrapjs/v/5.1.1) |
 | wrap-ansi | 7.0.0 | MIT | [source](https://www.npmjs.com/package/wrap-ansi/v/7.0.0) |
 | wrappy | 1.0.2 | ISC | [source](https://www.npmjs.com/package/wrappy/v/1.0.2) |
@@ -541,7 +571,6 @@ dependency change.
 | yaml | 2.9.0 | ISC | [source](https://www.npmjs.com/package/yaml/v/2.9.0) |
 | yargs | 17.7.3 | MIT | [source](https://www.npmjs.com/package/yargs/v/17.7.3) |
 | yargs-parser | 21.1.1 | ISC | [source](https://www.npmjs.com/package/yargs-parser/v/21.1.1) |
-| zod | 4.3.6 | MIT | [source](https://www.npmjs.com/package/zod/v/4.3.6) |
-| zod | 4.4.3 | MIT | [source](https://www.npmjs.com/package/zod/v/4.4.3) |
+| zod | 4.6.6 | MIT | [source](https://www.npmjs.com/package/zod/v/4.6.6) |
 | zrender | 6.1.0 | BSD-3-Clause | [source](https://www.npmjs.com/package/zrender/v/6.1.0) |
 | zustand | 4.5.7 | MIT | [source](https://www.npmjs.com/package/zustand/v/4.5.7) |

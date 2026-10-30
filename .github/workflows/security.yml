@@ -58,7 +58,7 @@ jobs:
     container:
       image: semgrep/semgrep:1.148.0
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       # Pinned rulesets rather than 'auto', which requires an account. The
       # injection rules matter most here: this app builds SQL from workspace
@@ -76,7 +76,7 @@ jobs:
             --exclude 'app/vendor' \
             --sarif --output semgrep.sarif
 
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: semgrep-sarif
@@ -89,19 +89,26 @@ jobs:
     name: Secret scanning
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
 
       # The gitleaks CLI is MIT licensed and used directly. The wrapper action
       # requires a paid licence for organisation accounts, which would break
       # precisely at migration.
+      #
+      # The archive is checked against a hash pinned here, before anything is extracted
+      # or run. A checksum fetched at run time from the same release would be replaced
+      # together with the archive, so it would prove nothing. A version bump must update
+      # GITLEAKS_SHA256 from that release's gitleaks_<version>_checksums.txt.
       - name: Install gitleaks
         env:
           GITLEAKS_VERSION: 8.30.1
+          GITLEAKS_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
         run: |
           curl -fsSL -o gitleaks.tar.gz \
             "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          echo "${GITLEAKS_SHA256}  gitleaks.tar.gz" | sha256sum --check --strict
           tar -xzf gitleaks.tar.gz gitleaks
           chmod +x gitleaks
 
@@ -118,9 +125,9 @@ jobs:
       run:
         working-directory: app
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
           cache: npm
@@ -155,7 +162,7 @@ jobs:
       # named individually in app/osv-scanner.toml with a reason and an expiry,
       # rather than waved through by loosening the gate.
       - name: OSV scanner
-        uses: google/osv-scanner-action/osv-scanner-action@v2.5.1
+        uses: google/osv-scanner-action/osv-scanner-action@6e4298ebc4db23e847df9b2e2de2939d6f066c67 # v2.5.1
         with:
           scan-args: |-
             --config=app/osv-scanner.toml
@@ -179,9 +186,9 @@ jobs:
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
           cache: npm
@@ -192,14 +199,14 @@ jobs:
         run: npm ci --omit=dev
 
       - name: Generate SBOM
-        uses: anchore/sbom-action@v0
+        uses: anchore/sbom-action@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
         with:
           path: app
           format: spdx-json
           artifact-name: sbom.spdx.json
           output-file: sbom.spdx.json
 
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: sbom
           path: sbom.spdx.json
