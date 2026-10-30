@@ -22,7 +22,7 @@ export interface ProbeOptions {
   readonly pageLimit: number;
 }
 
-export interface Probe {
+interface ProbeDescriptor {
   /** Catalogue signal id. The prefix is the surface, so it must start with `rest:`. */
   readonly id: SignalId;
   /** Short label for the scheduler's log and the scan footprint. */
@@ -57,6 +57,10 @@ export interface Probe {
    * `collector.ts`.
    */
   readonly scope: string;
+}
+
+/** A probe that calls the control plane, and so may be refused there. */
+export interface LiveProbe extends ProbeDescriptor {
   /**
    * Whether an app can be granted that scope at all.
    *
@@ -68,7 +72,22 @@ export interface Probe {
   run(client: WorkspaceClient, options: ProbeOptions): Promise<unknown>;
 }
 
-const workspaceConf: Probe = {
+/**
+ * A probe for a call no app can make, so it makes none.
+ *
+ * Declared rather than attempted: the answer is known before asking, and a call that is
+ * certain to be refused spends a scheduler slot and the reader's attention on the
+ * refusal. The collector answers it from the descriptor alone, with a structured refusal
+ * that remedies read before any text matching.
+ */
+export interface AdminOnlyProbe extends ProbeDescriptor {
+  readonly grantable: false;
+  readonly run?: undefined;
+}
+
+export type Probe = LiveProbe | AdminOnlyProbe;
+
+const workspaceConf: LiveProbe = {
   id: 'rest:workspace:preview.workspace-conf',
   label: 'workspace-conf',
   what: 'The workspace security settings',
@@ -99,7 +118,7 @@ const workspaceConf: Probe = {
   },
 };
 
-const tokens: Probe = {
+const tokens: LiveProbe = {
   id: 'rest:workspace:token.list',
   label: 'token-management',
   what: 'The workspace personal access tokens',
@@ -131,7 +150,7 @@ const tokens: Probe = {
   },
 };
 
-const servingEndpoints: Probe = {
+const servingEndpoints: LiveProbe = {
   id: 'rest:workspace:serving-endpoints',
   label: 'serving-endpoints',
   what: 'The model serving endpoints',
@@ -173,7 +192,7 @@ const servingEndpoints: Probe = {
  * limited by which scopes the platform offers, so a scope becoming available is a coverage
  * increase, and the way to find out is to ask.
  */
-const vectorSearchEndpoints: Probe = {
+const vectorSearchEndpoints: LiveProbe = {
   id: 'rest:workspace:vector-search.endpoints',
   label: 'vector-search-endpoints',
   what: 'The vector search endpoints',
@@ -204,16 +223,16 @@ const vectorSearchEndpoints: Probe = {
 // --------------------------------------------------------------------------- admin-only probes
 //
 // These signals are only ever available through admin-imported evidence: the scopes they
-// require are ungrantable by Apps, and three of them reach the account plane which a
-// workspace token cannot cross. Their `run()` throws immediately so the RestCollector
-// returns unmeasurable when it attempts them live, and an import can replace that result.
+// require are ungrantable by Apps, and some of them reach the account plane which a
+// workspace token cannot cross. They have no `run()`, so the RestCollector answers each as
+// unmeasurable without calling the control plane, and an import can replace that result.
 //
 // They are in PROBES so that restDescriptors() generates entries for them (keeping the
 // requirements page complete) and so the tests that compare "signals descriptors exist for"
 // against "signals collectors produce" remain consistent.
 
 /** SCP-04-02: audit log delivery configurations. Account plane. */
-const logDelivery: Probe = {
+const logDelivery: AdminOnlyProbe = {
   id: 'rest:account:accounts.log-delivery',
   label: 'account-log-delivery',
   what: 'The account log delivery configurations',
@@ -221,13 +240,10 @@ const logDelivery: Probe = {
   permission: 'account admin',
   scope: 'account',
   grantable: false,
-  run(): Promise<never> {
-    return Promise.reject(new Error('Account plane endpoint: not reachable with a workspace token. Import admin-collected evidence to populate this signal.'));
-  },
 };
 
 /** SCP-03-08, SCP-03-12: IP access lists for the account console. Account plane. */
-const accountIpAccessLists: Probe = {
+const accountIpAccessLists: AdminOnlyProbe = {
   id: 'rest:account:accounts.{account_id}.ip-access-lists',
   label: 'account-ip-access-lists',
   what: 'The account console IP access lists',
@@ -235,13 +251,10 @@ const accountIpAccessLists: Probe = {
   permission: 'account admin',
   scope: 'account',
   grantable: false,
-  run(): Promise<never> {
-    return Promise.reject(new Error('Account plane endpoint: not reachable with a workspace token. Import admin-collected evidence to populate this signal.'));
-  },
 };
 
 /** SCP-03-05: IP access lists for workspace ingress. Scope not grantable. */
-const workspaceIpAccessLists: Probe = {
+const workspaceIpAccessLists: AdminOnlyProbe = {
   id: 'rest:workspace:ip-access-lists',
   label: 'ip-access-lists',
   what: 'The workspace IP access lists',
@@ -249,13 +262,10 @@ const workspaceIpAccessLists: Probe = {
   permission: 'workspace admin',
   scope: 'networking',
   grantable: false,
-  run(): Promise<never> {
-    return Promise.reject(new Error('The "networking" scope is not grantable to apps. Import admin-collected evidence to populate this signal.'));
-  },
 };
 
 /** SCP-04-21: disable legacy features for new workspaces. Account plane. */
-const disableLegacyFeatures: Probe = {
+const disableLegacyFeatures: AdminOnlyProbe = {
   id: 'rest:account:accounts.settings.types.disable_legacy_features.names.default',
   label: 'account-setting-disable-legacy-features',
   what: 'The account-level disable-legacy-features setting',
@@ -263,13 +273,10 @@ const disableLegacyFeatures: Probe = {
   permission: 'account admin',
   scope: 'account',
   grantable: false,
-  run(): Promise<never> {
-    return Promise.reject(new Error('Account plane endpoint: not reachable with a workspace token. Import admin-collected evidence to populate this signal.'));
-  },
 };
 
 /** SCP-02-01: credentials held in secret scopes. Scope not grantable. */
-const secretScopes: Probe = {
+const secretScopes: AdminOnlyProbe = {
   id: 'rest:workspace:secrets.scopes.list',
   label: 'secret-scopes',
   what: 'The workspace secret scopes',
@@ -277,13 +284,10 @@ const secretScopes: Probe = {
   permission: 'workspace admin',
   scope: 'secrets',
   grantable: false,
-  run(): Promise<never> {
-    return Promise.reject(new Error('The "secrets" scope is not grantable to apps. Import admin-collected evidence to populate this signal.'));
-  },
 };
 
 /** SCP-02-02, SCP-04-03: cluster disk encryption and long-running clusters. Scope not grantable. */
-const adminClusters: Probe = {
+const adminClusters: AdminOnlyProbe = {
   id: 'rest:workspace:clusters.list',
   label: 'clusters',
   what: 'The workspace clusters',
@@ -291,13 +295,10 @@ const adminClusters: Probe = {
   permission: 'workspace admin',
   scope: 'clusters',
   grantable: false,
-  run(): Promise<never> {
-    return Promise.reject(new Error('The "clusters" scope is not grantable to apps. Import admin-collected evidence to populate this signal.'));
-  },
 };
 
 /** SCP-01-06: PAT token creation restricted to admins. Scope not grantable. */
-const tokenPermissions: Probe = {
+const tokenPermissions: AdminOnlyProbe = {
   id: 'rest:workspace:permissions.authorization.tokens',
   label: 'token-permissions',
   what: 'The workspace token creation permissions',
@@ -305,13 +306,10 @@ const tokenPermissions: Probe = {
   permission: 'workspace admin',
   scope: 'all-apis',
   grantable: false,
-  run(): Promise<never> {
-    return Promise.reject(new Error('The "all-apis" scope is not grantable to apps. Import admin-collected evidence to populate this signal.'));
-  },
 };
 
 /** SCP-02-10: legacy DBFS root access disabled. Scope not grantable. */
-const disableLegacyDbfs: Probe = {
+const disableLegacyDbfs: AdminOnlyProbe = {
   id: 'rest:workspace:settings.types.disable_legacy_dbfs.names.default',
   label: 'setting-disable-legacy-dbfs',
   what: 'The workspace disable-legacy-DBFS setting',
@@ -319,13 +317,10 @@ const disableLegacyDbfs: Probe = {
   permission: 'workspace admin',
   scope: 'settings',
   grantable: false,
-  run(): Promise<never> {
-    return Promise.reject(new Error('The "settings" scope is not grantable to apps. Import admin-collected evidence to populate this signal.'));
-  },
 };
 
 /** SCP-02-11: SQL warehouse results download disabled. Scope not grantable. */
-const sqlResultsDownload: Probe = {
+const sqlResultsDownload: AdminOnlyProbe = {
   id: 'rest:workspace:settings.types.sql_results_download.names.default',
   label: 'setting-sql-results-download',
   what: 'The workspace SQL-results-download setting',
@@ -333,13 +328,10 @@ const sqlResultsDownload: Probe = {
   permission: 'workspace admin',
   scope: 'settings',
   grantable: false,
-  run(): Promise<never> {
-    return Promise.reject(new Error('The "settings" scope is not grantable to apps. Import admin-collected evidence to populate this signal.'));
-  },
 };
 
 /** SCP-04-19: workspace admin restrictions enabled. Scope not grantable. */
-const restrictWorkspaceAdmins: Probe = {
+const restrictWorkspaceAdmins: AdminOnlyProbe = {
   id: 'rest:workspace:settings.types.restrict_workspace_admins.names.default',
   label: 'setting-restrict-workspace-admins',
   what: 'The workspace restrict-workspace-admins setting',
@@ -347,13 +339,10 @@ const restrictWorkspaceAdmins: Probe = {
   permission: 'workspace admin',
   scope: 'settings',
   grantable: false,
-  run(): Promise<never> {
-    return Promise.reject(new Error('The "settings" scope is not grantable to apps. Import admin-collected evidence to populate this signal.'));
-  },
 };
 
 /** SCP-04-20: automatic cluster update enabled. Scope not grantable. */
-const automaticClusterUpdate: Probe = {
+const automaticClusterUpdate: AdminOnlyProbe = {
   id: 'rest:workspace:settings.types.automatic_cluster_update.names.default',
   label: 'setting-automatic-cluster-update',
   what: 'The workspace automatic-cluster-update setting',
@@ -361,13 +350,10 @@ const automaticClusterUpdate: Probe = {
   permission: 'workspace admin',
   scope: 'settings',
   grantable: false,
-  run(): Promise<never> {
-    return Promise.reject(new Error('The "settings" scope is not grantable to apps. Import admin-collected evidence to populate this signal.'));
-  },
 };
 
 /** SCP-05-13: compliance security profile enabled on this workspace. Scope not grantable. */
-const complianceSecurityProfileWs: Probe = {
+const complianceSecurityProfileWs: AdminOnlyProbe = {
   id: 'rest:workspace:settings.types.shield_csp_enablement_ws_db.names.default',
   label: 'setting-compliance-security-profile',
   what: 'The workspace compliance security profile setting',
@@ -375,13 +361,10 @@ const complianceSecurityProfileWs: Probe = {
   permission: 'workspace admin',
   scope: 'settings',
   grantable: false,
-  run(): Promise<never> {
-    return Promise.reject(new Error('The "settings" scope is not grantable to apps. Import admin-collected evidence to populate this signal.'));
-  },
 };
 
 /** SCP-05-14: enhanced security monitoring enabled. Scope not grantable. */
-const enhancedSecurityMonitoring: Probe = {
+const enhancedSecurityMonitoring: AdminOnlyProbe = {
   id: 'rest:workspace:settings.types.shield_esm_enablement_ws_db.names.default',
   label: 'setting-enhanced-security-monitoring',
   what: 'The workspace enhanced-security-monitoring setting',
@@ -389,13 +372,10 @@ const enhancedSecurityMonitoring: Probe = {
   permission: 'workspace admin',
   scope: 'settings',
   grantable: false,
-  run(): Promise<never> {
-    return Promise.reject(new Error('The "settings" scope is not grantable to apps. Import admin-collected evidence to populate this signal.'));
-  },
 };
 
 /** SCP-05-11: compliance security profile enforced at account level. Account plane. */
-const complianceSecurityProfileAc: Probe = {
+const complianceSecurityProfileAc: AdminOnlyProbe = {
   id: 'rest:account:accounts.settings.types.shield_csp_enablement_ac.names.default',
   label: 'account-setting-compliance-security-profile',
   what: 'The account compliance security profile setting',
@@ -403,9 +383,6 @@ const complianceSecurityProfileAc: Probe = {
   permission: 'account admin',
   scope: 'account',
   grantable: false,
-  run(): Promise<never> {
-    return Promise.reject(new Error('Account plane endpoint: not reachable with a workspace token. Import admin-collected evidence to populate this signal.'));
-  },
 };
 
 export const PROBES: readonly Probe[] = [

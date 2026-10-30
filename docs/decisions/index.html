@@ -62,6 +62,17 @@
 <li><code>app/osv-scanner.toml</code>: lists only findings with no published fix, each with a reason, a reachability argument and an expiry.</li>
 <li><code>.github/workflows/security.yml</code> and <code>.github/workflows/dependency-advisories.yml</code>: the blocking <code>npm audit --omit=dev --audit-level=high</code> step.</li>
 </ul>
+<h2 id="a6-probe-failures-carry-a-machine-readable-refusal">A6: probe failures carry a machine-readable refusal</h2>
+<p><strong>Status:</strong> decided 2026-10-29 by the product owner</p>
+<p><strong>Decision.</strong> A probe that no app can make is not attempted. The REST collector answers it as unmeasurable and attaches a structured refusal to the signal: <code>{ kind: &#39;ungrantable-scope&#39;, scope }</code> for an endpoint that needs a scope Databricks Apps does not offer, and <code>{ kind: &#39;account-plane&#39; }</code> for an endpoint that needs an account administrator. The reader-facing reason still names the scope in the platform&#39;s <code>required scopes: &lt;scope&gt;</code> form. A remedy reads the refusal before it looks at any text, and a refusal always means <code>attest</code>. Text matching stays as the fallback for stored signals that predate the field.</p>
+<p><strong>Reason.</strong> The reason is prose for a person, and its wording changes. Deciding what a reader can do by matching that prose let a platform limit read as a defect in this app: sixteen controls that only an administrator can answer reported &quot;could not be read&quot; with the advice to report a bug, where the controls behind the live refused probes correctly asked for an answer. A fact the collector knew before any call should reach the remedy as a fact. The field is optional inside the stored signal, so earlier scans keep the classification they were recorded with and no schema changes.</p>
+<p><strong>Governs:</strong></p>
+<ul>
+<li><code>app/server/collect/signal.ts</code>: <code>Refusal</code> and the optional <code>SignalResult.refusal</code>.</li>
+<li><code>app/server/collect/rest/probes.ts</code>: <code>AdminOnlyProbe</code>, a probe with no <code>run()</code>.</li>
+<li><code>app/server/collect/rest/collector.ts</code>: <code>refusedWithoutCalling</code>, which answers an admin-only probe without a control-plane call.</li>
+<li><code>app/server/resolve/remedy.ts</code>: <code>one()</code> reads the refusal first, then falls back to <code>demandedScope</code> and the family table.</li>
+</ul>
 
         <footer class="page-footer">
           <span>Databricks Well-Architected Framework assessment</span>

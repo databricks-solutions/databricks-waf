@@ -20,10 +20,10 @@
 
 import type { Reach } from '../signal.js';
 import type { Surface } from '../../scan/surfaces.js';
-import type { Collector, CollectorContext, CollectorSpend, SignalId, SignalResult } from '../signal.js';
+import type { Collector, CollectorContext, CollectorSpend, Refusal, SignalId, SignalResult } from '../signal.js';
 import { COMPLETE, observed, unmeasurable } from '../signal.js';
 import type { WorkspaceClientFactory } from './client.js';
-import { PROBES, type Probe } from './probes.js';
+import { PROBES, type AdminOnlyProbe, type Probe } from './probes.js';
 
 export const REST_SIGNALS: readonly SignalId[] = PROBES.map((probe) => probe.id);
 
@@ -82,6 +82,10 @@ export class RestCollector implements Collector {
   }
 
   private async runProbe(probe: Probe, context: CollectorContext): Promise<SignalResult> {
+    // No call, so no scheduler slot and nothing counted as spent: the answer does not depend on the
+    // workspace, and asking would only produce the refusal this already knows.
+    if (probe.run === undefined) return refusedWithoutCalling(probe);
+
     const started = Date.now();
     const outcome = await context.scheduler.run({
       surface: 'rest',
@@ -106,6 +110,29 @@ export class RestCollector implements Collector {
       reach: REST_REACH,
     });
   }
+}
+
+/**
+ * The result for a probe whose call no app can make, without making it.
+ *
+ * The refusal is structured so a remedy does not have to read the sentence to know this is a platform
+ * limit, and the sentence still carries the platform's `required scopes:` wording so a stored signal
+ * is understood by the text matching that predates the field. The account plane gets its own
+ * sentence because no scope is the obstacle there: a workspace token is rejected before scopes are
+ * considered.
+ */
+function refusedWithoutCalling(probe: AdminOnlyProbe): SignalResult {
+  const refusal: Refusal = probe.scope === 'account' ? { kind: 'account-plane' } : { kind: 'ungrantable-scope', scope: probe.scope };
+  const demand = `required scopes: ${probe.scope}`;
+  const reason =
+    refusal.kind === 'account-plane'
+      ? `${probe.what} is account-plane configuration, and this app is installed in a workspace. A workspace ` +
+        `token is rejected by the account endpoints before authorisation is considered, so no scope and no ` +
+        `grant would change that. The call was not made. Until an administrator's own reading is imported, ` +
+        `this control is answered by attestation rather than by measurement. (${demand})`
+      : failureReason(probe, 'permission-denied', `${demand}; the call was not made`);
+
+  return { ...unmeasurable(probe.id, reason, { ...COMPLETE, reach: REST_REACH }), refusal };
 }
 
 /**

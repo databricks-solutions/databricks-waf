@@ -119,10 +119,7 @@ const PROBES = [
 		endpoint: "GET /api/2.0/accounts/{account_id}/log-delivery",
 		permission: "account admin",
 		scope: "account",
-		grantable: false,
-		run() {
-			return Promise.reject(/* @__PURE__ */ new Error("Account plane endpoint: not reachable with a workspace token. Import admin-collected evidence to populate this signal."));
-		}
+		grantable: false
 	},
 	{
 		id: "rest:account:accounts.{account_id}.ip-access-lists",
@@ -131,10 +128,7 @@ const PROBES = [
 		endpoint: "GET /api/2.0/accounts/{account_id}/ip-access-lists",
 		permission: "account admin",
 		scope: "account",
-		grantable: false,
-		run() {
-			return Promise.reject(/* @__PURE__ */ new Error("Account plane endpoint: not reachable with a workspace token. Import admin-collected evidence to populate this signal."));
-		}
+		grantable: false
 	},
 	{
 		id: "rest:workspace:ip-access-lists",
@@ -143,10 +137,7 @@ const PROBES = [
 		endpoint: "GET /api/2.0/ip-access-lists",
 		permission: "workspace admin",
 		scope: "networking",
-		grantable: false,
-		run() {
-			return Promise.reject(/* @__PURE__ */ new Error("The \"networking\" scope is not grantable to apps. Import admin-collected evidence to populate this signal."));
-		}
+		grantable: false
 	},
 	{
 		id: "rest:account:accounts.settings.types.disable_legacy_features.names.default",
@@ -155,10 +146,7 @@ const PROBES = [
 		endpoint: "GET /api/2.0/accounts/{account_id}/settings/types/disable_legacy_features/names/default",
 		permission: "account admin",
 		scope: "account",
-		grantable: false,
-		run() {
-			return Promise.reject(/* @__PURE__ */ new Error("Account plane endpoint: not reachable with a workspace token. Import admin-collected evidence to populate this signal."));
-		}
+		grantable: false
 	},
 	{
 		id: "rest:workspace:secrets.scopes.list",
@@ -167,10 +155,7 @@ const PROBES = [
 		endpoint: "GET /api/2.0/secrets/scopes/list",
 		permission: "workspace admin",
 		scope: "secrets",
-		grantable: false,
-		run() {
-			return Promise.reject(/* @__PURE__ */ new Error("The \"secrets\" scope is not grantable to apps. Import admin-collected evidence to populate this signal."));
-		}
+		grantable: false
 	},
 	{
 		id: "rest:workspace:clusters.list",
@@ -179,10 +164,7 @@ const PROBES = [
 		endpoint: "GET /api/2.0/clusters/list",
 		permission: "workspace admin",
 		scope: "clusters",
-		grantable: false,
-		run() {
-			return Promise.reject(/* @__PURE__ */ new Error("The \"clusters\" scope is not grantable to apps. Import admin-collected evidence to populate this signal."));
-		}
+		grantable: false
 	},
 	{
 		id: "rest:workspace:permissions.authorization.tokens",
@@ -191,10 +173,7 @@ const PROBES = [
 		endpoint: "GET /api/2.0/permissions/authorization/tokens",
 		permission: "workspace admin",
 		scope: "all-apis",
-		grantable: false,
-		run() {
-			return Promise.reject(/* @__PURE__ */ new Error("The \"all-apis\" scope is not grantable to apps. Import admin-collected evidence to populate this signal."));
-		}
+		grantable: false
 	},
 	{
 		id: "rest:workspace:settings.types.disable_legacy_dbfs.names.default",
@@ -203,10 +182,7 @@ const PROBES = [
 		endpoint: "GET /api/2.0/settings/types/disable_legacy_dbfs/names/default",
 		permission: "workspace admin",
 		scope: "settings",
-		grantable: false,
-		run() {
-			return Promise.reject(/* @__PURE__ */ new Error("The \"settings\" scope is not grantable to apps. Import admin-collected evidence to populate this signal."));
-		}
+		grantable: false
 	},
 	{
 		id: "rest:workspace:settings.types.sql_results_download.names.default",
@@ -215,10 +191,7 @@ const PROBES = [
 		endpoint: "GET /api/2.0/settings/types/sql_results_download/names/default",
 		permission: "workspace admin",
 		scope: "settings",
-		grantable: false,
-		run() {
-			return Promise.reject(/* @__PURE__ */ new Error("The \"settings\" scope is not grantable to apps. Import admin-collected evidence to populate this signal."));
-		}
+		grantable: false
 	},
 	{
 		id: "rest:workspace:settings.types.restrict_workspace_admins.names.default",
@@ -227,10 +200,7 @@ const PROBES = [
 		endpoint: "GET /api/2.0/settings/types/restrict_workspace_admins/names/default",
 		permission: "workspace admin",
 		scope: "settings",
-		grantable: false,
-		run() {
-			return Promise.reject(/* @__PURE__ */ new Error("The \"settings\" scope is not grantable to apps. Import admin-collected evidence to populate this signal."));
-		}
+		grantable: false
 	},
 	{
 		id: "rest:workspace:settings.types.automatic_cluster_update.names.default",
@@ -239,10 +209,7 @@ const PROBES = [
 		endpoint: "GET /api/2.0/settings/types/automatic_cluster_update/names/default",
 		permission: "workspace admin",
 		scope: "settings",
-		grantable: false,
-		run() {
-			return Promise.reject(/* @__PURE__ */ new Error("The \"settings\" scope is not grantable to apps. Import admin-collected evidence to populate this signal."));
-		}
+		grantable: false
 	},
 	{
 		id: "rest:workspace:settings.types.shield_csp_enablement_ws_db.names.default",
@@ -251,10 +218,7 @@ const PROBES = [
 		endpoint: "GET /api/2.0/settings/types/shield_csp_enablement_ws_db/names/default",
 		permission: "workspace admin",
 		scope: "settings",
-		grantable: false,
-		run() {
-			return Promise.reject(/* @__PURE__ */ new Error("The \"settings\" scope is not grantable to apps. Import admin-collected evidence to populate this signal."));
-		}
+		grantable: false
 	},
 	{
 		id: "rest:workspace:settings.types.shield_esm_enablement_ws_db.names.default",
@@ -263,10 +227,7 @@ const PROBES = [
 		endpoint: "GET /api/2.0/settings/types/shield_esm_enablement_ws_db/names/default",
 		permission: "workspace admin",
 		scope: "settings",
-		grantable: false,
-		run() {
-			return Promise.reject(/* @__PURE__ */ new Error("The \"settings\" scope is not grantable to apps. Import admin-collected evidence to populate this signal."));
-		}
+		grantable: false
 	},
 	{
 		id: "rest:account:accounts.settings.types.shield_csp_enablement_ac.names.default",
@@ -275,10 +236,7 @@ const PROBES = [
 		endpoint: "GET /api/2.0/accounts/{account_id}/settings/types/shield_csp_enablement_ac/names/default",
 		permission: "account admin",
 		scope: "account",
-		grantable: false,
-		run() {
-			return Promise.reject(/* @__PURE__ */ new Error("Account plane endpoint: not reachable with a workspace token. Import admin-collected evidence to populate this signal."));
-		}
+		grantable: false
 	}
 ];
 /**
