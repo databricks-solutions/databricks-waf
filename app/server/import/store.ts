@@ -19,7 +19,7 @@
 // has moved on.
 
 import type { Sql } from '../store/postgres.js';
-import type { Envelope } from './envelope.js';
+import { workspaceOf, type Envelope } from './envelope.js';
 import { summarise, summaryFrom, type EvidenceSummary } from './summary.js';
 import type { CautionReason, Note } from './trust.js';
 
@@ -39,6 +39,16 @@ export interface ImportedEvidence {
    */
   readonly importedBy: string;
   readonly envelope: Envelope;
+  /**
+   * The workspace the workspace half of the file was collected from, when there is one.
+   *
+   * Recorded beside the envelope, in its own indexed column, so a lookup by workspace need not read
+   * every body, and so the scan runner has one place to ask. `all()` does not filter on it: it reads
+   * the table and gives a row written before the column the workspace its body names. Absent when the
+   * workspace tier did not run. A record built without it is read as the envelope says; `workspaceOf`
+   * is the one definition of that.
+   */
+  readonly workspaceId?: string;
   /**
    * What the trust checks said about it, stored rather than recomputed.
    *
@@ -153,7 +163,8 @@ export class InMemoryEvidenceImportStore implements EvidenceImportStore {
       // pass against the store nobody runs in production.
       return Promise.reject(new ReplayedImportError(imported.digest));
     }
-    this.held.push(imported);
+    const workspaceId = imported.workspaceId ?? workspaceOf(imported.envelope);
+    this.held.push({ ...imported, ...(workspaceId != null ? { workspaceId } : {}) });
     return Promise.resolve();
   }
 }
@@ -171,6 +182,8 @@ interface Row {
   readonly imported_by: string;
   readonly body: unknown;
   readonly cautions: unknown;
+  /** Null for a row written before the column existed. */
+  readonly workspace_id?: string | null;
 }
 
 /** The same row without the envelope, which is the whole point of the column it reads instead. */
@@ -194,7 +207,7 @@ export class PostgresEvidenceImportStore implements EvidenceImportStore {
     const { db } = this.options;
     try {
       const { rows } = await db.query<Row>(
-        `select digest, generated_at, imported_at, imported_by, body, cautions
+        `select digest, generated_at, imported_at, imported_by, body, cautions, workspace_id
            from ${db.schema}.imported_evidence
           order by imported_at desc`
       );
@@ -242,7 +255,7 @@ export class PostgresEvidenceImportStore implements EvidenceImportStore {
   private async repair(digests: readonly string[]): Promise<readonly ImportedEvidenceSummary[]> {
     const { db } = this.options;
     const { rows } = await db.query<Row>(
-      `select digest, generated_at, imported_at, imported_by, body, cautions
+      `select digest, generated_at, imported_at, imported_by, body, cautions, workspace_id
          from ${db.schema}.imported_evidence
         where digest = any($1::text[])`,
       [digests]
@@ -289,8 +302,8 @@ export class PostgresEvidenceImportStore implements EvidenceImportStore {
         // the text it was sent as, and a store that then skipped reviving it would pass its tests and
         // hand a string to a caller expecting an envelope.
         `insert into ${db.schema}.imported_evidence
-           (digest, generated_at, imported_at, imported_by, body, cautions, summary)
-         values ($1, $2, $3, $4, $5::jsonb, $6::jsonb, $7::jsonb)`,
+           (digest, generated_at, imported_at, imported_by, body, cautions, summary, workspace_id)
+         values ($1, $2, $3, $4, $5::jsonb, $6::jsonb, $7::jsonb, $8)`,
         [
           imported.digest,
           imported.generatedAt.toISOString(),
@@ -302,6 +315,9 @@ export class PostgresEvidenceImportStore implements EvidenceImportStore {
           // about what was imported. A summary computed by a later pass could describe a row that a
           // concurrent failure never wrote.
           JSON.stringify(summarise(imported.envelope)),
+          // Null rather than absent for a file with no workspace tier, so the column says "none" the
+          // same way a row from before it existed does.
+          imported.workspaceId ?? workspaceOf(imported.envelope) ?? null,
         ]
       );
     } catch (cause) {
@@ -327,16 +343,30 @@ function revive(row: Row): ImportedEvidence | undefined {
   if (Number.isNaN(generatedAt.getTime()) || Number.isNaN(importedAt.getTime())) return undefined;
   if (row.body == null || typeof row.body !== 'object') return undefined;
 
+  // Stored as the app read it, so it is returned as it was stored. Re-validating here would mean a
+  // schema change could make history unreadable, and history is what the digest is over.
+  const envelope = row.body as Envelope;
+  // A row from before the column has none, and its body still says where it came from. Read from the
+  // body for the same reason `summaries()` recomputes a missing summary: one definition of the answer.
+  // Guarded, because that the body is an object is all `revive` has established about it.
+  const column = typeof row.workspace_id === 'string' && row.workspace_id !== '' ? row.workspace_id : undefined;
+  const workspaceId = column ?? bodyWorkspace(envelope);
+
   return {
     digest: row.digest,
     generatedAt,
     importedAt,
     importedBy: row.imported_by,
-    // Stored as the app read it, so it is returned as it was stored. Re-validating here would mean a
-    // schema change could make history unreadable, and history is what the digest is over.
-    envelope: row.body as Envelope,
+    envelope,
+    ...(workspaceId != null ? { workspaceId } : {}),
     cautions: Array.isArray(row.cautions) ? (row.cautions as readonly Note<CautionReason>[]) : [],
   };
+}
+
+/** The workspace a stored body names, tolerating a body that is not the shape it was written in. */
+function bodyWorkspace(envelope: Envelope): string | undefined {
+  const tier = (envelope as { tiers?: { workspace?: unknown } }).tiers?.workspace;
+  return tier != null && typeof tier === 'object' ? workspaceOf(envelope) : undefined;
 }
 
 /**

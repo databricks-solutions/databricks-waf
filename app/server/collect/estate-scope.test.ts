@@ -6,7 +6,14 @@
 // for unchanged.
 
 import { describe, expect, it } from 'vitest';
-import { accountScope, EstateScopeError, probeCurrentUser, selectedScope } from './estate-scope.js';
+import {
+  accountScope,
+  EstateScopeError,
+  probeCurrentUser,
+  restWorkspace,
+  selectedScope,
+  workspaceScope,
+} from './estate-scope.js';
 
 describe('narrowing a scope to what an assessment names', () => {
   it('keeps the host workspace, which the region partition needs', () => {
@@ -79,5 +86,24 @@ describe('what the identity probe keeps from a SCIM record', () => {
   it('says nothing at all when the probe is refused, so attribution falls back rather than failing', async () => {
     const refused: typeof globalThis.fetch = () => Promise.resolve(new Response('no', { status: 403 }));
     expect(await probe(refused)).toEqual({});
+  });
+});
+
+describe('the workspace the REST surface describes', () => {
+  it('is the workspace the app is installed in on an account scan', () => {
+    expect(restWorkspace(accountScope('host-1'))).toBe('host-1');
+  });
+
+  it('is the one the scan was narrowed to', () => {
+    expect(restWorkspace(workspaceScope('w2'))).toBe('w2');
+  });
+
+  it('is unknown when the scan could not identify its own workspace', () => {
+    expect(restWorkspace(accountScope())).toBeUndefined();
+  });
+
+  it('is not assessed when a selection leaves it out', () => {
+    expect(restWorkspace(selectedScope(accountScope('host-1'), ['w2']))).toBeUndefined();
+    expect(restWorkspace(selectedScope(accountScope('host-1'), ['host-1', 'w2']))).toBe('host-1');
   });
 });

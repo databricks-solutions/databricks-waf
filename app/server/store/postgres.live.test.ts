@@ -122,20 +122,44 @@ async function open(schema: string): Promise<Postgres> {
   return ENDPOINT.includes('/') ? openPostgres({ env }) : openPostgres({ env, connect: connectDirect });
 }
 
-async function connectDirect(): Promise<Sql> {
+/**
+ * The connection for a Provisioned instance, or for any Postgres a role and password are given for.
+ *
+ * With `PGUSER` set the role and password come from the environment and the Databricks CLI is not
+ * run, which is what lets this file be driven against a local PostgreSQL cluster. Without it the role
+ * is the Databricks identity and the password a short-lived token for it.
+ */
+function connectionConfig(): pg.ClientConfig {
+  const database = process.env.PGDATABASE ?? 'databricks_postgres';
+
+  if (process.env.PGUSER != null && process.env.PGUSER !== '') {
+    return {
+      host: ENDPOINT,
+      port: Number(process.env.PGPORT ?? 5432),
+      database,
+      user: process.env.PGUSER,
+      password: process.env.PGPASSWORD,
+      ssl: process.env.PGSSLMODE === 'disable' ? false : true,
+    };
+  }
+
   const profile = process.env.DATABRICKS_CONFIG_PROFILE ?? 'DEFAULT';
   const cli = (args: readonly string[]): Record<string, unknown> =>
     JSON.parse(execFileSync('databricks', [...args, '-p', profile], { encoding: 'utf8' })) as Record<string, unknown>;
 
-  const client = new pg.Client({
+  return {
     host: ENDPOINT,
     port: 5432,
-    database: process.env.PGDATABASE ?? 'databricks_postgres',
+    database,
     // The Postgres role is the Databricks identity, and the password is a short-lived token for it.
     user: String(cli(['current-user', 'me', '-o', 'json']).userName),
     password: String(cli(['auth', 'token']).access_token),
     ssl: true,
-  });
+  };
+}
+
+async function connectDirect(): Promise<Sql> {
+  const client = new pg.Client(connectionConfig());
   await client.connect();
   const query = <T = Record<string, unknown>>(text: string, values?: readonly unknown[]) =>
     client.query<T extends pg.QueryResultRow ? T : never>(text, values as unknown[]) as Promise<{ rows: T[] }>;
@@ -2028,5 +2052,37 @@ describe.skipIf(!bound)('the reads that count and exclude in SQL, against a real
     // this install's legacy imports fetches their envelopes forever.
     expect(rows[0]?.summary).not.toBeNull();
     expect(typeof rows[0]?.summary).toBe('object');
+  });
+
+  it('keeps the workspace in its own column, and reads it from the body for a row that predates it', async () => {
+    // What the fake cannot settle about the workspace column: that the new statements are valid, that
+    // the value survives a real driver as text, and that a row with a null column is still attributed.
+    const store = new PostgresEvidenceImportStore({ db });
+    const raw = envelope({ generated_at: '2026-08-04T10:41:52Z' });
+    const held = envelopeFrom({ ...raw, digest: digestOf(raw.probes) });
+    const one = {
+      digest: `sha256:${'b8'.repeat(32)}`,
+      generatedAt: new Date(held.generatedAt),
+      importedAt: REQUESTED,
+      importedBy: 'importer@example.com',
+      envelope: held,
+      cautions: [],
+    };
+    await store.record(one);
+
+    const { rows } = await db.query<{ workspace_id: string | null }>(
+      `select workspace_id from ${db.schema}.imported_evidence where digest = $1`,
+      [one.digest]
+    );
+    expect(rows[0]?.workspace_id).toBe('7000000000000001');
+    expect((await store.all()).find((held) => held.digest === one.digest)?.workspaceId).toBe('7000000000000001');
+
+    // The upgrade case: a row written before the column, whose body still names the workspace.
+    await db.query(`update ${db.schema}.imported_evidence set workspace_id = null where digest = $1`, [one.digest]);
+    expect((await store.all()).find((held) => held.digest === one.digest)?.workspaceId).toBe('7000000000000001');
+
+    // Boot again over the same schema, which is what a rolling deploy does and must change nothing.
+    await ensureSchema(db, db.schema);
+    expect((await store.all()).find((held) => held.digest === one.digest)?.workspaceId).toBe('7000000000000001');
   });
 });

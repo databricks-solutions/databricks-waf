@@ -50,7 +50,7 @@ import type {
   WorkspaceSettings,
 } from '../collect/rest/shapes.js';
 import type { ImportedEvidence } from './store.js';
-import type { Envelope, ProbeRecord } from './envelope.js';
+import type { Envelope, ProbeRecord, Tier } from './envelope.js';
 
 /**
  * What an import yielded, separated by whether a resolver can use it.
@@ -341,11 +341,16 @@ export function revivable(signals: readonly SignalId[]): readonly SignalId[] {
  * when it was imported, and a reading that could not say whose authority produced it would be
  * unattributable — which is the one thing an imported number may not be.
  */
-export function readingsFrom(imported: ImportedEvidence): ImportedReadings {
+export function readingsFrom(imported: ImportedEvidence, tiers?: readonly Tier[]): ImportedReadings {
   const signals = new Map<SignalId, SignalResult>();
   const unrevived = new Set<string>();
 
   for (const probe of imported.envelope.probes) {
+    // A scan asks for one tier at a time, because the two are about different things: the workspace
+    // half describes one workspace and the account half describes the account. A tier that was not
+    // asked for contributes nothing, including to the unrevived list, which is a count of this file
+    // rather than of the part of it the caller wanted.
+    if (tiers != null && !tiers.includes(probe.tier)) continue;
     for (const name of probe.signals) {
       if (!signalled(name)) {
         unrevived.add(name);
@@ -442,6 +447,9 @@ function provenanceFor(probe: ProbeRecord, envelope: Envelope): Provenance {
     authority: 'admin-cli',
     actor: identity?.username ?? `an unnamed ${probe.tier} administrator`,
     ...(identity?.host != null ? { from: identity.host } : {}),
+    // Only the workspace half is about a workspace. The account half carries no workspace id of its
+    // own, and a file's workspace id must not be stamped onto what an account administrator read.
+    ...(probe.tier === 'workspace' && identity?.workspaceId != null ? { workspaceId: identity.workspaceId } : {}),
   };
 }
 

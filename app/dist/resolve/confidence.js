@@ -52,12 +52,13 @@ function limitationsOf(finding, circumstances) {
 	}
 	const sampled = sampling(finding.coverage);
 	if (sampled != null) limitations.push(sampled);
-	const narrow = narrowReach(finding.coverage.reach);
+	const sources = importedWorkspaces(finding.evidence);
+	const narrow = narrowReach(finding.coverage.reach, sources);
 	if (narrow != null) limitations.push(narrow);
 	const imported = importedAt(finding.evidence);
 	if (imported != null) limitations.push({
 		kind: "imported",
-		says: `An administrator collected this against an authority this app cannot hold, and imported it. It describes the estate as it stood ${on(imported)}, and this app cannot re-read it to check.`
+		says: `An administrator collected this ${collectedFrom(sources)}against an authority this app cannot hold, and imported it. It describes the estate as it stood ${on(imported)}, and this app cannot re-read it to check.`
 	});
 	if (circumstances.carriedForward === true) limitations.push({
 		kind: "carried",
@@ -79,7 +80,7 @@ function sampling(coverage) {
 * did not declare what it was a statement about leaves the reader unable to tell a complete account
 * reading from a single-workspace one, and that gap is this app's rather than the estate's.
 */
-function narrowReach(reach) {
+function narrowReach(reach, sources = []) {
 	if (reach === "account") return void 0;
 	if (reach === "metastore") return {
 		kind: "reach",
@@ -87,12 +88,36 @@ function narrowReach(reach) {
 	};
 	if (reach === "workspace") return {
 		kind: "reach",
-		says: "Read from this workspace only. It says nothing about the others in the account."
+		says: sources.length === 0 ? "Read from this workspace only. It says nothing about the others in the account." : `Read from ${workspaces(sources)} only. It says nothing about the others in the account.`
 	};
 	return {
 		kind: "reach",
 		says: "The collector did not declare which part of the estate this is a statement about, which is a gap in this app."
 	};
+}
+/**
+* The workspaces the outcome-bearing imported evidence was collected from, sorted and each once.
+*
+* Empty when none of it names one: an account-level reading is about the account, and evidence this
+* app read itself is about the workspace the scan says it is.
+*/
+function importedWorkspaces(evidence) {
+	const named = evidence.filter((one) => one.bearing !== "detail" && one.evidenceClass === "admin-collected").map((one) => one.provenance?.workspaceId).filter((id) => id != null);
+	return [...new Set(named)].sort();
+}
+/** `workspace 1`, `workspaces 1 and 2`, `workspaces 1, 2 and 3`. */
+function workspaces(ids) {
+	if (ids.length === 1) return `workspace ${ids[0] ?? ""}`;
+	return `workspaces ${ids.slice(0, -1).join(", ")} and ${ids[ids.length - 1] ?? ""}`;
+}
+/**
+* Where an administrator's reading was made, with its trailing space, for the sentence that says it was imported.
+*
+* Nothing when no workspace is named, rather than a guess: that is an account-level reading, or a scan
+* stored before the workspace was recorded, and a sentence claiming either would be wrong for the other.
+*/
+function collectedFrom(sources) {
+	return sources.length === 0 ? "" : `from ${workspaces(sources)} `;
 }
 /** When the outcome-bearing imported evidence was collected, or nothing when none of it was. */
 function importedAt(evidence) {

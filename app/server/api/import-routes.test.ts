@@ -18,7 +18,7 @@ import type { Server } from 'node:http';
 import { afterAll, describe, expect, it } from 'vitest';
 import { closeServed, servedAt } from './test-servers.js';
 import type { EvidenceImportVerdictPayload, EvidenceImportsPayload } from '../../shared/api/contract.js';
-import { envelope } from '../import/envelope-fixture.js';
+import { envelope, identity, probe } from '../import/envelope-fixture.js';
 import { ReplayedImportError, InMemoryEvidenceImportStore, type EvidenceImportStore } from '../import/store.js';
 import { digestOf } from '../import/trust.js';
 import { MAX_BYTES, REQUIRED_CONTENT_TYPE } from '../import/read.js';
@@ -284,6 +284,34 @@ describe('a file this app declines to believe', () => {
     expect(status).toBe(422);
     expect(reasons(payload)).toContain('wrong-workspace');
     expect(payload.refusals[0]?.message).toContain(WORKSPACE);
+  });
+
+  it('refuses a second file from a different account than the one already held', async () => {
+    const { base } = await serve();
+    const first = await upload(base, file());
+    expect(first.status).toBe(201);
+
+    const other = identity({ account_id: '99999999-1111-2222-3333-444444444444' });
+    const second = await upload(
+      base,
+      file({
+        tiers: { workspace: { ran: true, identity: other }, account: { ran: false, reason: 'Not run.' } },
+        probes: [probe({ value: { enableIpAccessLists: 'false' } })],
+      })
+    );
+
+    expect(second.status).toBe(422);
+    expect(reasons(second.payload)).toContain('wrong-account');
+    expect(second.payload.refusals[0]?.message).toContain('00000000-1111-2222-3333-444444444444');
+  });
+
+  it('accepts a second file from the same account', async () => {
+    const { base } = await serve();
+    await upload(base, file());
+
+    const second = await upload(base, file({ probes: [probe({ value: { enableIpAccessLists: 'false' } })] }));
+
+    expect(second.status).toBe(201);
   });
 
   it('reports every reason at once, so one fix does not reveal the next', async () => {
