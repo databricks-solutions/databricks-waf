@@ -477,7 +477,7 @@ dependency change.
 | react-remove-scroll-bar | 2.3.8 | MIT | [source](https://www.npmjs.com/package/react-remove-scroll-bar/v/2.3.8) |
 | react-resizable-panels | 3.0.6 | MIT | [source](https://www.npmjs.com/package/react-resizable-panels/v/3.0.6) |
 | react-resizable-panels | 4.12.3 | MIT | [source](https://www.npmjs.com/package/react-resizable-panels/v/4.12.3) |
-| react-router | 8.3.0 | MIT | [source](https://www.npmjs.com/package/react-router/v/8.3.0) |
+| react-router | 8.3.1 | MIT | [source](https://www.npmjs.com/package/react-router/v/8.3.1) |
 | react-style-singleton | 2.2.3 | MIT | [source](https://www.npmjs.com/package/react-style-singleton/v/2.2.3) |
 | reflect-metadata | 0.2.2 | Apache-2.0 | [source](https://www.npmjs.com/package/reflect-metadata/v/0.2.2) |
 | require-directory | 2.1.1 | MIT | [source](https://www.npmjs.com/package/require-directory/v/2.1.1) |

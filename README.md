@@ -247,7 +247,7 @@ production dependency whose licence is absent or outside the reviewed allowlist.
 | react | 19.2.8 | MIT | [npm](https://www.npmjs.com/package/react/v/19.2.8) |
 | react-dom | 19.2.8 | MIT | [npm](https://www.npmjs.com/package/react-dom/v/19.2.8) |
 | react-resizable-panels | 4.12.3 | MIT | [npm](https://www.npmjs.com/package/react-resizable-panels/v/4.12.3) |
-| react-router | 8.3.0 | MIT | [npm](https://www.npmjs.com/package/react-router/v/8.3.0) |
+| react-router | 8.3.1 | MIT | [npm](https://www.npmjs.com/package/react-router/v/8.3.1) |
 | tailwind-merge | 3.6.0 | MIT | [npm](https://www.npmjs.com/package/tailwind-merge/v/3.6.0) |
 | tailwindcss-animate | 1.0.7 | MIT | [npm](https://www.npmjs.com/package/tailwindcss-animate/v/1.0.7) |
 | tw-animate-css | 1.4.0 | MIT | [npm](https://www.npmjs.com/package/tw-animate-css/v/1.4.0) |
