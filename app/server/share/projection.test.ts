@@ -80,7 +80,7 @@ describe('what carries a principal', () => {
     const directory = join(import.meta.dirname, '..', 'resolve', 'resolvers');
     const reading = readdirSync(directory)
       .filter((name) => name.endsWith('.ts') && !name.endsWith('.test.ts'))
-      .filter((name) => /\.(createdBy|runAs|userName)\b/.test(readFileSync(join(directory, name), 'utf8')))
+      .filter((name) => /\.(createdBy|runAs|runAsName|userName)\b/.test(readFileSync(join(directory, name), 'utf8')))
       .sort();
 
     expect(reading).toEqual(['security-jobs.ts', 'security-settings.ts']);

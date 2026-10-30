@@ -1,6 +1,6 @@
 // Security controls answered by system-table signals about jobs and Unity Catalog storage.
 //
-// SCP-04-22 reads `run_as` from `system.lakeflow.jobs` — the identity jobs execute as —
+// SCP-04-22 reads `run_as_user_name` from `system.lakeflow.jobs` — the identity jobs execute as —
 // and measures what share run as a service principal rather than a user account.
 //
 // SCP-04-05 reads `storage_path` from `system.information_schema.tables` and counts
@@ -37,6 +37,28 @@ export const RUN_AS_USER_LEAD = 'Running as a user account';
 
 const DBFS_TABLES: SignalId = 'sql:security.dbfs_tables';
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** What a job's run-as name says about the identity it runs as. */
+export type RunAsKind = 'user' | 'service-principal' | 'unknown';
+
+/**
+ * Classify a run-as name (decision A7 in docs/decisions.md).
+ *
+ * `run_as_user_name` is the email of a user, the application ID of a service principal, or a group name.
+ * An email is a user, and a UUID is a service principal. Anything else, a group name included, cannot be
+ * told apart from the others by its shape and is unknown; so is a name that was never recorded. No
+ * directory lookup is made to resolve them, because that would add a call and a dependency on an API
+ * that not every reader of the estate can use.
+ */
+export function runAsKind(name: string | undefined): RunAsKind {
+  const value = name?.trim() ?? '';
+  if (value === '') return 'unknown';
+  if (/^[^@\s]+@[^@\s]+$/.test(value)) return 'user';
+  if (UUID.test(value)) return 'service-principal';
+  return 'unknown';
+}
+
 /**
  * SCP-04-22: Jobs run as service principal.
  *
@@ -45,41 +67,41 @@ const DBFS_TABLES: SignalId = 'sql:security.dbfs_tables';
  * a workload. A service principal can be granted exactly what the job needs,
  * survives staff changes, and names the workload in the audit trail.
  *
- * The `run_as` column was not populated before early December 2025, so jobs with
- * no recorded identity are counted separately rather than treated as failing.
- * The share that decides the verdict is over jobs with a known identity only.
+ * The classification reads `run_as_user_name`, which holds the identity's name. `run_as` holds
+ * an ID for users and service principals alike and cannot separate them. The name column was
+ * not populated before early December 2025, so jobs with no recorded name, and jobs whose name
+ * is neither an email nor a service principal ID, are counted as unknown rather than treated as
+ * failing or passing. The share that decides the verdict is over jobs classified as one or the
+ * other only.
  */
 const jobsRunAsSp = fromSignal<JobRow[]>(JOBS, ['SCP-04-22'], (jobs, context) => {
   if (jobs.length === 0) {
     return notApplicable('There are no jobs in this estate, so there is no run-as identity to assess.');
   }
 
-  // A run_as identity is known when the field is a non-empty string. The column is absent
-  // on rows written before early December 2025; treating absence as a user account would
-  // fail long-standing jobs for a change in the system table, not a change in the estate.
-  const known = jobs.filter((job) => job.runAs != null && job.runAs !== '');
-  const unknown = jobs.length - known.length;
+  const userRunJobs = jobs.filter((job) => runAsKind(job.runAsName) === 'user');
+  const spCount = jobs.filter((job) => runAsKind(job.runAsName) === 'service-principal').length;
+  const classified = userRunJobs.length + spCount;
+  const unknown = jobs.length - classified;
 
-  if (known.length === 0) {
+  if (classified === 0) {
     return notApplicable(
-      `All ${jobs.length.toLocaleString('en-US')} job${jobs.length === 1 ? '' : 's'} in this estate ` +
-        'have no run_as identity recorded. This column is not populated for job definitions written ' +
-        'before early December 2025; once those jobs are edited or replaced the identity will appear.'
+      `None of the ${jobs.length.toLocaleString('en-US')} job${jobs.length === 1 ? '' : 's'} in this estate ` +
+        'has a run-as name that can be classified. This column is not populated for job definitions written ' +
+        'before early December 2025, so these jobs have no run-as name recorded or one that is not an email ' +
+        'address or a service principal ID, such as a group name; once the jobs are edited or replaced the ' +
+        'name will appear.'
     );
   }
 
-  // An email address identifies a user account. A numeric string (the application ID) identifies
-  // a service principal. Any other non-empty value is counted as a service principal because the
-  // platform writes the SP application ID as the canonical identifier.
-  const userRunJobs = known.filter((job) => job.runAs!.includes('@'));
-  const spCount = known.length - userRunJobs.length;
-  const spShare = share(spCount, known.length);
+  const spShare = share(spCount, classified);
 
   const evidenceSentence =
-    `${spCount.toLocaleString('en-US')} of ${known.length.toLocaleString('en-US')} jobs with a recorded identity ` +
+    `${spCount.toLocaleString('en-US')} of ${classified.toLocaleString('en-US')} jobs with a recognised identity ` +
     `run as a service principal (${percent(spShare)})` +
     (unknown > 0
-      ? `; ${unknown.toLocaleString('en-US')} job${unknown === 1 ? '' : 's'} have no identity recorded yet`
+      ? `; ${unknown.toLocaleString('en-US')} job${unknown === 1 ? '' : 's'} cannot be classified, ` +
+        'with no run-as name recorded or one that is neither an email address nor a service principal ID'
       : '');
 
   return {
@@ -92,7 +114,7 @@ const jobsRunAsSp = fromSignal<JobRow[]>(JOBS, ['SCP-04-22'], (jobs, context) =>
         'Every job runs as a service principal, so its permissions are scoped to the workload'
       ),
       ...offenders(context, JOBS, RUN_AS_USER_LEAD, userRunJobs, asJob, {
-        note: (job) => job.runAs,
+        note: (job) => job.runAsName,
       }),
     ],
     outcomeReason:

@@ -185,7 +185,8 @@ const parse = {
 			hasStreamBacklogRule: bool(row, "has_stream_backlog_rule") ?? false,
 			tagCount: count(row, "tag_count"),
 			...optional("deploymentKind", text(row, "deployment_kind")),
-			...optional("runAs", text(row, "run_as"))
+			...optional("runAs", text(row, "run_as")),
+			...optional("runAsName", text(row, "run_as_name"))
 		}));
 	},
 	jobReadiness: (rows) => {

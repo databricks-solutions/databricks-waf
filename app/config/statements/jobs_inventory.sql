@@ -42,6 +42,12 @@
 -- a row against the rollout, so a null trigger on a row written since can be read as a job with no
 -- trigger rather than as a column nobody wrote.
 --
+-- `run_as` is "the ID of the user or service principal" and so cannot say which of the two it holds;
+-- `run_as_user_name` is "the email of the user, the ID of the service principal, or group name" and can.
+-- Both are projected, the name as `run_as_name`: SCP-04-22 classifies on the name, and the ID stays beside
+-- it as the platform's own key for the identity. The name is unpopulated for rows written before early
+-- December 2025 as well, and a null there is unknown, not a user and not a service principal.
+--
 -- `has_stream_backlog_rule` checks each job's health rules for a `STREAMING_BACKLOG_*` metric
 -- (bytes, records, seconds, or files) — PE-05-03's signal that someone is watching a streaming
 -- job's backlog rather than only whether it is still running. It reads false both when the job
@@ -49,7 +55,7 @@
 -- is what tells the two apart, the same split `health_rule_count` already relies on.
 --
 -- Feeds: CO-04-01 (streaming triggers), REL-01 (job health), OE-04 (monitoring), PE-05-03
--- (streaming backlog alerting).
+-- (streaming backlog alerting), SCP-04-22 (run-as identity).
 -- Every definition, ranked. Only partition keys are filtered here: an empty `workspace_id` means the
 -- scope could not be narrowed and the whole visible account is assessed, which the scan records and the
 -- UI states rather than leaving implied.
@@ -73,6 +79,7 @@ SELECT
   job_id,
   name,
   run_as,
+  run_as_user_name                                        AS run_as_name,
   trigger_type,
   trigger.continuous.enabled                              AS continuous,
   -- True only when a quartz expression is present. False when the job is genuinely unscheduled, when

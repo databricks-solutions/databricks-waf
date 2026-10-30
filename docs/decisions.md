@@ -152,3 +152,25 @@ Durable audit gaps, the other state that was per instance, are decided in D7.
 - `app/server/api/publication-routes.ts`: the assembly of a month's opening and closing readings, shared by preview, publish and correction, and the closing scan each earlier month's trend point is read from.
 - `app/client/src/pages/HistoryPage.tsx` and `app/client/src/pages/schedule-language.ts`: the scan filter and its scheduled default.
 - `docs/scheduled-scans.md`: the scheduled principal and its grants.
+
+## A7: a job's run-as identity is classified on its name, with no directory lookup
+
+**Status:** decided 2026-10-29 by the product owner
+
+**Decision.** The job inventory reads `run_as_user_name` beside `run_as`, and the run-as control (`SCP-04-22`) classifies on the name:
+
+1. **An email address is a user.** A value with text on both sides of a single `@` counts as a user account.
+2. **A UUID is a service principal.** The platform writes a service principal's application ID there.
+3. **Anything else is unknown.** A group name, or any other value that is neither of the above, is reported and left out of the share's denominator. A name that was never recorded is unknown too.
+4. **No directory lookup.** A name is never resolved through SCIM or any other identity API.
+
+The verdict bands are unchanged. The share that decides the outcome is service principals over users and service principals, and the evidence says how many jobs could not be classified. When no job can be classified, the control is not applicable.
+
+**Reason.** In `system.lakeflow.jobs`, `run_as` holds the ID of the user or service principal, so it carries an ID for both kinds and cannot tell them apart. `run_as_user_name` holds the email of the user, the application ID of the service principal, or a group name, which can. The control therefore reads `run_as_user_name`. A service principal whose name is not a UUID is treated as unknown, because its shape cannot be told from a group name. The name column is not populated for rows written before early December 2025, so an unrecorded name is unknown rather than a pass or a fail. A directory lookup would add calls and depend on APIs that not every reader of the estate can use, to resolve a shape the name already carries for users and service principals. The schema is documented at <https://docs.databricks.com/aws/en/admin/system-tables/jobs>.
+
+**Governs:**
+
+- `app/config/statements/jobs_inventory.sql`: projects `run_as_user_name` as `run_as_name` beside `run_as`.
+- `app/server/collect/sql/shapes.ts`: `JobRow.runAsName` and the job row parser.
+- `app/server/resolve/resolvers/security-jobs.ts`: `runAsKind`, which classifies the name, and the `SCP-04-22` resolver, which lists user-run jobs by name.
+- `app/server/share/projection.ts`: unchanged. The name is a principal identifier, and it is withheld from readers outside the assessor group in the same evidence as before.
