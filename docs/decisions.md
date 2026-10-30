@@ -15,13 +15,15 @@ Each section records one settled question about how the App works: what was deci
 
 **Decision.** Confirming a pillar accepts every answer that still counts as evidence: a current answer, and an answer that is due for renewal but has not expired. Only an unanswered question or an expired answer has to be dealt with before the pillar can be confirmed.
 
-**Reason.** A due answer has not lapsed. The run scores it and the published report counts it, so refusing it at confirmation would hold a pillar back on evidence the score already rests on. On a 30-day cadence that would block confirmation for the last ten days of every answer. Expiry, the renewal window and the cadence are unchanged, and an expired answer still blocks confirmation.
+**Reason.** A due answer has not lapsed. The run scores it and the published report counts it, so refusing it at confirmation would hold a pillar back on evidence the score already rests on. On a 30-day cadence that would block confirmation for the last ten days of every answer. Expiry, the renewal window and the cadence are unchanged, and an expired answer still blocks confirmation. If a cited due answer expires before every selected pillar in the review is recorded, finalisation refuses, and a new scan and review are required.
 
 **Governs:**
 
 - `app/server/review/review.ts`: `pillarEvidenceManifest`, which accepts an answer when `counts()` says it still counts at the moment the pillar is decided.
 - `app/server/api/review-routes.ts`: pillar confirmation, which refuses with `pillar-needs-attention` only while an unanswered question or an expired answer remains.
 - `app/server/attest/attestation.ts`: `stateOf()` and `counts()`, the one definition of current, due and expired that scoring, confirmation and the published report share.
+- `app/server/review/projection.ts` and `app/server/api/review-routes.ts`: `CitedAnswerLapsedError`, the refusal when a cited answer lapsed before the last pillar was recorded, and its remedy of renewing the answer and starting a new review from a new scan.
+- `app/client/src/pages/review-language.ts`: the confirm notice, which names the earliest renewal date when it cites a due answer.
 
 ## A19: dependency advisories are fixed by upgrading Appkit first
 
@@ -58,7 +60,7 @@ Each section records one settled question about how the App works: what was deci
 
 **Status:** decided 2026-10-29 by the product owner
 
-**Decision.** A change is attributed to the identity the workspace returns for the caller's token: the `userName` from the SCIM current-user answer. A forwarded identity header is never the name a change is recorded under. When the header is present and names someone other than that `userName`, compared without regard to case, the change is refused with `403 identity-mismatch` and the refusal is recorded in the audit trail under the verified name. A request with no header is attributed to the verified `userName`. A service principal is recorded under its application id, which is its `userName`, with its display name kept beside it as `actorName`. Read-only routes keep the header shortcut, because they attribute nothing.
+**Decision.** A change is attributed to the identity the workspace returns for the caller's token: the `userName` from the SCIM current-user answer. Whenever SCIM returns a `userName`, a forwarded identity header is never the name a change is recorded under. When the header is present and names someone other than that `userName`, compared without regard to case, the change is refused with `403 identity-mismatch` and the refusal is recorded in the audit trail under the verified name. A request with no header is attributed to the verified `userName`. If the workspace returns no `userName` for a token (for example a token whose directory record omits `userName`), there is nothing to compare, and `verifiedIdentityFrom` falls back to the forwarded header actor. A service principal is recorded under its application id, which is its `userName`, with its display name kept beside it as `actorName`. Read-only routes keep the header shortcut, because they attribute nothing.
 
 **Reason.** Permission to change an assessment is decided on the groups SCIM lists for the token. If the name written beside the act came from somewhere else, a change could be authorised for one person and recorded against another, and the audit trail would stop describing who was permitted. Using the one name that the groups belong to keeps authorisation and attribution on the same principal. A mismatch is refused rather than resolved in favour of either name, because nothing in the request says which one is right. The app does not control the proxy in front of it, so it does not rely on the proxy to have replaced the header.
 
@@ -298,3 +300,101 @@ The sentence still says what this metastore governs and not that it is everythin
 - `app/shared/api/comparability.ts`: `methodologyBarrier`, which refuses a comparison across public versions or digests and names the interim variant.
 - `app/client/src/methodology-identity.ts`, `app/client/src/pages/methodology-language.ts` and `app/client/src/pages/MethodologyPage.tsx`: the stamp label on run and report stamps, and the Methodology page wording for a release or a candidate.
 - `app/server/api/publication-routes.ts`: `methodologyRefusal`, which refuses a month closed on the interim variant.
+
+## D8: an optional AI layer is planned, is not yet available, and will never change a finding or score
+
+**Status:** decided 2026-10-29 by the product owner
+
+**Decision.** Public text says what ships. No AI layer is available today. Where the repository mentions one, it says that an optional AI layer is planned and not yet available, and that it will never be able to change a finding or a score. Decision records are cited by their heading on this page, not by an external document.
+
+**Reason.** `app/server/ai/gateway.ts` is not wired into any route, so a sentence saying the AI layer "can explain and prioritise findings" described something a reader cannot use. The boundary that matters, that scoring is deterministic and rests on collected evidence and recorded answers, holds today and is worth stating without promising a feature.
+
+**Governs:**
+
+- `README.md` and `SECURITY.md`: the trust and data boundary wording.
+- `CONTRIBUTING.md` and `docs/contributing.md`: the catalogue and scoring rule for contributors.
+- `app/server/ai/gateway.ts`: present and tested, and not reachable from any route.
+
+## A2: estate reads act as the signed-in user, the app's service principal owns Lakebase, and schedules use a dedicated service principal
+
+**Status:** decided 2026-10-29 by the product owner
+
+**Decision.** There are three identities, each used for one purpose.
+
+1. Reads of the estate run on behalf of the signed-in user, with the 8 user API scopes the App declares: `sql.statement-execution`, `sql.warehouses:read`, `catalog.catalogs:read`, `catalog.schemas:read`, `catalog.tables:read`, `model-serving`, `vector-search` and `sql.query-history:read`. The App never requests `all-apis`.
+2. The App's own service principal owns and writes the Lakebase schema.
+3. A scheduled run reads as a dedicated service principal chosen by the installer, whose identity is recorded on the run (see A9).
+
+A workspace admin may restrict which scopes apps can request, and the install guide says so and lists the 8.
+
+**Reason.** A reader's own grants decide what an interactive run can see, so the App cannot be used to read more than the person could. The scopes are named by API family so that settings, authentication, clusters and secrets stay out of reach. The service principal that owns the schema is the identity that writes to it, which avoids a role that can connect and then be refused on its own tables.
+
+**Governs:**
+
+- `app/databricks.yml`: `user_api_scopes`, the list the install guide reproduces.
+- `app/app.yaml`: the scopes the App declares.
+- `app/scripts/lifecycle.mjs`: the check that the effective scopes match the manifests.
+- `docs/install.md` and `docs/configuration.md`: the scope list and the admin restriction note.
+
+## A5: one install per region, in a governance workspace
+
+**Status:** decided 2026-10-29 by the product owner
+
+**Decision.** Install the App once per region, in a governance workspace. The App stores one set of governance records for the estate it assesses.
+
+**Reason.** The records are the product's output: assessments, reviews, publications and improvement actions. Several installs in one region would split them across databases that cannot be compared or published together.
+
+**Governs:**
+
+- `docs/install.md`: the "Where to install" section.
+
+## A11: the estate score is the unweighted mean of the pillar scores, shown with its range and coverage
+
+**Status:** decided 2026-10-29 by the product owner
+
+**Decision.** The overall figure is the unweighted mean of the pillar scores that scored. It is always shown with its range and with the share of applicable requirements that were evaluated, and it is not weighted toward better-measured pillars.
+
+**Reason.** One large pillar cannot dominate a mean of pillars, and weighting toward what was measured would flatter an estate for being unreadable. Showing the range and the coverage next to the figure tells a reader how much of it rests on measurement.
+
+**Governs:**
+
+- `app/server/score/score.ts`: `Score.overall` and `Score.range`.
+- `app/client/src/pages/OverviewPage.tsx`, `app/client/src/components/coverage.ts` and `app/client/src/components/score-range.ts`: the posture panel, which shows coverage and the range beside the figure.
+
+## A14: unkeyed digests detect accidental change, and tamper evidence comes from governance history held in Unity Catalog
+
+**Status:** decided 2026-10-29 by the product owner
+
+**Decision.** The SHA-256 digest stamped on a stored record detects a change made by accident or behind the App's back, and identifies an exported document. It is not keyed, so a person who can write the database can change a record and recompute its digest. The App does not describe it as tamper evidence. Tamper evidence comes from keeping the governance history in Unity Catalog, outside the App's own database, which is planned.
+
+**Reason.** Nothing in a record digest is secret, so it cannot prove who wrote a record. Saying so keeps a recipient from trusting it for more than it gives.
+
+**Governs:**
+
+- `app/server/records/digest.ts` and `app/server/records/verify.ts`: what the digest does and does not establish.
+- `SECURITY.md`: the statement of what the digest does not buy.
+
+## A17: schema migrations stay additive and backward compatible
+
+**Status:** decided 2026-10-29 by the product owner
+
+**Decision.** A schema change adds tables, columns and indexes. It never drops, renames or changes the type of anything that an earlier version reads or writes.
+
+**Reason.** A rolling deploy runs two versions of the App against one database at once, and a rollback runs the earlier version against the schema the later one migrated. Either version has to work on the schema as it stands.
+
+**Governs:**
+
+- `app/server/store/postgres.ts`: the schema the App creates on boot.
+- `CONTRIBUTING.md` and `docs/contributing.md`: the contributor rule.
+
+## A22: evidence that is collected and held is disclosed in the coverage ledger
+
+**Status:** decided 2026-10-29 by the product owner
+
+**Decision.** The administrator script collects evidence for 16 requirements that the App does not yet read back. That is accepted and disclosed: the coverage ledger names them as "Collected, held", and the answer to each remains the person's. Reading them back is planned for a later methodology version, highest severity first.
+
+**Reason.** Holding the readings and naming them keeps the import lossless and keeps the ledger honest about what is scored. Reviving them changes what is scored, which needs a new methodology version rather than a documentation change.
+
+**Governs:**
+
+- `docs/coverage-ledger.md`: the three states of administrator script evidence and the per-requirement table.

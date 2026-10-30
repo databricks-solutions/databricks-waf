@@ -14,7 +14,7 @@ import { PillarIcon } from './shell/PillarIcon';
 import { shortPillarLabel } from './shell/pillar-label';
 import { Badge, type Tone } from './ui/StatusBadge';
 import { Surface } from './system';
-import { attentionReason } from '../pages/review-summary';
+import { needsWork } from '../pages/review-summary';
 import { answerWalkForAssessmentPath, continuationPath, runHistoryPath } from '../assessment-continuation';
 import type { AssessmentReview, AttestableRequirement, Score } from '../api/types';
 
@@ -153,7 +153,7 @@ export function UnpublishedSummary({
           ? requirementsLoading
             ? 'Reading questions'
             : 'Questions not read'
-          : `${String(requirements.filter((one) => attentionReason(one) != null).length)} questions need attention`
+          : `${String(requirements.filter((one) => needsWork(one)).length)} questions need attention`
         : recorded != null
           ? `${String(recorded)} of ${String(reviewPillars?.length ?? shownPillars.length)} pillars recorded`
           : reviewLoading
@@ -226,7 +226,7 @@ export function UnpublishedSummary({
             const coverage = score == null ? undefined : pillarCoverage(score);
             const humanAttention = requirements
               ?.filter((requirement) => requirement.pillarId === pillar.id)
-              .filter((requirement) => attentionReason(requirement) != null).length;
+              .filter((requirement) => needsWork(requirement)).length;
             return (
               <li key={pillar.id} className="wa-scorecard">
                 <span className="flex items-start gap-1.5">

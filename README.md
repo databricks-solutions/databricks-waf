@@ -168,7 +168,8 @@ The table counts 184 catalogue entries against 165 scored controls. The differen
   group see. Everyone else gets a placeholder, in pages and exports alike.
 - Customer records remain in customer-owned Lakebase. The App never asks for or stores personal access
   tokens.
-- The optional AI layer can explain and prioritise findings. It cannot change a finding or score.
+- An optional AI layer is planned and is not yet available. When it exists it will never be able to change a
+  finding or score.
 
 Read [the complete security model](SECURITY.md), including the declared API scopes and vulnerability
 reporting process.
@@ -214,7 +215,7 @@ docs/design/            Customer experience and guidance authoring standards
 the [Databricks License](https://databricks.com/db-license-source). See [LICENSE.md](LICENSE.md) for
 details. Every included third-party package remains subject to its own licence.
 
-The complete production lockfile contains 518 third-party package/version pairs across every optional
+The complete production lockfile contains 516 third-party package/version pairs across every optional
 runtime platform. All are listed in [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md), and CI refuses a
 production dependency whose licence is absent or outside the reviewed allowlist.
 
@@ -224,9 +225,9 @@ production dependency whose licence is absent or outside the reviewed allowlist.
 
 | Licence | Resolved production packages |
 | --- | ---: |
-| MIT | 385 |
-| Apache-2.0 | 101 |
-| ISC | 29 |
+| MIT | 357 |
+| Apache-2.0 | 100 |
+| ISC | 27 |
 | BSD-3-Clause | 15 |
 | MPL-2.0 | 12 |
 | 0BSD | 2 |

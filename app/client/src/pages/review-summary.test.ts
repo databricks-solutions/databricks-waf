@@ -2,9 +2,12 @@ import { describe, expect, it } from 'vitest';
 import {
   ATTENTION_REASONS,
   attentionReason,
+  earliestDueBy,
+  needsWork,
   pillarToWrite,
   recordedOf,
   resumePillar,
+  skippedUnresolved,
   summarisePillars,
 } from './review-summary';
 import type { AssessmentReview, AttestableRequirement, Finding, PillarReview } from '../api/types';
@@ -99,12 +102,12 @@ describe('why a requirement needs attention', () => {
     ).toBe('expired');
   });
 
-  it('asks a due answer as due', () => {
+  it('leaves a due answer off the list, because it still counts until its review date', () => {
     expect(
       attentionReason(
         requirement({ controlId: 'OE-01-01', pillarId: 'operational-excellence', attestation: answered('due') })
       )
-    ).toBe('due');
+    ).toBeNull();
   });
 
   it('does not ask a capped requirement nobody has answered, because the measurement already stands', () => {
@@ -122,14 +125,14 @@ describe('why a requirement needs attention', () => {
     expect(attentionReason(capped)).toBeNull();
   });
 
-  it('asks a due capped answer as due, because it still counts and is about to stop', () => {
+  it('leaves a due capped answer off the list, because it still counts and is not a question this review asks', () => {
     const capped = requirement({
       controlId: 'OE-01-06',
       pillarId: 'operational-excellence',
       askedBecause: 'capped',
       attestation: answered('due'),
     });
-    expect(attentionReason(capped)).toBe('due');
+    expect(attentionReason(capped)).toBeNull();
   });
 
   it('names inconclusive only when the scan handed over a question nobody has answered', () => {
@@ -145,8 +148,7 @@ describe('why a requirement needs attention', () => {
   });
 
   it('does not relabel a due inconclusive answer as inconclusive', () => {
-    // The field that moved is the attestation state. Calling it inconclusive would hide that it still
-    // counts and is close to its review date.
+    // The field that moved is the attestation state, and a due answer still counts, so it is not asked.
     expect(
       attentionReason(
         requirement({
@@ -156,11 +158,11 @@ describe('why a requirement needs attention', () => {
           attestation: answered('due'),
         })
       )
-    ).toBe('due');
+    ).toBeNull();
   });
 
   it('has no changed or event-triggered reason, because no field carries either', () => {
-    expect(ATTENTION_REASONS).toEqual(['expired', 'due', 'unanswered', 'inconclusive']);
+    expect(ATTENTION_REASONS).toEqual(['expired', 'unanswered', 'inconclusive']);
     expect(ATTENTION_REASONS).not.toContain('changed');
     expect(ATTENTION_REASONS).not.toContain('event-triggered');
   });
@@ -297,19 +299,64 @@ describe('a pillar summary', () => {
     expect(row?.recorded).toEqual(skip);
   });
 
-  it('orders attention expired, then due, then unanswered', () => {
+  it('puts due answers with the ones that count, mandatory or capped, and cites them', () => {
     const [row] = summarisePillars(
       ['operational-excellence'],
       review(),
       [],
       [
-        requirement({ controlId: 'OE-01-03', pillarId: 'operational-excellence', title: 'Unanswered later' }),
         requirement({
           controlId: 'OE-01-01',
           pillarId: 'operational-excellence',
-          title: 'Due one',
           attestation: answered('due'),
         }),
+        requirement({
+          controlId: 'OE-01-06',
+          pillarId: 'operational-excellence',
+          askedBecause: 'capped',
+          attestation: answered('due'),
+        }),
+        requirement({
+          controlId: 'OE-01-07',
+          pillarId: 'operational-excellence',
+          askedBecause: 'capped',
+          attestation: answered('expired'),
+        }),
+        requirement({ controlId: 'OE-01-08', pillarId: 'operational-excellence', askedBecause: 'capped' }),
+      ]
+    );
+    expect(row?.reused.map((one) => one.controlId)).toEqual(['OE-01-01', 'OE-01-06']);
+    expect(row?.attention).toEqual([]);
+    expect(row?.cited).toBe(2);
+  });
+
+  it('keeps expired and unanswered mandatory requirements on the attention list', () => {
+    const [row] = summarisePillars(
+      ['operational-excellence'],
+      review(),
+      [],
+      [
+        requirement({ controlId: 'OE-01-01', pillarId: 'operational-excellence', attestation: answered('expired') }),
+        requirement({ controlId: 'OE-01-02', pillarId: 'operational-excellence' }),
+      ]
+    );
+    expect(row?.attention.map((one) => one.requirement.controlId)).toEqual(['OE-01-01', 'OE-01-02']);
+    expect(row?.cited).toBe(0);
+  });
+
+  it('orders attention expired, then unanswered, then inconclusive', () => {
+    const [row] = summarisePillars(
+      ['operational-excellence'],
+      review(),
+      [],
+      [
+        requirement({
+          controlId: 'OE-01-04',
+          pillarId: 'operational-excellence',
+          title: 'Handed over',
+          askedBecause: 'inconclusive',
+        }),
+        requirement({ controlId: 'OE-01-03', pillarId: 'operational-excellence', title: 'Unanswered later' }),
         requirement({
           controlId: 'OE-01-02',
           pillarId: 'operational-excellence',
@@ -318,7 +365,101 @@ describe('a pillar summary', () => {
         }),
       ]
     );
-    expect(row?.attention.map((one) => one.reason)).toEqual(['expired', 'due', 'unanswered']);
+    expect(row?.attention.map((one) => one.reason)).toEqual(['expired', 'unanswered', 'inconclusive']);
+  });
+});
+
+describe('what calls for work beyond the review gate', () => {
+  it('counts a due answer, which a review does not wait on but a reader should see coming', () => {
+    const base = { controlId: 'OE-01-01', pillarId: 'operational-excellence' } as const;
+    expect(needsWork(requirement({ ...base, attestation: answered('due') }))).toBe(true);
+    expect(needsWork(requirement({ ...base, askedBecause: 'capped', attestation: answered('due') }))).toBe(true);
+    expect(needsWork(requirement({ ...base, attestation: answered('current') }))).toBe(false);
+    expect(needsWork(requirement({ ...base, askedBecause: 'capped' }))).toBe(false);
+    expect(needsWork(requirement(base))).toBe(true);
+  });
+});
+
+describe('the earliest date a due answer stops counting', () => {
+  const base = { controlId: 'OE-01-01', pillarId: 'operational-excellence' } as const;
+  const dueBy = (reviewBy: string) => ({ ...answered('due'), reviewBy });
+
+  it('is the earliest review date among the due answers a confirm would cite', () => {
+    const [row] = summarisePillars(
+      ['operational-excellence'],
+      review(),
+      [],
+      [
+        requirement({ ...base, attestation: dueBy('2026-09-20T00:00:00.000Z') }),
+        requirement({ ...base, controlId: 'OE-01-02', attestation: dueBy('2026-09-05T00:00:00.000Z') }),
+        requirement({
+          ...base,
+          controlId: 'OE-01-03',
+          attestation: { ...answered('current'), reviewBy: '2026-08-30T00:00:00.000Z' },
+        }),
+      ]
+    );
+    expect(row == null ? undefined : earliestDueBy(row)).toBe('2026-09-05T00:00:00.000Z');
+  });
+
+  it('reads every pillar of the review, not only the one on screen, and ignores a skipped pillar', () => {
+    const pillars = ['operational-excellence', 'security-compliance-and-privacy', 'reliability'];
+    const summaries = summarisePillars(
+      pillars,
+      review([recorded('reliability', 'skipped')]),
+      [],
+      [
+        requirement({ ...base, attestation: dueBy('2026-09-20T00:00:00.000Z') }),
+        requirement({
+          controlId: 'SCP-01-01',
+          pillarId: 'security-compliance-and-privacy',
+          attestation: dueBy('2026-09-10T00:00:00.000Z'),
+        }),
+        requirement({ controlId: 'REL-01-01', pillarId: 'reliability', attestation: dueBy('2026-09-01T00:00:00.000Z') }),
+      ]
+    );
+
+    // The pillar on screen alone would say 20 September.
+    const onScreen = summaries[0];
+    expect(onScreen == null ? 'missing' : earliestDueBy(onScreen)).toBe('2026-09-20T00:00:00.000Z');
+    expect(earliestDueBy(summaries)).toBe('2026-09-10T00:00:00.000Z');
+  });
+
+  it('is absent when every cited answer is current', () => {
+    const [row] = summarisePillars(
+      ['operational-excellence'],
+      review(),
+      [],
+      [requirement({ ...base, attestation: answered('current') })]
+    );
+    expect(row == null ? 'missing' : earliestDueBy(row)).toBeUndefined();
+  });
+});
+
+describe('what a skip leaves behind', () => {
+  it('counts mandatory answers and questions but not capped ones, whose measurement stands either way', () => {
+    const [row] = summarisePillars(
+      ['operational-excellence'],
+      review(),
+      [],
+      [
+        requirement({ controlId: 'OE-01-01', pillarId: 'operational-excellence', attestation: answered('due') }),
+        requirement({ controlId: 'OE-01-02', pillarId: 'operational-excellence' }),
+        requirement({
+          controlId: 'OE-01-06',
+          pillarId: 'operational-excellence',
+          askedBecause: 'capped',
+          attestation: answered('current'),
+        }),
+        requirement({
+          controlId: 'OE-01-07',
+          pillarId: 'operational-excellence',
+          askedBecause: 'capped',
+          attestation: answered('due'),
+        }),
+      ]
+    );
+    expect(row == null ? -1 : skippedUnresolved(row)).toBe(2);
   });
 });
 

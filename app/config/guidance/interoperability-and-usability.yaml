@@ -370,7 +370,7 @@ entries:
       provider, or some use cases go through an endpoint and others call an SDK directly.
     references:
       - https://docs.databricks.com/aws/en/machine-learning/manage-model-lifecycle/
-      - https://docs.databricks.com/aws/en/agents/custom-agents/build-agents
+      - https://docs.databricks.com/aws/en/agents
     advice:
       start_from: >-
         Every production model and agent is registered in Unity Catalog through MLflow and served

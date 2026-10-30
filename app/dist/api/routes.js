@@ -787,16 +787,19 @@ function registerApi(served, options) {
 	app.get("/api/scan/readiness", async (request, response) => {
 		try {
 			const token = userToken(request);
-			const identity = identityFrom(actorFromHeaders(request), await probeCurrentUser({
+			const headerActor = actorFromHeaders(request);
+			const user = await probeCurrentUser({
 				host: options.host,
 				token
-			}));
+			});
+			const identity = verifiedIdentityFrom(headerActor, user);
 			let may;
 			try {
+				requireVerifiedIdentity(headerActor, user.userName);
 				requirePermission(options.assessorGroup, identity);
 				may = { start: true };
 			} catch (cause) {
-				if (!(cause instanceof NotPermittedError) || cause.kind === "identity-mismatch") throw cause;
+				if (!(cause instanceof NotPermittedError)) throw cause;
 				may = {
 					start: false,
 					refusal: cause.kind,
@@ -2212,6 +2215,7 @@ function begin(recorder, response, action, who, context) {
 	if (recorder == null) return {
 		performed: () => Promise.resolve(),
 		failed: () => Promise.resolve(),
+		unchanged: () => void 0,
 		settle: () => Promise.resolve()
 	};
 	return closedWhenAnswered(recorder.begin(action, who, context), response);
@@ -2386,7 +2390,18 @@ async function scanStatus(local, runs) {
 		return onThisProcess(runs.holding());
 	}
 	if (live == null) return onThisProcess(runs.holding());
-	if (local != null && runs.holding() === live.id) return onThisProcess(live.id);
+	if (runs.holding() === live.id || runs.owns?.(live) === true) {
+		if (local != null) return onThisProcess(live.id);
+		return {
+			running: true,
+			startedAt: live.requestedAt,
+			actor: live.actor,
+			scope: live.request.scope,
+			trigger: live.trigger,
+			callsMade: 0,
+			run: live.id
+		};
+	}
 	return {
 		running: true,
 		startedAt: live.requestedAt,
@@ -2440,4 +2455,4 @@ function respondToFailure(response, cause) {
 	});
 }
 //#endregion
-export { registerApi };
+export { registerApi, scanStatus };

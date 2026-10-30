@@ -163,6 +163,15 @@ export interface Act {
   /** The caller was permitted and it did not complete. */
   failed(cause: unknown, target?: AuditTarget): Promise<void>;
   /**
+   * The caller was permitted, asked for something, and the handler found nothing to change.
+   *
+   * Closes the act without an event, so the close-of-response net does not write a `performed` row
+   * for a request that changed nothing. Only for a repeat of a change the trail already holds: an
+   * absence in this table still has to mean nobody tried, and a request that was refused or that
+   * failed is never "unchanged".
+   */
+  unchanged(): void;
+  /**
    * Closes an act nothing else closed, from the status the route answered with.
    *
    * The net under the other two, called once per act when the response closes — see `begin` in
@@ -258,6 +267,9 @@ export class AuditRecorder {
     return {
       performed: (target, emptied) => write('performed', target, undefined, emptied),
       failed: (cause, target) => write('failed', target, reasonFor(cause)),
+      unchanged: () => {
+        closed = true;
+      },
       settle: (status) =>
         status < 400 ? write('performed', undefined, undefined) : write('failed', undefined, `http-${String(status)}`),
     };
@@ -386,7 +398,11 @@ export class AuditRecorder {
    */
   private async mark(event: AuditEvent, error: unknown): Promise<void> {
     const gaps = this.options.gaps;
-    if (gaps == null) return;
+    // Not for the acknowledgement of a lost event. The marker it would leave is a new unacknowledged
+    // gap, so acknowledging one loss while the table is failing would hand the page another to
+    // acknowledge, and that one's own acknowledgement would do the same. The loss is still counted
+    // and reported to the operator above.
+    if (gaps == null || event.action === 'gap.acknowledge') return;
 
     try {
       await gaps.record({

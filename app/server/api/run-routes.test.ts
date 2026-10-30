@@ -184,6 +184,7 @@ async function serve(
           if (typeof cause === 'string') recorded.reason = cause;
           return Promise.resolve();
         },
+        unchanged: () => undefined,
         settle: () => Promise.resolve(),
       };
       return Promise.resolve({ actor: 'priya@example.com', act });

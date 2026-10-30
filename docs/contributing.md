@@ -101,7 +101,7 @@ Update visual baselines only after reviewing the rendered change. Tablet and mob
 
 ### Catalogue, scoring or SQL changes
 
-Every control must declare provenance, applicability, measurability and evidence path. AI may explain or prioritise but may not determine a finding or score. Run:
+Every control must declare provenance, applicability, measurability and evidence path. An optional AI layer is planned and not yet available; when it exists it must never determine a finding or score. Run:
 
 ```bash
 npm run validate:catalogue
@@ -122,6 +122,8 @@ npm run test:live
 ```
 
 The live suite creates and removes only its own test schema. Review the target first.
+
+Schema migrations must stay additive and backward compatible: new tables, columns and indexes only, with no drop, rename or type change. A rolling deploy runs the old and the new version side by side against one database, so the older version must keep working on the schema the newer one has already migrated. See decision A17 in [Product decisions]({{ '/decisions/' | relative_url }}).
 
 ### DAB changes
 

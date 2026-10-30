@@ -3,7 +3,7 @@
   "scannedFactor": 1.75,
   "scannedFloorBytes": 4194304,
   "why": "Each duration here is the median of a recording in an earlier commit than the one the gate checks, which is what lets the comparison fail on a change. `samples` and `spreadRatio` are that recording's, so a reader can see how thick the median under a number is. The factor is the slowdown tolerated without a fresh acceptance; it is a choice, not a measurement. `scannedBytes` is the data read to compute the answer rather than the size of the answer, it is one reading rather than a median, and it carries its own factor because it moves for different reasons: two recordings 30 minutes apart, with no change between them, ranged from 0.325x to 1.094x of each other. So the factor is above observed growth and below one extra full read of a dominant relation, which is the regression it is for. Below `scannedFloorBytes` the ratio is not held: seven statements scan zero counted bytes, so a ratio there would fail on how the platform serves a metadata view rather than on our SQL.",
-  "acceptedAt": "2026-08-16T20:45:15.753Z",
+  "acceptedAt": "2026-10-29T21:52:50.893Z",
   "statements": {
     "auth_login_paths": {
       "durationMs": 8641,
@@ -96,14 +96,14 @@
       "acceptedAt": "2026-08-16T20:11:53.743Z"
     },
     "jobs_inventory": {
-      "durationMs": 4546,
-      "scannedBytes": 14958,
+      "durationMs": 2618,
+      "scannedBytes": 27095,
       "samples": 5,
-      "spreadRatio": 1.17,
-      "statementId": "01f1955e-aa7b-10c8-8cfc-a2034b7b5eab",
-      "statementSha": "sha256:6a15afa100109201de028dfb155760df701b5cb8f7c262e2a9bab2bf424b3f6a",
-      "measuredAt": "2026-08-11T08:28:44.239Z",
-      "acceptedAt": "2026-08-16T18:38:45.836Z"
+      "spreadRatio": 1.11,
+      "statementId": "01f1d3e2-160d-163e-a753-fbb0e71d3a54",
+      "statementSha": "sha256:f2b96318ed2cdc68a27a8e0c9cbd207b3f0ba2d08bdc28799558b5eee6bfc100",
+      "measuredAt": "2026-10-29T21:45:41.029Z",
+      "acceptedAt": "2026-10-29T21:52:50.893Z"
     },
     "lakeflow_pipeline_inventory": {
       "durationMs": 4691,
@@ -144,6 +144,26 @@
       "statementSha": "sha256:8c7e23b92cb19ad84be4f222a40248984d8da16896fdca179fdeaa3d95b328ad",
       "measuredAt": "2026-08-11T08:30:00.879Z",
       "acceptedAt": "2026-08-16T18:38:45.836Z"
+    },
+    "query_capacity": {
+      "durationMs": 2761,
+      "scannedBytes": 1235056,
+      "samples": 5,
+      "spreadRatio": 1.04,
+      "statementId": "01f1d3e2-3988-1e63-860a-bb19ae712b89",
+      "statementSha": "sha256:ce5bd87df605608b2e5ff160e4b437336e0c416edb5539f9b6c2f2c48670be7f",
+      "measuredAt": "2026-10-29T21:46:40.570Z",
+      "acceptedAt": "2026-10-29T21:52:50.893Z"
+    },
+    "security_dbfs_tables": {
+      "durationMs": 981,
+      "scannedBytes": 0,
+      "samples": 5,
+      "spreadRatio": 1.77,
+      "statementId": "01f1d3e2-41aa-1983-b713-35dd9f658463",
+      "statementSha": "sha256:f737e35ef044f25fdd0b8e63ccc16a5eb331a4769ac85a266a37b5851d5496ae",
+      "measuredAt": "2026-10-29T21:46:54.233Z",
+      "acceptedAt": "2026-10-29T21:52:50.893Z"
     },
     "serverless_job_readiness": {
       "durationMs": 4096,
@@ -296,14 +316,14 @@
       "acceptedAt": "2026-08-16T18:38:45.836Z"
     },
     "workload_query_shapes": {
-      "durationMs": 14751,
-      "scannedBytes": 208612270,
+      "durationMs": 9027,
+      "scannedBytes": 200324321,
       "samples": 5,
-      "spreadRatio": 1.15,
-      "statementId": "01f1955f-4dc8-1b51-aeb4-00cfa39188a1",
-      "statementSha": "sha256:77aeb204ca48391e889720107aa986843c8b9aeacf66b01696a15f9725bd075b",
-      "measuredAt": "2026-08-11T08:33:18.227Z",
-      "acceptedAt": "2026-08-16T18:38:45.836Z"
+      "spreadRatio": 1.12,
+      "statementId": "01f1d3e2-1dfa-15ac-914f-ec7c42097ccc",
+      "statementSha": "sha256:f59856986de171f79f4923ee27dbb2ff07c30e5ac5203b41b158dd7209bd5dd8",
+      "measuredAt": "2026-10-29T21:45:54.341Z",
+      "acceptedAt": "2026-10-29T21:52:50.893Z"
     },
     "workload_sql_paths": {
       "durationMs": 6841,
@@ -346,14 +366,14 @@
       "acceptedAt": "2026-08-16T20:11:53.743Z"
     },
     "workspace_directory": {
-      "durationMs": 4020,
-      "scannedBytes": 1020176,
+      "durationMs": 5909,
+      "scannedBytes": 2550348,
       "samples": 5,
-      "spreadRatio": 1.1,
-      "statementId": "01f199b2-69e2-1a82-aa89-8d10008b2757",
-      "statementSha": "sha256:e1c94c8fcbd8f5e4fe8e3bb186374cb248df04fd9851c0c28ebee44f525c83b8",
-      "measuredAt": "2026-08-16T20:38:18.320Z",
-      "acceptedAt": "2026-08-16T20:45:15.753Z"
+      "spreadRatio": 1.13,
+      "statementId": "01f1d3e2-0417-1b6c-b5b2-30c81e030aff",
+      "statementSha": "sha256:83eb5d18c3e193e6b9f9884455144264d2ad670480998dc98684b85e9cc0f123",
+      "measuredAt": "2026-10-29T21:45:10.914Z",
+      "acceptedAt": "2026-10-29T21:52:50.893Z"
     }
   }
 }

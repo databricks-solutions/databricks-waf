@@ -13,6 +13,17 @@ var FinalAssessmentProjectionError = class extends Error {
 		this.name = "FinalAssessmentProjectionError";
 	}
 };
+/**
+* A cited answer stopped counting between its pillar's confirm and the last selected pillar being
+* recorded. The confirm that froze it is written once, so nothing in this review can put it right:
+* the answer has to be renewed and the review started again from a new scan.
+*/
+var CitedAnswerLapsedError = class extends FinalAssessmentProjectionError {
+	constructor(attestationId) {
+		super(`Attestation ${attestationId} expired before every selected pillar was recorded, so this review can no longer be completed.`);
+		this.name = "CitedAnswerLapsedError";
+	}
+};
 function finalAssessmentProjector(options) {
 	const controls = new Map(options.catalogue.controls.map((control) => [control.id, control]));
 	const knownPillars = options.catalogue.pillars.map((pillar) => pillar.id);
@@ -46,7 +57,7 @@ function finalAssessmentProjector(options) {
 			const decision = decisionByPillar.get(finding.pillarId);
 			if (decision?.kind !== "confirmed" || !decision.attestationIds?.includes(id)) throw new FinalAssessmentProjectionError(`Attestation ${id} is not cited by the confirmed ${finding.pillarId} decision.`);
 			if (attestation.definitionId !== definition.id) throw new FinalAssessmentProjectionError(`Attestation ${id} belongs to a different assessment definition from the reviewed run.`);
-			if (!counts(attestation, result.finalisedAt)) throw new FinalAssessmentProjectionError(`Attestation ${id} expired before the review completed, so that pillar must be reviewed again.`);
+			if (!counts(attestation, result.finalisedAt)) throw new CitedAnswerLapsedError(id);
 			if (selectedByControl.has(attestation.controlId)) throw new FinalAssessmentProjectionError(`The completed review cites more than one answer for ${attestation.controlId}.`);
 			selectedByControl.set(attestation.controlId, attestation);
 			humanEvidence.push({
@@ -148,4 +159,4 @@ function unique(ids, message) {
 	return [...ids];
 }
 //#endregion
-export { FinalAssessmentProjectionError, finalAssessmentProjector };
+export { CitedAnswerLapsedError, FinalAssessmentProjectionError, finalAssessmentProjector };

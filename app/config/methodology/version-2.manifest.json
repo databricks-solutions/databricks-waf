@@ -3,11 +3,11 @@
   "public_version": 2,
   "name": "Databricks Well-Architected Assessment Methodology Version 2",
   "release": {
-    "state": "candidate",
+    "state": "released",
     "candidate_started_at": "2026-10-29",
-    "effective_date": null,
-    "commit": null,
-    "approved_by": null,
+    "effective_date": "2026-10-30",
+    "commit": "8cd410c28ded4a6d518ae5d39aec501e9948ac5a",
+    "approved_by": "Al Thrussell (product owner)",
     "approval_required_role": "product owner"
   },
   "support_boundary": {
@@ -11065,5 +11065,5 @@
     "methodology_content": "sha256:0f8a6416efc61e78d56db0fa3cf5f63a00e09d6d3ba4fcc9073851bd700ffe4b"
   },
   "generated_by": "app/scripts/methodology-manifest.mts",
-  "manifest_digest": "sha256:c5a7eb44c526acdbb2eb0c61ec1652517ce64bbbf08c9d7a70d4b9c2f2a3e4dc"
+  "manifest_digest": "sha256:b37a74119b37489b882713880c32005f5142d0c6da6903c8751d67debf69cffe"
 }

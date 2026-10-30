@@ -9,7 +9,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { MemoryRouter } from 'react-router';
 import type { MonthContent, MonthPreview, PublishedMonth } from '../api/types';
 import { MonthFigures, PublishedHeader, PublishAction } from './MonthView';
-import { viewedPublicationId } from './MonthsPage';
+import { MonthDetail, viewedPublicationId } from './MonthsPage';
 import { PREVIEW_NOTE } from './month-language';
 
 const DIGEST = 'sha256:0f4a1e2b3c4d5e6f70819293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7';
@@ -240,6 +240,49 @@ describe('published', () => {
     expect(markup).toContain('/api/months/2026-07/publications/pub-1.json');
     expect(markup).toContain('/api/months/2026-07/publications/pub-1.csv');
     expect(markup).toContain('download');
+  });
+});
+
+describe('a published month on the page', () => {
+  it('shows the closing reading and the movement note the frozen document carries', () => {
+    const closing = {
+      kind: 'latest-scan' as const,
+      statement: 'No scheduled run finished in July 2026, so the month closes on its latest scan.',
+    };
+    const movementNote = 'Movement is not shown: no earlier scan can be compared with the run that closed the month.';
+    const markup = renderToStaticMarkup(
+      <MemoryRouter>
+        <MonthDetail
+          month="2026-07"
+          label="July 2026"
+          preview={preview()}
+          publications={[publication()]}
+          standingIds={['pub-1']}
+          selected={publication()}
+          document={{
+            documentKind: 'databricks-waf-month',
+            documentVersion: 1,
+            publication: {
+              id: 'pub-1',
+              month: '2026-07',
+              monthLabel: 'July 2026',
+              publishedAt: '2026-09-01T09:00:00.000Z',
+              publishedBy: 'priya@example.com',
+            },
+            ...content(),
+            movement: [],
+            findingDeltas: [],
+            closing,
+            movementNote,
+          }}
+          onSelectPublication={() => undefined}
+          onChanged={() => undefined}
+        />
+      </MemoryRouter>
+    );
+
+    expect(markup).toContain(closing.statement);
+    expect(markup).toContain(movementNote);
   });
 });
 

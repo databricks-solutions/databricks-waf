@@ -322,6 +322,19 @@ describe('acknowledging a gap', () => {
     expect(body).toMatchObject({ id: 'event-9', acknowledgedBy: 'priya@example.com', already: true });
   });
 
+  it('writes one acknowledgement event for a gap acknowledged twice', async () => {
+    const { base, gaps, trail } = await serveWithGaps();
+    await gaps?.record(GAP);
+    await acknowledge(base, 'event-9');
+    await acknowledge(base, 'event-9');
+    // The event for the second request, if there were one, is written when its response closes.
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    expect((await trail.search()).events).toMatchObject([
+      { action: 'gap.acknowledge', outcome: 'performed', target: { kind: 'audit-gap', id: 'event-9' } },
+    ]);
+  });
+
   it('says there is nowhere to acknowledge on an install that keeps no markers', async () => {
     const { base } = await serveWithGaps({ gaps: null });
 
