@@ -196,7 +196,49 @@ describe('a definition store on a database that answers oddly', () => {
 
     const read = await loud.get('d1');
     expect(read?.versions.map((one) => one.version)).toEqual([1]);
-    expect(reported).toEqual(['read every assessment definition']);
+    expect(reported).toEqual(['read assessment definition d1']);
+  });
+
+  it('reads one definition by its id rather than every definition to find it', async () => {
+    const db = fake();
+    const store = postgres(db);
+    for (const id of ['d1', 'd2', 'd3']) await store.create(define(DRAFT, id, AT, BY));
+    db.statements.length = 0;
+
+    expect((await store.get('d2'))?.id).toBe('d2');
+    expect(await store.get('missing')).toBeUndefined();
+    expect(db.statements).toEqual([
+      'select id, archived_at from waf.assessment_definitions where id = $1',
+      'select definition_id, body from waf.assessment_definition_versions where definition_id = $1',
+      'select id, archived_at from waf.assessment_definitions where id = $1',
+      'select definition_id, body from waf.assessment_definition_versions where definition_id = $1',
+    ]);
+  });
+
+  it('answers a read of one definition the way the read of all of them does, archived or not', async () => {
+    const db = fake();
+    const store = postgres(db);
+    await store.create(define(DRAFT, 'd1', AT, BY));
+    await store.archive('d1', LATER);
+
+    const [fromAll] = await store.all();
+    expect(await store.get('d1')).toEqual(fromAll);
+    expect((await store.get('d1'))?.archivedAt).toEqual(LATER);
+  });
+
+  it('reports a failed read of one definition and re-throws', async () => {
+    const db = new FakePostgres({
+      keys: { assessment_definition_versions: ['definition_id', 'version'] },
+      failOn: (text) => (text.startsWith('select id') ? new Error('connection reset') : undefined),
+    });
+    const reported: string[] = [];
+    const store = new PostgresDefinitionStore({
+      db: { ...db, query: db.query.bind(db), end: db.end.bind(db) },
+      onError: (operation) => reported.push(operation),
+    });
+
+    await expect(store.get('d1')).rejects.toThrow('connection reset');
+    expect(reported).toEqual(['read assessment definition d1']);
   });
 
   it('hides a definition whose every version is unreadable, rather than showing an empty shell', async () => {

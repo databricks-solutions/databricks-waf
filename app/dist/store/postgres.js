@@ -266,6 +266,7 @@ async function ensureSchema(sql, schema) {
 	await sql.query(`create index if not exists accepted_risks_by_expiry on ${schema}.accepted_risks (expires_at asc, revoked)`);
 	await sql.query(`create index if not exists accepted_risks_by_owner on ${schema}.accepted_risks (owner)`);
 	await sql.query(`create index if not exists accepted_risks_by_sweep on ${schema}.accepted_risks (recorded_at asc)`);
+	await sql.query(`create index if not exists accepted_risks_newest_revision on ${schema}.accepted_risks (id, revision desc)`);
 	await sql.query(`
     create table if not exists ${schema}.applicability_decisions (
       id             text        not null,
@@ -290,6 +291,7 @@ async function ensureSchema(sql, schema) {
 	await sql.query(`create index if not exists applicability_by_expiry on ${schema}.applicability_decisions (expires_at asc, revoked)`);
 	await sql.query(`create index if not exists applicability_by_owner on ${schema}.applicability_decisions (owner)`);
 	await sql.query(`create index if not exists applicability_by_sweep on ${schema}.applicability_decisions (recorded_at asc)`);
+	await sql.query(`create index if not exists applicability_newest_revision on ${schema}.applicability_decisions (id, revision desc)`);
 	await sql.query(`
     create table if not exists ${schema}.notes (
       id           text        primary key,

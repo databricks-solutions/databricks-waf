@@ -53,25 +53,68 @@ export class PostgresEventLog<T extends LoggedEvent> {
   /**
    * The newest record for each requirement.
    *
-   * Every row is read and the newest picked in TypeScript, rather than `distinct on (control_id)`
-   * picking it in Postgres. The reason is that "newest" is not only the timestamp: two records can
-   * carry the same millisecond, and then the one that supersedes the other is the newer, which is
-   * what `newestFirstBy` knows and SQL does not. Doing it in SQL would give a subtly different
+   * Postgres narrows to each requirement's newest stamp and to every record tied with it, and what is
+   * left is settled here. "Newest" is not only the timestamp: two records can carry the same
+   * millisecond, and then the one that supersedes the other is the newer, which is what
+   * `newestFirstBy` knows and SQL does not. Doing the whole choice in SQL would give a subtly different
    * answer from the in-memory store for the same data, and two implementations of one interface
-   * disagreeing is worse than a query that reads more than it strictly needs.
+   * disagreeing is worse than a query that reads a little more than it strictly needs.
    *
-   * What it costs: one row per recorded statement, not per scan. That is bounded by the number of
-   * requirements a customer has answered, times how often they have revised an answer — hundreds,
-   * growing slowly. If it ever reaches the tens of thousands, the fix is a `distinct on` narrowing
-   * followed by the same projection over the survivors, which keeps the tie-break.
+   * A requirement is settled from the narrowed rows alone when exactly one row is left and it reads.
+   * Otherwise its whole history is read and reduced the way it always was: a tie is ordered by how much
+   * each record supersedes, a count that runs through records older than the tie, and a newest record
+   * that does not read hands the requirement to the newest one that does. Both are the exception, so
+   * what a read costs is the requirements and not the statements recorded about them.
    */
   async current(scope?: AssessmentScope): Promise<readonly T[]> {
-    const records = await this.all(scope);
-    const newest = new Map<string, T>();
-    for (const record of newestFirstBy(records, this.options.stampOf)) {
-      if (!newest.has(record.controlId)) newest.set(record.controlId, record);
+    const { db, table, stampColumn, stampOf, revive } = this.options;
+    const operation = `read every ${this.options.noun}`;
+
+    try {
+      const scoped = applyScope('', [], scope);
+      // The scope is on both sides: the inner one so another assessment's newer record cannot decide
+      // what this one's newest is, and the outer one so a record of another assessment that shares the
+      // requirement and the stamp is not returned as a tie.
+      const inner = scoped.fragment === '' ? '' : ` ${scoped.fragment}`;
+      const outer = scoped.fragment === '' ? '' : ` and ${scoped.fragment.replace(/^where /, '')}`;
+      const { rows } = await db.query<{ control_id: string; body: unknown }>(
+        `select control_id, body from ${db.schema}.${table}
+           where (control_id, ${stampColumn}) in
+             (select control_id, max(${stampColumn}) from ${db.schema}.${table}${inner} group by control_id)${outer}`,
+        scoped.values
+      );
+
+      const narrowed = new Map<string, unknown[]>();
+      for (const row of rows) narrowed.set(row.control_id, [...(narrowed.get(row.control_id) ?? []), row.body]);
+
+      const newest: T[] = [];
+      const undecided: string[] = [];
+      for (const [controlId, bodies] of narrowed) {
+        const only = bodies.length === 1 ? revive(bodies[0]) : undefined;
+        if (only != null) newest.push(only);
+        else undecided.push(controlId);
+      }
+
+      let unreadable = 0;
+      if (undecided.length > 0) {
+        const history = applyScope('where control_id = any($1::text[])', [undecided], scope);
+        const fetched = await this.fetch(history.fragment, history.values);
+        unreadable = fetched.unreadable;
+        const chosen = new Map<string, T>();
+        for (const record of newestFirstBy(fetched.records, stampOf)) {
+          if (!chosen.has(record.controlId)) chosen.set(record.controlId, record);
+        }
+        newest.push(...chosen.values());
+      }
+
+      // Counted over the history that was read, so a row is reported once however it was reached.
+      this.reportUnreadable(operation, unreadable);
+      return newestFirstBy(newest, stampOf);
+    } catch (error) {
+      // As `read` does, and for the same reason.
+      this.report(operation, error);
+      return [];
     }
-    return [...newest.values()];
   }
 
   async get(id: string, scope?: AssessmentScope): Promise<T | undefined> {
@@ -86,32 +129,41 @@ export class PostgresEventLog<T extends LoggedEvent> {
     return newestFirstBy(rows, this.options.stampOf);
   }
 
-  private async all(scope?: AssessmentScope): Promise<readonly T[]> {
-    const scoped = applyScope('', [], scope);
-    return this.read(`read every ${this.options.noun}`, scoped.fragment, scoped.values);
-  }
-
   private async read(operation: string, where: string, values: readonly unknown[]): Promise<T[]> {
-    const { db, table, stampColumn, noun, revive } = this.options;
     try {
-      const { rows } = await db.query<{ body: unknown }>(
-        `select body from ${db.schema}.${table} ${where} order by ${stampColumn} desc`,
-        values
-      );
-
-      const records = rows.map((row) => revive(row.body));
-      const unreadable = records.filter((record) => record == null).length;
-      // Reported once with a count rather than once per row: a schema change that makes every row
-      // unreadable would otherwise emit one line per record, and the number is the useful part.
-      if (unreadable > 0) {
-        this.report(operation, new Error(`${String(unreadable)} stored ${noun} record(s) could not be read`));
-      }
-      return records.filter((record): record is T => record != null);
+      const { records, unreadable } = await this.fetch(where, values);
+      this.reportUnreadable(operation, unreadable);
+      return records;
     } catch (error) {
       // A read that fails reads as empty and says so through onError, rather than failing the
       // request. The alternative is a resolution pass that throws because one row is unreadable.
       this.report(operation, error);
       return [];
+    }
+  }
+
+  /** The records a `where` selects, newest stamp first, and how many rows would not read. */
+  private async fetch(where: string, values: readonly unknown[]): Promise<{ records: T[]; unreadable: number }> {
+    const { db, table, stampColumn, revive } = this.options;
+    const { rows } = await db.query<{ body: unknown }>(
+      `select body from ${db.schema}.${table} ${where} order by ${stampColumn} desc`,
+      values
+    );
+
+    const records = rows.map((row) => revive(row.body));
+    return {
+      records: records.filter((record): record is T => record != null),
+      unreadable: records.filter((record) => record == null).length,
+    };
+  }
+
+  /**
+   * Reported once with a count rather than once per row: a schema change that makes every row
+   * unreadable would otherwise emit one line per record, and the number is the useful part.
+   */
+  private reportUnreadable(operation: string, unreadable: number): void {
+    if (unreadable > 0) {
+      this.report(operation, new Error(`${String(unreadable)} stored ${this.options.noun} record(s) could not be read`));
     }
   }
 

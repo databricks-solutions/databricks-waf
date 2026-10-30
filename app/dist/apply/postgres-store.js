@@ -2,6 +2,7 @@ import { digestOf } from "../records/digest.js";
 import { applyScope } from "../store/assessment-scope.js";
 import { newestFirst } from "./applicability.js";
 import { AlreadyDecidedError, AlreadyRevokedError, DecisionIdReusedError, DecisionsUnreadableError } from "./store.js";
+import { newestReadable } from "../store/revisions.js";
 //#region server/apply/postgres-store.ts
 /** Postgres' code for a unique or primary key violation. */
 const UNIQUE_VIOLATION = "23505";
@@ -17,11 +18,27 @@ var PostgresApplicabilityStore = class {
 		const rows = await this.read(operation, `select body from ${this.options.db.schema}.applicability_decisions ${scoped.fragment}`, scoped.values);
 		return newestFirst(this.highest(rows.map((row) => row.body), operation));
 	}
+	/**
+	* Every decision, at its newest revision.
+	*
+	* Postgres picks the revision, for the reason the accepted-risk store gives, and `highest` keeps the
+	* choice for `for`. Both take the highest revision that reads, so they cannot answer differently.
+	*/
 	async all(scope) {
 		const operation = "read applicability decisions";
-		const scoped = applyScope("order by revision asc", [], scope);
-		const rows = await this.read(operation, `select body from ${this.options.db.schema}.applicability_decisions ${scoped.fragment}`, scoped.values);
-		return newestFirst(this.highest(rows.map((row) => row.body), operation));
+		const { db } = this.options;
+		const { records, unreadable } = await newestReadable({
+			newest: () => {
+				const scoped = applyScope("order by id, revision desc", [], scope);
+				return this.read(operation, `select distinct on (id) id, body from ${db.schema}.applicability_decisions ${scoped.fragment}`, scoped.values);
+			},
+			history: (ids) => {
+				const scoped = applyScope("where id = any($1::text[]) order by revision desc", [ids], scope);
+				return this.read(operation, `select id, body from ${db.schema}.applicability_decisions ${scoped.fragment}`, scoped.values);
+			}
+		}, revive);
+		this.reportUnreadable(unreadable, operation);
+		return newestFirst(records);
 	}
 	record(decision) {
 		return this.write(decision);
@@ -88,11 +105,13 @@ var PostgresApplicabilityStore = class {
 	*/
 	highest(rows, operation) {
 		const revived = rows.map(revive);
-		const unreadable = revived.filter((decision) => decision == null).length;
-		if (unreadable > 0) this.options.onError?.(operation, /* @__PURE__ */ new Error(`${String(unreadable)} stored applicability-decision row(s) could not be read`));
+		this.reportUnreadable(revived.filter((decision) => decision == null).length, operation);
 		const newest = /* @__PURE__ */ new Map();
 		for (const decision of revived) if (decision != null) newest.set(decision.id, decision);
 		return [...newest.values()];
+	}
+	reportUnreadable(unreadable, operation) {
+		if (unreadable > 0) this.options.onError?.(operation, /* @__PURE__ */ new Error(`${String(unreadable)} stored applicability-decision row(s) could not be read`));
 	}
 };
 const LEVERS = /* @__PURE__ */ new Set(["not-applicable", "disabled"]);

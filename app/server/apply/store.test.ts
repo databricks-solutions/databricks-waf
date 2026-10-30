@@ -253,6 +253,72 @@ describe('applicability decisions in postgres', () => {
     expect(row?.digest).toMatch(/^sha256:[0-9a-f]{64}$/);
   });
 
+  it('reads the register as the newest revision of each decision, not every revision to reduce here', async () => {
+    const { store, db } = postgres();
+    await store.record(decision());
+    await store.revoke(ended());
+    await store.record(decision({ id: 'decision-2', controlId: 'SEC-01', recordedAt: new Date('2026-04-11T09:00:00.000Z') }));
+    db.statements.length = 0;
+
+    const read = await store.all();
+
+    expect(read.map((one) => [one.id, one.revoked != null])).toEqual([
+      ['decision-2', false],
+      ['decision-1', true],
+    ]);
+    expect(db.statements).toEqual([
+      'select distinct on (id) id, body from waf.applicability_decisions order by id, revision desc',
+    ]);
+  });
+
+  it('keeps the register inside one assessment, or inside the records that name none', async () => {
+    const { store, db } = postgres();
+    await store.record(decision({ id: 'mine', definitionId: 'def-1' }));
+    await store.record(decision({ id: 'theirs', controlId: 'SEC-01', definitionId: 'def-2' }));
+    await store.record(decision({ id: 'neither', controlId: 'SEC-02', definitionId: undefined }));
+    db.statements.length = 0;
+
+    expect((await store.all('def-1')).map((one) => one.id)).toEqual(['mine']);
+    expect((await store.all(null)).map((one) => one.id)).toEqual(['neither']);
+    expect(db.statements).toEqual([
+      'select distinct on (id) id, body from waf.applicability_decisions where definition_id = $1 order by id, revision desc',
+      'select distinct on (id) id, body from waf.applicability_decisions where definition_id is null order by id, revision desc',
+    ]);
+  });
+
+  it('reads an older revision of the decisions whose newest cannot be read, and only those', async () => {
+    // The revocation of decision-1 will not parse, so the decision has to keep reading as standing and
+    // the older revision is fetched for that id alone.
+    const { store, db, errors } = postgres();
+    await store.record(decision());
+    await store.record(decision({ id: 'decision-2', controlId: 'SEC-01', recordedAt: new Date('2026-04-11T09:00:00.000Z') }));
+    db.seed('applicability_decisions', {
+      id: 'decision-1',
+      revision: 1,
+      control_id: 'GOV-04',
+      lever: 'not-applicable',
+      owner: 'platform-engineering',
+      expires_at: EXPIRES,
+      recorded_at: RECORDED,
+      revoked: true,
+      body: { id: 'decision-1', controlId: 'GOV-04' },
+      digest: 'x',
+    });
+    db.statements.length = 0;
+
+    const read = await store.all();
+
+    expect(read.map((one) => [one.id, one.revoked])).toEqual([
+      ['decision-2', undefined],
+      ['decision-1', undefined],
+    ]);
+    expect(db.statements).toEqual([
+      'select distinct on (id) id, body from waf.applicability_decisions order by id, revision desc',
+      'select id, body from waf.applicability_decisions where id = any($1::text[]) order by revision desc',
+    ]);
+    expect(errors).toEqual(['read applicability decisions']);
+  });
+
   it('raises a failed read rather than answering as a requirement nobody has excluded', async () => {
     const db = new FakePostgres({
       keys: { applicability_decisions: ['id', 'revision'] },

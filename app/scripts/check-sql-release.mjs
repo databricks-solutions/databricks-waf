@@ -293,7 +293,13 @@ const AUDIT_FINDINGS = [
     id: 'lakebase-access-paths',
     phase: 'Q1g',
     what: 'Lakebase reads project and paginate in SQL rather than reducing full histories in TypeScript',
-    test: null,
+    test: 'server/store/latest-revision-reads.test.ts',
+    case: [
+      'reads accepted risks at their newest revision in SQL, and answers as the in-memory store does',
+      'reads applicability decisions at their newest revision in SQL, and answers as the in-memory store does',
+      'reads the newest event of each requirement in SQL, settling a same-millisecond supersession as the in-memory store does',
+      'reads one assessment definition by its id, and answers as the in-memory store and the full read do',
+    ],
   },
 ];
 
@@ -768,7 +774,13 @@ const SUITES = [
   },
   {
     name: 'Lakebase access-path (shipped)',
-    run: ['npx', 'vitest', 'run', 'server/admin/retention-store.test.ts'],
+    run: [
+      'npx',
+      'vitest',
+      'run',
+      'server/admin/retention-store.test.ts',
+      'server/store/latest-revision-reads.test.ts',
+    ],
   },
   {
     name: "Q1a performance budgets (recording)",

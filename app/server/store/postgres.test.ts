@@ -228,6 +228,20 @@ describe('opening the connection', () => {
     ).toBe(true);
   });
 
+  it('indexes the revision tables by id and descending revision, which is the order the newest-revision read asks for', async () => {
+    // The primary key is (id, revision) ascending, and Postgres can read it backwards but not with one
+    // column each way, so without these a read of the newest revision of every record sorts the table.
+    const fake = new FakePostgres();
+    await ensureSchema(fake, 'waf');
+
+    expect(fake.statements).toEqual(
+      expect.arrayContaining([
+        'create index if not exists accepted_risks_newest_revision on waf.accepted_risks (id, revision desc)',
+        'create index if not exists applicability_newest_revision on waf.applicability_decisions (id, revision desc)',
+      ])
+    );
+  });
+
   /*
    * The rule `42c` broke, held as a property of the DDL rather than named table by table.
    *

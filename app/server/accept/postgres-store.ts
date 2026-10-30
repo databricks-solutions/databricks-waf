@@ -14,6 +14,7 @@ import type { Postgres } from '../store/postgres.js';
 import { newestFirst, type AcceptedRisk, type ResidualRisk } from './risk.js';
 import { AlreadyAcceptedError, AlreadyRevokedError, RisksUnreadableError, type RiskStore } from './store.js';
 import { applyScope, type AssessmentScope } from '../store/assessment-scope.js';
+import { newestReadable, type RevisionRow } from '../store/revisions.js';
 
 /** Postgres' code for a unique or primary key violation. */
 const UNIQUE_VIOLATION = '23505';
@@ -39,15 +40,40 @@ export class PostgresRiskStore implements RiskStore {
     return newestFirst(this.highest(rows.map((row) => row.body), operation));
   }
 
+  /**
+   * Every acceptance, at its newest revision.
+   *
+   * Postgres picks the revision, so a register is read at the cost of the acceptances rather than of
+   * everything that was ever written about them. `highest` keeps the choice for `for`, which reads one
+   * requirement's rows; the two cannot answer differently, because both take the highest revision that
+   * reads.
+   */
   async all(scope?: AssessmentScope): Promise<readonly AcceptedRisk[]> {
     const operation = 'read accepted risks';
-    const scoped = applyScope('order by revision asc', [], scope);
-    const rows = await this.read<{ body: unknown }>(
-      operation,
-      `select body from ${this.options.db.schema}.accepted_risks ${scoped.fragment}`,
-      scoped.values
+    const { db } = this.options;
+    const { records, unreadable } = await newestReadable<AcceptedRisk>(
+      {
+        newest: () => {
+          const scoped = applyScope('order by id, revision desc', [], scope);
+          return this.read<RevisionRow>(
+            operation,
+            `select distinct on (id) id, body from ${db.schema}.accepted_risks ${scoped.fragment}`,
+            scoped.values
+          );
+        },
+        history: (ids) => {
+          const scoped = applyScope('where id = any($1::text[]) order by revision desc', [ids], scope);
+          return this.read<RevisionRow>(
+            operation,
+            `select id, body from ${db.schema}.accepted_risks ${scoped.fragment}`,
+            scoped.values
+          );
+        },
+      },
+      revive
     );
-    return newestFirst(this.highest(rows.map((row) => row.body), operation));
+    this.reportUnreadable(unreadable, operation);
+    return newestFirst(records);
   }
 
   record(risk: AcceptedRisk): Promise<void> {
@@ -134,10 +160,7 @@ export class PostgresRiskStore implements RiskStore {
    */
   private highest(rows: readonly unknown[], operation: string): AcceptedRisk[] {
     const revived = rows.map(revive);
-    const unreadable = revived.filter((risk) => risk == null).length;
-    if (unreadable > 0) {
-      this.options.onError?.(operation, new Error(`${String(unreadable)} stored accepted-risk row(s) could not be read`));
-    }
+    this.reportUnreadable(revived.filter((risk) => risk == null).length, operation);
 
     const newest = new Map<string, AcceptedRisk>();
     // Read in ascending revision order, so a later row is always the better one.
@@ -145,6 +168,12 @@ export class PostgresRiskStore implements RiskStore {
       if (risk != null) newest.set(risk.id, risk);
     }
     return [...newest.values()];
+  }
+
+  private reportUnreadable(unreadable: number, operation: string): void {
+    if (unreadable > 0) {
+      this.options.onError?.(operation, new Error(`${String(unreadable)} stored accepted-risk row(s) could not be read`));
+    }
   }
 }
 

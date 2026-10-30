@@ -603,6 +603,13 @@ export async function ensureSchema(sql: Sql, schema: string): Promise<void> {
   // Swept on `recorded_at`. `accepted_risks_by_expiry` leads with a different timestamp, which serves
   // nothing here. Measured by `83`: 1,068 heap pages to 2, and it grows with the catalogue.
   await sql.query(`create index if not exists accepted_risks_by_sweep on ${schema}.accepted_risks (recorded_at asc)`);
+  // The register reads the newest revision of every acceptance, `distinct on (id)` over `id, revision desc`.
+  // The primary key is `(id, revision)` ascending, which Postgres cannot read with one column each way, so
+  // without this the read sorts the whole table; with it the planner takes the ordered scan once the sort
+  // would spill to disk.
+  await sql.query(
+    `create index if not exists accepted_risks_newest_revision on ${schema}.accepted_risks (id, revision desc)`
+  );
 
   /*
    * Applicability decisions: the requirements a customer has taken out of their own score, either as not
@@ -650,6 +657,10 @@ export async function ensureSchema(sql: Sql, schema: string): Promise<void> {
   // Swept on `recorded_at`, as `accepted_risks` is and for the same reason. 1,068 heap pages to 2.
   await sql.query(
     `create index if not exists applicability_by_sweep on ${schema}.applicability_decisions (recorded_at asc)`
+  );
+  // For the register's newest-revision read, as `accepted_risks_newest_revision` is.
+  await sql.query(
+    `create index if not exists applicability_newest_revision on ${schema}.applicability_decisions (id, revision desc)`
   );
 
   /*

@@ -64,7 +64,15 @@ import { PostgresScanStore } from '../scan/postgres-store.js';
 import { PostgresPlanExtractStore, type RetainedPlan } from '../advise/plan-store.js';
 import type { PlanExtract } from '../collect/sql/plans/parse.js';
 import { PostgresAttestationStore } from '../attest/postgres-store.js';
-import { PostgresDecisionStore } from '../decide/store.js';
+import { InMemoryAttestationStore } from '../attest/store.js';
+import { PostgresRiskStore } from '../accept/postgres-store.js';
+import { revoked as revokedRisk, type AcceptedRisk } from '../accept/risk.js';
+import { InMemoryRiskStore } from '../accept/store.js';
+import { PostgresApplicabilityStore } from '../apply/postgres-store.js';
+import { revoked as revokedDecision, type ApplicabilityDecision } from '../apply/applicability.js';
+import { InMemoryApplicabilityStore } from '../apply/store.js';
+import { PostgresEventLog, newestFirstBy, type LoggedEvent } from './event-log.js';
+import { InMemoryDecisionStore, PostgresDecisionStore } from '../decide/store.js';
 import { PostgresDefinitionStore } from '../define/postgres-store.js';
 import { PostgresImprovementStore } from '../improve/postgres-store.js';
 import { ConcurrentChangeError } from '../improve/store.js';
@@ -77,7 +85,7 @@ import { observed, type SignalId } from '../collect/signal.js';
 import { planReset, resetInstall } from '../admin/reset.js';
 import { PostgresSetupDraftStore } from '../define/setup-postgres-store.js';
 import { define, revise, type Draft } from '../define/definition.js';
-import { DefinitionConflict } from '../define/store.js';
+import { DefinitionConflict, InMemoryDefinitionStore } from '../define/store.js';
 import { CollectionScheduler } from '../scan/scheduler.js';
 import type { Scan } from '../scan/scan.js';
 import type { Attestation } from '../attest/attestation.js';
@@ -2423,5 +2431,282 @@ describe.skipIf(!bound)('the reads that count and exclude in SQL, against a real
     // Boot again over the same schema, which is what a rolling deploy does and must change nothing.
     await ensureSchema(db, db.schema);
     expect((await store.all()).find((held) => held.digest === one.digest)?.workspaceId).toBe('7000000000000001');
+  });
+});
+
+/*
+ * The newest-revision reads against a real database, held to the in-memory stores by running one
+ * history through both.
+ *
+ * What a fake cannot say is whether Postgres chooses the row the TypeScript would have: `distinct on`
+ * and `max` are the database's own, and a statement the fake accepts can still pick a different row. So
+ * each case writes the same records to a Postgres store and to its in-memory twin and asks them the same
+ * question, and the second half of each is the row that will not read, which only a column the app does
+ * not control can supply.
+ */
+describe.skipIf(!bound)('the newest-revision reads against a real Lakebase database', () => {
+  const LATEST = `${SCHEMA}_latest`;
+  const AT = new Date('2026-08-01T09:00:00.000Z');
+  let db: Postgres;
+
+  beforeAll(async () => {
+    db = await open(LATEST);
+  }, 60_000);
+
+  afterAll(async () => {
+    if (db == null) return;
+    await db.query(`drop schema if exists ${LATEST} cascade`);
+    await db.end();
+  }, 60_000);
+
+  function risk(id: string, controlId: string, definitionId: string | undefined, hours: number): AcceptedRisk {
+    return {
+      id,
+      controlId,
+      ordinal: 1,
+      reason: 'The review is manual until the platform team finishes the rota tooling next quarter.',
+      compensatingControl: 'The two workspaces are read-only outside the platform group, checked weekly.',
+      residual: 'low',
+      owner: 'platform-engineering',
+      effectiveFrom: AT,
+      expiresAt: new Date('2026-12-01T00:00:00.000Z'),
+      recordedBy: 'ana@example.com',
+      recordedAt: new Date(AT.getTime() + hours * 3_600_000),
+      ...(definitionId != null ? { definitionId } : {}),
+    };
+  }
+
+  function excluded(id: string, controlId: string, definitionId: string | undefined, hours: number): ApplicabilityDecision {
+    return {
+      id,
+      controlId,
+      lever: 'not-applicable',
+      ordinal: 1,
+      reason: 'This estate runs no external sharing, so the requirement is about a thing it does not have.',
+      owner: 'platform-engineering',
+      effectiveFrom: AT,
+      expiresAt: new Date('2026-12-01T00:00:00.000Z'),
+      recordedBy: 'ana@example.com',
+      recordedAt: new Date(AT.getTime() + hours * 3_600_000),
+      ...(definitionId != null ? { definitionId } : {}),
+    };
+  }
+
+  const byId = <T extends { readonly id: string }>(records: readonly T[]): T[] =>
+    [...records].sort((a, b) => a.id.localeCompare(b.id));
+
+  it('reads the register of acceptances as the in-memory store does, at each requirement\'s newest revision', async () => {
+    const postgres = new PostgresRiskStore({ db });
+    const memory = new InMemoryRiskStore();
+    const written = [
+      risk('live-r1', 'LR-01', 'live-def-a', 1),
+      risk('live-r2', 'LR-02', 'live-def-a', 2),
+      risk('live-r3', 'LR-03', 'live-def-b', 3),
+      risk('live-r4', 'LR-04', undefined, 4),
+    ];
+    for (const one of written) {
+      await postgres.record(one);
+      await memory.record(one);
+    }
+    const ended = revokedRisk(written[0], 'raj@example.com', 'The read-only grant was removed.', new Date(AT.getTime() + 9 * 3_600_000));
+    await postgres.revoke(ended);
+    await memory.revoke(ended);
+
+    for (const scope of [undefined, 'live-def-a', 'live-def-b', null] as const) {
+      const here = byId(await postgres.all(scope));
+      expect(here, `scope ${String(scope)}`).toEqual(byId(await memory.all(scope)));
+    }
+    // One row per acceptance, and the revoked one is the revoked revision rather than the first.
+    const all = await postgres.all();
+    expect(all).toHaveLength(4);
+    expect(all.find((one) => one.id === 'live-r1')?.revoked?.by).toBe('raj@example.com');
+    expect(all[0]?.recordedAt).toBeInstanceOf(Date);
+  });
+
+  it('keeps an acceptance standing when the revision that revoked it cannot be read, as the register without it would', async () => {
+    const errors: string[] = [];
+    const postgres = new PostgresRiskStore({ db, onError: (operation) => errors.push(operation) });
+    const memory = new InMemoryRiskStore();
+    const standing = risk('live-r5', 'LR-05', 'live-def-c', 5);
+    await postgres.record(standing);
+    await memory.record(standing);
+    await postgres.revoke(revokedRisk(standing, 'raj@example.com', 'Ended in the March change.', AT));
+    // The revocation is the newest revision and its body is not an acceptance any more.
+    await db.query(`update ${db.schema}.accepted_risks set body = '{"id":"live-r5"}'::jsonb where id = $1 and revision = 1`, [
+      'live-r5',
+    ]);
+
+    expect(await postgres.all('live-def-c')).toEqual(await memory.all('live-def-c'));
+    expect(errors).toContain('read accepted risks');
+  });
+
+  it('reads the register of decisions as the in-memory store does, and keeps one standing past an unreadable revocation', async () => {
+    const errors: string[] = [];
+    const postgres = new PostgresApplicabilityStore({ db, onError: (operation) => errors.push(operation) });
+    const memory = new InMemoryApplicabilityStore();
+    const written = [
+      excluded('live-d1', 'LD-01', 'live-def-a', 1),
+      excluded('live-d2', 'LD-02', 'live-def-a', 2),
+      excluded('live-d3', 'LD-03', undefined, 3),
+    ];
+    for (const one of written) {
+      await postgres.record(one);
+      await memory.record(one);
+    }
+    const ended = revokedDecision(written[0], 'raj@example.com', 'Sharing was turned on.', AT);
+    await postgres.revoke(ended);
+    await memory.revoke(ended);
+
+    for (const scope of [undefined, 'live-def-a', null] as const) {
+      expect(byId(await postgres.all(scope)), `scope ${String(scope)}`).toEqual(byId(await memory.all(scope)));
+    }
+
+    await postgres.revoke(revokedDecision(written[1], 'raj@example.com', 'Sharing was turned on.', AT));
+    await db.query(
+      `update ${db.schema}.applicability_decisions set body = '{"id":"live-d2"}'::jsonb where id = $1 and revision = 1`,
+      ['live-d2']
+    );
+    const standing = (await postgres.all('live-def-a')).find((one) => one.id === 'live-d2');
+    expect(standing?.revoked).toBeUndefined();
+    expect(errors).toContain('read applicability decisions');
+  });
+
+  /*
+   * A same-millisecond supersession is the case SQL cannot settle alone: the two records carry one stamp
+   * and the chain says which is newer. The narrowed read returns both, and the answer has to be the one
+   * the in-memory store gives.
+   */
+  it('settles a same-stamp supersession as the in-memory attestation store does, within each assessment', async () => {
+    const postgres = new PostgresAttestationStore({ db });
+    const memory = new InMemoryAttestationStore();
+    const base = attestation('live-a1', '2026-08-01T01:00:00.000Z');
+    const records: Attestation[] = [
+      // One stamp, the superseding record's id sorting first: only the chain can put it on top.
+      { ...base, id: 'live-z-first', controlId: 'LA-01', definitionId: 'live-def-a' },
+      { ...base, id: 'live-a-second', controlId: 'LA-01', definitionId: 'live-def-a', supersedes: 'live-z-first' },
+      // A requirement with a single newest record, and an older one beneath it.
+      { ...base, id: 'live-old', controlId: 'LA-02', definitionId: 'live-def-a', attestedAt: new Date('2026-07-01T00:00:00.000Z') },
+      { ...base, id: 'live-new', controlId: 'LA-02', definitionId: 'live-def-a', attestedAt: new Date('2026-08-05T00:00:00.000Z') },
+      // The same requirement in another assessment, newer than either, which must not decide this one's.
+      { ...base, id: 'live-other', controlId: 'LA-01', definitionId: 'live-def-b', attestedAt: new Date('2026-09-01T00:00:00.000Z') },
+      // A chain through a record older than the two it joins: `live-c` carries the stamp of `live-a`.
+      { ...base, id: 'live-a', controlId: 'LA-03', definitionId: 'live-def-a' },
+      { ...base, id: 'live-b', controlId: 'LA-03', definitionId: 'live-def-a', attestedAt: new Date('2026-07-01T00:00:00.000Z'), supersedes: 'live-a' },
+      { ...base, id: 'live-c', controlId: 'LA-03', definitionId: 'live-def-a', supersedes: 'live-b' },
+    ];
+    for (const one of records) {
+      await postgres.record(one);
+      await memory.record(one);
+    }
+
+    for (const scope of ['live-def-a', 'live-def-b'] as const) {
+      const here = await postgres.current(scope);
+      expect(byId(here), `scope ${scope}`).toEqual(byId(await memory.current(scope)));
+    }
+    const mine = new Map((await postgres.current('live-def-a')).map((one) => [one.controlId, one.id]));
+    expect(mine.get('LA-01')).toBe('live-a-second');
+    expect(mine.get('LA-02')).toBe('live-new');
+    expect(mine.get('LA-03')).toBe('live-c');
+  });
+
+  it('reads the decision log the same way, and answers a null scope with the records that name no assessment', async () => {
+    const postgres = new PostgresDecisionStore({ db });
+    const memory = new InMemoryDecisionStore();
+    const first = { ...decision('live-dec-1', '2026-08-01T01:00:00.000Z'), controlId: 'LX-01' };
+    const records: Decision[] = [
+      first,
+      { ...decision('live-dec-2', '2026-08-01T01:00:00.000Z'), controlId: 'LX-01', supersedes: first.id },
+      { ...decision('live-dec-3', '2026-08-03T01:00:00.000Z'), controlId: 'LX-02' },
+      { ...decision('live-dec-4', '2026-08-04T01:00:00.000Z'), controlId: 'LX-02', definitionId: 'live-def-a' },
+    ];
+    for (const one of records) {
+      await postgres.record(one);
+      await memory.record(one);
+    }
+
+    for (const scope of [undefined, null, 'live-def-a'] as const) {
+      expect(byId(await postgres.current(scope)), `scope ${String(scope)}`).toEqual(
+        byId(await memory.current(scope))
+      );
+    }
+  });
+
+  it('falls back to the newest record that reads when the newest of a requirement does not', async () => {
+    const errors: string[] = [];
+    const postgres = new PostgresAttestationStore({ db, onError: (operation) => errors.push(operation) });
+    const memory = new InMemoryAttestationStore();
+    const readable = { ...attestation('live-fb-ok', '2026-08-01T01:00:00.000Z'), controlId: 'LF-01', definitionId: 'live-def-f' };
+    await postgres.record(readable);
+    await memory.record(readable);
+    // Written behind the store, as a build with another shape or an edit in psql would: the newest
+    // statement of this requirement, and a document the reader does not recognise.
+    await db.query(
+      `insert into ${db.schema}.attestations (id, control_id, attested_at, body, digest, definition_id)
+         values ($1, $2, $3, $4::jsonb, $5, $6)`,
+      ['live-fb-bad', 'LF-01', new Date('2026-09-01T00:00:00.000Z'), JSON.stringify({ id: 'live-fb-bad' }), 'x', 'live-def-f']
+    );
+
+    const current = await postgres.current('live-def-f');
+    expect(current).toEqual(await memory.current('live-def-f'));
+    expect(current.map((one) => one.id)).toEqual(['live-fb-ok']);
+    expect(errors).toEqual(['read every attestation']);
+  });
+
+  it('breaks a tie between a readable and an unreadable record in favour of the one that reads', async () => {
+    interface Said extends LoggedEvent {
+      readonly at: Date;
+    }
+    const log = new PostgresEventLog<Said>({
+      db,
+      table: 'decisions',
+      stampColumn: 'decided_at',
+      stampOf: (one) => one.at,
+      revive: (raw) => {
+        const candidate = raw as { id?: unknown; controlId?: unknown; at?: unknown } | null;
+        if (typeof candidate?.id !== 'string' || typeof candidate.controlId !== 'string') return undefined;
+        const at = new Date(candidate.at as string);
+        return Number.isNaN(at.getTime()) ? undefined : { id: candidate.id, controlId: candidate.controlId, at };
+      },
+      noun: 'statement',
+    });
+    const at = new Date('2026-08-10T00:00:00.000Z');
+    await log.append({ id: 'live-tie-ok', controlId: 'LT-01', at });
+    await db.query(
+      `insert into ${db.schema}.decisions (id, control_id, decided_at, body, digest) values ($1, $2, $3, $4::jsonb, $5)`,
+      ['live-tie-bad', 'LT-01', at, JSON.stringify({ id: 'live-tie-bad' }), 'x']
+    );
+
+    const current = (await log.current()).filter((one) => one.controlId === 'LT-01');
+    expect(current.map((one) => one.id)).toEqual(['live-tie-ok']);
+    expect(newestFirstBy(current, (one) => one.at)).toEqual(current);
+  });
+
+  it('reads one definition by its id with the answer the in-memory store and the full read give', async () => {
+    const postgres = new PostgresDefinitionStore({ db });
+    const memory = new InMemoryDefinitionStore();
+    const draft: Draft = {
+      measurement: { scope: { kind: 'selected', workspaceIds: ['w2', 'w1'] }, lookbackDays: 30 },
+      attribution: { name: 'Live review', owners: ['alice@example.com'] },
+    };
+    for (const id of ['live-g1', 'live-g2', 'live-g3']) {
+      const first = define(draft, id, new Date('2026-08-01T00:00:00.000Z'), 'alice@example.com');
+      const second = revise(first, { attribution: { name: `Renamed ${id}`, owners: [] } }, new Date('2026-08-02T00:00:00.000Z'), 'alice@example.com');
+      await postgres.create(first);
+      await memory.create(first);
+      const added = second.versions[1];
+      if (added == null) throw new Error('revise produced no second version');
+      await postgres.appendVersion(id, added);
+      await memory.appendVersion(id, added);
+    }
+    await postgres.archive('live-g2', new Date('2026-08-03T00:00:00.000Z'));
+    await memory.archive('live-g2', new Date('2026-08-03T00:00:00.000Z'));
+
+    const everything = await postgres.all();
+    for (const id of ['live-g1', 'live-g2', 'live-g3']) {
+      expect(await postgres.get(id), id).toEqual(await memory.get(id));
+      expect(await postgres.get(id), id).toEqual(everything.find((one) => one.id === id));
+    }
+    expect((await postgres.get('live-g2'))?.archivedAt?.toISOString()).toBe('2026-08-03T00:00:00.000Z');
+    expect(await postgres.get('live-missing')).toBeUndefined();
   });
 });
