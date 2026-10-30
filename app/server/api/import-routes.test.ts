@@ -74,6 +74,9 @@ async function serve(
   const recorder = new AuditRecorder(audit);
 
   registerImportRoutes(app, {
+    // These tests are about the route's own decisions, and read as an assessor so every field is in
+    // the body; what a reader outside the group is shown is held by `sharing-routes.test.ts`.
+    reader: () => Promise.resolve({ assessor: true, group: 'waf-assessors' }),
     ...(over.omitStore === true ? {} : { imports }),
     store: scans,
     // The real recorder, so the reasons this route records for a refused file are asserted against

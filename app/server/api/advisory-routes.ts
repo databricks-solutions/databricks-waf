@@ -12,6 +12,10 @@
 // the person who wants to know which job to move next is often not the person permitted to start a run,
 // and making them hold the assessor group to read advice would be granting write access for a read.
 //
+// Reading is open, but the statement text in it is not: it is sent only to direct members of the assessor
+// group, and everyone else gets a placeholder naming the group (decision D1 in docs/decisions.md). That
+// is a projection of what is read and not a gate on reading it, so the advice stays readable by everyone.
+//
 // # Why the start route answers small
 //
 // The interactive caller wants the analysis, and gets it. The scheduled caller is a task log somebody
@@ -45,6 +49,7 @@ import type { ScanTrigger } from '../scan/scan.js';
 import type { EstateScope } from '../collect/estate-scope.js';
 import type { JobComputeRow } from '../collect/sql/shapes.js';
 import { assessmentOf } from './assessment-query.js';
+import { projectAdvisoryPayload, type Reader } from '../share/projection.js';
 
 /** How many runs the history answers with. A cap rather than a page, for the reason `RECENT_RUNS` gives. */
 export const RECENT_ADVISORIES = 50;
@@ -72,6 +77,13 @@ export interface AdvisoryRouteOptions {
     actor: string,
     granted: EstateScope
   ) => Promise<AdvisoryRunRequest | { readonly error: string; readonly message: string; readonly status: number }>;
+  /**
+   * Who is reading, so statement text is sent only to the assessor group's direct members.
+   *
+   * Required for the reason `ReviewRouteOptions.reader` gives. The run routes answer a caller `permitted`
+   * has admitted, who is an assessor by that check, and send the advisory unprojected.
+   */
+  readonly reader: (request: Request) => Promise<Reader>;
   readonly permitted: (
     request: Request,
     response: Response,
@@ -534,7 +546,7 @@ export function registerAdvisoryRoutes(app: Application, options: AdvisoryRouteO
       });
       return;
     }
-    response.json(advisoryPayload(latest));
+    response.json(projectAdvisoryPayload(advisoryPayload(latest), await options.reader(request)));
   });
 
   /**
@@ -575,7 +587,7 @@ export function registerAdvisoryRoutes(app: Application, options: AdvisoryRouteO
       });
       return;
     }
-    response.json(advisoryPayload(found));
+    response.json(projectAdvisoryPayload(advisoryPayload(found), await options.reader(request)));
   });
 
   const runAdvisoryFor = (trigger: ScanTrigger) => async (request: Request, response: Response) => {

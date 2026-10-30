@@ -84,6 +84,10 @@ The guided answer requires a complete outcome record. Select an outcome and prov
 
 Mutations require direct membership in `assessor_group`. Nested group membership is not accepted because the identity API reports direct memberships for this gate. Add the user directly to the configured group or change the DAB variable through a reviewed upgrade.
 
+## A page says a field is withheld
+
+Statement text in advisories, the principal identifiers in a finding's evidence and an administrator's imported readings are shown only to direct members of `assessor_group`. Everyone else sees a placeholder that names the group. If you are in the group and still see one, the App could not establish the membership for that request: it received no forwarded token, the identity lookup failed, or the lookup did not list the group. Nested group membership does not count. Add the user directly to the group and reload. Exports follow the same rule, so a file downloaded by a reader outside the group carries the placeholders too.
+
 ## The wrong workspace appears in validation
 
 Run:

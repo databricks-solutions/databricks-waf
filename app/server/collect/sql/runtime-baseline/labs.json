@@ -1157,7 +1157,7 @@
       "statementId": "01f1955f-4dc8-1b51-aeb4-00cfa39188a1",
       "measuredAt": "2026-08-11T08:33:18.227Z",
       "warehouseId": "0123456789abcdef",
-      "statementSha": "sha256:77aeb204ca48391e889720107aa986843c8b9aeacf66b01696a15f9725bd075b",
+      "statementSha": "sha256:f59856986de171f79f4923ee27dbb2ff07c30e5ac5203b41b158dd7209bd5dd8",
       "slicedInRecording": false,
       "sliceColumn": null,
       "rows": 40,

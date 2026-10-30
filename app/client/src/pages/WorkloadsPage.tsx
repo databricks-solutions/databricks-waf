@@ -45,6 +45,7 @@ import { Pagination } from '../components/ui/Pagination';
 import { NotInList } from '../components/ui/NotInList';
 import { onlySelection, selectionFrom, usePaged } from '../components/ui/paging';
 import { useRevealedPane } from '../components/ui/reveal';
+import { WithheldNote } from '../components/WithheldNote';
 import { Badge, IdentifierBadge } from '../components/ui/StatusBadge';
 import {
   CONFIDENCE_LABEL,
@@ -343,11 +344,22 @@ function Selected({ shape }: { shape: WorkloadShape }) {
         </div>
       )}
 
+      {shape.statementWithheld != null && (
+        <div>
+          <h2 className="wa-label">The query</h2>
+          <p className="wa-body-compact mt-1">
+            <WithheldNote withheld={shape.statementWithheld} />
+          </p>
+        </div>
+      )}
+
       {shape.statementText != null && (
         <div>
           <h2 className="wa-label">The query</h2>
-          {/* Shown as recorded. See the note at the head of this file on why it is not redacted, and
-              why an estate under customer-managed keys has none of this to show. */}
+          {/* Shown as recorded to the assessor group, and replaced by a placeholder for everyone else:
+              the run read the estate as whoever started it, so the text is not bounded by the reader's
+              own grants. Decision D1 in docs/decisions.md. An estate under customer-managed keys has
+              none of this to show. */}
           <pre className="wa-code-block mt-1 rounded-sm bg-wa-surface-subtle">{shape.statementText}</pre>
           {/* Where the shape had no run that measured anything, the text is from one that did not. Said
               because the cost figures below are over other runs than this one, and a reader opening the

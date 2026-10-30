@@ -1,5 +1,6 @@
 import { describeItem } from "../resolve/finding.js";
 import { classOf } from "../resolve/evidence-class.js";
+import { withheldOf } from "../share/projection.js";
 import { csv } from "./csv.js";
 import { DEFAULT_VARIANT, VARIANT_SHAPES, carriesEvidence, carriesProvenance } from "./variant.js";
 const DOCUMENT_KIND = "databricks-waf-assessment";
@@ -221,10 +222,17 @@ const CELL = {
 	applicability_id: (row) => row.applied?.decisionId ?? "",
 	applicability_owner: (row) => row.applied?.owner ?? "",
 	applicability_reason: (row) => row.applied?.reason ?? "",
-	read_as: (row) => attributionCell(row.first?.provenance),
+	read_as: (row) => {
+		const withheld = row.first == null ? void 0 : withheldOf(row.first);
+		return withheld != null && row.first?.provenance == null ? withheld.reason : attributionCell(row.first?.provenance);
+	},
 	collected_at: (row) => row.first?.collectedAt.toISOString() ?? "",
 	documentation: (row) => row.control?.remediation?.docUrl ?? row.control?.sourceRef ?? "",
-	where: (row) => row.finding.evidence.flatMap((one) => one.at?.items ?? []).flatMap((item) => item.url != null ? [`${describeItem(item)}: ${item.url}`] : []).join(" ")
+	where: (row) => {
+		const links = row.finding.evidence.flatMap((one) => one.at?.items ?? []).flatMap((item) => item.url != null ? [`${describeItem(item)}: ${item.url}`] : []);
+		const withheld = row.finding.evidence.map(withheldOf).find((one) => one != null);
+		return (withheld == null ? links : [...links, withheld.reason]).join(" ");
+	}
 };
 /**
 * An identity axis as one cell: what it was, or why this build could not establish it.
@@ -379,6 +387,7 @@ function assessmentDocument(options) {
 					evidenceClass: one.evidenceClass ?? "observed",
 					coverage: one.coverage,
 					collectedAt: one.collectedAt.toISOString(),
+					...withheldOf(one) != null ? { withheld: withheldOf(one) } : {},
 					...one.provenance != null && carriesProvenance(shape.detail) ? { readBy: one.provenance } : {},
 					...one.at != null ? { links: one.at.items.flatMap((item) => item.url != null ? [{
 						label: describeItem(item),

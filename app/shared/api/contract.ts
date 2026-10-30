@@ -56,6 +56,25 @@ export interface ProvenancePayload {
   readonly from?: string;
 }
 
+/** What kind of field a placeholder stands in for. Decision D1 in docs/decisions.md. */
+export type WithheldKind = 'statement-text' | 'principal-identifiers' | 'admin-reading';
+
+/**
+ * Stands in for a field this reader may not see, and says why and who can.
+ *
+ * Present where the field would have been, so a client renders a reason instead of a gap. The field
+ * itself is absent or, where the contract makes it required, replaced by `reason` as plain text, so a
+ * consumer that has never heard of this type still reads a sentence and never the restricted value.
+ * Never sent to a direct member of the assessor group, who is sent the field.
+ */
+export interface WithheldPayload {
+  readonly withheld: WithheldKind;
+  /** One sentence naming what is withheld and who can see it. */
+  readonly reason: string;
+  /** The name of the group whose direct members can see the field. */
+  readonly visibleTo: string;
+}
+
 export interface EvidencePayload<TDate = string> {
   readonly signal: string;
   readonly observed: string;
@@ -74,6 +93,12 @@ export interface EvidencePayload<TDate = string> {
    * See server/resolve/locate.
    */
   readonly at?: LocatedPayload;
+  /**
+   * Set where this evidence names a principal or is an administrator's imported reading and the reader
+   * is not an assessor. `observed` then holds the placeholder's `reason`, and `at` and `provenance`
+   * are absent. See `WithheldPayload`.
+   */
+  readonly withheld?: WithheldPayload;
 }
 
 export interface LocatedPayload {
@@ -774,6 +799,8 @@ export interface SignalPayload {
   readonly unmeasurableReason?: string;
   readonly durationMs: number;
   readonly provenance?: ProvenancePayload;
+  /** Set where this is an administrator's imported reading and the reader is not an assessor. */
+  readonly withheld?: WithheldPayload;
 }
 
 export interface WorkspaceRefPayload {
@@ -1408,11 +1435,14 @@ export interface WorkloadShapePayload<TDate = string> {
   /**
    * The head of the representative execution's text.
    *
-   * Shown as it is, not redacted. The app runs inside the customer's own environment against their own
-   * workspace, and the reader already has access to the query history it came from — so redacting it back
-   * from them costs the surface its usefulness for no gain. Absent where the platform recorded none.
+   * Sent to direct members of the assessor group only, because the stored text can name tables and
+   * literals the reader's own grants may not reach: the advisory ran as whoever started it. Everyone
+   * else gets `statementWithheld` in its place. Absent where the platform recorded none. Decision D1
+   * in docs/decisions.md.
    */
   readonly statementText?: string;
+  /** Set where there is text and the reader may not see it. */
+  readonly statementWithheld?: WithheldPayload;
   /** The execution the text and any later plan belong to. */
   readonly statementId?: string;
   readonly representativeAt?: TDate;
@@ -1690,8 +1720,13 @@ export interface WriteShapePayload<TDate = string> {
   readonly totalMs: number;
   readonly firstSeen?: TDate;
   readonly lastSeen?: TDate;
-  /** The largest write of the group, as it was recorded, so a reader has a statement rather than a hash. */
+  /**
+   * The largest write of the group, as it was recorded, so a reader has a statement rather than a hash.
+   *
+   * Restricted the way `WorkloadShapePayload.statementText` is, and replaced by `statementWithheld`.
+   */
   readonly statementText?: string;
+  readonly statementWithheld?: WithheldPayload;
   readonly representativeAt?: TDate;
 }
 
@@ -2935,6 +2970,8 @@ export interface EvidenceImportPayload<TDate = string> {
    * "the tooling cannot name them" are different claims.
    */
   readonly collectedBy?: string;
+  /** Set where the file names who ran the script and the reader is not an assessor. */
+  readonly collectedByWithheld?: WithheldPayload;
   readonly workspaceTier: boolean;
   readonly accountTier: boolean;
   /** Readings that came back with a value. */

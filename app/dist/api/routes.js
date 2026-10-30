@@ -19,6 +19,7 @@ import { contained } from "./contain.js";
 import { currentVersion } from "../define/definition.js";
 import { probeStatement, sourcesFor } from "../define/preflight.js";
 import { registerDefinitionRoutes } from "./definition-routes.js";
+import { projectScan, projectScanPayload } from "../share/projection.js";
 import { registerImportRoutes } from "./import-routes.js";
 import { AUDIT_PHRASES } from "../audit/event.js";
 import { registerAuditRoutes } from "./audit-routes.js";
@@ -49,6 +50,7 @@ import { registerApplicabilityRoutes } from "./applicability-routes.js";
 import { readTargets } from "../programme/targets.js";
 import { signalDescriptors } from "../plan/descriptors.js";
 import { EstateScopeError, accountScope, hostWorkspaceFromEnvironment, probeCurrentUser, scopeFromProbe, selectedScope } from "../collect/estate-scope.js";
+import { assessorCheck } from "../share/reader.js";
 import { TrailUnwritableError, closedWhenAnswered } from "../audit/record.js";
 import { MEANS, describeVerification } from "../records/verify.js";
 import { ScanInProgressError } from "../scan/runner.js";
@@ -86,6 +88,21 @@ function registerApi(served, options) {
 	app.use("/api", (_request, response, next) => {
 		response.setHeader("X-Content-Type-Options", "nosniff");
 		next();
+	});
+	/**
+	* Who is reading, for the routes that serve what a run stored.
+	*
+	* Asked of the request rather than of the route, so every read that can carry a restricted field
+	* answers the same question the same way, and cached for that request alone by `assessorCheck`.
+	* Decision D1 in docs/decisions.md.
+	*/
+	const isAssessor = assessorCheck({
+		host: options.host,
+		assessorGroup: options.assessorGroup
+	});
+	const readerOf = async (request) => ({
+		assessor: await isAssessor(request),
+		group: options.assessorGroup
 	});
 	/**
 	* Where a run stands with its review, for the payload that carries its score.
@@ -267,7 +284,7 @@ function registerApi(served, options) {
 			});
 			return;
 		}
-		response.json(present(scan, await historyFor(options.store, assessmentOf(request)), options.catalogue.changelog, await targetsFor(scan, options.definitions, /* @__PURE__ */ new Date()), await standingOf(scan.id, assessmentOf(request))));
+		response.json(projectScanPayload(present(scan, await historyFor(options.store, assessmentOf(request)), options.catalogue.changelog, await targetsFor(scan, options.definitions, /* @__PURE__ */ new Date()), await standingOf(scan.id, assessmentOf(request))), await readerOf(request)));
 	});
 	app.get("/api/scans/:id", async (request, response) => {
 		const scan = await options.store.get(request.params.id, assessmentOf(request));
@@ -278,7 +295,7 @@ function registerApi(served, options) {
 			});
 			return;
 		}
-		response.json(present(scan, await historyFor(options.store, assessmentOf(request)), options.catalogue.changelog, await targetsFor(scan, options.definitions, /* @__PURE__ */ new Date()), await standingOf(scan.id, assessmentOf(request))));
+		response.json(projectScanPayload(present(scan, await historyFor(options.store, assessmentOf(request)), options.catalogue.changelog, await targetsFor(scan, options.definitions, /* @__PURE__ */ new Date()), await standingOf(scan.id, assessmentOf(request))), await readerOf(request)));
 	});
 	app.get("/api/scans/:id/comparison/:otherId", async (request, response) => {
 		const scope = assessmentOf(request);
@@ -438,7 +455,7 @@ function registerApi(served, options) {
 		const decided = await exportDecisions(scan);
 		const reviewed = await standingOf(scan.id, scan.stamp.definition?.id ?? null);
 		const file = seal({
-			scan,
+			scan: projectScan(scan, await readerOf(request)),
 			catalogue: options.catalogue,
 			decisions: decided,
 			format,
@@ -529,12 +546,13 @@ function registerApi(served, options) {
 			}];
 		});
 	};
-	const listExports = async (scan, identity) => {
+	const listExports = async (scan, identity, reader) => {
 		const decided = await exportDecisions(scan);
+		const shown = projectScan(scan, reader);
 		const reviewed = await standingOf(scan.id, scan.stamp.definition?.id ?? null);
 		const fileOf = (variant, format) => {
 			const file = seal({
-				scan,
+				scan: shown,
 				catalogue: options.catalogue,
 				decisions: decided,
 				format,
@@ -571,7 +589,7 @@ function registerApi(served, options) {
 	app.get("/api/scans/:id/exports", async (request, response) => {
 		const scan = await exportSubject(request, response);
 		if (scan == null) return;
-		response.json(await listExports(scan, { correlation: scan.id }));
+		response.json(await listExports(scan, { correlation: scan.id }, await readerOf(request)));
 	});
 	app.get("/api/results/:id/exports", async (request, response) => {
 		const result = await finalResultSubject(request, response);
@@ -579,7 +597,7 @@ function registerApi(served, options) {
 		response.json(await listExports(result.scan, {
 			correlation: result.resultId,
 			resultId: result.resultId
-		}));
+		}, await readerOf(request)));
 	});
 	/**
 	* What a run changed against the run before it.
@@ -997,6 +1015,7 @@ function registerApi(served, options) {
 		respondToFailure
 	});
 	registerReviewRoutes(app, {
+		reader: readerOf,
 		...options.reviews != null ? { reviews: options.reviews } : {},
 		...options.reviewStorage != null ? { reviewStorage: options.reviewStorage } : {},
 		...options.now != null ? { now: options.now } : {},
@@ -1066,6 +1085,7 @@ function registerApi(served, options) {
 		respondToFailure
 	});
 	registerAdvisoryRoutes(app, {
+		reader: readerOf,
 		...options.advisories != null ? { advisories: options.advisories } : {},
 		...options.runs != null ? { runs: options.runs } : {},
 		asking: (request, actor, granted) => advisoryRequest(request, actor, granted, options),
@@ -1074,6 +1094,7 @@ function registerApi(served, options) {
 		idempotencyKey
 	});
 	registerImportRoutes(app, {
+		reader: readerOf,
 		...options.imports != null ? { imports: options.imports } : {},
 		store: options.store,
 		permitted: (request, response, action, context) => permitted(request, response, options, action, context),

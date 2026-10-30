@@ -2,7 +2,14 @@ import { share } from "../../collect/sql/rows.js";
 import { asJob } from "../locate.js";
 import { bandOutcome, bandsOf, evidenceFrom, fromSignal, notApplicable, offenders, percent } from "./helpers.js";
 //#region server/resolve/resolvers/security-jobs.ts
+/**
+* The job inventory. The detail evidence that lists the jobs running as a user account carries that
+* account beside each, so `share/projection.ts` knows this id and `RUN_AS_USER_LEAD` and withholds that
+* evidence from readers outside the assessor group.
+*/
 const JOBS = "sql:jobs.inventory";
+/** The lead of the detail evidence naming the jobs that run as a user account. */
+const RUN_AS_USER_LEAD = "Running as a user account";
 const DBFS_TABLES = "sql:security.dbfs_tables";
 const SECURITY_JOBS_RESOLVERS = [fromSignal(JOBS, ["SCP-04-22"], (jobs, context) => {
 	if (jobs.length === 0) return notApplicable("There are no jobs in this estate, so there is no run-as identity to assess.");
@@ -18,7 +25,7 @@ const SECURITY_JOBS_RESOLVERS = [fromSignal(JOBS, ["SCP-04-22"], (jobs, context)
 			pass: 1,
 			partial: .8
 		})),
-		evidence: [evidenceFrom(context, JOBS, evidenceSentence, "Every job runs as a service principal, so its permissions are scoped to the workload"), ...offenders(context, JOBS, "Running as a user account", userRunJobs, asJob, { note: (job) => job.runAs })],
+		evidence: [evidenceFrom(context, JOBS, evidenceSentence, "Every job runs as a service principal, so its permissions are scoped to the workload"), ...offenders(context, JOBS, RUN_AS_USER_LEAD, userRunJobs, asJob, { note: (job) => job.runAs })],
 		outcomeReason: spShare === 1 ? void 0 : userRunJobs.length === 1 ? "One job runs as a user account. That job inherits its owner’s access, which expands and contracts as their grants change, and becomes a dangling credential if they leave." : `${userRunJobs.length.toLocaleString("en-US")} jobs run as user accounts. Each one inherits its owner’s access, which expands and contracts as their grants change, and becomes a dangling credential if they leave.`
 	};
 }), fromSignal(DBFS_TABLES, ["SCP-04-05"], (audit, context) => {
@@ -34,4 +41,4 @@ const SECURITY_JOBS_RESOLVERS = [fromSignal(JOBS, ["SCP-04-22"], (jobs, context)
 	};
 })];
 //#endregion
-export { SECURITY_JOBS_RESOLVERS };
+export { JOBS, RUN_AS_USER_LEAD, SECURITY_JOBS_RESOLVERS };

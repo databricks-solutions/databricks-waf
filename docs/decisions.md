@@ -66,3 +66,22 @@ Each section records one settled question about how the App works: what was deci
 
 - `app/server/api/routes.ts`: `permitted()`, which calls `verifiedIdentityFrom` and `requireVerifiedIdentity` before the membership check, and records a refusal through `options.audit?.refused`. `identityFrom` and `identify` keep the header for reads.
 - `app/server/authorize/group.ts`: `requireVerifiedIdentity`, and `identity-mismatch` among the kinds of `NotPermittedError`.
+
+## D1: stored results are shared in full, and the detail behind them only with assessors
+
+**Status:** decided 2026-10-29 by the product owner
+
+**Decision.** Published results, scores, findings outcomes and summaries are readable by every person who can open the App. Three kinds of field are shown only to direct members of `WAF_ASSESSOR_GROUP`: the text of a statement in an advisory, the principal identifiers in a finding's evidence (the holders of tokens, and the accounts that jobs run as), and the raw readings an administrator imported, together with the name of whoever collected them. Every other reader gets a typed placeholder in the same place. It says that the field is withheld and names the group whose direct members can see it. The check is the one that gates a change: the forwarded token, the groups the workspace lists for it, and agreement between the forwarded identity and the verified one. A request with no token, an identity lookup that fails and a lookup that lists no groups all count as not being an assessor, so detail is withheld while the summaries are still served. The answer is worked out once per request and kept for nothing longer. The same projection applies to the CSV and JSON exports, so a download cannot carry what the screen does not show.
+
+**Reason.** A run reads the estate as the person or service principal who started it, so what it stores reflects that identity's grants and not the grants of whoever opens the record later. Saying that anyone who can open the App can read a stored result because they could run the scan again themselves is not true of the detail: a reader may not hold the grants the run held. Scores, outcomes and summaries do not name a principal or quote a statement, so sharing them with everyone is what lets a stakeholder read an assessment without being an assessor. Restricting the detail to the group that already holds the authority to change an assessment adds no new role, and a placeholder tells everyone else why a field is missing and who to ask. There is no per-row access control and no separate reader-detail group, and what is collected and stored is unchanged: the record is stored whole and the projection runs when it is read. Because it runs on read, it covers records written before this decision and leaves the bytes and digests of published results untouched.
+
+**An export differs by reader.** A file built for a reader outside the group carries placeholders where an assessor's carries detail, so its digest differs too. The digest listed beside a file is the digest of the file that reader downloads.
+
+**Governs:**
+
+- `app/server/share/reader.ts`: `assessorCheck`, the per-request test of direct membership that fails closed.
+- `app/server/share/projection.ts`: the projection of evidence, findings, scans, results, advisories and imports, including which evidence names a principal (`carriesPrincipals`).
+- `app/shared/api/contract.ts`: `WithheldPayload`, the placeholder, and the fields that carry it.
+- `app/server/api/routes.ts`, `app/server/api/review-routes.ts`, `app/server/api/advisory-routes.ts` and `app/server/api/import-routes.ts`: every read and export route that can carry one of these fields.
+- `app/client/src/components/WithheldNote.tsx`: where the client prints the placeholder.
+- `app/server/scan/postgres-store.ts` and `app/config/statements/workload_query_shapes.sql`: the comments that state this policy as the reason stored detail is not open to every reader.

@@ -10,7 +10,7 @@
 // that already carries eight is furniture; one line the reader can read at a glance and act on is
 // not, and the field names ("authority", "surface") are ours rather than theirs anyway.
 
-import type { Provenance } from '../api/types';
+import type { Evidence, Provenance } from '../api/types';
 
 /**
  * How the reading was authorised, phrased to complete "read as …".
@@ -46,6 +46,18 @@ export function provenanceSentence(provenance: Provenance | undefined): string |
   if (provenance == null) return undefined;
   const where = provenance.from == null ? '' : `, from ${provenance.from}`;
   return `Read ${AS[provenance.authority](provenance.actor)}${where}.`;
+}
+
+/**
+ * The sentence for the evidence a finding rests on first, and what stands in for it when it is withheld.
+ *
+ * An imported reading carries no provenance for a reader outside the assessor group, because its actor is
+ * the administrator who collected it. The placeholder says so in the sentence's place, rather than the
+ * line vanishing and a reader taking the reading for one this app made.
+ */
+export function readSentence(evidence: Evidence | undefined): string | undefined {
+  if (evidence?.withheld?.withheld === 'admin-reading') return evidence.withheld.reason;
+  return provenanceSentence(evidence?.provenance);
 }
 
 /**

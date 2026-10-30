@@ -2,6 +2,10 @@ import { SETTING_KEYS } from "../../collect/rest/settings-keys.js";
 import { detailFrom, evidenceFrom, fromSignal, fromSignals, notApplicable, threshold, unmeasured, valueOf } from "./helpers.js";
 //#region server/resolve/resolvers/security-settings.ts
 const SETTINGS = "rest:workspace:preview.workspace-conf";
+/**
+* The token inventory. The detail evidence read from it names who holds each token, which is why
+* `share/projection.ts` knows this id: it withholds that evidence from readers outside the assessor group.
+*/
 const TOKENS = "rest:workspace:token.list";
 const SERVING = "rest:workspace:serving-endpoints";
 /**
@@ -156,4 +160,4 @@ function owners(tokens) {
 	return tokens.length > 5 ? `${named}, and ${tokens.length - 5} more` : named;
 }
 //#endregion
-export { SECURITY_SETTINGS_RESOLVERS };
+export { SECURITY_SETTINGS_RESOLVERS, TOKENS };

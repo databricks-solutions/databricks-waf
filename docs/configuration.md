@@ -16,7 +16,7 @@ Configuration has three layers: customer bindings in the ignored DAB override, a
 | `sql_warehouse_id` | Yes | — | Warehouse used for assessment SQL. Bound to the App with `CAN_USE`. |
 | `postgres_branch` | Yes | — | Lakebase branch resource name: `projects/<project>/branches/<branch>`. |
 | `postgres_database` | Yes | — | Lakebase database resource name inside that branch. |
-| `assessor_group` | Strongly recommended | `admins` | Group whose direct members may mutate assessment records. Use a dedicated group so assessors do not need workspace-admin rights. |
+| `assessor_group` | Strongly recommended | `admins` | Group whose direct members may mutate assessment records and read the detail behind stored results (see [Who can read stored results](#who-can-read-stored-results)). Use a dedicated group so assessors do not need workspace-admin rights. |
 | `app_url` | Schedule only | empty | Deployed Databricks Apps URL called by the scheduled job. This is not the workspace URL. |
 | `schedule_client_id` | Schedule only | empty | Application id of the dedicated scheduled service principal; not its numeric SCIM id. |
 | `schedule_secret_scope` | Schedule only | empty | Workspace secret scope holding that principal's OAuth secret. |
@@ -34,7 +34,7 @@ The DAB and `app.yaml` deliberately declare the same App environment:
 | --- | --- | --- |
 | `DATABRICKS_WAREHOUSE_ID` | `sql-warehouse` binding | Warehouse used by the server's statement executor. |
 | `LAKEBASE_ENDPOINT` | `postgres` binding | Platform-resolved Lakebase connection. Required for durable operation. |
-| `WAF_ASSESSOR_GROUP` | `assessor_group` | Direct-membership mutation gate. |
+| `WAF_ASSESSOR_GROUP` | `assessor_group` | Direct-membership mutation gate, and the group whose direct members are shown restricted detail in stored results. |
 | `WAF_AUDIT_STRICT` | Manifest value `0` | Allows the App to start while reporting audit-health faults in Diagnostics; record mutations still fail if their audit event cannot be written. |
 
 Do not set these by hand in the deployed App. Change the DAB override and use the supported upgrade command so bundle state and runtime state stay aligned.
@@ -51,6 +51,18 @@ The Databricks Apps proxy provides a short-lived on-behalf-of token for the sign
 The App does not request `all-apis`, authentication-management, secret-management or cluster-management authority. A scope permits the API family; the caller's workspace and Unity Catalog grants still decide what can be read.
 
 Read-only pages are available to people who can open the App. Starting scans or changing records additionally requires direct membership in `assessor_group`.
+
+### Who can read stored results
+
+Published results, scores, finding outcomes and summaries are readable by everyone who can open the App. The detail behind them is shown only to direct members of `assessor_group`, because a stored run holds what the identity that ran it could read, which can be more than a reader's own grants reach:
+
+| Shown only to assessors | What everyone else sees |
+| --- | --- |
+| The text of a statement, in advisories | A placeholder naming the group |
+| The principal identifiers in a finding's evidence: token holders, and the accounts jobs run as | A placeholder naming the group |
+| An administrator's imported readings, and who collected them | A placeholder naming the group |
+
+The placeholder applies in the pages, the API and the CSV and JSON exports alike. A file exported by a reader outside the group therefore differs from the assessor's file, and the digest listed beside each file is the digest of the file that reader downloads. A request with no forwarded token, or one whose identity lookup fails or lists no groups, is treated as outside the group: the summaries are still served and the detail is withheld. Nested group membership does not count, for the reason it does not count for changes. Nothing about collection or storage changes, and the policy is applied when a record is read, so it covers results stored earlier. The reasoning is in [decision D1](decisions.md#d1-stored-results-are-shared-in-full-and-the-detail-behind-them-only-with-assessors).
 
 ## Assessment definition settings
 

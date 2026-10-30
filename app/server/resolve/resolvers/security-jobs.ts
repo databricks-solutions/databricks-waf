@@ -25,7 +25,16 @@ import {
 } from './helpers.js';
 import type { SignalId } from '../../collect/signal.js';
 
-const JOBS: SignalId = 'sql:jobs.inventory';
+/**
+ * The job inventory. The detail evidence that lists the jobs running as a user account carries that
+ * account beside each, so `share/projection.ts` knows this id and `RUN_AS_USER_LEAD` and withholds that
+ * evidence from readers outside the assessor group.
+ */
+export const JOBS: SignalId = 'sql:jobs.inventory';
+
+/** The lead of the detail evidence naming the jobs that run as a user account. */
+export const RUN_AS_USER_LEAD = 'Running as a user account';
+
 const DBFS_TABLES: SignalId = 'sql:security.dbfs_tables';
 
 /**
@@ -82,7 +91,7 @@ const jobsRunAsSp = fromSignal<JobRow[]>(JOBS, ['SCP-04-22'], (jobs, context) =>
         evidenceSentence,
         'Every job runs as a service principal, so its permissions are scoped to the workload'
       ),
-      ...offenders(context, JOBS, 'Running as a user account', userRunJobs, asJob, {
+      ...offenders(context, JOBS, RUN_AS_USER_LEAD, userRunJobs, asJob, {
         note: (job) => job.runAs,
       }),
     ],
