@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { PUBLIC_METHODOLOGY, publicMethodologyFrom } from './identity.js';
+import { PUBLIC_METHODOLOGY, SHIPPED_METHODOLOGIES, publicMethodologyFrom } from './identity.js';
 
 const release = {
   public_version: 1,
@@ -25,13 +25,21 @@ const manifest = {
 };
 
 describe('the public methodology identity', () => {
-  it('loads the exact released methodology this build ships', () => {
-    expect(PUBLIC_METHODOLOGY.publicVersion).toBe(1);
-    expect(PUBLIC_METHODOLOGY.state).toBe('released');
-    expect(PUBLIC_METHODOLOGY.effectiveDate).toBe('2026-08-28');
-    expect(PUBLIC_METHODOLOGY.releaseCommit).toBe('60ff57fa7ceb2ca844532376230c0769b9f304ba');
-    expect(PUBLIC_METHODOLOGY.approvedBy).toBe('Al Thrussell (product owner)');
+  it('stamps new records with the highest public version this build ships', () => {
+    expect(PUBLIC_METHODOLOGY.publicVersion).toBe(2);
+    expect(PUBLIC_METHODOLOGY.state).toBe('candidate');
+    expect(PUBLIC_METHODOLOGY.effectiveDate).toBeUndefined();
     expect(PUBLIC_METHODOLOGY.manifestDigest).toMatch(/^sha256:[0-9a-f]{64}$/);
+  });
+
+  it('keeps every shipped version, with Version 1 the exact released artefact', () => {
+    expect(SHIPPED_METHODOLOGIES.map((one) => one.publicVersion)).toEqual([1, 2]);
+    const [first] = SHIPPED_METHODOLOGIES;
+    expect(first?.state).toBe('released');
+    expect(first?.effectiveDate).toBe('2026-08-28');
+    expect(first?.releaseCommit).toBe('60ff57fa7ceb2ca844532376230c0769b9f304ba');
+    expect(first?.approvedBy).toBe('Al Thrussell (product owner)');
+    expect(first?.manifestDigest).toBe('sha256:30d26e28904afb7e2c95799daef7ee26219c1461728ded11f514435394c99761');
   });
 
   it('refuses a release record and manifest that name different public versions', () => {
