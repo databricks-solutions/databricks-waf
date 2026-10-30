@@ -13,11 +13,11 @@ work out the mechanics; this page gives you the objective, the facts specific to
 self-check so you can confirm you actually succeeded.
 
 This in-workspace route is a convenience; the reviewed, supported path is
-[Install the App]({{ '/install/' | relative_url }}).
+[Install the App](install.md).
 
 A person kicks it off with something like:
 
-> Open a notebook attached to a cluster you can run shell commands on, then tell Genie Code:
+> Open a notebook attached to a dedicated (single-user) cluster with shell access, then tell Genie Code:
 > *"Deploy the WAF assessment app into this workspace by following the Deploy with Genie Code guide.
 > Work out the steps, then run the guide's verification and tell me the verdict."*
 
@@ -30,9 +30,10 @@ Verify at the end and report the verdict.
 ## Confirm before you start
 
 - **Databricks Apps enabled** in the workspace.
-- **A cluster you can run shell commands on, with outbound internet** if you deploy from a notebook.
-  A dedicated (single-user) cluster is the simplest choice. The shell needs to reach the npm registry
-  and the Node and Databricks CLI installers.
+- **A dedicated (single-user) cluster with shell access and outbound internet** if you deploy from a
+  notebook. Dedicated access mode is required so the temporary `~/.databrickscfg` profile written on the
+  driver is isolated to your identity. The shell needs to reach the npm registry and the Node and
+  Databricks CLI installers.
 - **The identity running the notebook can** create a Lakebase project, use a SQL warehouse, and
   deploy Apps and jobs. Every command acts as that identity.
 
@@ -46,9 +47,9 @@ You decide the exact commands. Reach the objective using these facts, which are 
   (`DATABRICKS_HOST`, `DATABRICKS_TOKEN`, `DATABRICKS_CONFIG_PROFILE`, and related) before it calls the
   CLI, so authenticate with a named profile in `~/.databrickscfg` and pass `--profile`; an env-var
   token will not survive. Inside a notebook you can mint a host and token from the notebook context to
-  write that profile.
-- **The code.** Clone `https://github.com/databricks-solutions/databricks-waf` and run `npm ci` in its
-  `app/` directory.
+  write that profile with mode `0600`, then remove the profile once the lifecycle commands finish.
+- **The code.** Clone `https://github.com/databricks-solutions/databricks-waf`, check out the release tag
+  (`git checkout v0.2.0`), and run `npm ci` in its `app/` directory.
 - **The four bindings.** The bundle binds resources you provide; it does not create or delete them.
   Make sure each exists, then record them in `app/.databricks/bundle/customer/variable-overrides.json`:
 
@@ -73,8 +74,11 @@ You decide the exact commands. Reach the objective using these facts, which are 
   npm run lifecycle -- install  --profile <profile> --target customer --apply
   ```
 
+  If the app already exists in the workspace, `install` refuses; use `upgrade` in place of `install` so the
+  lifecycle records and replaces the existing deployment cleanly.
+
 The exact, fully worked command sequence for a shell (clone, resource discovery, provisioning) is in
-[Install the App]({{ '/install/' | relative_url }}) and [Detailed DAB lifecycle]({{ '/deployment-lifecycle/' | relative_url }}).
+[Install the App](install.md) and [Detailed DAB lifecycle](deployment-lifecycle.md).
 Adapt it to your shell rather than copying it blind.
 
 ## Verify your work
@@ -85,38 +89,56 @@ correctly deployed only when every check prints `PASS`.
 
 ```python
 # Python cell. If the SDK is missing: %pip install databricks-sdk  (then restart Python)
+import json
+from pathlib import Path
 from databricks.sdk import WorkspaceClient
 
 APP = "databricks-waf-assessment"
+OVERRIDES_PATH = Path("app/.databricks/bundle/customer/variable-overrides.json")  # adjust if cloned elsewhere
 REQUIRED_SCOPES = {
     "sql.statement-execution", "sql.warehouses:read",
     "catalog.catalogs:read", "catalog.schemas:read", "catalog.tables:read",
     "model-serving", "vector-search", "sql.query-history:read",
 }
 
+overrides = json.loads(OVERRIDES_PATH.read_text())
 w = WorkspaceClient()
 app = w.apps.get(name=APP)
 
 app_state = str(getattr(app.app_status, "state", ""))
 dep = app.active_deployment
+dep_id = getattr(dep, "deployment_id", None) if dep else None
 dep_state = str(getattr(getattr(dep, "status", None), "state", "")) if dep else ""
-scopes = set(getattr(app, "effective_user_api_scopes", None) or getattr(app, "user_api_scopes", None) or [])
-names = {getattr(r, "name", "") for r in (app.resources or [])}
+scopes = set(getattr(app, "effective_user_api_scopes", None) or [])
+resources = {getattr(r, "name", ""): r for r in (app.resources or [])}
+
+wh = getattr(resources.get("sql-warehouse"), "sql_warehouse", None)
+pg = getattr(resources.get("postgres"), "postgres", None)
 
 checks = {
     "app is RUNNING":            app_state.endswith("RUNNING"),
-    "deployment SUCCEEDED":      dep_state.endswith("SUCCEEDED"),
+    "deployment SUCCEEDED":      bool(dep_id) and dep_state.endswith("SUCCEEDED"),
     "on-behalf-of scopes bound": REQUIRED_SCOPES.issubset(scopes),
-    "SQL warehouse bound":       "sql-warehouse" in names,
-    "Lakebase database bound":   "postgres" in names,
+    "SQL warehouse bound": (
+        wh is not None
+        and getattr(wh, "id", None) == overrides.get("sql_warehouse_id")
+        and str(getattr(wh, "permission", "")).endswith("CAN_USE")
+    ),
+    "Lakebase database bound": (
+        pg is not None
+        and getattr(pg, "branch", None) == overrides.get("postgres_branch")
+        and getattr(pg, "database", None) == overrides.get("postgres_database")
+        and str(getattr(pg, "permission", "")).endswith("CAN_CONNECT_AND_CREATE")
+    ),
 }
 for label, ok in checks.items():
     print(("PASS" if ok else "FAIL"), "-", label)
 
 missing = REQUIRED_SCOPES - scopes
 if missing:
-    print("   missing scopes:", sorted(missing))
+    print("   missing effective scopes:", sorted(missing))
 print("\nVERDICT:", "DEPLOYED CORRECTLY" if all(checks.values()) else "NOT DONE — investigate the FAILs above")
+print("deployment id:", dep_id)
 print("app url:", app.url)
 ```
 
@@ -128,25 +150,28 @@ When every check passes, open **Assess → Prepare assessment** to define and ru
 
 ## Reading the verdict
 
-- **All `PASS`.** Deployed correctly. The deploy is done regardless of what any single command printed.
-- **App RUNNING and scopes and bindings all PASS, but the deploy command exited non-zero.** The
-  lifecycle runs a second plan after applying and fails if any resource still shows a change. On a
+- **All `PASS`.** Deployed correctly.
+- **All `PASS`, and `install --apply` exited non-zero only on `Post-deploy DAB plan is not idempotent.`**
+  The lifecycle runs a second plan after applying and fails if any resource still shows a change. On a
   first install the leftover diff is commonly just the app object and the scheduled job's permissions
-  reconciling, and the app is usable. Trust this verification over the command's exit code, but do not
-  ignore a `FAIL` here.
-- **`on-behalf-of scopes bound` FAILs.** The app object did not receive its scopes. Re-run the apply so
-  the create/update sets them; the bundle is authoritative for the scope list.
+  reconciling, and the app is usable. Do **not** ignore an earlier lifecycle failure (for example,
+  `App databricks-waf-assessment already exists`, which means `install` refused to run and `upgrade` is
+  needed instead) or any `FAIL` in the checks above.
+- **`on-behalf-of scopes bound` FAILs.** The app object's `effective_user_api_scopes` did not receive all
+  8 scopes. Re-run the apply so the create/update sets them, or ask a workspace admin to lift any app
+  scope restriction; the bundle is authoritative for the scope list.
 - **`app is RUNNING` or `deployment SUCCEEDED` FAILs.** Read `app.active_deployment.status.message` and
   the app logs (`w.apps.get(...)`, or `databricks apps logs <name>`). The usual causes are a binding
   that points at a resource that does not exist, or a Lakebase branch that was not `READY` when the
   bindings were written.
-- **A binding FAILs.** The warehouse or Lakebase resource is not attached. Re-check that value in
+- **A binding FAILs.** The warehouse or Lakebase resource is missing, points at a different resource from
+  `variable-overrides.json`, or lacks `CAN_USE` / `CAN_CONNECT_AND_CREATE`. Re-check that value in
   `variable-overrides.json` and re-apply.
 
 ## If the notebook route will not work
 
 If shell access or egress is blocked, or you hit a wall you cannot clear from the cluster, switch to
-the supported path in [Install the App]({{ '/install/' | relative_url }}). It does not depend on the
+the supported path in [Install the App](install.md). It does not depend on the
 cluster at all: clone to a laptop or a web terminal with Node 22 and the Databricks CLI, and it uses
 the same bindings file and the same `npm run lifecycle` commands described above. The verification cell
 in this guide works the same way afterward.

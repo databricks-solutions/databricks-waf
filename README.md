@@ -79,7 +79,7 @@ The same evidence, coverage, action, and verification model applies across all s
 > give Genie Code the link to this repository (`https://github.com/databricks-solutions/databricks-waf`)
 > and ask it to deploy the app into your workspace, and it runs the deployment for you from a notebook by
 > following the [Deploy with Genie Code guide](https://databricks-solutions.github.io/databricks-waf/deploy-with-genie-code/).
-> That path needs a cluster with shell access and internet egress.
+> That path needs a dedicated (single-user) cluster with shell access and internet egress.
 
 ### 1. Check the prerequisites
 
@@ -187,6 +187,7 @@ The [public guide](https://databricks-solutions.github.io/databricks-waf/) is or
 need to complete:
 
 - [install the App](https://databricks-solutions.github.io/databricks-waf/install/);
+- [deploy with Genie Code](https://databricks-solutions.github.io/databricks-waf/deploy-with-genie-code/);
 - [configure assessment and operation settings](https://databricks-solutions.github.io/databricks-waf/configuration/);
 - [run the complete customer journey](https://databricks-solutions.github.io/databricks-waf/user-guide/);
 - [understand every page](https://databricks-solutions.github.io/databricks-waf/pages/);
