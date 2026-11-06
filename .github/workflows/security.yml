@@ -162,7 +162,7 @@ jobs:
       # named individually in app/osv-scanner.toml with a reason and an expiry,
       # rather than waved through by loosening the gate.
       - name: OSV scanner
-        uses: google/osv-scanner-action/osv-scanner-action@6e4298ebc4db23e847df9b2e2de2939d6f066c67 # v2.5.1
+        uses: google/osv-scanner-action/osv-scanner-action@b1d267aea5211fa648d9d442fa64b90dbdcbdd36 # v2.7.0
         with:
           scan-args: |-
             --config=app/osv-scanner.toml
