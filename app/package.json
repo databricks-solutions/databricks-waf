@@ -106,7 +106,8 @@
     "check:skill-vendoring": "node scripts/check-skill-vendoring.mjs",
     "drift:docs": "node scripts/docs-drift.mjs",
     "docs:build": "node scripts/build-pages.mjs --write",
-    "check:docs-build": "node scripts/build-pages.mjs"
+    "check:docs-build": "node scripts/build-pages.mjs",
+    "check:compute-policies-e2e": "tsx scripts/check-compute-policies-e2e.mts"
   },
   "keywords": [
     "databricks",

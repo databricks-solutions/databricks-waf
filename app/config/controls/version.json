@@ -1,6 +1,6 @@
 {
-  "version": 21,
-  "fingerprint": "sha256:fefd02c559ae6664774564100072097edc4e6f4fa8fb10d45cfb00d739ba84a5",
+  "version": 22,
+  "fingerprint": "sha256:f7880a3d2f51768269079d5c0e82c2b57ee130dc243a3d1f38bab5def547e412",
   "scored_units": 165,
   "controls": {
     "CO-01-01": {
@@ -898,7 +898,7 @@
       "severity": "medium",
       "measurability": "system-table",
       "coverage_mode": "complete",
-      "alias_group": "compute-templates",
+      "alias_group": "classic-compute-templates",
       "clouds": [
         "aws",
         "azure",
@@ -908,15 +908,7 @@
         "pass_share": 0.9,
         "partial_share": 0.5
       },
-      "preconditions": [
-        {
-          "signal": "sql:estate.compute_profile",
-          "operator": "eq",
-          "value": 0,
-          "outcome": "not-applicable",
-          "scope": "estate"
-        }
-      ]
+      "preconditions": []
     },
     "IU-03-04": {
       "pillar": "IU",
@@ -1116,7 +1108,7 @@
       "severity": "medium",
       "measurability": "system-table",
       "coverage_mode": "complete",
-      "alias_group": "compute-templates",
+      "alias_group": "classic-compute-templates",
       "clouds": [
         "aws",
         "azure",
@@ -1126,15 +1118,7 @@
         "pass_share": 0.9,
         "partial_share": 0.5
       },
-      "preconditions": [
-        {
-          "signal": "sql:estate.compute_profile",
-          "operator": "eq",
-          "value": 0,
-          "outcome": "not-applicable",
-          "scope": "estate"
-        }
-      ]
+      "preconditions": []
     },
     "OE-02-03": {
       "pillar": "OE",

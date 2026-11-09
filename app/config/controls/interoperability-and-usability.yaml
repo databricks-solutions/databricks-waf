@@ -233,23 +233,11 @@ principles:
         measurability: system-table
         collector: sql:compute.clusters
         severity: medium
-        alias_group: compute-templates
+        alias_group: classic-compute-templates
         criteria: Same measurement as OE-02-02, read as the predefined-templates requirement. Scored once.
         thresholds:
           pass_share: 0.9
           partial_share: 0.5
-        applicability:
-          preconditions:
-            - signal: sql:estate.compute_profile
-              operator: eq
-              value: 0
-              outcome: not-applicable
-              reason: >-
-                This estate ran no classic compute in the window, so there are no clusters for this
-                to govern. The control is excluded from scoring rather than failed: serverless
-                compute is configured by the platform rather than by you, so there is nothing here
-                to get wrong.
-              scope: estate
       - id: IU-03-04
         title: Use AI capabilities to increase productivity
         provenance: waf-docs

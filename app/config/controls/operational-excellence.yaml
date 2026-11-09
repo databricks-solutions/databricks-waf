@@ -187,27 +187,19 @@ principles:
         measurability: system-table
         collector: sql:compute.clusters
         severity: medium
-        alias_group: compute-templates
+        alias_group: classic-compute-templates
         criteria: >-
-          At least 90% of all-purpose clusters are created from a compute policy. Not applicable to
-          an all-serverless estate, which exposes no configuration for a template to settle.
+          At least 90% of classic all-purpose clusters and 90% of classic job clusters in the
+          collected live inventory are created from compute policies. Score each non-empty
+          population separately using the lower adoption share. Exclude serverless, pipeline and
+          maintenance compute. Job definitions without a cluster in this inventory are not assessed.
         thresholds:
           pass_share: 0.9
           partial_share: 0.5
-        applicability:
-          preconditions:
-            - signal: sql:estate.compute_profile
-              operator: eq
-              value: 0
-              outcome: not-applicable
-              reason: >-
-                This estate ran no classic compute in the window, so there are no clusters for this
-                to govern. The control is excluded from scoring rather than failed: serverless
-                compute is configured by the platform rather than by you, so there is nothing here
-                to get wrong.
-              scope: estate
         remediation:
-          summary: Define compute policies and require them for cluster creation.
+          summary: >-
+            Require compute policies for classic all-purpose clusters and shared or task-level job
+            compute.
           cli: |-
             databricks policy-families list
             databricks cluster-policies create --name job-compute --policy-family-id job-cluster \

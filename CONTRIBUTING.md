@@ -37,6 +37,12 @@ Read [the customer design system](docs/design/customer-design-system.md) before 
 language. Verify affected screens in current Chrome at representative desktop and laptop widths, in both
 themes. Tablet and mobile layouts are outside the supported product scope.
 
+The compute-policy end-to-end check starts its own local app and synthetic Databricks HTTP server.
+Run `npm run bundle` followed by `npm run check:compute-policies-e2e` from `app/`. It uses installed Chrome
+at desktop and laptop widths in both themes, and saves screenshots under
+`app/node_modules/.cache/compute-policies-e2e/`. It runs the production collector, scan API, review
+publication and built client; it does not test a live Databricks workspace or durable Lakebase storage.
+
 Browser checks require a locally running app:
 
 ```bash

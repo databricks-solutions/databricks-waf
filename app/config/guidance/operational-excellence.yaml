@@ -1425,10 +1425,10 @@ entries:
   # Never put to a person. Same measurement as IU-03-03. Here the angle is operational consistency — not onboarding empty forms.
   OE-02-02:
     status: authored
-    last_reviewed: '2026-08-18'
+    last_reviewed: '2026-11-09'
     owner_role: Platform administrator
     means: >-
-      Classic all-purpose compute is created from policies so instance family, runtime and size
+      Classic all-purpose and job compute are created from policies so instance family, runtime and size
       bounds are an estate decision rather than a per-cluster improvisation. Consistency for
       operations — patching, support, cost comparison — is the point.
     matters: >-
@@ -1436,56 +1436,56 @@ entries:
       once for the job, once for that team's unique shape. Cost and runtime upgrades cannot be
       reasoned about across an estate that never shared a template.
     good:
-      - At least nine in ten all-purpose clusters were created from a policy (the pass band).
+      - At least nine in ten clusters in each populated group — all-purpose and job — use a policy.
       - Policies are maintained — runtime pins move on a schedule, not only when something breaks.
       - Unrestricted cluster creation is not the default grant for people who build production work.
-      - Serverless estates with no classic all-purpose clusters are satisfied by architecture here.
-      - Job compute is configured on the job; this population is all-purpose only.
+      - Serverless requires no classic compute policy; pipeline and maintenance clusters are excluded.
+      - Shared and task-level job compute definitions carry new_cluster.policy_id.
     examples:
       strong: >-
-        Classic all-purpose clusters that remain were created from current policies. Runtime
+        Classic all-purpose and job clusters that remain were created from current policies. Runtime
         upgrades roll through the policies. Everyone else is on serverless.
       partial: >-
-        Policies cover about half to nine-tenths of all-purpose clusters; older unrestricted
+        The lower policy adoption share across all-purpose and job clusters is half to nine-tenths; unrestricted
         clusters still run, or policies exist but are stale.
       weak: >-
         All-purpose clusters are created freehand. There is no policy, or none that anyone uses.
     verify:
       - how: ui
         where: >-
-          Compute, all-purpose clusters and the Policy column; then Compute > Policies
+          Compute, all-purpose clusters and the Policy column; Jobs & Pipelines, job compute settings; then Compute > Policies
         expect: >-
-          A policy on the clusters in active use, or no classic all-purpose clusters at all
+          A policy on the clusters in active use, or no classic all-purpose or job clusters in the inventory
         caveat: >-
-          The app scores all-purpose clusters only (pass ≥90%, partial ≥50%). No all-purpose
-          classic compute is satisfied-by-architecture, not a 100% adoption score. Serverless has
-          no policy to attach
+          The app scores all-purpose and job clusters separately (pass ≥90%, partial ≥50%) and takes
+          the lower share. Evidence comes from the live cluster inventory, not every job definition
+          or historical run. Jobs without a cluster in that inventory need a separate definition review.
       - how: cli
-        where: databricks clusters list --output json
-        expect: policy_id set on all-purpose clusters people actually use
+        where: databricks clusters list --output json; databricks jobs get <job-id> --output json
+        expect: policy_id on all-purpose clusters and new_cluster.policy_id on shared and task-level job compute
       - how: by-hand
-        where: Ask how the last production all-purpose cluster was sized and which runtime it pinned
+        where: Ask how the last production all-purpose or job cluster was sized and which runtime it pinned
         expect: A policy name, rather than "whatever the form defaulted to"
     pitfalls:
       - >-
         Policies that only admins may use, so builders still get the empty form.
       - >-
-        Counting job clusters or serverless into this share; they are outside the population and
-        distort the operational question.
+        Combining job and all-purpose clusters into one share, which can hide a policy gap in the
+        smaller group. Serverless has no classic policy and must not count as ungoverned.
       - >-
         A policy nobody updates, which freezes an old runtime under the appearance of control.
     partial_when: >-
-      Policies cover some all-purpose clusters while others remain freehand or pinned to an
+      Policies cover some classic all-purpose or job clusters while others remain freehand or pinned to an
       unmaintained policy — operational inconsistency persists even though templates exist on paper.
     not_applicable_when: >-
-      There are no classic all-purpose clusters, so there is no compute configuration a template
-      would settle.
+      There are no classic all-purpose or job clusters in the collected inventory. This does not
+      establish policy coverage for job definitions whose clusters are absent.
     references:
       - https://docs.databricks.com/aws/en/admin/clusters/policies
       - https://docs.databricks.com/aws/en/compute/configure
     advice:
       start_from: >-
-        Serverless as the default path, and maintained policies for the classic all-purpose
+        Serverless as the default path, and maintained policies for classic all-purpose and job
         compute that remains — granted to the groups that create it, reviewed when runtimes move.
       depends_on:
         - >-
@@ -1495,13 +1495,14 @@ entries:
         - >-
           GPU or custom images need their own policies so exceptions do not become the estate.
         - >-
-          Job cluster settings belong on the job definition, not folded into this all-purpose
-          score.
+          Attach policies through new_cluster.policy_id on both shared job_clusters and task-level
+          new_cluster definitions; a job definition alone does not enforce a compute policy.
       path:
         - >-
           Publish or refresh one policy the busiest team will actually use.
         - >-
-          Recreate or attach that policy on their running all-purpose clusters.
+          Recreate or attach that policy on all-purpose clusters, and update shared and task-level job
+          compute definitions to reference an appropriate job policy.
         - >-
           Remove unrestricted create once each group that needs classic has a policy, and diary
           the next runtime bump on the policies themselves.
@@ -1512,7 +1513,7 @@ entries:
           Recreating clusters is a restart and a library-reattach risk.
       retain: >-
         The policy list with owners and last runtime review date, and the dated count of
-        all-purpose clusters with versus without a policy.
+        each group of all-purpose and job clusters with versus without a policy.
       revisit: >-
         A freehand cluster in production, a runtime CVE, or a new team granted unrestricted
         create. Failing those, each runtime pin cycle.

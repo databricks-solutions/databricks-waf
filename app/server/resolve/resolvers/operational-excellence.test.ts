@@ -403,16 +403,117 @@ describe('OE-02-02 and IU-03-03, standardized compute', () => {
   });
 
   it('names the clusters configured freehand', () => {
-    const finding = withClusters('OE-02-02', [cluster(), cluster({ clusterId: 'c-2', name: 'ad-hoc', hasPolicy: false })]);
+    const finding = withClusters('OE-02-02', [
+      cluster(),
+      cluster({ clusterId: 'c-2', name: 'ad-hoc', hasPolicy: false }),
+    ]);
     expect(finding.outcome).not.toBe('pass');
     expect(finding.evidence.some((item) => (item.observed ?? '').includes('ad-hoc'))).toBe(true);
   });
 
-  it('is satisfied by architecture on an estate with no classic all-purpose compute', () => {
-    // Serverless exposes no instance type, node count or runtime for a user to choose, which
-    // is the decision a policy exists to settle. That is the requirement met, not skipped.
-    const finding = withClusters('IU-03-03', [cluster({ source: 'JOB', hasPolicy: false })]);
-    expect(finding.outcome).toBe('satisfied-by-architecture');
+  it.each(['OE-02-02', 'IU-03-03'])('scores job-only estates for %s', (controlId) => {
+    expect(withClusters(controlId, [cluster({ source: 'JOB', hasPolicy: false })]).outcome).toBe('fail');
+    expect(withClusters(controlId, [cluster({ source: 'JOB', hasPolicy: true })]).outcome).toBe('pass');
+  });
+
+  it.each(['OE-02-02', 'IU-03-03'])('assesses observed job clusters without recent billing for %s', (controlId) => {
+    const finding = findingFor(
+      controlId,
+      signalsOf([
+        [CLUSTERS, [cluster({ source: 'JOB', hasPolicy: false })]],
+        [PROFILE, { distinctClusters: 0, summary: 0 }],
+      ])
+    );
+    expect(finding.outcome).toBe('fail');
+    expect(finding.evidence.some((item) => item.observed?.includes('0 of 1 classic job'))).toBe(true);
+  });
+
+  it('reports both populations and identifies job clusters without policies', () => {
+    const finding = withClusters('OE-02-02', [
+      cluster(),
+      cluster({ clusterId: 'job-1', source: 'JOB', name: 'nightly-etl', hasPolicy: false }),
+    ]);
+    expect(finding.outcome).toBe('fail');
+    expect(finding.evidence.some((item) => item.observed?.includes('1 of 1 classic all-purpose'))).toBe(true);
+    expect(finding.evidence.some((item) => item.observed?.includes('0 of 1 classic job'))).toBe(true);
+    expect(finding.evidence.some((item) => item.observed?.includes('nightly-etl'))).toBe(true);
+    expect(finding.outcomeReason).toContain('not every job definition');
+  });
+
+  it.each(['JOB', 'UI'])('does not let the larger governed %s population hide a gap', (source) => {
+    const governed = Array.from({ length: 99 }, (_, index) => cluster({ clusterId: `c-${index}`, source }));
+    const other = cluster({ clusterId: 'freehand', source: source === 'JOB' ? 'UI' : 'JOB', hasPolicy: false });
+    expect(withClusters('OE-02-02', [...governed, other]).outcome).toBe('fail');
+  });
+
+  it.each([
+    [9, 'pass'],
+    [8, 'partial'],
+    [5, 'partial'],
+    [4, 'fail'],
+  ])('scores %i of 10 governed job clusters as %s', (governed, outcome) => {
+    const jobs = Array.from({ length: 10 }, (_, index) =>
+      cluster({ clusterId: `job-${index}`, source: 'JOB', hasPolicy: index < governed })
+    );
+    expect(withClusters('OE-02-02', [cluster(), ...jobs]).outcome).toBe(outcome);
+  });
+
+  it('excludes pipeline and maintenance clusters from policy adoption', () => {
+    const finding = withClusters('OE-02-02', [
+      cluster({ source: 'API' }),
+      cluster({ clusterId: 'job', source: 'JOB' }),
+      cluster({ clusterId: 'pipeline', source: 'PIPELINE', hasPolicy: false }),
+      cluster({ clusterId: 'maintenance', source: 'MAINTENANCE', hasPolicy: false }),
+    ]);
+    expect(finding.outcome).toBe('pass');
+  });
+
+  it.each(['OE-02-02', 'IU-03-03'])('has no classic policy population on an empty inventory for %s', (controlId) => {
+    const finding = withClusters(controlId, []);
+    expect(finding.outcome).toBe('not-applicable');
+    expect(finding.outcomeReason).toContain('whose clusters are absent');
+  });
+
+  it('does not award policy adoption credit for pipeline and maintenance compute alone', () => {
+    const finding = withClusters('OE-02-02', [
+      cluster({ source: 'PIPELINE', hasPolicy: false }),
+      cluster({ clusterId: 'maintenance', source: 'MAINTENANCE', hasPolicy: false }),
+    ]);
+    expect(finding.outcome).toBe('not-applicable');
+  });
+
+  it('uses catalogue thresholds for both populations', () => {
+    const spec = catalogue.controls.find((control) => control.id === 'OE-02-02');
+    if (spec == null) throw new Error('OE-02-02 is missing from the catalogue');
+    const finding = resolveControl(
+      { ...spec, thresholds: { pass_share: 1, partial_share: 0.9 } },
+      signalsOf([
+        [
+          CLUSTERS,
+          [
+            cluster(),
+            ...Array.from({ length: 10 }, (_, index) =>
+              cluster({ clusterId: `job-${index}`, source: 'JOB', hasPolicy: index < 9 })
+            ),
+          ],
+        ],
+        [PROFILE, { distinctClusters: 11, summary: 11 }],
+      ]),
+      registry.get(spec.id)
+    );
+    expect(finding.outcome).toBe('partial');
+    expect(finding.evidence[0]?.expected).toContain('100%');
+  });
+
+  it('keeps unavailable cluster evidence unmeasurable', () => {
+    const finding = findingFor(
+      'OE-02-02',
+      new Map([
+        [CLUSTERS, unmeasurable(CLUSTERS, 'Cluster inventory unavailable')],
+        [PROFILE, observed(PROFILE, { distinctClusters: 1, summary: 1 }, 1)],
+      ])
+    );
+    expect(finding.outcome).toBe('unmeasurable');
   });
 });
 
