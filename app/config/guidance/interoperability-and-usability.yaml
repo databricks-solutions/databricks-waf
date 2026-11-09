@@ -1093,7 +1093,7 @@ entries:
   # Never put to a person. Same measurement as OE-02-02, read as a starting template.
   IU-03-03:
     status: authored
-    last_reviewed: '2026-08-18'
+    last_reviewed: '2026-11-09'
     owner_role: Platform owner
     means: >-
       A team that still needs classic compute starts from a policy — instance family, runtime,
@@ -1104,7 +1104,7 @@ entries:
       and how the next person to debug a job has to learn that team's choices before they
       can learn the job. The wait is not the start time; it is the configuration.
     good:
-      - Classic all-purpose clusters are created from a policy, not from the unrestricted form.
+      - Classic all-purpose and job clusters use policies; each populated group meets the 90% pass band.
       - The policies a team can use are granted to the team, not only to admins.
       - A policy is wide enough to work under, so the real path is not an exception ticket.
       - Serverless is the default where it exists, and the policies cover what remains.
@@ -1114,7 +1114,7 @@ entries:
         The few classic clusters that remain were created from policies scoped to the groups
         that still need them. Everyone else is on serverless and never sees the form.
       partial: >-
-        Policies exist and half the all-purpose clusters were created from them. The rest
+        Policies exist and half the classic all-purpose or job clusters were created from them. The rest
         are unrestricted clusters from before the policies, still running.
       weak: >-
         Anyone who can create a cluster gets the empty form. There are no policies, or the
@@ -1123,19 +1123,18 @@ entries:
       - how: ui
         where: >-
           Compute, the all-purpose clusters, the Policy column, then Compute > Policies and
-          who may use each
+          who may use each; Jobs & Pipelines, shared and task-level job compute settings
         expect: >-
           A policy on the clusters that exist, granted to the teams that create them — or
-          no all-purpose clusters at all
+          no classic all-purpose or job clusters in the inventory
         caveat: >-
-          Serverless compute has no policy to attach. An estate with no classic all-purpose
-          clusters is satisfied by architecture, not scored as 100% policy adoption. The
-          app's population is all-purpose only; job clusters are a different question.
+          Serverless compute has no classic policy. The app scores live all-purpose and job clusters
+          separately and takes the lower adoption share (pass ≥90%, partial ≥50%). Job definitions
+          without a cluster in the inventory require a separate policy review.
       - how: cli
-        where: databricks clusters list --output json
+        where: databricks clusters list --output json; databricks jobs get <job-id> --output json
         expect: >-
-          `policy_id` set on the all-purpose clusters, rather than null on the ones people
-          actually use
+          policy_id on all-purpose clusters and new_cluster.policy_id on shared and task-level job compute
       - how: by-hand
         where: >-
           Ask a team that last created classic compute whether they picked a policy or
@@ -1150,15 +1149,15 @@ entries:
         A policy so tight that every real workload needs an exception, so the exceptions
         are the estate.
       - >-
-        Counting job clusters or serverless as ungoverned. They are not in this
-        population, and including them makes a well-templated estate look worse.
+        Combining both groups into one adoption share, which can hide a gap in the smaller group.
+        Counting serverless as ungoverned also produces an incorrect result.
     partial_when: >-
-      Policies cover some of the all-purpose clusters and the rest were created freehand,
+      Policies cover some of the classic all-purpose or job clusters and the rest were created freehand,
       or the policies exist for the teams that were onboarded and a new team still gets
       the empty form.
     not_applicable_when: >-
-      There are no classic all-purpose clusters, so there is no configuration a template
-      would settle.
+      There are no classic all-purpose or job clusters in the inventory. This does not establish
+      policy coverage for job definitions whose clusters are absent.
     references:
       - https://docs.databricks.com/aws/en/admin/clusters/policies
       - https://docs.databricks.com/aws/en/compute/configure
@@ -1175,15 +1174,15 @@ entries:
           A GPU or a custom image needs its own policy, not an exception on the general
           one, so the exception does not become the template.
         - >-
-          Job compute is configured on the job, not by this policy. Folding it in here
-          mixes two populations the scan keeps apart.
+          Job definitions reference policies through new_cluster.policy_id on shared and task-level
+          compute. Review these definitions even when no job cluster appears in the inventory.
       path:
         - >-
           Publish one usable policy and grant it to the group that creates the most
           classic clusters. An unused policy is not a start.
         - >-
           Attach it to the clusters that group already runs, or recreate them from it,
-          so the freehand remainder stops being the working set.
+          and attach policies to shared and task-level job compute definitions.
         - >-
           Then add a policy for the next group, and remove the unrestricted create
           permission once the groups that need classic have a policy.
@@ -1196,7 +1195,7 @@ entries:
           attached libraries wrong.
       retain: >-
         The policy list with the groups that may use each one, and a dated count of
-        all-purpose clusters with and without a policy. That count is what the scan
+        each group of all-purpose and job clusters with and without a policy. That count is what the scan
         reports.
       revisit: >-
         A new team that needs classic compute, a policy exception that became common,

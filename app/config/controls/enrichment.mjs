@@ -1160,14 +1160,15 @@ export const ENRICHMENT = {
     measurability: 'system-table',
     collector: 'sql:compute.clusters',
     severity: 'medium',
-    alias_group: 'compute-templates',
+    alias_group: 'classic-compute-templates',
     criteria:
-      'At least 90% of all-purpose clusters are created from a compute policy. Not applicable to an ' +
-      'all-serverless estate, which exposes no configuration for a template to settle.',
+      'At least 90% of classic all-purpose clusters and 90% of classic job clusters in the collected live ' +
+      'inventory are created from compute policies. Score each non-empty population separately using the ' +
+      'lower adoption share. Exclude serverless, pipeline and maintenance compute. Job definitions without ' +
+      'a cluster in this inventory are not assessed.',
     thresholds: bands(0.9, 0.5),
-    applicability: { preconditions: [NO_CLASSIC_COMPUTE] },
     remediation: {
-      summary: 'Define compute policies and require them for cluster creation.',
+      summary: 'Require compute policies for classic all-purpose clusters and shared or task-level job compute.',
       // A policy family rather than a definition written from scratch: the platform maintains one
       // per workload shape, and overriding two fields on a family is both shorter and less likely
       // to forbid something the workload needs.
@@ -1508,10 +1509,9 @@ export const ENRICHMENT = {
     measurability: 'system-table',
     collector: 'sql:compute.clusters',
     severity: 'medium',
-    alias_group: 'compute-templates',
+    alias_group: 'classic-compute-templates',
     criteria: 'Same measurement as OE-02-02, read as the predefined-templates requirement. Scored once.',
     thresholds: bands(0.9, 0.5),
-    applicability: { preconditions: [NO_CLASSIC_COMPUTE] },
   },
   'IU-03-04': {
     measurability: 'rest-api',

@@ -307,5 +307,31 @@
         ]
       }
     ]
+  },
+  {
+    "version": 22,
+    "fingerprint": "sha256:f7880a3d2f51768269079d5c0e82c2b57ee130dc243a3d1f38bab5def547e412",
+    "recordedAt": "2026-11-09",
+    "scored_units": 165,
+    "describes": true,
+    "added": [],
+    "removed": [],
+    "renamed": [],
+    "changed": [
+      {
+        "id": "IU-03-03",
+        "fields": [
+          "alias_group",
+          "preconditions"
+        ]
+      },
+      {
+        "id": "OE-02-02",
+        "fields": [
+          "alias_group",
+          "preconditions"
+        ]
+      }
+    ]
   }
 ]

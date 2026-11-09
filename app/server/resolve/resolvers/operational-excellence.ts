@@ -37,7 +37,6 @@ import {
   offenders,
   observedValue,
   percent,
-  satisfiedByArchitecture,
   sourcedFrom,
   triggerRecorded,
   unmeasured,
@@ -349,40 +348,60 @@ const infrastructureAsCode = sourcedFrom(
 );
 
 /**
- * OE-02-02 and IU-03-03: standardized compute configuration.
+ * OE-02-02 and IU-03-03: policy adoption on classic all-purpose and job compute.
  *
- * The same measurement as CO-02-03, which reads cluster policies from the cost side. It is
- * not folded into that alias group because the threshold differs: the cost pillar asks
- * whether spend is bounded, and this asks whether configuration is standardised, so an
- * estate with policies on most clusters answers one better than the other.
+ * Score each non-empty population separately and take the lower share. Combining them
+ * would let a large governed interactive fleet hide ungoverned production job compute
+ * (or frequent job runs hide an interactive gap). Pipelines and maintenance compute are
+ * outside both populations. The signal is the live cluster inventory, not job definitions:
+ * jobs without a cluster in that inventory cannot contribute evidence of policy adoption.
  */
 const standardizedCompute = fromSignal<ClusterRow[]>(CLUSTERS, ['OE-02-02', 'IU-03-03'], (clusters, context) => {
-  const population = clusters.filter(isAllPurpose);
-  if (population.length === 0) {
-    return satisfiedByArchitecture(
-      'There are no classic all-purpose clusters in this estate, so there is no compute configuration to ' +
-        'standardise. Serverless compute exposes no instance type, node count or runtime for a user to ' +
-        'choose, which is what a template exists to settle.',
-      [evidenceFrom(context, CLUSTERS, `${clusters.length} cluster records, none of them all-purpose classic compute`)]
-    );
+  const populations = [
+    { label: 'all-purpose', clusters: clusters.filter(isAllPurpose) },
+    { label: 'job', clusters: clusters.filter((cluster) => cluster.source === 'JOB') },
+  ];
+  const present = populations.filter((population) => population.clusters.length > 0);
+  if (present.length === 0) {
+    return {
+      ...notApplicable(
+        'There are no classic all-purpose or job clusters in the collected inventory. ' +
+          'Serverless compute requires no classic compute policy. This inventory does not establish ' +
+          'policy coverage for job definitions whose clusters are absent.'
+      ),
+      evidence: [
+        evidenceFrom(context, CLUSTERS, `${clusters.length} cluster records, none of them all-purpose or job compute`),
+      ],
+    };
   }
 
-  const governed = population.filter((cluster) => cluster.hasPolicy);
-  const adopted = share(governed.length, population.length);
-  const free = population.filter((cluster) => !cluster.hasPolicy);
-
+  const bands = bandsOf(context.spec, { pass: 0.9, partial: 0.5 });
+  const adoption = present.map(
+    (population) => population.clusters.filter((cluster) => cluster.hasPolicy).length / population.clusters.length
+  );
   return {
-    outcome: bandOutcome(adopted, bandsOf(context.spec, { pass: 0.9, partial: 0.5 })),
-    evidence: [
-      evidenceFrom(
-        context,
-        CLUSTERS,
-        `${governed.length} of ${population.length} all-purpose clusters were created from a policy ` +
-          `(${percent(adopted)})`,
-        'Compute is created from a template, so configuration is a decision made once rather than per cluster'
-      ),
-      ...offenders(context, CLUSTERS, 'Configured freehand', free, asCluster),
-    ],
+    outcome: bandOutcome(Math.min(...adoption), bands),
+    evidence: populations.flatMap((population) => {
+      const governed = population.clusters.filter((cluster) => cluster.hasPolicy);
+      const free = population.clusters.filter((cluster) => !cluster.hasPolicy);
+      return [
+        evidenceFrom(
+          context,
+          CLUSTERS,
+          population.clusters.length === 0
+            ? `No classic ${population.label} clusters in the collected inventory`
+            : `${governed.length} of ${population.clusters.length} classic ${population.label} clusters were created ` +
+                `from a policy (${percent(share(governed.length, population.clusters.length))})`,
+          `Policy adoption meets the configured pass band (${percent(bands.pass)}) in each populated classic compute group; serverless is excluded. ` +
+            'This evidence covers the live cluster inventory, not every job definition or historical run.'
+        ),
+        ...offenders(context, CLUSTERS, `Configured freehand (${population.label})`, free, asCluster),
+      ];
+    }),
+    outcomeReason:
+      'All-purpose and job policy adoption are assessed separately; the lower share determines the outcome. ' +
+      'The evidence covers the live cluster inventory, not every job definition or historical job run. ' +
+      'Check new_cluster.policy_id on shared and task-level job compute definitions that have no cluster in this inventory.',
   };
 });
 
